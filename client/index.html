@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Inline script to prevent favicon request loop and set theme color - runs immediately -->
+    <script>
+      // Prevent browser from requesting /splash_logo.svg by setting a data URI favicon immediately
+      (function() {
+        // Remove any existing favicon links
+        const favicons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]');
+        favicons.forEach(link => link.remove());
+        
+        // Set a minimal data URI favicon immediately to prevent browser from making external requests
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.type = 'image/svg+xml';
+        link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" fill="%23D63D31"/></svg>';
+        document.head.appendChild(link);
+        
+        // Ensure theme-color meta tag exists (initial default, will be updated by pages)
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (!metaThemeColor) {
+          metaThemeColor = document.createElement('meta');
+          metaThemeColor.name = 'theme-color';
+          document.head.insertBefore(metaThemeColor, document.head.firstChild);
+        }
+        // Set initial default color (will be updated by individual pages to match their UI)
+        metaThemeColor.content = '#D63D31';
+        
+        // Ensure iOS status bar style meta tag exists
+        let appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+        if (!appleStatusBar) {
+          appleStatusBar = document.createElement('meta');
+          appleStatusBar.name = 'apple-mobile-web-app-status-bar-style';
+          document.head.appendChild(appleStatusBar);
+        }
+        appleStatusBar.content = 'default';
+      })();
+    </script>
+    <!-- Favicon will be replaced with full logo via JavaScript (data URI, no external request) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Sillobyte Canteen - Order Food Online from College Canteens | Fast & Convenient</title>
+    <meta name="title" content="Sillobyte Canteen - Order Food Online from College Canteens | Fast & Convenient" />
+    <meta name="description" content="Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students. Browse menus, place orders, and enjoy quick delivery." />
+    <meta name="keywords" content="college canteen, food ordering, online food delivery, student meals, campus dining, food app, canteen management, college food, student dining, food ordering app" />
+    <meta name="author" content="Sillobyte Canteen" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="bingbot" content="index, follow" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://sillobyte.onrender.com" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sillobyte.onrender.com" />
+    <meta property="og:title" content="Sillobyte Canteen - Order Food Online from College Canteens" />
+    <meta property="og:description" content="Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students." />
+    <meta property="og:image" content="https://sillobyte.onrender.com/api/icon.png?size=512" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Sillobyte Canteen - College Food Ordering App" />
+    <meta property="og:site_name" content="Sillobyte Canteen" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://sillobyte.onrender.com" />
+    <meta property="twitter:title" content="Sillobyte Canteen - Order Food Online from College Canteens" />
+    <meta property="twitter:description" content="Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students." />
+    <meta property="twitter:image" content="https://sillobyte.onrender.com/api/icon.png?size=512" />
+    <meta property="twitter:image:alt" content="Sillobyte Canteen - College Food Ordering App" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="application-name" content="Sillobyte Canteen" />
+    <meta name="apple-mobile-web-app-title" content="Sillobyte Canteen" />
+    <meta name="msapplication-TileColor" content="#D63D31" />
+    <meta name="theme-color" content="#D63D31" />
+    
+    <!-- Geo Tags -->
+    <meta name="geo.region" content="IN" />
+    <meta name="geo.placename" content="India" />
+    
+    <!-- Language and Content -->
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="rating" content="general" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-title" content="Sillobyte Canteen" />
+    
+    <!-- Android PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Sillobyte Canteen" />
+    <meta name="msapplication-TileColor" content="#D63D31" />
+    <meta name="msapplication-config" content="none" />
+    
+    <!-- Additional PWA Meta Tags -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Apple Touch Icons (generated from SVG code) - Optimized: only essential sizes -->
+    <link rel="apple-touch-icon" href="/api/icon.png?size=180" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/api/icon.png?size=180" />
+    
+    <!-- Apple Splash Screens and iOS PWA Enhancement -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    
+    <!-- iOS Splash Screen Images (generated from SVG code) - Removed to reduce requests -->
+    
+    <!-- iOS Safari PWA Banner -->
+    <meta name="apple-itunes-app" content="app-capable=yes" />
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Sillobyte Canteen",
+      "alternateName": "Sillobyte",
+      "description": "Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students.",
+      "url": "https://sillobyte.onrender.com",
+      "applicationCategory": "FoodApplication",
+      "operatingSystem": "Web Browser",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "Sillobyte Canteen",
+        "url": "https://sillobyte.onrender.com"
+      },
+      "featureList": [
+        "Online Food Ordering",
+        "College Canteen Management",
+        "Real-time Order Tracking",
+        "Secure Payment Processing",
+        "Menu Browsing",
+        "Order History",
+        "Mobile App Support"
+      ],
+      "screenshot": "https://sillobyte.onrender.com/api/icon.png?size=512",
+      "softwareVersion": "2.0",
+      "datePublished": "2024-01-01",
+      "dateModified": "2024-12-01",
+      "inLanguage": "en-US",
+      "isAccessibleForFree": true,
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "softwareRequirements": "Any modern web browser"
+    }
+    </script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Sillobyte Canteen",
+      "url": "https://sillobyte.onrender.com",
+      "logo": "https://sillobyte.onrender.com/api/icon.png?size=512",
+      "description": "Leading college canteen food ordering platform for students",
+      "foundingDate": "2024",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "availableLanguage": "English"
+      },
+      "sameAs": [
+        "https://sillobyte.onrender.com"
+      ]
+    }
+    </script>
+    
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Sillobyte Canteen",
+      "url": "https://sillobyte.onrender.com",
+      "description": "Order food online from college canteens with Sillobyte",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://sillobyte.onrender.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

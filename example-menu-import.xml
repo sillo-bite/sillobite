@@ -1,0 +1,830 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<menu>
+  <categories>
+    
+    <category>
+      <name>Beverages</name>
+      <createdAt>2025-10-08T08:09:35.098Z</createdAt>
+    </category>
+    <category>
+      <name>Desserts</name>
+      <createdAt>2025-10-08T08:09:35.247Z</createdAt>
+    </category>
+    <category>
+      <name>Ice Creams</name>
+      <createdAt>2025-10-09T09:53:50.625Z</createdAt>
+    </category>
+    <category>
+      <name>Main Course</name>
+      <createdAt>2025-10-08T08:09:35.009Z</createdAt>
+    </category>
+    <category>
+      <name>Snacks</name>
+      <createdAt>2025-10-08T08:09:35.171Z</createdAt>
+    </category>
+    <category>
+      <name>Soups</name>
+      <createdAt>2025-10-08T08:10:00.000Z</createdAt>
+    </category>
+    <category>
+      <name>Salads</name>
+      <createdAt>2025-10-08T08:10:15.000Z</createdAt>
+    </category>
+    <category>
+      <name>Starters</name>
+      <createdAt>2025-10-08T08:10:30.000Z</createdAt>
+    </category>
+    <category>
+      <name>Breads</name>
+      <createdAt>2025-10-08T08:10:45.000Z</createdAt>
+    </category>
+    <category>
+      <name>Rice</name>
+      <createdAt>2025-10-08T08:11:00.000Z</createdAt>
+    </category>
+    <category>
+      <name>Noodles</name>
+      <createdAt>2025-10-08T08:11:15.000Z</createdAt>
+    </category>
+    <category>
+      <name>Fast Food</name>
+      <createdAt>2025-10-08T08:11:30.000Z</createdAt>
+    </category>
+  </categories>
+  <counters>
+    
+    <counter>
+      <name>Secondary Store Counter</name>
+      <code>STORE2</code>
+      <type>store</type>
+    </counter>
+    <counter>
+      <name>Main Store Counter</name>
+      <code>STORE1</code>
+      <type>store</type>
+    </counter>
+    <counter>
+      <name>Payment Counter 2</name>
+      <code>PAY2</code>
+      <type>payment</type>
+    </counter>
+    <counter>
+      <name>Payment Counter 1</name>
+      <code>PAY1</code>
+      <type>payment</type>
+    </counter>
+  </counters>
+  <menuItems>
+    
+    <menuItem>
+      <name>Chicken Biryani</name>
+      <price>120</price>
+      <categoryName>Rice</categoryName>
+      <available>true</available>
+      <stock>94</stock>
+      <description>Fragrant basmati rice cooked with tender chicken pieces and aromatic spices</description>
+      <addOns>[{"name":"Extra Raita", "price":"15"}, {"name":"Extra Pickle", "price":"10"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Fresh Lime Soda</name>
+      <price>25</price>
+      <categoryName>Beverages</categoryName>
+      <available>true</available>
+      <stock>97</stock>
+      <description>Refreshing lime soda with mint leaves</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Gulab Jamun</name>
+      <price>30</price>
+      <categoryName>Desserts</categoryName>
+      <available>true</available>
+      <stock>63</stock>
+      <description>Soft milk dumplings in rose-flavored syrup</description>
+      <addOns>[{"name":"Extra Syrup", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Ice Cream</name>
+      <price>40</price>
+      <categoryName>Ice Creams</categoryName>
+      <available>true</available>
+      <stock>48</stock>
+      <description>Vanilla ice cream (currently out of stock)</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Masala Chai</name>
+      <price>15</price>
+      <categoryName>Beverages</categoryName>
+      <available>true</available>
+      <stock>84</stock>
+      <description>Traditional spiced tea with milk</description>
+      <addOns>[{"name":"Extra Sugar", "price":"0"}, {"name":"Less Sugar", "price":"0"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Masala Dosa</name>
+      <price>60</price>
+      <categoryName>Snacks</categoryName>
+      <available>true</available>
+      <stock>95</stock>
+      <description>Crispy dosa filled with spiced potato mixture</description>
+      <addOns>[{"name":"Extra Chutney", "price":"5"}, {"name":"Extra Sambar", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Samosa</name>
+      <price>20</price>
+      <categoryName>Snacks</categoryName>
+      <available>true</available>
+      <stock>98</stock>
+      <description>Crispy fried pastry filled with spiced potatoes</description>
+      <addOns>[{"name":"Extra Chutney", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Vada Pav</name>
+      <price>25</price>
+      <categoryName>Snacks</categoryName>
+      <available>true</available>
+      <stock>96</stock>
+      <description>Spicy potato fritter in a soft bun with chutneys</description>
+      <addOns>[{"name":"Extra Green Chutney", "price":"5"}, {"name":"Extra Garlic Chutney", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Vegetable Pulao</name>
+      <price>80</price>
+      <categoryName>Rice</categoryName>
+      <available>true</available>
+      <stock>100</stock>
+      <description>Mixed vegetables cooked with basmati rice and mild spices</description>
+      <addOns>[{"name":"Extra Curd", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Mutton Biryani</name>
+      <price>150</price>
+      <categoryName>Rice</categoryName>
+      <available>true</available>
+      <stock>75</stock>
+      <description>Fragrant basmati rice with tender mutton pieces and aromatic spices</description>
+      <addOns>[{"name":"Extra Raita", "price":"15"}, {"name":"Extra Pickle", "price":"10"}, {"name":"Boiled Egg", "price":"20"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Paneer Biryani</name>
+      <price>110</price>
+      <categoryName>Rice</categoryName>
+      <available>true</available>
+      <stock>88</stock>
+      <description>Basmati rice cooked with marinated paneer cubes and spices</description>
+      <addOns>[{"name":"Extra Raita", "price":"15"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Egg Biryani</name>
+      <price>90</price>
+      <categoryName>Rice</categoryName>
+      <available>true</available>
+      <stock>92</stock>
+      <description>Spiced basmati rice with boiled eggs and aromatic masala</description>
+      <addOns>[{"name":"Extra Raita", "price":"15"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Plain Dosa</name>
+      <price>40</price>
+      <categoryName>Snacks</categoryName>
+      <available>true</available>
+      <stock>100</stock>
+      <description>Crispy golden dosa served with coconut chutney and sambar</description>
+      <addOns>[{"name":"Extra Chutney", "price":"5"}, {"name":"Extra Sambar", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Rava Dosa</name>
+      <price>50</price>
+      <categoryName>Snacks</categoryName>
+      <available>true</available>
+      <stock>85</stock>
+      <description>Crispy semolina dosa with onions and green chilies</description>
+      <addOns>[{"name":"Extra Chutney", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Onion Uttapam</name>
+      <price>55</price>
+      <categoryName>Snacks</categoryName>
+      <available>true</available>
+      <stock>78</stock>
+      <description>Thick pancake topped with onions, tomatoes, and chilies</description>
+      <addOns>[{"name":"Extra Chutney", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Pav Bhaji</name>
+      <price>70</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>82</stock>
+      <description>Spiced vegetable curry served with buttered bread</description>
+      <addOns>[{"name":"Extra Butter", "price":"10"}, {"name":"Extra Pav", "price":"15"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chole Bhature</name>
+      <price>80</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>90</stock>
+      <description>Spiced chickpeas with deep-fried fluffy bread</description>
+      <addOns>[{"name":"Extra Bhature", "price":"20"}, {"name":"Extra Pickle", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Rajma Chawal</name>
+      <price>75</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>88</stock>
+      <description>Kidney beans curry served with steamed rice</description>
+      <addOns>[{"name":"Extra Rice", "price":"15"}, {"name":"Extra Pickle", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Dal Tadka</name>
+      <price>65</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>95</stock>
+      <description>Lentil curry tempered with spices, served with rice</description>
+      <addOns>[{"name":"Extra Rice", "price":"15"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Butter Chicken</name>
+      <price>140</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>70</stock>
+      <description>Creamy tomato-based curry with tender chicken pieces</description>
+      <addOns>[{"name":"Extra Butter", "price":"10"}, {"name":"Extra Naan", "price":"20"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Paneer Butter Masala</name>
+      <price>120</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>85</stock>
+      <description>Creamy tomato curry with soft paneer cubes</description>
+      <addOns>[{"name":"Extra Butter", "price":"10"}, {"name":"Extra Naan", "price":"20"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chicken Curry</name>
+      <price>130</price>
+      <categoryName>Main Course</categoryName>
+      <available>true</available>
+      <stock>72</stock>
+      <description>Spicy chicken curry with traditional Indian spices</description>
+      <addOns>[{"name":"Extra Rice", "price":"15"}, {"name":"Extra Roti", "price":"10"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Butter Naan</name>
+      <price>30</price>
+      <categoryName>Breads</categoryName>
+      <available>true</available>
+      <stock>100</stock>
+      <description>Soft leavened bread brushed with butter</description>
+      <addOns>[{"name":"Extra Butter", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Garlic Naan</name>
+      <price>35</price>
+      <categoryName>Breads</categoryName>
+      <available>true</available>
+      <stock>92</stock>
+      <description>Buttery naan topped with fresh garlic and herbs</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Roti</name>
+      <price>15</price>
+      <categoryName>Breads</categoryName>
+      <available>true</available>
+      <stock>100</stock>
+      <description>Fresh whole wheat flatbread</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Paratha</name>
+      <price>25</price>
+      <categoryName>Breads</categoryName>
+      <available>true</available>
+      <stock>88</stock>
+      <description>Layered flatbread cooked with ghee</description>
+      <addOns>[{"name":"Extra Butter", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Aloo Paratha</name>
+      <price>40</price>
+      <categoryName>Breads</categoryName>
+      <available>true</available>
+      <stock>85</stock>
+      <description>Stuffed paratha with spiced potato filling</description>
+      <addOns>[{"name":"Extra Butter", "price":"5"}, {"name":"Extra Pickle", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chicken Wings</name>
+      <price>110</price>
+      <categoryName>Starters</categoryName>
+      <available>true</available>
+      <stock>65</stock>
+      <description>Spicy fried chicken wings with secret sauce</description>
+      <addOns>[{"name":"Extra Sauce", "price":"10"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Paneer Tikka</name>
+      <price>100</price>
+      <categoryName>Starters</categoryName>
+      <available>true</available>
+      <stock>80</stock>
+      <description>Marinated paneer cubes grilled to perfection</description>
+      <addOns>[{"name":"Extra Mint Chutney", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chicken Tikka</name>
+      <price>120</price>
+      <categoryName>Starters</categoryName>
+      <available>true</available>
+      <stock>68</stock>
+      <description>Tender chicken pieces marinated in yogurt and spices</description>
+      <addOns>[{"name":"Extra Mint Chutney", "price":"10"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Spring Rolls</name>
+      <price>60</price>
+      <categoryName>Starters</categoryName>
+      <available>true</available>
+      <stock>75</stock>
+      <description>Crispy vegetable spring rolls with sweet and sour sauce</description>
+      <addOns>[{"name":"Extra Sauce", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>French Fries</name>
+      <price>50</price>
+      <categoryName>Fast Food</categoryName>
+      <available>true</available>
+      <stock>90</stock>
+      <description>Crispy golden french fries with ketchup</description>
+      <addOns>[{"name":"Extra Ketchup", "price":"5"}, {"name":"Cheese Dip", "price":"15"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Burger</name>
+      <price>80</price>
+      <categoryName>Fast Food</categoryName>
+      <available>true</available>
+      <stock>82</stock>
+      <description>Classic veg burger with fresh vegetables and sauce</description>
+      <addOns>[{"name":"Extra Cheese", "price":"15"}, {"name":"Extra Patty", "price":"20"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chicken Burger</name>
+      <price>100</price>
+      <categoryName>Fast Food</categoryName>
+      <available>true</available>
+      <stock>70</stock>
+      <description>Juicy chicken patty with fresh vegetables</description>
+      <addOns>[{"name":"Extra Cheese", "price":"15"}, {"name":"Extra Sauce", "price":"10"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Pizza Margherita</name>
+      <price>150</price>
+      <categoryName>Fast Food</categoryName>
+      <available>true</available>
+      <stock>60</stock>
+      <description>Classic pizza with tomato sauce, mozzarella, and basil</description>
+      <addOns>[{"name":"Extra Cheese", "price":"20"}, {"name":"Extra Toppings", "price":"30"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Veg Noodles</name>
+      <price>70</price>
+      <categoryName>Noodles</categoryName>
+      <available>true</available>
+      <stock>85</stock>
+      <description>Stir-fried noodles with mixed vegetables</description>
+      <addOns>[{"name":"Extra Vegetables", "price":"15"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chicken Noodles</name>
+      <price>90</price>
+      <categoryName>Noodles</categoryName>
+      <available>true</available>
+      <stock>72</stock>
+      <description>Stir-fried noodles with tender chicken pieces</description>
+      <addOns>[{"name":"Extra Chicken", "price":"25"}]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Hakka Noodles</name>
+      <price>75</price>
+      <categoryName>Noodles</categoryName>
+      <available>true</available>
+      <stock>80</stock>
+      <description>Spicy Indo-Chinese style noodles with vegetables</description>
+      <addOns>[{"name":"Extra Vegetables", "price":"15"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Tomato Soup</name>
+      <price>50</price>
+      <categoryName>Soups</categoryName>
+      <available>true</available>
+      <stock>95</stock>
+      <description>Creamy tomato soup with herbs and croutons</description>
+      <addOns>[{"name":"Extra Croutons", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Sweet Corn Soup</name>
+      <price>55</price>
+      <categoryName>Soups</categoryName>
+      <available>true</available>
+      <stock>88</stock>
+      <description>Hot and sour sweet corn soup</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Chicken Soup</name>
+      <price>60</price>
+      <categoryName>Soups</categoryName>
+      <available>true</available>
+      <stock>75</stock>
+      <description>Hearty chicken soup with vegetables</description>
+      <addOns>[]</addOns>
+      <isVegetarian>false</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Manchow Soup</name>
+      <price>55</price>
+      <categoryName>Soups</categoryName>
+      <available>true</available>
+      <stock>82</stock>
+      <description>Spicy Indo-Chinese soup with vegetables</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Caesar Salad</name>
+      <price>90</price>
+      <categoryName>Salads</categoryName>
+      <available>true</available>
+      <stock>70</stock>
+      <description>Fresh romaine lettuce with caesar dressing and croutons</description>
+      <addOns>[{"name":"Extra Dressing", "price":"10"}, {"name":"Extra Croutons", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Garden Salad</name>
+      <price>65</price>
+      <categoryName>Salads</categoryName>
+      <available>true</available>
+      <stock>85</stock>
+      <description>Fresh mixed vegetables with vinaigrette dressing</description>
+      <addOns>[{"name":"Extra Dressing", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>true</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Fruit Salad</name>
+      <price>60</price>
+      <categoryName>Salads</categoryName>
+      <available>true</available>
+      <stock>90</stock>
+      <description>Fresh seasonal fruits with honey dressing</description>
+      <addOns>[{"name":"Extra Honey", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Orange Juice</name>
+      <price>40</price>
+      <categoryName>Beverages</categoryName>
+      <available>true</available>
+      <stock>95</stock>
+      <description>Fresh squeezed orange juice</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Mango Lassi</name>
+      <price>50</price>
+      <categoryName>Beverages</categoryName>
+      <available>true</available>
+      <stock>88</stock>
+      <description>Sweet mango yogurt drink</description>
+      <addOns>[{"name":"Extra Mango", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Cold Coffee</name>
+      <price>45</price>
+      <categoryName>Beverages</categoryName>
+      <available>true</available>
+      <stock>92</stock>
+      <description>Iced coffee with milk and sugar</description>
+      <addOns>[{"name":"Extra Sugar", "price":"0"}, {"name":"Extra Cream", "price":"10"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Lemonade</name>
+      <price>30</price>
+      <categoryName>Beverages</categoryName>
+      <available>true</available>
+      <stock>98</stock>
+      <description>Fresh lemon juice with sugar and water</description>
+      <addOns>[{"name":"Extra Sugar", "price":"0"}, {"name":"Mint Leaves", "price":"5"}]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>false</isTrending>
+      <storeCounterCode>STORE1</storeCounterCode>
+      <paymentCounterCode>PAY1</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+    <menuItem>
+      <name>Kesar Kulfi</name>
+      <price>45</price>
+      <categoryName>Ice Creams</categoryName>
+      <available>true</available>
+      <stock>70</stock>
+      <description>Traditional saffron-flavored frozen dessert</description>
+      <addOns>[]</addOns>
+      <isVegetarian>true</isVegetarian>
+      <isMarkable>false</isMarkable>
+      <isTrending>true</isTrending>
+      <storeCounterCode>STORE2</storeCounterCode>
+      <paymentCounterCode>PAY2</paymentCounterCode>
+      <imageUrl></imageUrl>
+    </menuItem>
+  </menuItems>
+</menu>

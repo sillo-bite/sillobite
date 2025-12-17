@@ -1,0 +1,141 @@
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
+
+// Razorpay Configuration - loaded from environment variables
+export const RAZORPAY_CONFIG = {
+  KEY_ID: process.env.RAZORPAY_KEY_ID || '',
+  KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || '',
+  WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || '',
+};
+
+// Initialize Razorpay instance
+export const razorpayInstance = new Razorpay({
+  key_id: RAZORPAY_CONFIG.KEY_ID,
+  key_secret: RAZORPAY_CONFIG.KEY_SECRET,
+});
+
+// Payment status codes
+export const PAYMENT_STATUS = {
+  PENDING: 'pending',
+  SUCCESS: 'success', 
+  FAILED: 'failed',
+  TIMEOUT: 'timeout'
+} as const;
+
+// Razorpay response codes
+export const RAZORPAY_RESPONSE_CODES = {
+  PAYMENT_SUCCESS: 'authorized',
+  PAYMENT_FAILED: 'failed', 
+  PAYMENT_PENDING: 'created',
+  PAYMENT_CAPTURED: 'captured',
+  PAYMENT_REFUNDED: 'refunded',
+} as const;
+
+// Verify Razorpay webhook signature
+export function verifyWebhookSignature(
+  payload: string | object,
+  signature: string,
+  secret: string = RAZORPAY_CONFIG.WEBHOOK_SECRET
+): boolean {
+  try {
+    const payloadString = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(payloadString)
+      .digest('hex');
+    
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch (error) {
+    console.error('Error verifying webhook signature:', error);
+    return false;
+  }
+}
+
+// Create Razorpay order
+export async function createRazorpayOrder(
+  amount: number,
+  currency: string = 'INR',
+  receipt?: string,
+  notes?: Record<string, string>
+) {
+  // Validate configuration before making API call
+  if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
+    throw new Error('Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
+  }
+
+  if (amount <= 0) {
+    throw new Error('Invalid amount: amount must be greater than 0');
+  }
+
+  try {
+    const options = {
+      amount: amount * 100, // Convert to paise
+      currency,
+      receipt: receipt || `receipt_${Date.now()}`,
+      notes: notes || {},
+    };
+
+    const order = await razorpayInstance.orders.create(options);
+    return order;
+  } catch (error: any) {
+    console.error('Error creating Razorpay order:', error);
+    
+    // Provide more helpful error messages
+    if (error.error) {
+      const errorDescription = error.error.description || error.error.error?.description || 'Unknown error';
+      const errorCode = error.error.code || error.error.error?.code || 'UNKNOWN';
+      throw new Error(`Razorpay API Error [${errorCode}]: ${errorDescription}`);
+    }
+    
+    throw error;
+  }
+}
+
+// Verify payment signature (for frontend callback verification)
+export function verifyPaymentSignature(
+  orderId: string,
+  paymentId: string,
+  signature: string
+): boolean {
+  try {
+    const payload = `${orderId}|${paymentId}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', RAZORPAY_CONFIG.KEY_SECRET)
+      .update(payload)
+      .digest('hex');
+    
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch (error) {
+    console.error('Error verifying payment signature:', error);
+    return false;
+  }
+}
+
+// Get payment details
+export async function getPaymentDetails(paymentId: string) {
+  try {
+    const payment = await razorpayInstance.payments.fetch(paymentId);
+    return payment;
+  } catch (error) {
+    console.error('Error fetching payment details:', error);
+    throw error;
+  }
+}
+
+// Get order details
+export async function getOrderDetails(orderId: string) {
+  try {
+    const order = await razorpayInstance.orders.fetch(orderId);
+    return order;
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    throw error;
+  }
+}
+

@@ -1,0 +1,57 @@
+# Robots.txt for Sillobyte Canteen - https://sillobyte.onrender.com
+
+# Allow all search engines to crawl the site
+User-agent: *
+Allow: /
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 1
+
+# Social media crawlers
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+# Block access to sensitive areas
+Disallow: /admin/
+Disallow: /canteen-owner/
+Disallow: /api/
+Disallow: /server/
+Disallow: /_next/
+Disallow: /node_modules/
+Disallow: /*.json$
+Disallow: /*.js$
+Disallow: /*.css$
+Disallow: /sw.js
+Disallow: /manifest.json
+
+# Allow important files
+Allow: /sitemap.xml
+Allow: /robots.txt
+Allow: /splash_logo.svg
+Allow: /api/icon.png
+Allow: /api/icon.svg
+
+# Sitemap location
+Sitemap: https://sillobyte.onrender.com/sitemap.xml
+
+# Host declaration
+Host: https://sillobyte.onrender.com

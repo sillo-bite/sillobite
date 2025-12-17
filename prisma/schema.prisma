@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int      @id @default(autoincrement())
+  email               String   @unique
+  name                String
+  phoneNumber         String?  @map("phone_number")
+  role                String   // "student", "staff", "employee", or "guest"
+  
+  // For students
+  registerNumber      String?  @unique @map("register_number")
+  college             String?
+  department          String?
+  joiningYear         Int?     @map("joining_year")
+  passingOutYear      Int?     @map("passing_out_year")
+  currentStudyYear    Int?     @map("current_study_year")
+  isPassed            Boolean? @default(false) @map("is_passed")
+  
+  // For staff
+  staffId             String?  @unique @map("staff_id")
+  
+  // For organization guest users
+  organizationId      String?  @map("organization_id")
+  
+  // Profile completion status
+  isProfileComplete   Boolean? @default(false) @map("is_profile_complete")
+  
+  // Password for email/password authentication (optional - for Google OAuth users)
+  passwordHash        String?  @map("password_hash")
+  
+  createdAt           DateTime @default(now()) @map("created_at")
+  
+  @@map("users")
+}
+
+model DeliveryPerson {
+  id                  Int      @id @default(autoincrement())
+  deliveryPersonId    String   @unique @map("delivery_person_id") // Unique identifier like DP001, DP002, etc.
+  canteenId           String   @map("canteen_id") // Canteen ID from system settings
+  name                String
+  phoneNumber         String   @map("phone_number")
+  email               String?
+  employeeId          String?  @map("employee_id")
+  address             String?
+  city                String?
+  state               String?
+  pincode             String?
+  dateOfBirth         DateTime? @map("date_of_birth")
+  dateOfJoining       DateTime? @map("date_of_joining")
+  vehicleNumber       String?  @map("vehicle_number")
+  licenseNumber       String?  @map("license_number")
+  emergencyContact    String?  @map("emergency_contact")
+  emergencyContactName String? @map("emergency_contact_name")
+  salary              Decimal? @db.Decimal(10, 2)
+  isActive            Boolean  @default(true) @map("is_active")
+  isAvailable         Boolean  @default(true) @map("is_available")
+  totalOrderDelivered Int      @default(0) @map("total_order_delivered")
+  notes               String?  @db.Text
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  
+  @@index([canteenId, isActive])
+  @@index([canteenId, isAvailable])
+  @@index([deliveryPersonId])
+  @@map("delivery_persons")
+}
+
+// All other models have been migrated to MongoDB
+// Only User and DeliveryPerson models remain in PostgreSQL

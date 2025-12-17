@@ -1,0 +1,958 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Safe area insets with fallbacks */
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Remove default mobile tap highlights and keep touch interactions snappy */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  [role="button"],
+  a,
+  input,
+  textarea,
+  select {
+    touch-action: manipulation;
+  }
+  
+  /* Ensure safe area insets work */
+  @supports (padding: max(0px)) {
+    body {
+      padding-bottom: max(var(--safe-area-inset-bottom), 0px);
+    }
+  }
+}
+
+/* Custom animations for skeleton loading */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Dropdown Animation Keyframes */
+@keyframes dropdown-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(-2px) scale(0.98);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes dropdown-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateY(-4px) scale(0.98);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+    filter: blur(2px);
+  }
+}
+
+@keyframes dropdown-slide-top {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropdown-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes dropdown-bounce {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translateY(2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdown-backdrop {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+  }
+}
+
+@keyframes dropdown-stagger {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(2px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Digital Canteen Design System - Modern UI Inspired */
+
+@layer base {
+  :root {
+    /* Core Brand Colors */
+    --background: 240 33% 98%; /* #F7F7FB - Partner landing page background */
+    --foreground: 222 47% 11%; /* #0F172A - Partner landing page text */
+    
+    /* Partner Landing Page Primary Colors - Sillobyte Brand */
+    --primary: 239 84% 67%; /* #6366F1 - Indigo */
+    --primary-light: 239 84% 72%;
+    --primary-dark: 239 84% 62%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary Color - Teal (Sillobyte Brand) */
+    --secondary: 168 75% 50%; /* #2DD4BF */
+    --secondary-foreground: 222 47% 11%;
+
+    
+    /* UI Components */
+    --card: 0 0% 100%; /* #FFFFFF - Surface */
+    --card-foreground: 222 47% 11%; /* #0F172A - Text primary */
+    
+    --muted: 214 32% 91%; /* #E2E8F0 - Lines */
+    --muted-foreground: 215 16% 35%; /* #475569 - Text secondary */
+    
+    --accent: 262 83% 58%; /* #7C3AED - Purple gradient start */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Food App Specific */
+    --success: 120 93% 34%; /* Green for veg */
+    --success-foreground: 0 0% 98%;
+    
+    --warning: 38 92% 50%; /* Orange for offers */
+    --warning-foreground: 0 0% 98%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Form Elements */
+    --border: 214 32% 91%; /* #E2E8F0 - Lines */
+    --input: 214 32% 91%;
+    --ring: 239 84% 67%; /* Match primary */
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(0 0% 98%));
+    
+    /* Shadows */
+    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.08);
+    --shadow-button: 0 4px 12px hsl(var(--primary) / 0.3);
+
+    --radius: 0.5rem;
+
+    /* Partner landing page colors - Sillobyte brand palette */
+    --text-primary: 222 47% 11%; /* #0F172A */
+    --text-secondary: 215 16% 35%; /* #475569 */
+    --surface: 0 0% 100%; /* #FFFFFF */
+    --gradient-start: 262 83% 58%; /* #7C3AED */
+    --gradient-end: 239 84% 67%; /* #6366F1 */
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+/* Barcode Scanner Styles */
+.scanner-active {
+  visibility: hidden;
+}
+
+.scanner-active .cameraView {
+  visibility: visible;
+}
+
+  .dark {
+    --background: 0 0% 6%; /* #0E0E0E - Deep Charcoal: Richer dark base without pure black look */
+    --foreground: 0 0% 100%; /* #FFFFFF - White: High contrast primary text */
+
+    --card: 0 0% 13%; /* Primary surfaces (cards, menu items) with clear separation */
+    --card-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --popover: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces (modals, bottom bar) for hierarchical depth */
+    --popover-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --primary: 4 68% 52%; /* Vibrant red - matches brand */
+    --primary-light: 4 68% 62%;
+    --primary-dark: 4 68% 42%;
+    --primary-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --secondary: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
+    --secondary-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Balanced for pricing/details */
+
+    --muted: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
+    --muted-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Secondary text */
+
+    --accent: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
+    --accent-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --success: 120 85% 30%; /* Desaturated green */
+    --success-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --warning: 38 85% 45%; /* Desaturated orange */
+    --warning-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --destructive: 0 80% 35%; /* Desaturated red */
+    --destructive-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+
+    --border: 0 0% 18%; /* #2D2D31 - Shadow Line Gray: Gentle but helps layout spacing */
+    --input: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
+    --ring: 4 68% 52%; /* Match primary color for focus rings */
+    --sidebar-background: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
+    --sidebar-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --sidebar-primary: 4 65% 45%; /* Match primary */
+    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --sidebar-accent: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
+    --sidebar-accent-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Secondary text */
+    --sidebar-border: 0 0% 18%; /* #2D2D31 - Shadow Line Gray: Dividers */
+    --sidebar-ring: 4 65% 45%; /* Match primary */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* Prevent horizontal scrolling on the entire page */
+    overflow-x: hidden;
+    /* Allow only vertical scrolling on touch devices */
+    touch-action: pan-y;
+    /* Prevent overscroll bounce effect */
+    overscroll-behavior-y: none;
+    /* Set background color to prevent white flash during overscroll */
+    background-color: #0e0e0e;
+    /* Hide scrollbar */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    /* Smooth scroll for landing page */
+    scroll-behavior: smooth;
+  }
+  
+  html::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+
+  body {
+    @apply text-foreground font-inter;
+    /* Use consistent background colors that match page backgrounds */
+    background-color: hsl(var(--background));
+    /* Prevent horizontal scrolling */
+    overflow-x: hidden;
+    /* Allow only vertical scrolling on touch devices */
+    touch-action: pan-y;
+    /* Prevent overscroll bounce effect */
+    overscroll-behavior-y: none;
+    /* Ensure body doesn't cause layout shifts */
+    position: relative;
+    width: 100%;
+    max-width: 100vw;
+    /* Ensure body covers full viewport */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    /* Hide scrollbar */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  body::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  /* Ensure body background matches page backgrounds */
+  html.dark body {
+    background-color: #0e0e0e;
+  }
+  
+  html:not(.dark) body {
+    background-color: #f7f7f7;
+  }
+  
+  /* Ensure html background matches for overscroll */
+  html.dark {
+    background-color: #0e0e0e;
+  }
+  
+  html:not(.dark) {
+    background-color: #f7f7f7;
+  }
+  
+  /* Fix overscroll on root elements */
+  #root {
+    background-color: #0e0e0e;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overscroll-behavior-y: none;
+    /* Hide scrollbar */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+  
+  #root::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  html.dark #root {
+    background-color: #0e0e0e;
+  }
+  
+  html:not(.dark) #root {
+    background-color: #f7f7f7;
+  }
+}
+
+@layer base {
+  .font-inter {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-end)));
+  }
+
+  .gradient-bg {
+    background-image: linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-end)));
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-hover:hover {
+    @apply shadow-lg -translate-y-1;
+    box-shadow: 0 20px 40px -12px rgba(99, 102, 241, 0.15);
+  }
+
+  .btn-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .btn-hover:hover {
+    @apply -translate-y-0.5;
+    box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.4);
+  }
+
+  .section-padding {
+    @apply py-20 md:py-28 lg:py-32;
+  }
+
+  .container-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Custom animations for mobile app feel */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  .animate-bounce-in {
+    animation: bounceIn 0.5s ease-out;
+  }
+  
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+  
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .gradient-hero {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-light)) 50%, hsl(var(--warning)) 100%);
+  }
+  
+  .gradient-card-hover {
+    background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--accent)));
+  }
+  
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  
+  .shadow-button {
+    box-shadow: var(--shadow-button);
+  }
+  
+  .shadow-hero {
+    box-shadow: 0 20px 40px hsl(var(--primary) / 0.3);
+  }
+  
+  .hover-scale {
+    transition: transform 0.2s ease-out;
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+  
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--primary) / 0.8);
+  }
+}
+
+/* Toast styles removed - now using full-screen mandatory update modal */
+
+/* Enhanced pull-to-refresh animations */
+.pull-to-refresh-glow {
+  animation: pullGlow 2s ease-in-out infinite;
+}
+
+.pull-to-refresh-pulse {
+  animation: pullPulse 1.5s ease-in-out infinite;
+}
+
+.pull-to-refresh-bounce {
+  animation: pullBounce 0.6s ease-out;
+}
+
+@keyframes pullGlow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
+  }
+}
+
+@keyframes pullPulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% { 
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes pullBounce {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.1); }
+  50% { transform: scale(0.95); }
+  75% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Shimmer effect for refresh indicator */
+.pull-shimmer {
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.4), 
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Hide scrollbar utility class */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.scrollbar-hide::-webkit-scrollbar-track {
+  display: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar-thumb {
+  display: none;
+}
+
+/* Canteen Selector Scrollbar - Dark theme with red accents */
+.canteen-selector-scrollbar {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: #3a1a1a #0a0a0a;
+}
+
+.canteen-selector-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.canteen-selector-scrollbar::-webkit-scrollbar-track {
+  background: #0a0a0a;
+  border-radius: 10px;
+}
+
+.canteen-selector-scrollbar::-webkit-scrollbar-thumb {
+  background: #3a1a1a;
+  border-radius: 10px;
+  border: 1px solid #0a0a0a;
+}
+
+.canteen-selector-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #5a2a2a;
+}
+
+/* Light theme scrollbar */
+html:not(.dark) .canteen-selector-scrollbar {
+  scrollbar-color: #dc2626 #f3f4f6;
+}
+
+html:not(.dark) .canteen-selector-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+html:not(.dark) .canteen-selector-scrollbar::-webkit-scrollbar-thumb {
+  background: #dc2626;
+  border: 1px solid #f3f4f6;
+}
+
+html:not(.dark) .canteen-selector-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #b91c1c;
+}
+
+/* Universal App Scrollbar - Theme-aware - Applied to all scrollable elements */
+* {
+  /* Firefox - Thin scrollbar with theme colors */
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted));
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+  border-color: hsl(var(--border));
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--primary) / 0.6);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+*::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* Dark theme scrollbar */
+.dark * {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted));
+}
+
+.dark *::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-color: transparent;
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+  border-color: hsl(var(--border));
+}
+
+.dark *::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--primary) / 0.7);
+  border-color: hsl(var(--primary) / 0.4);
+}
+
+.dark *::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* Light theme scrollbar - more visible */
+html:not(.dark) * {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted));
+}
+
+html:not(.dark) *::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-color: hsl(var(--muted));
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+html:not(.dark) *::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--primary) / 0.7);
+}
+
+html:not(.dark) *::-webkit-scrollbar-corner {
+  background: hsl(var(--muted));
+}
+
+/* Universal App Scrollbar - Theme-aware - Utility classes for specific elements */
+.app-scrollbar,
+.counter-scrollbar {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted));
+}
+
+.app-scrollbar::-webkit-scrollbar,
+.counter-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.app-scrollbar::-webkit-scrollbar-track,
+.counter-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb,
+.counter-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 10px;
+  border: 1px solid hsl(var(--muted));
+  transition: background 0.2s ease;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:hover,
+.counter-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb:active,
+.counter-scrollbar::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--primary) / 0.5);
+}
+
+/* Dark theme scrollbar */
+.dark .app-scrollbar,
+.dark .counter-scrollbar {
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted));
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-track,
+.dark .counter-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-thumb,
+.dark .counter-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border: 1px solid hsl(var(--muted));
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-thumb:hover,
+.dark .counter-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dark .app-scrollbar::-webkit-scrollbar-thumb:active,
+.dark .counter-scrollbar::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--primary) / 0.6);
+}
+
+/* Dropdown Animation Classes */
+.animate-dropdown-enter {
+  animation: dropdown-enter 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-dropdown-enter-active {
+  animation-play-state: running;
+}
+
+.animate-dropdown-exit {
+  animation: dropdown-exit 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.animate-dropdown-exit-active {
+  animation-play-state: running;
+}
+
+.animate-dropdown-slide-top {
+  animation: dropdown-slide-top 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-dropdown-scale {
+  animation: dropdown-scale 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-dropdown-bounce {
+  animation: dropdown-bounce 300ms cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.animate-dropdown-backdrop {
+  animation: dropdown-backdrop 200ms ease-out forwards;
+}
+
+.animate-dropdown-backdrop-active {
+  animation-play-state: running;
+}
+
+.animate-dropdown-stagger {
+  animation: dropdown-stagger 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-dropdown-enter,
+  .animate-dropdown-exit,
+  .animate-dropdown-slide-top,
+  .animate-dropdown-scale,
+  .animate-dropdown-bounce,
+  .animate-dropdown-backdrop,
+  .animate-dropdown-stagger {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* GPU acceleration for smooth animations */
+.dropdown-container {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.dropdown-item {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+/* Mobile-specific animations */
+@media (max-width: 768px) {
+  .animate-dropdown-enter {
+    animation: dropdown-enter 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  
+  .animate-dropdown-exit {
+    animation: dropdown-exit 100ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+  
+  .animate-dropdown-stagger {
+    animation: dropdown-stagger 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .dropdown-item:hover {
+    transform: none;
+  }
+  
+  .dropdown-item:active {
+    transform: scale(0.98);
+    transition: transform 100ms ease-out;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .dropdown-container {
+    border: 2px solid;
+  }
+  
+  .dropdown-item {
+    border: 1px solid transparent;
+  }
+  
+  .dropdown-item:hover,
+  .dropdown-item:focus {
+    border-color: currentColor;
+  }
+}
+
+/* Focus management for accessibility */
+.dropdown-item:focus {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.dropdown-item:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Screen reader announcements */
+.dropdown-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Slow spin animation for refresh button */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 1s linear infinite;
+}
+
+/* Native scroll optimization for iOS */
+@supports (-webkit-overflow-scrolling: touch) {
+  html, body {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* POS Billing Tab Panel - Consistent vertical alignment */
+.pos-billing-tab-panel {
+  margin-top: 16px; /* 1rem - matches mt-4 */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

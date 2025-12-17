@@ -1,0 +1,39 @@
+{
+  "monitoring": {
+    "enabled": true,
+    "logLevel": "info",
+    "metricsEndpoint": "/api/metrics",
+    "sampleRate": 0.1
+  },
+  "sse": {
+    "heartbeatInterval": 30000,
+    "maxConnections": 100,
+    "reconnectAttempts": 5,
+    "reconnectDelay": 1000,
+    "maxReconnectDelay": 30000
+  },
+  "payment": {
+    "timeout": 15000,
+    "retryAttempts": 3,
+    "retryDelay": 2000
+  },
+  "database": {
+    "mongodb": {
+      "maxPoolSize": 200,
+      "minPoolSize": 50,
+      "maxIdleTimeMS": 30000,
+      "connectTimeoutMS": 10000,
+      "socketTimeoutMS": 45000
+    },
+    "postgres": {
+      "max": 20,
+      "idleTimeoutMillis": 30000,
+      "connectionTimeoutMillis": 10000
+    }
+  },
+  "cache": {
+    "maxAge": 86400,
+    "staleWhileRevalidate": 3600,
+    "enableCompression": true
+  }
+}
