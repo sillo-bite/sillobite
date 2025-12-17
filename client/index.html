@@ -2,21 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Inline script to prevent favicon request loop and set theme color - runs immediately -->
+    <!-- Inline script to set theme color - runs immediately -->
     <script>
-      // Prevent browser from requesting /splash_logo.svg by setting a data URI favicon immediately
       (function() {
-        // Remove any existing favicon links
-        const favicons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]');
-        favicons.forEach(link => link.remove());
-        
-        // Set a minimal data URI favicon immediately to prevent browser from making external requests
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        link.type = 'image/svg+xml';
-        link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" fill="%23D63D31"/></svg>';
-        document.head.appendChild(link);
-        
         // Ensure theme-color meta tag exists (initial default, will be updated by pages)
         let metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (!metaThemeColor) {
@@ -25,7 +13,7 @@
           document.head.insertBefore(metaThemeColor, document.head.firstChild);
         }
         // Set initial default color (will be updated by individual pages to match their UI)
-        metaThemeColor.content = '#D63D31';
+        metaThemeColor.content = '#6d47ff';
         
         // Ensure iOS status bar style meta tag exists
         let appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
@@ -37,7 +25,9 @@
         appleStatusBar.content = 'default';
       })();
     </script>
-    <!-- Favicon will be replaced with full logo via JavaScript (data URI, no external request) -->
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     
     <!-- Primary Meta Tags -->
@@ -76,8 +66,8 @@
     <!-- Additional SEO Meta Tags -->
     <meta name="application-name" content="Sillobyte Canteen" />
     <meta name="apple-mobile-web-app-title" content="Sillobyte Canteen" />
-    <meta name="msapplication-TileColor" content="#D63D31" />
-    <meta name="theme-color" content="#D63D31" />
+    <meta name="msapplication-TileColor" content="#6d47ff" />
+    <meta name="theme-color" content="#6d47ff" />
     
     <!-- Geo Tags -->
     <meta name="geo.region" content="IN" />
@@ -94,7 +84,7 @@
     <!-- Android PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Sillobyte Canteen" />
-    <meta name="msapplication-TileColor" content="#D63D31" />
+    <meta name="msapplication-TileColor" content="#6d47ff" />
     <meta name="msapplication-config" content="none" />
     
     <!-- Additional PWA Meta Tags -->

@@ -22,7 +22,7 @@ const LOGO_PATHS = [
 /**
  * Generate SVG from logo paths
  */
-function generateSVG(size: number, color: string = "#D63D31"): string {
+function generateSVG(size: number, color: string = "#6d47ff"): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 1536 1536" fill="${color}">
   ${LOGO_PATHS.map(path => `  <path d="${path}" />`).join('\n')}
@@ -32,7 +32,7 @@ function generateSVG(size: number, color: string = "#D63D31"): string {
 /**
  * Generate PNG from SVG (for PWA app icons)
  */
-async function generatePNG(size: number, color: string = "#D63D31"): Promise<Buffer> {
+async function generatePNG(size: number, color: string = "#6d47ff"): Promise<Buffer> {
   const svg = generateSVG(size, color);
   const svgBuffer = Buffer.from(svg);
   
@@ -52,7 +52,7 @@ export function registerIconRoutes(app: Express): void {
   // Serve SVG icon at any size
   app.get("/api/icon.svg", (req: Request, res: Response) => {
     const size = parseInt(req.query.size as string) || 512;
-    const color = (req.query.color as string) || "#D63D31";
+    const color = (req.query.color as string) || "#6d47ff";
     const svg = generateSVG(size, color);
     
     res.setHeader("Content-Type", "image/svg+xml");
@@ -64,7 +64,7 @@ export function registerIconRoutes(app: Express): void {
   app.get("/api/icon.png", async (req: Request, res: Response) => {
     try {
       const size = parseInt(req.query.size as string) || 512;
-      const color = (req.query.color as string) || "#D63D31";
+      const color = (req.query.color as string) || "#6d47ff";
       const png = await generatePNG(size, color);
       
       // Generate ETag for better caching
@@ -89,7 +89,7 @@ export function registerIconRoutes(app: Express): void {
 
   // Serve SVG favicon
   app.get("/favicon.svg", (req: Request, res: Response) => {
-    const svg = generateSVG(32, "#D63D31");
+    const svg = generateSVG(32, "#6d47ff");
     res.setHeader("Content-Type", "image/svg+xml");
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.send(svg);
@@ -98,7 +98,7 @@ export function registerIconRoutes(app: Express): void {
   // Serve PNG favicon (generated from SVG code)
   app.get("/favicon.png", async (req: Request, res: Response) => {
     try {
-      const png = await generatePNG(32, "#D63D31");
+      const png = await generatePNG(32, "#6d47ff");
       
       // Generate ETag for better caching
       const etag = '"favicon-32"';

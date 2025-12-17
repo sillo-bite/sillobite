@@ -2,7 +2,7 @@
   "name": "Sillobyte Canteen - Food Ordering App",
   "short_name": "Sillobyte",
   "description": "Order food from your college canteen with ease. Fast, convenient, and delicious meals at your fingertips.",
-  "theme_color": "#D63D31",
+  "theme_color": "#6d47ff",
   "background_color": "#1a1a1a",
   "display": "standalone",
   "orientation": "portrait",

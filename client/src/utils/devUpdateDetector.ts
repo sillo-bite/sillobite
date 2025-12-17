@@ -180,7 +180,7 @@ export class DevUpdateDetector {
     const textColor = isDark ? 'hsl(0 0% 98%)' : 'hsl(0 0% 13%)';
     const textMuted = isDark ? 'hsl(0 0% 65%)' : 'hsl(0 0% 45%)';
     const overlayBg = isDark ? 'rgba(0, 0, 0, 0.95)' : 'rgba(0, 0, 0, 0.85)';
-    const primaryColor = 'hsl(4 68% 52%)'; // #D63D31
+    const primaryColor = 'hsl(4 68% 52%)'; // #6d47ff
     const primaryHover = 'hsl(4 68% 42%)';
     const borderColor = isDark ? 'hsl(0 0% 20%)' : 'hsl(0 0% 90%)';
     
@@ -378,7 +378,7 @@ export class DevUpdateDetector {
         });
         
         refreshBtn.addEventListener('mouseleave', () => {
-          refreshBtn.style.background = '#D63D31';
+          refreshBtn.style.background = '#6d47ff';
         });
         
         // Ensure button is accessible
@@ -417,7 +417,7 @@ export class DevUpdateDetector {
       const textColor = isDark ? 'hsl(0 0% 98%)' : 'hsl(0 0% 13%)';
       const textMuted = isDark ? 'hsl(0 0% 65%)' : 'hsl(0 0% 45%)';
       const overlayBg = isDark ? 'rgba(0, 0, 0, 0.95)' : 'rgba(0, 0, 0, 0.85)';
-      const primaryColor = 'hsl(4 68% 52%)'; // #D63D31
+      const primaryColor = 'hsl(4 68% 52%)'; // #6d47ff
       const borderColor = isDark ? 'hsl(0 0% 20%)' : 'hsl(0 0% 90%)';
       const loadingBarBg = isDark ? 'hsl(0 0% 18%)' : 'hsl(0 0% 96%)';
       

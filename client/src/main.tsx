@@ -4,7 +4,6 @@ import './index.css'
 import { updateManager } from './utils/updateManager'
 // Import 100% passive update detector (ZERO automatic calls)
 import './utils/passiveUpdateDetector'
-import { updateFavicon } from './utils/iconGenerator'
 import { initializeCapacitor, isNativePlatform } from './utils/capacitorInit'
 
 // Initialize Capacitor for native platforms
@@ -30,19 +29,6 @@ if (!isNative) {
 // to match their visible UI (header or background color)
 // The initial color is set in index.html as a fallback
 
-// Initialize dynamic favicon from SVG code (only once, guarded against HMR re-execution)
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => updateFavicon());
-} else {
-  updateFavicon();
-}
-
-  // Initialize dynamic favicon from SVG code (only once, guarded against HMR re-execution)
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => updateFavicon());
-  } else {
-    updateFavicon();
-  }
 
   // Register Service Worker for PWA with comprehensive update handling
   if ('serviceWorker' in navigator) {

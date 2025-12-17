@@ -8,7 +8,7 @@
  * Supports: hex, rgb, rgba, hsl, hsla, and named colors
  */
 function colorToHex(color: string): string {
-  if (!color) return '#D63D31'; // Default fallback
+  if (!color) return '#6d47ff'; // Default fallback
   
   // If already hex, return it
   if (color.startsWith('#')) {
@@ -36,14 +36,14 @@ function colorToHex(color: string): string {
     return `#${r}${g}${b}`;
   }
   
-  return '#D63D31'; // Fallback
+  return '#6d47ff'; // Fallback
 }
 
 /**
  * Gets the computed background color of an element
  */
 function getElementBackgroundColor(element: HTMLElement | null): string {
-  if (!element) return '#D63D31'; // Default fallback
+  if (!element) return '#6d47ff'; // Default fallback
   
   const computed = window.getComputedStyle(element);
   let bgColor = computed.backgroundColor;
@@ -56,7 +56,7 @@ function getElementBackgroundColor(element: HTMLElement | null): string {
     }
     // Fallback to body background
     const bodyBg = window.getComputedStyle(document.body).backgroundColor;
-    return bodyBg || '#D63D31';
+    return bodyBg || '#6d47ff';
   }
   
   return bgColor;
@@ -77,7 +77,7 @@ export function updateStatusBarColor(color?: string, selector?: string): void {
       finalColor = getElementBackgroundColor(element);
     } else {
       // Fallback to provided color or default
-      finalColor = color || '#D63D31';
+      finalColor = color || '#6d47ff';
     }
   } else if (color) {
     finalColor = color;
@@ -95,7 +95,7 @@ export function updateStatusBarColor(color?: string, selector?: string): void {
       document.body.removeChild(tempDiv);
       finalColor = computedColor;
     } else {
-      finalColor = '#D63D31';
+      finalColor = '#6d47ff';
     }
   }
   

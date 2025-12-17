@@ -147,7 +147,7 @@ const App = () => {
     // Exclude callback URLs, order status pages, and splashscreen itself
     const excludedPaths = [
       '/splashscreen',
-      '/auth/callback',
+      '/api/auth/google/callback',
       '/payment-callback',
       '/retry-payment',
       '/order-status'
@@ -187,6 +187,7 @@ const App = () => {
                       <Route path="/onboarding" component={OnboardingScreen} />
                       <Route path="/login" component={LoginScreen} />
                       <Route path="/auth/callback" component={OAuthCallback} />
+                      <Route path="/api/auth/google/callback" component={OAuthCallback} />
                       <Route path="/profile-setup" component={ProfileSetupScreen} />
                       <Route path="/profile/edit">
                         <MaintenanceWrapper>

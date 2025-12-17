@@ -59,7 +59,7 @@ export const handleGoogleRedirect = async (): Promise<{
   accessToken: string;
 } | null> => {
   // Check if we're on the callback page
-  if (window.location.pathname !== '/auth/callback') {
+  if (window.location.pathname !== '/auth/callback' && window.location.pathname !== '/api/auth/google/callback') {
     return null;
   }
 
@@ -77,6 +77,8 @@ export const handleGoogleRedirect = async (): Promise<{
 
   try {
     console.log('Starting OAuth token exchange...');
+    console.log('Using redirect URI:', GOOGLE_REDIRECT_URI);
+    console.log('Authorization code:', code ? 'present' : 'missing');
     
     // Exchange authorization code for access token
     const tokenResponse = await fetch('/api/auth/google/token', {

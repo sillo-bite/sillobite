@@ -19,16 +19,33 @@ const oauth2Client = new OAuth2Client(
 router.post('/token', async (req, res) => {
   try {
     const { code, redirect_uri } = req.body;
-    console.log('Token exchange request received:', { code: code ? 'present' : 'missing', redirect_uri });
+    console.log('Token exchange request received:', { 
+      code: code ? 'present' : 'missing', 
+      redirect_uri,
+      configured_redirect_uri: process.env.GOOGLE_REDIRECT_URI 
+    });
 
     if (!code) {
       console.error('No authorization code provided');
       return res.status(400).json({ error: 'Authorization code is required' });
     }
 
+    if (!redirect_uri) {
+      console.error('No redirect_uri provided');
+      return res.status(400).json({ error: 'Redirect URI is required' });
+    }
+
     console.log('Exchanging code for tokens...');
+    // Create a new OAuth2Client instance with the redirect_uri from the request
+    // This ensures the redirect_uri matches what was used in the authorization request
+    const oauth2ClientForExchange = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri // Use the redirect_uri from the request
+    );
+
     // Exchange code for tokens
-    const { tokens } = await oauth2Client.getToken({
+    const { tokens } = await oauth2ClientForExchange.getToken({
       code,
       redirect_uri
     });
@@ -40,11 +57,22 @@ router.post('/token', async (req, res) => {
       refresh_token: tokens.refresh_token,
       expires_in: tokens.expiry_date
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Token exchange error:', error);
+    const errorMessage = error?.message || 'Unknown error';
+    const errorDetails = error?.response?.data || errorMessage;
+    
+    // Provide more helpful error messages
+    let userFriendlyError = 'Failed to exchange authorization code';
+    if (errorMessage.includes('unauthorized_client')) {
+      userFriendlyError = 'Redirect URI mismatch. Please ensure http://localhost:5000/auth/callback is added to Google Cloud Console authorized redirect URIs.';
+    } else if (errorMessage.includes('invalid_grant')) {
+      userFriendlyError = 'Authorization code expired or already used. Please try logging in again.';
+    }
+    
     res.status(400).json({ 
-      error: 'Failed to exchange authorization code',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: userFriendlyError,
+      details: errorDetails
     });
   }
 });

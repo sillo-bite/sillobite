@@ -134,7 +134,7 @@ if (missingVars.length > 0) {
   console.error('\n📋 Example .env file content:');
   console.error('   VITE_GOOGLE_CLIENT_ID=123456789-abcdefg.apps.googleusercontent.com');
   console.error('   GOOGLE_CLIENT_SECRET=GOCSPX-abcdefghijklmnop');
-  console.error('   GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback');
+  console.error('   GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback');
   process.exit(1);
 }
 

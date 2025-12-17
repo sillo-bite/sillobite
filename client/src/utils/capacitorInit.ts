@@ -18,7 +18,7 @@ export async function initializeCapacitor() {
     // Configure Status Bar
     if (Capacitor.isPluginAvailable('StatusBar')) {
       await StatusBar.setStyle({ style: Style.Light });
-      await StatusBar.setBackgroundColor({ color: '#D63D31' });
+      await StatusBar.setBackgroundColor({ color: '#6d47ff' });
     }
 
     // Hide splash screen after a short delay

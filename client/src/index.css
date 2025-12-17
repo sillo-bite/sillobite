@@ -152,9 +152,9 @@
     --foreground: 222 47% 11%; /* #0F172A - Partner landing page text */
     
     /* Partner Landing Page Primary Colors - Sillobyte Brand */
-    --primary: 239 84% 67%; /* #6366F1 - Indigo */
-    --primary-light: 239 84% 72%;
-    --primary-dark: 239 84% 62%;
+    --primary: 253 100% 64%; /* #6d47ff - Purple */
+    --primary-light: 253 100% 72%;
+    --primary-dark: 253 100% 56%;
     --primary-foreground: 0 0% 100%;
     
     /* Secondary Color - Teal (Sillobyte Brand) */
@@ -185,7 +185,7 @@
     /* Form Elements */
     --border: 214 32% 91%; /* #E2E8F0 - Lines */
     --input: 214 32% 91%;
-    --ring: 239 84% 67%; /* Match primary */
+    --ring: 253 100% 64%; /* Match primary */
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
@@ -240,9 +240,9 @@
     --popover: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces (modals, bottom bar) for hierarchical depth */
     --popover-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
 
-    --primary: 4 68% 52%; /* Vibrant red - matches brand */
-    --primary-light: 4 68% 62%;
-    --primary-dark: 4 68% 42%;
+    --primary: 253 100% 64%; /* #6d47ff - Purple: matches brand */
+    --primary-light: 253 100% 72%;
+    --primary-dark: 253 100% 56%;
     --primary-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
 
     --secondary: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
@@ -265,10 +265,10 @@
 
     --border: 0 0% 18%; /* #2D2D31 - Shadow Line Gray: Gentle but helps layout spacing */
     --input: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --ring: 4 68% 52%; /* Match primary color for focus rings */
+    --ring: 253 100% 64%; /* Match primary color for focus rings */
     --sidebar-background: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
     --sidebar-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
-    --sidebar-primary: 4 65% 45%; /* Match primary */
+    --sidebar-primary: 253 100% 64%; /* Match primary */
     --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
     --sidebar-accent: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
     --sidebar-accent-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Secondary text */
