@@ -9,20 +9,41 @@ import path from "path";
 const SPLASH_LOGO_PATH = path.join(process.cwd(), "client", "public", "splash_logo.svg");
 
 let cachedSVG: string | null = null;
+let svgFileHash: string | null = null;
+
+/**
+ * Get file hash for cache invalidation
+ */
+function getFileHash(filePath: string): string {
+  try {
+    const stats = fs.statSync(filePath);
+    return `${stats.mtime.getTime()}-${stats.size}`;
+  } catch {
+    return Date.now().toString();
+  }
+}
 
 /**
  * Load SVG from file
  */
 function loadSVG(): string {
-  if (cachedSVG) {
-    return cachedSVG;
-  }
-  
   try {
-    cachedSVG = fs.readFileSync(SPLASH_LOGO_PATH, "utf-8");
+    // Check if file exists and get its hash
+    const currentHash = getFileHash(SPLASH_LOGO_PATH);
+    
+    // If file changed or not cached, reload
+    if (!cachedSVG || svgFileHash !== currentHash) {
+      console.log(`[IconGenerator] Loading SVG from: ${SPLASH_LOGO_PATH}`);
+      cachedSVG = fs.readFileSync(SPLASH_LOGO_PATH, "utf-8");
+      svgFileHash = currentHash;
+      console.log(`[IconGenerator] SVG loaded successfully (${cachedSVG.length} chars)`);
+    }
+    
     return cachedSVG;
   } catch (error) {
-    console.error("Error loading splash_logo.svg:", error);
+    console.error("[IconGenerator] Error loading splash_logo.svg:", error);
+    console.error("[IconGenerator] Attempted path:", SPLASH_LOGO_PATH);
+    console.error("[IconGenerator] Current working directory:", process.cwd());
     // Fallback to a simple SVG if file not found
     return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 375 375"><rect width="375" height="375" fill="#6d47ff"/></svg>`;
   }
@@ -79,10 +100,13 @@ export function registerIconRoutes(app: Express): void {
     try {
       const size = parseInt(req.query.size as string) || 512;
       const color = (req.query.color as string) || "#6d47ff";
-      const png = await generatePNG(size, color);
       
-      // Generate ETag for better caching
-      const etag = `"icon-${size}-${color}"`;
+      // Load SVG to get current hash
+      loadSVG();
+      
+      // Generate ETag with file hash to invalidate cache when SVG changes
+      const fileHash = svgFileHash || Date.now().toString();
+      const etag = `"icon-${size}-${color}-${fileHash}"`;
       const ifNoneMatch = req.headers['if-none-match'];
       
       // Check if client has cached version
@@ -91,12 +115,16 @@ export function registerIconRoutes(app: Express): void {
         return;
       }
       
+      console.log(`[IconGenerator] Generating PNG icon: ${size}x${size} (hash: ${fileHash.substring(0, 8)})`);
+      const png = await generatePNG(size, color);
+      
       res.setHeader("Content-Type", "image/png");
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("Cache-Control", "public, max-age=3600, must-revalidate"); // Reduced cache time to 1 hour for easier updates
       res.setHeader("ETag", etag);
+      res.setHeader("X-Icon-Version", fileHash); // Custom header for debugging
       res.send(png);
     } catch (error) {
-      console.error("Error generating PNG icon:", error);
+      console.error("[IconGenerator] Error generating PNG icon:", error);
       res.status(500).json({ error: "Failed to generate icon" });
     }
   });
