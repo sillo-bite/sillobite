@@ -42,7 +42,7 @@ export const Navbar = () => {
           }`}
         >
           <div className="container-padding">
-            <div className="flex items-center justify-between h-16 md:h-20">
+            <div className="flex items-center justify-between h-14 sm:h-16 md:h-20">
           {/* Premium Logo */}
           <a
             href="#"
@@ -55,7 +55,7 @@ export const Navbar = () => {
             <img 
               src="/logo.png" 
               alt="SilloBite Logo" 
-              className="h-18 md:h-28 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              className="h-10 sm:h-12 md:h-16 lg:h-20 xl:h-24 w-auto object-contain transition-transform duration-300 group-hover:scale-105 max-w-[120px] sm:max-w-[150px] md:max-w-none"
             />
           </a>
 
