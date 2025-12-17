@@ -32,37 +32,40 @@ export const Navbar = () => {
   };
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-card/95 backdrop-blur-md shadow-soft border-b border-border"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="max-w-7xl mx-auto container-padding">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
+    <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 pt-4 px-4 md:pt-6 md:px-6">
+      <div className="max-w-7xl mx-auto">
+        <div
+          className={`rounded-2xl transition-all duration-500 relative ${
+            isScrolled
+              ? "bg-card/90 backdrop-blur-xl shadow-2xl border border-border/50"
+              : "bg-card/60 backdrop-blur-md shadow-xl border border-border/30"
+          }`}
+        >
+          <div className="container-padding">
+            <div className="flex items-center justify-between h-16 md:h-20">
+          {/* Premium Logo */}
           <a
             href="#"
-            className="flex items-center gap-2 font-heading font-bold text-xl md:text-2xl text-foreground"
+            className="flex items-center group"
             onClick={(e) => {
               e.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
-            <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">D</span>
-            </div>
-            <span className="text-primary font-bold">Sillobyte</span>
+            <img 
+              src="/logo.png" 
+              alt="SilloBite Logo" 
+              className="h-18 md:h-28 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+            />
           </a>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-2">
             {navLinks.map((link) => (
               <button
                 key={link.href}
                 onClick={() => scrollToSection(link.href)}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted/50"
+                className="px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-all duration-300 rounded-lg hover:bg-primary/5 hover:border-primary/20 border border-transparent"
               >
                 {link.label}
               </button>
@@ -70,16 +73,22 @@ export const Navbar = () => {
           </div>
 
           {/* CTA Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            <Button variant="default" size="sm" onClick={() => window.open("/splashscreen", "_blank", "noopener,noreferrer")}>
+          <div className="hidden md:flex items-center gap-4">
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => window.open("/splashscreen", "_blank", "noopener,noreferrer")}
+              className="bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg hover:shadow-xl transition-all duration-300"
+            >
               Open App
             </Button>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="lg:hidden p-2 text-foreground"
+            className="lg:hidden p-2 text-foreground hover:bg-primary/5 rounded-lg transition-colors duration-300"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -87,21 +96,21 @@ export const Navbar = () => {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden absolute top-full left-0 right-0 bg-card border-b border-border shadow-elevated animate-fade-in">
-            <div className="container-padding py-4 space-y-1">
+          <div className="lg:hidden absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-xl rounded-2xl border border-border/50 shadow-2xl animate-fade-in mx-4 md:mx-6">
+            <div className="p-6 space-y-2">
               {navLinks.map((link) => (
                 <button
                   key={link.href}
                   onClick={() => scrollToSection(link.href)}
-                  className="block w-full text-left px-4 py-3 text-base font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+                  className="block w-full text-left px-5 py-3 text-base font-semibold text-muted-foreground hover:text-foreground hover:bg-primary/5 rounded-lg transition-all duration-300 border border-transparent hover:border-primary/20"
                 >
                   {link.label}
                 </button>
               ))}
-              <div className="pt-4 border-t border-border mt-4 space-y-2">
+              <div className="pt-4 border-t border-border mt-4">
                 <Button
                   variant="default"
-                  className="w-full"
+                  className="w-full bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg"
                   onClick={() => window.open("/splashscreen", "_blank", "noopener,noreferrer")}
                 >
                   Open App
@@ -110,8 +119,9 @@ export const Navbar = () => {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </nav>
   );
 };
-

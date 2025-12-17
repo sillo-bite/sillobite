@@ -1,11 +1,11 @@
 import { Navbar } from "./Navbar";
 import { HeroSection } from "./HeroSection";
-import { WhoWeServeSection } from "./WhoWeServeSection";
-import { FeaturesSection } from "./FeaturesSection";
-import { HowItWorksSection } from "./HowItWorksSection";
 import { WhySillobyteSection } from "./WhySillobyteSection";
-import { PartnersSection } from "./PartnersSection";
+import { WhoWeServeSection } from "./WhoWeServeSection";
+import { HowItWorksSection } from "./HowItWorksSection";
+import { FeaturesSection } from "./FeaturesSection";
 import { AnalyticsSection } from "./AnalyticsSection";
+import { PartnersSection } from "./PartnersSection";
 import { FAQSection } from "./FAQSection";
 import { ContactSection } from "./ContactSection";
 import { Footer } from "./Footer";
@@ -17,12 +17,12 @@ const PartnerLandingPage = () => {
       <Navbar />
       <main>
         <HeroSection />
-        <WhoWeServeSection />
-        <FeaturesSection />
-        <HowItWorksSection />
         <WhySillobyteSection />
-        <PartnersSection />
+        <WhoWeServeSection />
+        <HowItWorksSection />
+        <FeaturesSection />
         <AnalyticsSection />
+        <PartnersSection />
         <FAQSection />
         <ContactSection />
       </main>
@@ -33,4 +33,3 @@ const PartnerLandingPage = () => {
 };
 
 export default PartnerLandingPage;
-

@@ -1,30 +1,30 @@
-import { Smartphone, MonitorPlay, ChefHat, PiggyBank } from "lucide-react";
+import { Smartphone, MonitorPlay, ChefHat, PiggyBank, ArrowDown } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const steps = [
   {
     icon: Smartphone,
     step: "01",
-    title: "Users Place Orders",
-    description: "Students, staff, or employees open the Sillobyte PWA, browse the canteen menu, and place orders from their own devices.",
+    title: "Customers Initiate Orders",
+    description: "Students, staff members, and employees access the Sillobyte platform through any web-enabled device, explore comprehensive menu offerings, and submit orders directly from their personal devices.",
   },
   {
     icon: MonitorPlay,
     step: "02",
-    title: "Orders Hit POS Live",
-    description: "Orders hit the canteen's POS and counter screens instantly via WebSocket for immediate processing.",
+    title: "Real-Time POS Integration",
+    description: "Orders instantly appear on canteen point-of-sale displays and counter interfaces through WebSocket technology, enabling immediate acknowledgment and processing by service staff.",
   },
   {
     icon: ChefHat,
     step: "03",
-    title: "Kitchen Prepares & Updates",
-    description: "Kitchen or counter staff prepare items, update status, and students or staff receive live updates when food is ready.",
+    title: "Preparation & Status Updates",
+    description: "Kitchen and counter personnel prepare ordered items, update preparation status in real-time, and customers receive live notifications when their orders are ready for collection.",
   },
   {
     icon: PiggyBank,
     step: "04",
-    title: "Payments Auto-Tracked",
-    description: "UPI, card, cash, and wallet payments are auto-tracked and reconciled, with full payout history for each canteen.",
+    title: "Automated Payment Reconciliation",
+    description: "All payment methods including UPI, card transactions, cash, and digital wallets are automatically tracked and reconciled, with comprehensive financial reporting available for each dining location.",
   },
 ];
 
@@ -32,73 +32,101 @@ export const HowItWorksSection = () => {
   const { ref, isVisible } = useScrollAnimation();
 
   return (
-    <section id="how-it-works" className="section-padding">
-      <div ref={ref} className="max-w-7xl mx-auto container-padding">
-        {/* Header */}
+    <section id="how-it-works" className="section-padding bg-gradient-to-b from-background to-card/50">
+      <div ref={ref} className="max-w-6xl mx-auto container-padding">
+        {/* Premium Header */}
         <div
-          className={`text-center max-w-2xl mx-auto mb-16 transition-all duration-500 ease-out ${
+          className={`text-center max-w-3xl mx-auto mb-20 transition-all duration-700 ease-out ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
           }`}
         >
-          <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-4">
-            How <span className="text-primary font-bold">Sillobyte</span> Works
+          <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-6 leading-tight">
+            Simple Process,{" "}
+            <span className="bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent">
+              Powerful Results
+            </span>
           </h2>
-          <p className="text-lg text-muted-foreground">
-            A seamless flow from order to delivery, designed for speed and efficiency.
+          <p className="text-xl text-muted-foreground leading-relaxed font-light">
+            A streamlined workflow from order placement to fulfillment, engineered for operational excellence and customer satisfaction.
           </p>
         </div>
 
-        {/* Timeline */}
+        {/* Elegant Vertical Timeline */}
         <div className="relative">
-          {/* Connection line - desktop */}
+          {/* Vertical Connector Line - Desktop */}
           <div
-            className={`hidden lg:block absolute top-24 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/20 via-primary to-primary/20 transition-all duration-700 ${
-              isVisible ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"
+            className={`hidden lg:block absolute left-12 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/20 via-primary to-secondary/20 transition-all duration-1000 ${
+              isVisible ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
             }`}
-            style={{ transitionDelay: "300ms" }}
+            style={{ 
+              transformOrigin: "top",
+              transitionDelay: "300ms"
+            }}
           />
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6">
-            {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className={`relative transition-all duration-500 ease-out ${
-                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                }`}
-                style={{ transitionDelay: `${200 + index * 100}ms` }}
-              >
-                {/* Step card */}
-                <div className="bg-card rounded-2xl p-6 border border-border card-hover h-full">
-                  {/* Step number badge */}
-                  <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-red-600 text-xs font-bold text-white">
-                    Step {step.step}
+          {/* Steps */}
+          <div className="space-y-12 lg:space-y-16">
+            {steps.map((step, index) => {
+              const isEven = index % 2 === 0;
+              
+              return (
+                <div
+                  key={step.step}
+                  className={`relative transition-all duration-700 ease-out ${
+                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                  }`}
+                  style={{ transitionDelay: `${200 + index * 150}ms` }}
+                >
+                  <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
+                    {/* Left Side - Even Steps */}
+                    <div className={`lg:w-1/2 ${isEven ? "lg:pr-12" : "lg:order-2 lg:pl-12"}`}>
+                      <div className="bg-gradient-to-br from-card via-card to-card/95 rounded-3xl p-8 md:p-10 border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] h-full">
+                        {/* Step Badge */}
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30 mb-6">
+                          <span className="text-primary font-bold text-sm">STEP {step.step}</span>
+                        </div>
+
+                        {/* Icon */}
+                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 flex items-center justify-center mb-6 border border-primary/20 shadow-lg">
+                          <step.icon className="w-10 h-10 text-primary" />
+                        </div>
+
+                        <h3 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-4">
+                          {step.title}
+                        </h3>
+                        <p className="text-muted-foreground leading-relaxed text-base">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Center - Timeline Node */}
+                    <div className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 lg:left-12 lg:translate-x-0 z-10">
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary via-primary/90 to-secondary flex items-center justify-center border-4 border-background shadow-2xl">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-background to-card flex items-center justify-center">
+                          <step.icon className="w-8 h-8 text-primary" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Odd Steps */}
+                    <div className={`lg:w-1/2 ${isEven ? "lg:order-2 lg:pl-12" : "lg:pr-12"}`}>
+                      {/* Empty space for alternating layout */}
+                    </div>
                   </div>
 
-                  {/* Icon */}
-                  <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mt-4 mb-5">
-                    <step.icon className="w-7 h-7 text-primary" />
-                  </div>
-
-                  <h3 className="font-heading text-lg font-bold text-foreground mb-2">
-                    {step.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {step.description}
-                  </p>
+                  {/* Mobile Arrow Connector */}
+                  {index < steps.length - 1 && (
+                    <div className="lg:hidden flex justify-center my-8">
+                      <div className="w-0.5 h-12 bg-gradient-to-b from-primary/40 via-primary to-primary/40 rounded-full" />
+                    </div>
+                  )}
                 </div>
-
-                {/* Arrow connector - mobile/tablet */}
-                {index < steps.length - 1 && (
-                  <div className="lg:hidden flex justify-center my-4">
-                    <div className="w-0.5 h-8 bg-primary/30" />
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
     </section>
   );
 };
-

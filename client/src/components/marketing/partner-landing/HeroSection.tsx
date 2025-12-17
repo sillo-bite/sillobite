@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Monitor, Smartphone } from "lucide-react";
-import { useScrollAnimation, getAnimationClasses } from "@/hooks/useScrollAnimation";
+import { ArrowRight, Zap, Users, TrendingUp, Globe, ArrowUpRight } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 export const HeroSection = () => {
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
@@ -14,158 +14,199 @@ export const HeroSection = () => {
 
   return (
     <section id="hero" className="relative min-h-screen flex items-center pt-20 md:pt-24 overflow-hidden">
-      {/* Background decoration */}
+      {/* Premium background decoration with gradients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
-        <div className="absolute top-1/2 -left-20 w-72 h-72 rounded-full bg-secondary/10 blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/10 via-primary/5 to-transparent blur-3xl" />
+        <div className="absolute top-1/2 -left-32 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-secondary/15 via-secondary/8 to-transparent blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-primary/8 to-secondary/8 blur-3xl" />
       </div>
 
       <div ref={ref} className="max-w-7xl mx-auto container-padding w-full relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Left: Content */}
-          <div className="space-y-8">
-            <div
-              {...getAnimationClasses(isVisible, 0)}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium transition-all duration-500 ease-out ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse-soft" />
-              PWA-First Platform for Institutional Cafeterias & Canteens
-            </div>
-
+        <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+          {/* Left: Premium Content */}
+          <div className="space-y-10 lg:space-y-12">
             <h1
-              className={`font-heading text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight text-foreground transition-all duration-500 ease-out ${
+              className={`font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] text-foreground transition-all duration-700 ease-out ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "100ms" }}
             >
-              Modern Ordering & POS for{" "}
-              <span className="text-red-600">Institutional Cafeterias & Canteens</span>
+              Revolutionize{" "}
+              <span className="relative inline-block">
+                <span className="relative z-10 bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent">
+                  Institutional Food Service
+                </span>
+                <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 blur-xl rounded-full" />
+              </span>
             </h1>
 
             <p
-              className={`text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed transition-all duration-500 ease-out ${
+              className={`text-xl md:text-2xl text-muted-foreground max-w-2xl leading-relaxed font-light transition-all duration-700 ease-out ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "200ms" }}
             >
-              Sillobyte is a complete ordering, billing, and operations platform built for institutional cafeterias & canteens — including colleges & universities, hospital cafeterias, and corporate/company cafeterias. Fully digital and app-free.
+              Sillobyte delivers an all-inclusive digital ecosystem for institutional dining operations. Seamlessly connecting educational institutions, healthcare facilities, and corporate campuses with cutting-edge ordering, payment processing, and operational management—all accessible instantly through any web browser.
             </p>
 
             <div
-              className={`flex flex-col sm:flex-row gap-4 transition-all duration-500 ease-out ${
+              className={`flex flex-col sm:flex-row gap-4 transition-all duration-700 ease-out ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "300ms" }}
             >
-              <Button variant="hero" size="xl" onClick={scrollToContact}>
-                Book a Demo
-                <ArrowRight className="w-5 h-5" />
+              <Button 
+                variant="hero" 
+                size="xl" 
+                onClick={scrollToContact}
+                className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-xl hover:shadow-2xl transition-all duration-300 w-full sm:w-auto"
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2 text-sm sm:text-base px-2">
+                  <span className="hidden lg:inline">Schedule Your Personalized Consultation</span>
+                  <span className="hidden sm:inline lg:hidden">Schedule Consultation</span>
+                  <span className="sm:hidden">Get Started</span>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
+                </span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </Button>
-              <Button variant="hero-outline" size="xl" onClick={scrollToContact}>
-                Talk to our team
+              <Button 
+                variant="hero-outline" 
+                size="xl" 
+                onClick={scrollToContact}
+                className="border-2 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300 w-full sm:w-auto"
+              >
+                <span className="text-sm sm:text-base">Contact Us</span>
               </Button>
             </div>
 
             <div
-              className={`flex items-center gap-6 pt-4 transition-all duration-500 ease-out ${
+              className={`flex flex-wrap items-center gap-8 pt-6 transition-all duration-700 ease-out ${
                 isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
               }`}
               style={{ transitionDelay: "400ms" }}
             >
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="w-5 h-5 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <span className="text-secondary text-xs">✓</span>
+              <div className="flex items-center gap-3 text-base text-muted-foreground">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-secondary/30 to-secondary/10 flex items-center justify-center border border-secondary/30 shadow-sm">
+                  <span className="text-secondary text-sm font-bold">✓</span>
                 </div>
-                No hardware required
+                <span className="font-medium">Zero Hardware Investment</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="w-5 h-5 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <span className="text-secondary text-xs">✓</span>
+              <div className="flex items-center gap-3 text-base text-muted-foreground">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-secondary/30 to-secondary/10 flex items-center justify-center border border-secondary/30 shadow-sm">
+                  <span className="text-secondary text-sm font-bold">✓</span>
                 </div>
-                Setup in 24 hours
+                <span className="font-medium">Rapid Deployment in 24 Hours</span>
               </div>
             </div>
           </div>
 
-          {/* Right: Dashboard Mockup */}
+          {/* Right: Abstract Data Flow Visualization */}
           <div
-            className={`relative transition-all duration-700 ease-out ${
-              isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"
+            className={`relative transition-all duration-1000 ease-out ${
+              isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"
             }`}
             style={{ transitionDelay: "200ms" }}
           >
-            {/* Dashboard mockup */}
-            <div className="relative bg-card rounded-2xl shadow-elevated border border-border p-4 md:p-6">
-              {/* Top bar */}
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-400/60" />
-                  <div className="w-3 h-3 rounded-full bg-secondary/60" />
+            {/* Main Container */}
+            <div className="relative w-full h-[500px] md:h-[600px]">
+              {/* Central Hub Circle */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-primary via-primary/90 to-secondary shadow-2xl border-4 border-background flex items-center justify-center z-20 animate-pulse-slow">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-background to-card/50 flex items-center justify-center">
+                  <Zap className="w-12 h-12 md:w-16 md:h-16 text-primary" />
                 </div>
-                <div className="flex-1 h-6 bg-muted rounded-md mx-4" />
               </div>
 
-              {/* Dashboard content */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Monitor className="w-5 h-5 text-primary" />
-                  <span className="font-heading font-semibold text-foreground">Owner Dashboard</span>
-                </div>
-                
-                {/* Stats row */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-muted/50 rounded-xl p-3 md:p-4">
-                    <div className="text-2xl md:text-3xl font-heading font-bold text-foreground">247</div>
-                    <div className="text-xs text-muted-foreground">Today's Orders</div>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3 md:p-4">
-                    <div className="text-2xl md:text-3xl font-heading font-bold text-primary">₹18.5K</div>
-                    <div className="text-xs text-muted-foreground">Revenue</div>
-                  </div>
-                  <div className="bg-muted/50 rounded-xl p-3 md:p-4">
-                    <div className="text-2xl md:text-3xl font-heading font-bold text-primary">12</div>
-                    <div className="text-xs text-muted-foreground">Live Orders</div>
-                  </div>
-                </div>
+              {/* Orbiting Feature Cards */}
+              {[
+                { icon: Users, label: "Multi-User", angle: 0, delay: 0, color: "primary" },
+                { icon: TrendingUp, label: "Analytics", angle: 72, delay: 200, color: "secondary" },
+                { icon: Globe, label: "Web-Based", angle: 144, delay: 400, color: "primary" },
+                { icon: Zap, label: "Real-Time", angle: 216, delay: 600, color: "secondary" },
+                { icon: ArrowUpRight, label: "Scalable", angle: 288, delay: 800, color: "primary" },
+              ].map((feature, index) => {
+                const radius = 140;
+                const angleRad = (feature.angle * Math.PI) / 180;
+                const x = Math.cos(angleRad) * radius;
+                const y = Math.sin(angleRad) * radius;
 
-                {/* Chart placeholder */}
-                <div className="h-24 md:h-32 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent rounded-xl flex items-end px-4 pb-4 gap-1">
-                  {[40, 65, 45, 80, 55, 90, 70, 85].map((h, i) => (
+                return (
+                  <div
+                    key={index}
+                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out ${
+                      isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                    }`}
+                    style={{
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
+                      transitionDelay: `${feature.delay}ms`,
+                    }}
+                  >
+                    {/* Connection Line */}
                     <div
-                      key={i}
-                      className="flex-1 bg-primary/40 rounded-t"
-                      style={{ height: `${h}%` }}
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent origin-top"
+                      style={{
+                        height: `${radius}px`,
+                        transform: `translate(calc(-50% + ${x / 2}px), calc(-50% + ${y / 2}px)) rotate(${feature.angle}deg)`,
+                        transformOrigin: "top center",
+                      }}
                     />
-                  ))}
+
+                    {/* Feature Card */}
+                    <div 
+                      className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-card via-card to-card/95 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 flex flex-col items-center justify-center backdrop-blur-sm ${
+                        feature.color === "primary" ? "border-2 border-primary/30" : "border-2 border-secondary/30"
+                      }`}
+                    >
+                      <feature.icon 
+                        className={`w-8 h-8 md:w-10 md:h-10 mb-1 ${
+                          feature.color === "primary" ? "text-primary" : "text-secondary"
+                        }`} 
+                      />
+                      <span className="text-[10px] md:text-xs font-semibold text-foreground text-center px-1">
+                        {feature.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Floating Stats Bubbles */}
+              {[
+                { value: "24H", label: "Setup", top: "10%", left: "20%", delay: 1000 },
+                { value: "100%", label: "Web", top: "15%", right: "15%", delay: 1200 },
+                { value: "∞", label: "Scale", bottom: "20%", left: "10%", delay: 1400 },
+                { value: "0", label: "Hardware", bottom: "15%", right: "20%", delay: 1600 },
+              ].map((stat, index) => (
+                <div
+                  key={index}
+                  className={`absolute bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 rounded-2xl p-4 md:p-5 border border-primary/20 shadow-lg backdrop-blur-sm transition-all duration-700 ease-out ${
+                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                  }`}
+                  style={{
+                    top: stat.top,
+                    left: stat.left,
+                    right: stat.right,
+                    bottom: stat.bottom,
+                    transitionDelay: `${stat.delay}ms`,
+                  }}
+                >
+                  <div className="text-2xl md:text-3xl font-heading font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                    {stat.value}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-medium">{stat.label}</div>
                 </div>
-              </div>
+              ))}
+
+              {/* Animated Background Rings */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 md:w-80 md:h-80 rounded-full border border-primary/10 animate-spin-slow" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 md:w-96 md:h-96 rounded-full border border-secondary/10 animate-spin-slow" style={{ animationDirection: "reverse", animationDuration: "20s" }} />
             </div>
 
-            {/* Phone mockup - floating */}
-            <div className="absolute -bottom-8 -left-8 md:-bottom-12 md:-left-12 w-36 md:w-48 bg-card rounded-3xl shadow-elevated border border-border p-3 animate-float">
-              <div className="flex items-center gap-2 mb-3">
-                <Smartphone className="w-4 h-4 text-primary" />
-                <span className="text-xs font-medium text-foreground">Student PWA</span>
-              </div>
-              <div className="space-y-2">
-                <div className="h-8 bg-primary/10 rounded-lg flex items-center px-2">
-                  <span className="text-xs text-primary font-medium">🍔 Burger Combo</span>
-                </div>
-                <div className="h-8 bg-muted/50 rounded-lg flex items-center px-2">
-                  <span className="text-xs text-muted-foreground">☕ Coffee</span>
-                </div>
-                <div className="h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
-                  <span className="text-xs font-medium">Order Now</span>
-                </div>
-              </div>
-            </div>
+            {/* Decorative floating elements */}
+            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-secondary/20 to-primary/20 rounded-full blur-2xl animate-pulse-slow opacity-60" />
+            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full blur-2xl animate-pulse-slow opacity-60" style={{ animationDelay: "1s" }} />
           </div>
         </div>
       </div>
     </section>
   );
 };
-
