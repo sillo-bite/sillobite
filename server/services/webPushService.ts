@@ -88,7 +88,7 @@ export class WebPushService {
   private initializeVAPID() {
     const publicKey = process.env.VAPID_PUBLIC_KEY;
     const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const emailContact = process.env.VAPID_EMAIL || 'dinez.production@gmail.com';
+    const emailContact = process.env.VAPID_EMAIL || 'sillobyte.production@gmail.com';
 
     if (!publicKey || !privateKey) {
       console.warn('VAPID keys not found. Generating new keys...');
@@ -121,12 +121,12 @@ export class WebPushService {
       console.log('Add these to your .env file:');
       console.log(`VAPID_PUBLIC_KEY=${vapidKeys.publicKey}`);
       console.log(`VAPID_PRIVATE_KEY=${vapidKeys.privateKey}`);
-      console.log('VAPID_EMAIL=dinez.production@gmail.com');
+      console.log('VAPID_EMAIL=sillobyte.production@gmail.com');
       console.log('');
 
       // Set temporary VAPID details for this session
       webPush.setVapidDetails(
-        'mailto:dinez.production@gmail.com',
+        'mailto:sillobyte.production@gmail.com',
         vapidKeys.publicKey,
         vapidKeys.privateKey
       );

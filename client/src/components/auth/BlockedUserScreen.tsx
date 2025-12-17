@@ -112,7 +112,7 @@ export default function BlockedUserScreen({ user, onRetryLogin }: BlockedUserScr
             </Button>
 
             <Button 
-              onClick={() => window.location.href = 'mailto:dinez.production@gmail.com?subject=Account%20Blocked%20Appeal'}
+              onClick={() => window.location.href = 'mailto:sillobyte.production@gmail.com?subject=Account%20Blocked%20Appeal'}
               className="w-full"
               variant="default"
             >

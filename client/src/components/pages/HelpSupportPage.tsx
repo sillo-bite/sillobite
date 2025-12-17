@@ -103,7 +103,7 @@ export default function HelpSupportPage() {
 
             <Card 
               className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => window.open('mailto:dinez.production@gmail.com?subject=Support Request', '_self')}
+              onClick={() => window.open('mailto:sillobyte.production@gmail.com?subject=Support Request', '_self')}
             >
               <CardContent className="p-4 flex items-center space-x-4">
                 <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
@@ -111,7 +111,7 @@ export default function HelpSupportPage() {
                 </div>
                 <div>
                   <h3 className="font-medium">Email Us</h3>
-                  <p className="text-sm text-muted-foreground">dinez.production@gmail.com</p>
+                  <p className="text-sm text-muted-foreground">sillobyte.production@gmail.com</p>
                 </div>
               </CardContent>
             </Card>

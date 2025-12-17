@@ -162,7 +162,7 @@ export default function TermsConditionsPage() {
               For questions about these Terms and Conditions, please contact us:
             </p>
             <div className="space-y-2 text-sm">
-              <p><span className="font-medium">Email:</span> dinez.production@gmail.com</p>
+              <p><span className="font-medium">Email:</span> sillobyte.production@gmail.com</p>
               <p><span className="font-medium">Phone:</span> +91 8220963071</p>
               <p><span className="font-medium">Office:</span> Administration Building, Main Campus</p>
               <p><span className="font-medium">Hours:</span> Monday to Friday, 9:00 AM - 5:00 PM</p>

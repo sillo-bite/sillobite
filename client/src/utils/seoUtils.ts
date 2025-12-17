@@ -72,7 +72,7 @@ export const pageSEOConfigs: Record<string, Partial<SEOConfig>> = {
   about: {
     title: "About Sillobyte | College Food Ordering Platform",
     description: "Learn about Sillobyte, the leading college canteen food ordering platform. Discover how we're revolutionizing campus dining.",
-    keywords: ["about dinez", "college canteen platform", "campus dining", "food ordering app"]
+    keywords: ["about sillobyte", "college canteen platform", "campus dining", "food ordering app"]
   },
   help: {
     title: "Help & Support - Sillobyte | Get Assistance",
