@@ -305,7 +305,7 @@ export default function CartPage() {
       }`}
       >
       {/* Header */}
-      <div className="bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl shadow-xl flex-shrink-0">
+      <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl shadow-xl flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button 

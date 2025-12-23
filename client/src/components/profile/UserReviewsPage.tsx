@@ -155,7 +155,7 @@ const UserReviewsPage = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+      <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
         <div className="flex items-center justify-between mb-4">
           <Button 
             variant="ghost" 
@@ -256,7 +256,7 @@ const UserReviewsPage = () => {
         {/* Error State */}
         {error && (
           <div className="text-center py-12">
-            <div className="text-red-500 mb-2">Failed to load reviews</div>
+            <div className="text-destructive mb-2">Failed to load reviews</div>
             {error instanceof Error && (
               <div className="text-sm text-muted-foreground mb-4">
                 {error.message}

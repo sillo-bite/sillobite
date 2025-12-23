@@ -30,7 +30,7 @@ export default function MenuListingPageSkeleton() {
         }}
       >
         {/* Header Container Skeleton */}
-        <div className="bg-red-600 rounded-b-2xl shadow-xl overflow-hidden">
+        <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
           <div className="px-4 pt-12 pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">

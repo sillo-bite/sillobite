@@ -695,7 +695,7 @@ export default function MenuListingPage() {
     <>
       <div className="min-h-screen bg-background">
         {/* Header Container */}
-        <div className="bg-red-600 rounded-b-2xl shadow-xl overflow-hidden">
+        <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
           {/* Top section - Back button, title, and veg toggle */}
           <div className="px-4 pt-12 pb-4">
             <div className="flex items-center justify-between">
@@ -747,7 +747,7 @@ export default function MenuListingPage() {
             onClick={handleAllCategoryClick}
             className={`flex-shrink-0 px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 ${
               category === "all" 
-                ? "bg-red-600 text-white shadow-lg" 
+                ? "bg-[#724491] text-white shadow-lg" 
                 : resolvedTheme === 'dark' 
                   ? "bg-black text-gray-200 hover:bg-gray-900 border border-gray-800" 
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
@@ -769,7 +769,7 @@ export default function MenuListingPage() {
                 onClick={() => handleCategoryClick(cat.name)}
                 className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 dropdown-item ${
                   isActive
-                    ? "bg-red-600 text-white shadow-lg" 
+                    ? "bg-[#724491] text-white shadow-lg" 
                     : resolvedTheme === 'dark' 
                       ? "bg-black text-gray-200 hover:bg-gray-900 border border-gray-800" 
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
