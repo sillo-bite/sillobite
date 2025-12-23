@@ -679,7 +679,7 @@ export default function MenuListingPage() {
 
   // Update status bar to match header color
   useEffect(() => {
-    updateStatusBarColor('#DC2626'); // bg-red-600
+    updateStatusBarColor('#724491'); // purple primary color
   }, []);
 
   // Show skeleton while loading

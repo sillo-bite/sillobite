@@ -1,7 +1,7 @@
 // Service Worker for Sillobyte Canteen PWA
 const CACHE_NAME = 'sillobyte-canteen-v4'; // Incremented to force cache clear for PWA splash fix
 const CACHE_VERSION = 'cache-v' + Date.now(); // Dynamic cache version
-const APP_VERSION = '2.1.0'; // App version updated for PWA splash screen fix
+const APP_VERSION = '2.2.0'; // App version updated for PWA splash screen fix
 const STATIC_CACHE_URLS = [
   '/',
   '/splashscreen',

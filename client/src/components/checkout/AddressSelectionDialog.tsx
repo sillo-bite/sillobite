@@ -173,7 +173,7 @@ export default function AddressSelectionDialog({
         }
       }}>
         <DialogContent className={`max-w-2xl max-h-[90vh] overflow-y-auto ${
-          resolvedTheme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white'
+          resolvedTheme === 'dark' ? 'bg-[#31084A] border-gray-800' : 'bg-white'
         }`}>
           <DialogHeader>
             <DialogTitle className={`${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -334,7 +334,7 @@ export default function AddressSelectionDialog({
       {/* Address Selection Dialog */}
       <Dialog open={open && !showAddressForm} onOpenChange={onClose}>
       <DialogContent className={`max-w-md max-h-[80vh] overflow-y-auto ${
-        resolvedTheme === 'dark' ? 'bg-[#1a1a1a] border-gray-800' : 'bg-white'
+        resolvedTheme === 'dark' ? 'bg-[#31084A] border-gray-800' : 'bg-white'
       }`}>
         <DialogHeader>
           <DialogTitle className={`${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -371,7 +371,7 @@ export default function AddressSelectionDialog({
                           ? 'border-red-600 bg-red-600/10'
                           : 'border-red-600 bg-red-50'
                         : resolvedTheme === 'dark'
-                        ? 'bg-[#2a2a2a] border-gray-800 hover:bg-[#3a3a3a]'
+                        ? 'bg-[#562A6E] border-gray-800 hover:bg-[#724491]'
                         : 'bg-white border-gray-200 hover:bg-gray-50'
                     }`}
                     onClick={() => handleSelect(address)}
