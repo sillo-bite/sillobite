@@ -386,7 +386,7 @@ export default function OrdersPage() {
       <div className={`min-h-screen ${
         'bg-background'
       }`}>
-        <div className="bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+        <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
           <div className="flex items-center space-x-4">
             <Button 
               variant="ghost" 
@@ -419,7 +419,7 @@ export default function OrdersPage() {
         'bg-background'
       }`}>
         {/* Header */}
-        <div className="bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+        <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button 
@@ -483,7 +483,7 @@ export default function OrdersPage() {
                 }`}>
                   Filters
                   {getActiveFilterCount() > 0 && (
-                    <span className="ml-2 px-2 py-1 text-xs bg-red-600 text-white rounded-full">
+                    <span className="ml-2 px-2 py-1 text-xs bg-[#724491] text-white rounded-full">
                       {getActiveFilterCount()}
                     </span>
                   )}
@@ -536,7 +536,7 @@ export default function OrdersPage() {
                               onClick={() => setFilterStatus(option.value)}
                               className={`flex items-center space-x-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 whitespace-nowrap ${
                                 isSelected
-                                  ? 'bg-red-600 text-white'
+                                  ? 'bg-[#724491] text-white'
                                   : resolvedTheme === 'dark'
                                     ? 'bg-[#333333] text-white hover:bg-[#404040]'
                                     : 'bg-gray-300 text-gray-900 hover:bg-gray-400'
@@ -603,7 +603,7 @@ export default function OrdersPage() {
                                 }`}
                               >
                                 <div className={`w-3 h-3 rounded-full border ${
-                                  filterDateRange === option.value ? 'border-red-500 bg-red-500' : 'border-gray-400'
+                                  filterDateRange === option.value ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
                                 }`} />
                                 <span>{option.label}</span>
                               </button>
@@ -666,7 +666,7 @@ export default function OrdersPage() {
                                 }`}
                               >
                                 <div className={`w-3 h-3 rounded-full border ${
-                                  filterAmountRange === option.value ? 'border-red-500 bg-red-500' : 'border-gray-400'
+                                  filterAmountRange === option.value ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
                                 }`} />
                                 <span>{option.label}</span>
                               </button>
@@ -729,7 +729,7 @@ export default function OrdersPage() {
                                 }`}
                               >
                                 <div className={`w-3 h-3 rounded-full border ${
-                                  filterPaymentStatus === option.value ? 'border-red-500 bg-red-500' : 'border-gray-400'
+                                  filterPaymentStatus === option.value ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
                                 }`} />
                                 <span>{option.label}</span>
                               </button>
@@ -792,7 +792,7 @@ export default function OrdersPage() {
                                 }`}
                               >
                                 <div className={`w-3 h-3 rounded-full border ${
-                                  filterCanteen === "all" ? 'border-red-500 bg-red-500' : 'border-gray-400'
+                                  filterCanteen === "all" ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
                                 }`} />
                                 <span>All Canteens</span>
                               </button>
@@ -814,7 +814,7 @@ export default function OrdersPage() {
                                   }`}
                                 >
                                   <div className={`w-3 h-3 rounded-full border ${
-                                    filterCanteen === canteen.id ? 'border-red-500 bg-red-500' : 'border-gray-400'
+                                    filterCanteen === canteen.id ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
                                   }`} />
                                   <span>{canteen.name}</span>
                                 </button>

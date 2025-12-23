@@ -170,7 +170,7 @@ export default function FavoritesPage() {
     }`}
       >
       {/* Header */}
-      <div className="bg-red-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl flex-shrink-0">
+      <div className="bg-[#724491] text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl flex-shrink-0">
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 

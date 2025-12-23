@@ -215,7 +215,7 @@ export default function ProfilePage() {
         'bg-background'
       }`}>
         {/* Header */}
-        <div className="relative bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+        <div className="relative bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
           {/* Subtle Pattern Overlay */}
           {/* Header Navigation */}
           <div className="relative z-10 flex items-center justify-between mb-6">
@@ -249,7 +249,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Profile Card */}
-          <div className="relative bg-red-500 rounded-3xl p-6 border border-red-400 overflow-hidden">
+          <div className="relative bg-[#724491] rounded-3xl p-6 border border-[#B37ED7] overflow-hidden">
             
             <div className="relative z-10 flex items-center">
               <div className="relative">

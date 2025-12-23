@@ -475,7 +475,7 @@ export default function HomeScreen() {
         'bg-background'
       }`} style={{ maxWidth: '100vw' }}>
         {/* Header Container */}
-        <div className="bg-red-600 rounded-b-2xl shadow-xl overflow-hidden">
+        <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
           {/* Top section - Canteen selector, exit restaurant button, and notifications */}
           <div className="px-4 pt-12 pb-4">
             <div className="flex items-center justify-between">
@@ -523,7 +523,7 @@ export default function HomeScreen() {
                 >
                   <Bell className="w-5 h-5 text-white" />
                   {unreadNotificationsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                    <span className="absolute -top-1 -right-1 bg-[#C397E1] text-[#31084A] text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
                       {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
                     </span>
                   )}

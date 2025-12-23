@@ -58,7 +58,7 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
       {/* Scroll to Top Button - positioned above search bar */}
       <button
         onClick={scrollToTop}
-        className={`fixed bottom-[calc(9rem+env(safe-area-inset-bottom)+0.5rem)] left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg z-[10000] flex items-center justify-center transition-all duration-500 ease-in-out ${
+        className={`fixed bottom-[calc(9rem+env(safe-area-inset-bottom)+0.5rem)] left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#724491] hover:bg-[#562A6E] text-white shadow-lg z-[10000] flex items-center justify-center transition-all duration-500 ease-in-out ${
           showScrollToTop 
             ? 'opacity-100 scale-100 translate-y-0' 
             : 'opacity-0 scale-75 translate-y-2 pointer-events-none'
@@ -94,7 +94,7 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
         <div className="relative h-0.5 mb-1">
           {/* Sliding pill indicator */}
           <div 
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full transition-all duration-300 ease-out"
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#724491] to-[#B37ED7] rounded-full transition-all duration-300 ease-out"
             style={indicatorStyle}
           />
         </div>
@@ -116,7 +116,7 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
                 }}
                 className={`flex-1 flex flex-col items-center justify-center h-full px-0 transition-all duration-200 relative ${
                   isActive 
-                    ? "text-red-600" 
+                    ? "text-[#724491]" 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 aria-label={item.label}
@@ -126,7 +126,7 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
                   <div className="relative">
                     <item.icon className={`w-5 h-5 transition-all duration-200 ${isActive ? "scale-110" : "scale-100"}`} />
                     {cartItemCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium border-2 border-background">
+                      <span className="absolute -top-1 -right-1 bg-[#724491] text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-medium border-2 border-background">
                         {cartItemCount > 99 ? "99+" : cartItemCount}
                       </span>
                     )}
