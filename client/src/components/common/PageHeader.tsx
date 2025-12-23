@@ -33,7 +33,7 @@ export default function PageHeader({
     if (headerRef.current) {
       // Extract background color from className or use default red-600
       const bgClass = className.match(/bg-\w+-\d+/)?.[0] || 'bg-red-600';
-      updateStatusBarColor('#DC2626'); // Default to bg-red-600 color
+      updateStatusBarColor('#724491'); // Default to purple primary color
     }
   }, [className]);
 

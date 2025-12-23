@@ -333,7 +333,7 @@ export function InstallPWA() {
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50 px-3 sm:px-4 animate-[dropdown-enter_0.22s_ease-out]">
-      <div className="mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-3 py-3 shadow-[0_10px_30px_-14px_rgba(0,0,0,0.4)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-md ring-1 ring-white/5 dark:border-white/8 dark:bg-[#0e0e0e]/95 dark:ring-white/10 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.03),transparent_42%),radial-gradient(circle_at_80%_0%,rgba(239,68,68,0.06),transparent_55%)]">
+      <div className="mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-3 py-3 shadow-[0_10px_30px_-14px_rgba(0,0,0,0.4)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-md ring-1 ring-white/5 dark:border-white/8 dark:bg-[#1a0a2e]/95 dark:ring-white/10 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.03),transparent_42%),radial-gradient(circle_at_80%_0%,rgba(114,68,145,0.06),transparent_55%)]">
         <img
           src="/logo.png"
           alt="Sillobyte logo"

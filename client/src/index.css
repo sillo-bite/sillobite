@@ -147,30 +147,33 @@
 
 @layer base {
   :root {
-    /* Core Brand Colors */
-    --background: 240 33% 98%; /* #F7F7FB - Partner landing page background */
-    --foreground: 222 47% 11%; /* #0F172A - Partner landing page text */
+    /* Core Brand Colors - Purple Theme */
+    --background: 283 55% 96%; /* Light purple background */
+    --foreground: 283 81% 16%; /* Very dark purple text */
     
-    /* Partner Landing Page Primary Colors - Sillobyte Brand */
-    --primary: 253 100% 64%; /* #6d47ff - Purple */
-    --primary-light: 253 100% 72%;
-    --primary-dark: 253 100% 56%;
+    /* Primary Colors - Purple Theme */
+    --primary: 283 36% 42%; /* #724491 - Medium purple */
+    --primary-light: 283 52% 68%; /* #B37ED7 - Light purple */
+    --primary-dark: 282 44% 30%; /* #562A6E - Dark purple */
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary Color - Teal (Sillobyte Brand) */
-    --secondary: 168 75% 50%; /* #2DD4BF */
-    --secondary-foreground: 222 47% 11%;
+    /* Secondary Color - Purple Theme */
+    --secondary: 283 55% 74%; /* #C397E1 - Lighter purple */
+    --secondary-foreground: 283 81% 16%;
 
     
     /* UI Components */
     --card: 0 0% 100%; /* #FFFFFF - Surface */
-    --card-foreground: 222 47% 11%; /* #0F172A - Text primary */
+    --card-foreground: 283 81% 16%; /* Very dark purple text */
     
-    --muted: 214 32% 91%; /* #E2E8F0 - Lines */
-    --muted-foreground: 215 16% 35%; /* #475569 - Text secondary */
+    --popover: 0 0% 100%; /* #FFFFFF - Surface */
+    --popover-foreground: 283 81% 16%; /* Very dark purple text */
     
-    --accent: 262 83% 58%; /* #7C3AED - Purple gradient start */
-    --accent-foreground: 0 0% 100%;
+    --muted: 283 55% 90%; /* Light purple muted */
+    --muted-foreground: 282 44% 30%; /* Dark purple secondary text */
+    
+    --accent: 283 52% 68%; /* #B37ED7 - Light purple accent */
+    --accent-foreground: 283 81% 16%;
     
     /* Food App Specific */
     --success: 120 93% 34%; /* Green for veg */
@@ -183,42 +186,49 @@
     --destructive-foreground: 0 0% 98%;
     
     /* Form Elements */
-    --border: 214 32% 91%; /* #E2E8F0 - Lines */
-    --input: 214 32% 91%;
-    --ring: 253 100% 64%; /* Match primary */
+    --border: 283 55% 85%; /* Light purple border */
+    --input: 283 55% 90%;
+    --ring: 283 36% 42%; /* Match primary */
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(0 0% 98%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(283 55% 96%));
     
     /* Shadows */
-    --shadow-card: 0 2px 8px hsl(0 0% 0% / 0.08);
+    --shadow-card: 0 2px 8px hsl(283 36% 42% / 0.08);
     --shadow-button: 0 4px 12px hsl(var(--primary) / 0.3);
 
     --radius: 0.5rem;
 
-    /* Partner landing page colors - Sillobyte brand palette */
-    --text-primary: 222 47% 11%; /* #0F172A */
-    --text-secondary: 215 16% 35%; /* #475569 */
+    /* Purple theme brand palette */
+    --text-primary: 283 81% 16%; /* #31084A */
+    --text-secondary: 282 44% 30%; /* #562A6E */
     --surface: 0 0% 100%; /* #FFFFFF */
-    --gradient-start: 262 83% 58%; /* #7C3AED */
-    --gradient-end: 239 84% 67%; /* #6366F1 */
+    --gradient-start: 283 36% 42%; /* #724491 */
+    --gradient-end: 283 52% 68%; /* #B37ED7 */
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 283 55% 96%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 283 81% 16%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 283 36% 42%;
 
     --sidebar-primary-foreground: 0 0% 98%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 283 55% 90%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 283 81% 16%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 283 55% 85%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 283 36% 42%;
+    
+    /* Chart colors - Purple theme palette */
+    --chart-1: 283 36% 42%; /* #724491 - Medium purple */
+    --chart-2: 283 52% 68%; /* #B37ED7 - Light purple */
+    --chart-3: 282 44% 30%; /* #562A6E - Dark purple */
+    --chart-4: 283 55% 74%; /* #C397E1 - Lighter purple */
+    --chart-5: 283 81% 16%; /* #31084A - Very dark purple */
 }
 
 /* Barcode Scanner Styles */
@@ -231,49 +241,56 @@
 }
 
   .dark {
-    --background: 0 0% 6%; /* #0E0E0E - Deep Charcoal: Richer dark base without pure black look */
-    --foreground: 0 0% 100%; /* #FFFFFF - White: High contrast primary text */
+    --background: 283 81% 10%; /* Very dark purple base */
+    --foreground: 283 55% 90%; /* Light purple text */
 
-    --card: 0 0% 13%; /* Primary surfaces (cards, menu items) with clear separation */
-    --card-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --card: 283 81% 16%; /* #31084A - Very dark purple cards */
+    --card-foreground: 283 55% 90%; /* Light purple text */
 
-    --popover: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces (modals, bottom bar) for hierarchical depth */
-    --popover-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --popover: 282 44% 30%; /* #562A6E - Dark purple popover */
+    --popover-foreground: 283 55% 90%; /* Light purple text */
 
-    --primary: 253 100% 64%; /* #6d47ff - Purple: matches brand */
-    --primary-light: 253 100% 72%;
-    --primary-dark: 253 100% 56%;
-    --primary-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --primary: 283 36% 42%; /* #724491 - Medium purple */
+    --primary-light: 283 52% 68%; /* #B37ED7 - Light purple */
+    --primary-dark: 282 44% 30%; /* #562A6E - Dark purple */
+    --primary-foreground: 0 0% 100%; /* White text */
 
-    --secondary: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --secondary-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Balanced for pricing/details */
+    --secondary: 282 44% 30%; /* #562A6E - Dark purple */
+    --secondary-foreground: 283 55% 90%; /* Light purple text */
 
-    --muted: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --muted-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Secondary text */
+    --muted: 282 44% 25%; /* Darker purple muted */
+    --muted-foreground: 283 52% 68%; /* Light purple secondary text */
 
-    --accent: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --accent-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --accent: 283 52% 68%; /* #B37ED7 - Light purple accent */
+    --accent-foreground: 283 81% 16%; /* Very dark purple text */
 
     --success: 120 85% 30%; /* Desaturated green */
-    --success-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --success-foreground: 0 0% 100%; /* White text */
 
     --warning: 38 85% 45%; /* Desaturated orange */
-    --warning-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --warning-foreground: 0 0% 100%; /* White text */
 
     --destructive: 0 80% 35%; /* Desaturated red */
-    --destructive-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
+    --destructive-foreground: 0 0% 100%; /* White text */
 
-    --border: 0 0% 18%; /* #2D2D31 - Shadow Line Gray: Gentle but helps layout spacing */
-    --input: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --ring: 253 100% 64%; /* Match primary color for focus rings */
-    --sidebar-background: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --sidebar-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
-    --sidebar-primary: 253 100% 64%; /* Match primary */
-    --sidebar-primary-foreground: 0 0% 100%; /* #FFFFFF - White: Primary text */
-    --sidebar-accent: 0 0% 14%; /* #232326 - Soft Onyx: Elevated surfaces */
-    --sidebar-accent-foreground: 0 0% 71%; /* #B5B5B5 - Muted Silver: Secondary text */
-    --sidebar-border: 0 0% 18%; /* #2D2D31 - Shadow Line Gray: Dividers */
-    --sidebar-ring: 4 65% 45%; /* Match primary */
+    --border: 282 44% 35%; /* Dark purple border */
+    --input: 282 44% 30%; /* Dark purple input */
+    --ring: 283 36% 42%; /* Medium purple focus rings */
+    --sidebar-background: 283 81% 16%; /* Very dark purple sidebar */
+    --sidebar-foreground: 283 55% 90%; /* Light purple text */
+    --sidebar-primary: 283 36% 42%; /* Medium purple */
+    --sidebar-primary-foreground: 0 0% 100%; /* White text */
+    --sidebar-accent: 282 44% 30%; /* Dark purple accent */
+    --sidebar-accent-foreground: 283 52% 68%; /* Light purple text */
+    --sidebar-border: 282 44% 35%; /* Dark purple border */
+    --sidebar-ring: 283 36% 42%; /* Medium purple ring */
+    
+    /* Chart colors - Purple theme palette (dark mode) */
+    --chart-1: 283 52% 68%; /* #B37ED7 - Light purple */
+    --chart-2: 283 36% 42%; /* #724491 - Medium purple */
+    --chart-3: 283 55% 74%; /* #C397E1 - Lighter purple */
+    --chart-4: 282 44% 30%; /* #562A6E - Dark purple */
+    --chart-5: 283 52% 60%; /* Adjusted purple for visibility */
   }
 }
 
@@ -290,7 +307,7 @@
     /* Prevent overscroll bounce effect */
     overscroll-behavior-y: none;
     /* Set background color to prevent white flash during overscroll */
-    background-color: #0e0e0e;
+    background-color: #31084A;
     /* Hide scrollbar */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
@@ -330,25 +347,25 @@
   
   /* Ensure body background matches page backgrounds */
   html.dark body {
-    background-color: #0e0e0e;
+    background-color: #1a0a2e;
   }
   
   html:not(.dark) body {
-    background-color: #f7f7f7;
+    background-color: #f5ecfa;
   }
   
   /* Ensure html background matches for overscroll */
   html.dark {
-    background-color: #0e0e0e;
+    background-color: #1a0a2e;
   }
   
   html:not(.dark) {
-    background-color: #f7f7f7;
+    background-color: #f5ecfa;
   }
   
   /* Fix overscroll on root elements */
   #root {
-    background-color: #0e0e0e;
+    background-color: #1a0a2e;
     min-height: 100vh;
     min-height: 100dvh;
     overscroll-behavior-y: none;
@@ -362,11 +379,11 @@
   }
   
   html.dark #root {
-    background-color: #0e0e0e;
+    background-color: #1a0a2e;
   }
   
   html:not(.dark) #root {
-    background-color: #f7f7f7;
+    background-color: #f5ecfa;
   }
 }
 
@@ -591,11 +608,11 @@
   display: none;
 }
 
-/* Canteen Selector Scrollbar - Dark theme with red accents */
+/* Canteen Selector Scrollbar - Dark theme with purple accents */
 .canteen-selector-scrollbar {
   /* Firefox */
   scrollbar-width: thin;
-  scrollbar-color: #3a1a1a #0a0a0a;
+  scrollbar-color: #562A6E #1a0a2e;
 }
 
 .canteen-selector-scrollbar::-webkit-scrollbar {
@@ -603,36 +620,36 @@
 }
 
 .canteen-selector-scrollbar::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #1a0a2e;
   border-radius: 10px;
 }
 
 .canteen-selector-scrollbar::-webkit-scrollbar-thumb {
-  background: #3a1a1a;
+  background: #562A6E;
   border-radius: 10px;
-  border: 1px solid #0a0a0a;
+  border: 1px solid #1a0a2e;
 }
 
 .canteen-selector-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #5a2a2a;
+  background: #724491;
 }
 
 /* Light theme scrollbar */
 html:not(.dark) .canteen-selector-scrollbar {
-  scrollbar-color: #dc2626 #f3f4f6;
+  scrollbar-color: #724491 #f5ecfa;
 }
 
 html:not(.dark) .canteen-selector-scrollbar::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  background: #f5ecfa;
 }
 
 html:not(.dark) .canteen-selector-scrollbar::-webkit-scrollbar-thumb {
-  background: #dc2626;
-  border: 1px solid #f3f4f6;
+  background: #724491;
+  border: 1px solid #f5ecfa;
 }
 
 html:not(.dark) .canteen-selector-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #b91c1c;
+  background: #562A6E;
 }
 
 /* Universal App Scrollbar - Theme-aware - Applied to all scrollable elements */

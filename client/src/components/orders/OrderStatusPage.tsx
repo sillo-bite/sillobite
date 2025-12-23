@@ -25,7 +25,7 @@ const BarcodeGenerator = ({ orderId }: { orderId: string }) => {
           height: 60,
           displayValue: true,
           background: "#ffffff",
-          lineColor: "#1a1a1a",
+          lineColor: "#31084A",
           margin: 10,
           fontSize: 14,
           textAlign: "center",
@@ -40,7 +40,7 @@ const BarcodeGenerator = ({ orderId }: { orderId: string }) => {
           canvas.height = 80;
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = '#1a1a1a';
+          ctx.fillStyle = '#31084A';
           ctx.font = '16px monospace';
           ctx.textAlign = 'center';
           ctx.fillText(`Order: ${orderId}`, canvas.width/2, canvas.height/2);

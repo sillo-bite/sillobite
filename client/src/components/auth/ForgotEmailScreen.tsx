@@ -55,7 +55,7 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
     } else {
       // Fallback to light/dark based on theme
       const isDark = resolvedTheme === 'dark';
-      updateStatusBarColor(isDark ? '#0E0E0E' : '#F7F7F7');
+      updateStatusBarColor(isDark ? '#1a0a2e' : '#f5ecfa');
     }
   }, [resolvedTheme]);
 
