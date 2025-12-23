@@ -129,6 +129,10 @@ Allow: /
 User-agent: WhatsApp
 Allow: /
 
+# Allow important public API endpoints
+Allow: /api/icon.png
+Allow: /api/icon.svg
+
 # Block access to sensitive areas
 Disallow: /admin/
 Disallow: /canteen-owner/
@@ -145,9 +149,9 @@ Disallow: /manifest.json
 # Allow important files
 Allow: /sitemap.xml
 Allow: /robots.txt
+Allow: /favicon.ico
 Allow: /favicon.png
-Allow: /icon-512-v3.png
-Allow: /icon-*.png
+Allow: /favicon.svg
 
 # Sitemap location
 Sitemap: https://sillobyte.onrender.com/sitemap.xml
