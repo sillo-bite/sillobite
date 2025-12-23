@@ -102,7 +102,7 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-red-600 to-red-700 flex flex-col items-center justify-center px-3 py-4 flex-shrink-0 min-w-[75px] absolute right-0 top-0 bottom-0 rounded-r-lg">
+      <div className="bg-gradient-to-br from-[#724491] to-[#562A6E] flex flex-col items-center justify-center px-3 py-4 flex-shrink-0 min-w-[75px] absolute right-0 top-0 bottom-0 rounded-r-lg">
         <div className="text-white font-bold text-sm mb-2 leading-tight">
           {formatCurrency(order.amount || 0)}
         </div>
