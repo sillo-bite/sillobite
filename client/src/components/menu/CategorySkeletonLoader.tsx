@@ -73,13 +73,13 @@ export function CategoryLoadingIndicator({
         {/* Loading dots */}
         <div className="flex space-x-1">
           <div className={`w-2 h-2 rounded-full animate-bounce ${
-            resolvedTheme === 'dark' ? 'bg-red-500' : 'bg-red-400'
+            resolvedTheme === 'dark' ? 'bg-[#B37ED7]' : 'bg-[#724491]'
           }`} style={{ animationDelay: '0ms' }} />
           <div className={`w-2 h-2 rounded-full animate-bounce ${
-            resolvedTheme === 'dark' ? 'bg-red-500' : 'bg-red-400'
+            resolvedTheme === 'dark' ? 'bg-[#B37ED7]' : 'bg-[#724491]'
           }`} style={{ animationDelay: '150ms' }} />
           <div className={`w-2 h-2 rounded-full animate-bounce ${
-            resolvedTheme === 'dark' ? 'bg-red-500' : 'bg-red-400'
+            resolvedTheme === 'dark' ? 'bg-[#B37ED7]' : 'bg-[#724491]'
           }`} style={{ animationDelay: '300ms' }} />
         </div>
         <span className={`text-xs font-medium animate-pulse ${

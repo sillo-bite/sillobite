@@ -85,13 +85,13 @@ export function LoadingIndicator({
           {/* Beautiful animated loading dots */}
           <div className="flex space-x-1">
             <div className={`w-2 h-2 rounded-full animate-bounce ${
-              theme === 'dark' ? 'bg-red-500' : 'bg-red-400'
+              theme === 'dark' ? 'bg-[#B37ED7]' : 'bg-[#724491]'
             }`} style={{ animationDelay: '0ms' }} />
             <div className={`w-2 h-2 rounded-full animate-bounce ${
-              theme === 'dark' ? 'bg-red-500' : 'bg-red-400'
+              theme === 'dark' ? 'bg-[#B37ED7]' : 'bg-[#724491]'
             }`} style={{ animationDelay: '150ms' }} />
             <div className={`w-2 h-2 rounded-full animate-bounce ${
-              theme === 'dark' ? 'bg-red-500' : 'bg-red-400'
+              theme === 'dark' ? 'bg-[#B37ED7]' : 'bg-[#724491]'
             }`} style={{ animationDelay: '300ms' }} />
           </div>
           <span className={`text-sm font-medium animate-pulse ${
@@ -106,7 +106,7 @@ export function LoadingIndicator({
           theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
         }`}>
           <div 
-            className="h-full bg-gradient-to-r from-red-500 via-red-400 to-red-500 rounded-full animate-pulse relative"
+            className="h-full bg-gradient-to-r from-[#724491] via-[#B37ED7] to-[#724491] rounded-full animate-pulse relative"
             style={{ width: `${(totalLoaded / totalAvailable) * 100}%` }}
           >
             {/* Shimmer effect on progress bar */}

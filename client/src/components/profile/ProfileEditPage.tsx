@@ -120,7 +120,7 @@ export default function ProfileEditPage() {
       }`}>
         <div className="text-center">
           <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4 ${
-            resolvedTheme === 'dark' ? 'border-red-500' : 'border-red-600'
+            resolvedTheme === 'dark' ? 'border-[#B37ED7]' : 'border-[#724491]'
           }`}></div>
           <p className={`${
             resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
@@ -135,7 +135,7 @@ export default function ProfileEditPage() {
       'bg-background'
     }`}>
       {/* Header */}
-      <div className="bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+      <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
         <div className="flex items-center justify-between">
           <Button 
             variant="ghost" 
@@ -217,8 +217,8 @@ export default function ProfileEditPage() {
                                 {...field} 
                                 className={`h-11 text-sm ${
                                   resolvedTheme === 'dark' 
-                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-red-500' 
-                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-red-500'
+                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]' 
+                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
                                 }`} 
                               />
                             </FormControl>
@@ -241,8 +241,8 @@ export default function ProfileEditPage() {
                                 {...field} 
                                 className={`h-11 text-sm ${
                                   resolvedTheme === 'dark' 
-                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-red-500' 
-                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-red-500'
+                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]' 
+                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
                                 }`} 
                               />
                             </FormControl>
