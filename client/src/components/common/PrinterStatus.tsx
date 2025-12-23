@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Printer, PrinterOff } from "lucide-react";
+import { Printer, AlertCircle } from "lucide-react";
 import { usePrinterStatus } from "@/hooks/usePrinterStatus";
 
 /**
@@ -25,7 +25,7 @@ export default function PrinterStatus() {
       };
     }
     return { 
-      icon: PrinterOff, 
+      icon: AlertCircle, 
       text: "Not Connected", 
       variant: "destructive" as const 
     };
