@@ -61,7 +61,7 @@ export default function HomeScreen() {
 
   // Update status bar to match header color
   useEffect(() => {
-    updateStatusBarColor('#DC2626'); // bg-red-600
+    updateStatusBarColor('#724491'); // purple primary color
   }, []);
 
   // Restaurant context state

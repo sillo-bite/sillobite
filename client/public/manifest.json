@@ -2,8 +2,8 @@
   "name": "Sillobyte Canteen - Food Ordering App",
   "short_name": "Sillobyte",
   "description": "Order food from your college canteen with ease. Fast, convenient, and delicious meals at your fingertips.",
-  "theme_color": "#6d47ff",
-  "background_color": "#1a1a1a",
+  "theme_color": "#724491",
+  "background_color": "#1a0a2e",
   "display": "standalone",
   "orientation": "portrait",
   "scope": "/",
@@ -15,8 +15,44 @@
   "prefer_related_applications": false,
   "icons": [
     {
+      "src": "/api/icon.png?size=72",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon.png?size=96",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon.png?size=128",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon.png?size=144",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon.png?size=152",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/api/icon.png?size=192",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon.png?size=384",
+      "sizes": "384x384",
       "type": "image/png",
       "purpose": "any"
     },
@@ -24,7 +60,13 @@
       "src": "/api/icon.png?size=512",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/api/icon.png?size=512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [

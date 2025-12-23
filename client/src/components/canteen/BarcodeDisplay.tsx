@@ -30,7 +30,7 @@ export default function BarcodeDisplay({
           textAlign: "center",
           textPosition: "bottom",
           background: "#ffffff",
-          lineColor: "#1a1a1a",
+          lineColor: "#31084A",
           margin: 10
         });
       } catch (error) {

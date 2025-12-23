@@ -967,12 +967,12 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-[#2a2a2a] border-b border-[#3a3a3a] px-4 py-4 sticky top-0 z-10">
+      <div className="bg-[#562A6E] border-b border-[#724491] px-4 py-4 sticky top-0 z-10">
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="icon" onClick={() => {
             window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
             setLocation('/app');
-          }} className="text-white hover:bg-[#3a3a3a]">
+          }} className="text-white hover:bg-[#724491]">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-bold text-white">Checkout</h1>
@@ -992,12 +992,12 @@ export default function CheckoutPage() {
 
           {/* Checkout Session Timer - Always visible when session is active */}
           {checkoutSessionId && sessionTimeLeft > 0 && (
-            <Card className="bg-[#2a2a2a] border border-[#6366f1] shadow-lg">
+            <Card className="bg-[#562A6E] border border-[#B37ED7] shadow-lg">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2 text-[#6366f1]" />
-                    <span className="text-sm font-medium text-[#6366f1]">Checkout Session</span>
+                    <Clock className="w-4 h-4 mr-2 text-[#B37ED7]" />
+                    <span className="text-sm font-medium text-[#B37ED7]">Checkout Session</span>
                   </div>
                   <div className="text-lg font-bold text-white">
                     {formatTime(sessionTimeLeft)}
@@ -1015,7 +1015,7 @@ export default function CheckoutPage() {
         {/* Priority 2: Order Details & Payment */}
         <div className="px-4 pt-4 space-y-4">
           {/* Order Summary - High Priority */}
-          <Card className="bg-[#2a2a2a] border border-[#3a3a3a] shadow-lg">
+          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
             <CardContent className="p-4">
               <h3 className="font-semibold mb-3 text-white">Order Summary</h3>
 
@@ -1041,7 +1041,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* Price Breakdown */}
-              <div className="space-y-2 pt-3 border-t border-[#3a3a3a]">
+              <div className="space-y-2 pt-3 border-t border-[#724491]">
                 <div className="flex justify-between items-center">
                   <span className="text-white">Subtotal ({getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'})</span>
                   <span className="text-white font-medium">{formatCurrency(subtotal)}</span>
@@ -1055,7 +1055,7 @@ export default function CheckoutPage() {
                 )}
 
                 {chargesApplied.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-[#3a3a3a]">
+                  <div className="space-y-1 pt-2 border-t border-[#724491]">
                     {chargesApplied.map((charge) => (
                       <div key={charge.name} className="flex justify-between items-center">
                         <span className="text-white text-sm">
@@ -1067,7 +1067,7 @@ export default function CheckoutPage() {
                   </div>
                 )}
 
-                <div className="flex justify-between items-center pt-2 border-t border-[#3a3a3a]">
+                <div className="flex justify-between items-center pt-2 border-t border-[#724491]">
                   <span className="text-white font-bold text-lg">Total</span>
                   <span className={appliedCoupon && appliedCoupon.discountAmount > 0 ? "text-[#22c55e] font-bold text-lg" : "text-white font-bold text-lg"}>
                     {formatCurrency(total)}
@@ -1086,10 +1086,10 @@ export default function CheckoutPage() {
           />
 
           {/* Order Type - High Priority */}
-          <Card className="bg-[#2a2a2a] border border-[#3a3a3a] shadow-lg">
+          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
             <CardContent className="p-4">
               <h3 className="font-semibold mb-4 flex items-center text-white">
-                <ShoppingBag className="w-5 h-5 mr-2 text-[#ef4444]" />
+                <ShoppingBag className="w-5 h-5 mr-2 text-[#B37ED7]" />
                 Order Type
               </h3>
               <RadioGroup value={orderType} onValueChange={(value) => {
@@ -1104,11 +1104,11 @@ export default function CheckoutPage() {
                 }
               }}>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-[#4a4a4a] rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors">
-                    <RadioGroupItem value="takeaway" id="takeaway" className="border-[#ef4444] text-[#ef4444] data-[state=checked]:bg-[#ef4444]" />
+                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
+                    <RadioGroupItem value="takeaway" id="takeaway" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
                     <Label htmlFor="takeaway" className="flex-1 cursor-pointer">
                       <div className="flex items-center">
-                        <ShoppingBag className="w-5 h-5 mr-3 text-[#ef4444]" />
+                        <ShoppingBag className="w-5 h-5 mr-3 text-[#B37ED7]" />
                         <div>
                           <p className="font-medium text-white">Takeaway</p>
                           <p className="text-sm text-[#a0a0a0]">Collect your order from the counter</p>
@@ -1117,8 +1117,8 @@ export default function CheckoutPage() {
                     </Label>
                   </div>
                   {allowDelivery && (
-                  <div className="flex items-center space-x-3 p-3 border border-[#4a4a4a] rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors">
-                    <RadioGroupItem value="delivery" id="delivery" className="border-[#ef4444] text-[#ef4444] data-[state=checked]:bg-[#ef4444]" />
+                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
+                    <RadioGroupItem value="delivery" id="delivery" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
                     <Label htmlFor="delivery" className="flex-1 cursor-pointer">
                       <div className="flex items-center">
                         <Truck className="w-5 h-5 mr-3 text-[#3b82f6]" />
@@ -1135,7 +1135,7 @@ export default function CheckoutPage() {
 
               {/* Display Selected Address for Delivery */}
               {orderType === "delivery" && selectedAddress && (
-                <div className="mt-4 p-3 border border-[#4a4a4a] rounded-lg bg-[#1a1a1a]">
+                <div className="mt-4 p-3 border border-[#724491] rounded-lg bg-[#31084A]">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
@@ -1181,19 +1181,19 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Payment Method - High Priority */}
-          <Card className="bg-[#2a2a2a] border border-[#3a3a3a] shadow-lg">
+          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
             <CardContent className="p-4">
               <h3 className="font-semibold mb-4 flex items-center text-white">
-                <CreditCard className="w-5 h-5 mr-2 text-[#ef4444]" />
+                <CreditCard className="w-5 h-5 mr-2 text-[#B37ED7]" />
                 Payment Method
               </h3>
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-[#4a4a4a] rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors">
-                    <RadioGroupItem value="upi" id="upi" className="border-[#ef4444] text-[#ef4444] data-[state=checked]:bg-[#ef4444]" />
+                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
+                    <RadioGroupItem value="upi" id="upi" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
                     <Label htmlFor="upi" className="flex-1 cursor-pointer">
                       <div className="flex items-center">
-                        <CreditCard className="w-5 h-5 mr-3 text-[#ef4444]" />
+                        <CreditCard className="w-5 h-5 mr-3 text-[#B37ED7]" />
                         <div>
                           <p className="font-medium text-white">UPI Payment</p>
                           <p className="text-sm text-[#a0a0a0]">Google Pay, Razorpay, UPI, Cards</p>
@@ -1206,8 +1206,8 @@ export default function CheckoutPage() {
                   </div>
 
                   {allowPayAtCounter && (
-                  <div className="flex items-center space-x-3 p-3 border border-[#4a4a4a] rounded-lg bg-[#2a2a2a] hover:bg-[#3a3a3a] transition-colors">
-                    <RadioGroupItem value="offline" id="offline" className="border-[#ef4444] text-[#ef4444] data-[state=checked]:bg-[#ef4444]" />
+                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
+                    <RadioGroupItem value="offline" id="offline" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
                     <Label htmlFor="offline" className="flex-1 cursor-pointer">
                       <div className="flex items-center">
                         <HandCoins className="w-5 h-5 mr-3 text-[#f97316]" />
@@ -1228,7 +1228,7 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Important Information - Low Priority */}
-          <Card className="bg-[#1e3a5f] border border-[#2a4a6f] shadow-lg">
+          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
             <CardContent className="p-4">
               <div className="rounded-lg p-4">
                 <h4 className="font-semibold text-white mb-3 flex items-center">
@@ -1256,7 +1256,7 @@ export default function CheckoutPage() {
       </div>
 
       {/* Place Order Button - Highest Priority */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#2a2a2a] border-t border-[#3a3a3a] p-4 space-y-2 shadow-2xl z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-[#562A6E] border-t border-[#724491] p-4 space-y-2 shadow-2xl z-50">
         <Button
           variant="food"
           size="mobile"
