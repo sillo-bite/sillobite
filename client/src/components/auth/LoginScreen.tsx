@@ -138,46 +138,121 @@ export default function LoginScreen() {
     }
   }, []);
 
-  // Check for organization QR data from URL params
+  // Check for organization QR data from URL params and validate cached user
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const orgQRParam = urlParams.get('orgQR');
-    if (orgQRParam) {
-      try {
-        const data = JSON.parse(decodeURIComponent(orgQRParam)) as OrganizationQRData;
-        // Check if data is not too old (e.g., less than 10 minutes)
-        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
-        if (data.timestamp > tenMinutesAgo) {
-          setOrgQRData(data);
-          // Store in sessionStorage for persistence
-          sessionStorage.setItem('pendingOrgQRData', JSON.stringify(data));
-        } else {
-          // Data is too old
-          urlParams.delete('orgQR');
-          window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
-        }
-      } catch (error) {
-        console.error('Error parsing organization QR data:', error);
-      }
-    } else {
-      // Check sessionStorage for persisted data
-      const pendingOrgQRData = sessionStorage.getItem('pendingOrgQRData');
-      if (pendingOrgQRData) {
+    const handleOrgQRWithCache = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const orgQRParam = urlParams.get('orgQR');
+      let qrData: OrganizationQRData | null = null;
+
+      if (orgQRParam) {
         try {
-          const data = JSON.parse(pendingOrgQRData) as OrganizationQRData;
+          const data = JSON.parse(decodeURIComponent(orgQRParam)) as OrganizationQRData;
           const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
           if (data.timestamp > tenMinutesAgo) {
-            setOrgQRData(data);
+            qrData = data;
+            sessionStorage.setItem('pendingOrgQRData', JSON.stringify(data));
           } else {
-            sessionStorage.removeItem('pendingOrgQRData');
+            urlParams.delete('orgQR');
+            window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
           }
         } catch (error) {
-          console.error('Error parsing organization QR data from storage:', error);
-          sessionStorage.removeItem('pendingOrgQRData');
+          console.error('Error parsing organization QR data:', error);
+        }
+      } else {
+        const pendingOrgQRData = sessionStorage.getItem('pendingOrgQRData');
+        if (pendingOrgQRData) {
+          try {
+            const data = JSON.parse(pendingOrgQRData) as OrganizationQRData;
+            const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+            if (data.timestamp > tenMinutesAgo) {
+              qrData = data;
+            } else {
+              sessionStorage.removeItem('pendingOrgQRData');
+            }
+          } catch (error) {
+            console.error('Error parsing organization QR data from storage:', error);
+            sessionStorage.removeItem('pendingOrgQRData');
+          }
         }
       }
-    }
-  }, []);
+
+      // If QR data exists, check for cached authenticated user FIRST
+      if (qrData && existingUser && !authLoading) {
+        console.log('🔍 Organization QR detected with cached user, validating...');
+        
+        try {
+          // Validate QR code first
+          const validateResponse = await fetch(
+            `/api/system-settings/qr-codes/validate/${qrData.organizationId}/${qrData.hash}?address=${encodeURIComponent(qrData.address)}`
+          );
+
+          if (validateResponse.ok) {
+            const validationData = await validateResponse.json();
+            const { organization, fullAddress } = validationData;
+
+            console.log('✅ QR code validated, organization:', organization.name);
+
+            // Check if cached user needs profile completion
+            if (existingUser.role === 'guest' || !existingUser.phoneNumber || !existingUser.organizationId) {
+              console.log('📝 Cached user needs profile completion');
+              
+              // Store organization context for profile setup
+              sessionStorage.setItem('orgContext', JSON.stringify({
+                organizationId: organization.id,
+                organizationName: organization.name,
+                fullAddress: fullAddress,
+              }));
+
+              // Remove pending QR data
+              sessionStorage.removeItem('pendingOrgQRData');
+
+              // Redirect to profile setup with existing user data
+              setLocation(`/profile-setup?email=${encodeURIComponent(existingUser.email)}&name=${encodeURIComponent(existingUser.name)}`);
+              return;
+            }
+
+            // User is fully authenticated and profile is complete, log them in directly
+            console.log('✅ Cached user is complete, logging in directly');
+            
+            const userDisplayData = {
+              id: existingUser.id,
+              name: existingUser.name,
+              email: existingUser.email,
+              role: existingUser.role || 'guest',
+              phoneNumber: existingUser.phoneNumber || '',
+              ...(existingUser.organizationId && {
+                organization: existingUser.organizationId,
+                organizationId: existingUser.organizationId,
+              }),
+            };
+
+            login(userDisplayData as any);
+            
+            // Remove pending QR data
+            sessionStorage.removeItem('pendingOrgQRData');
+            
+            // Redirect to app
+            setTimeout(() => {
+              setLocation('/app');
+            }, 100);
+            return;
+          } else {
+            console.warn('⚠️ QR code validation failed');
+          }
+        } catch (error) {
+          console.error('Error validating QR with cached user:', error);
+        }
+      }
+
+      // If no cached user or validation failed, set QR data to show sign-in
+      if (qrData) {
+        setOrgQRData(qrData);
+      }
+    };
+
+    handleOrgQRWithCache();
+  }, [existingUser, authLoading, login, setLocation]);
 
   // Handle Google OAuth redirect result
   useEffect(() => {
@@ -347,12 +422,24 @@ export default function LoginScreen() {
         }
         
         // Add a small delay to ensure login state is persisted before redirect
-        setTimeout(() => {
+        setTimeout(async () => {
           // Redirect based on role (handle both naming conventions)
           if (userData.role === 'super_admin' || userData.role === 'admin') {
             setLocation("/admin");
           } else if (userData.role === 'canteen_owner' || userData.role === 'canteen-owner') {
-            setLocation("/canteen-owner-dashboard");
+            // For canteen owners, fetch canteen ID first
+            try {
+              const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`);
+              if (canteenResponse.ok) {
+                const canteenData = await canteenResponse.json();
+                setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
+              } else {
+                setLocation('/login?error=no_canteen');
+              }
+            } catch (error) {
+              console.error('Error fetching canteen:', error);
+              setLocation('/login?error=canteen_fetch_failed');
+            }
           } else if (userData.role === 'delivery_person') {
             setLocation("/delivery-portal");
           } else {
@@ -411,7 +498,19 @@ export default function LoginScreen() {
               email: newUser.email,
               role: newUser.role,
             });
-            setLocation("/canteen-owner-dashboard");
+            // For canteen owners, fetch canteen ID first
+            try {
+              const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${newUser.email}`);
+              if (canteenResponse.ok) {
+                const canteenData = await canteenResponse.json();
+                setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
+              } else {
+                setLocation('/login?error=no_canteen');
+              }
+            } catch (error) {
+              console.error('Error fetching canteen:', error);
+              setLocation('/login?error=canteen_fetch_failed');
+            }
           }
         } else {
           // New user - check if from organization QR
@@ -728,7 +827,19 @@ export default function LoginScreen() {
         if (data.user.role === 'super_admin' || data.user.role === 'admin') {
           setLocation("/admin");
         } else if (data.user.role === 'canteen_owner' || data.user.role === 'canteen-owner') {
-          setLocation("/canteen-owner-dashboard");
+          // For canteen owners, fetch canteen ID first
+          try {
+            const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${data.user.email}`);
+            if (canteenResponse.ok) {
+              const canteenData = await canteenResponse.json();
+              setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
+            } else {
+              setLocation('/login?error=no_canteen');
+            }
+          } catch (error) {
+            console.error('Error fetching canteen:', error);
+            setLocation('/login?error=canteen_fetch_failed');
+          }
         } else {
           setLocation("/app");
         }

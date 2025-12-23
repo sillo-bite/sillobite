@@ -11,7 +11,9 @@ import { CartPanel } from "@/components/pos/CartPanel";
 import { PaymentDialog } from "@/components/pos/PaymentDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
 import { TransactionHistory } from "@/components/pos/TransactionHistory";
-import type { PosBillingProps, DiscountConfig, PaymentMethod } from "@/types/pos";
+import PrinterStatus from "@/components/common/PrinterStatus";
+import { printWithRetry } from "@/services/localPrinterService";
+import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
 
 export default function PosBilling({ canteenId }: PosBillingProps) {
   // UI State
@@ -26,6 +28,12 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [discountConfig, setDiscountConfig] = useState<DiscountConfig>({ percent: 0, amount: 0 });
   const [couponCode, setCouponCode] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("cash");
+  
+  // Print State
+  const [printError, setPrintError] = useState<string | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [lastTransactionForPrint, setLastTransactionForPrint] = useState<Transaction | null>(null);
+  const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; total: number } | null>(null);
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
@@ -56,6 +64,64 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     setShowPaymentDialog(true);
   };
 
+  // Format transaction data for printing
+  const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; total: number }) => {
+    return {
+      orderNumber: transaction.orderNumber,
+      customerName: transaction.customerName,
+      items: transaction.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity,
+      })),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      total: totals.total,
+      paymentMethod: transaction.paymentMethod,
+      date: transaction.createdAt.toISOString(),
+      status: transaction.status,
+    };
+  };
+
+  // Send bill to printer
+  const sendToPrinter = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; total: number }) => {
+    setIsPrinting(true);
+    setPrintError(null);
+
+    const printPayload = formatTransactionForPrint(transaction, totalsForPrint);
+    
+    try {
+      const result = await printWithRetry(printPayload, 2, 1000);
+      
+      if (result.success) {
+        toast.success("Bill sent to printer successfully");
+        setPrintError(null);
+      } else {
+        setPrintError(result.message || "Failed to print bill");
+        toast.error(`Print failed: ${result.message || "Unknown error"}`, {
+          action: {
+            label: "Retry",
+            onClick: () => sendToPrinter(transaction, totalsForPrint),
+          },
+          duration: 10000,
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to print bill";
+      setPrintError(errorMessage);
+      toast.error(`Print error: ${errorMessage}`, {
+        action: {
+          label: "Retry",
+          onClick: () => sendToPrinter(transaction, totalsForPrint),
+        },
+        duration: 10000,
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   const handlePayment = async () => {
     const transaction = await createOrder({
       canteenId,
@@ -71,8 +137,15 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     if (transaction) {
       setShowPaymentDialog(false);
       setShowReceipt(true);
+      setLastTransactionForPrint(transaction);
+      setLastTotalsForPrint(totals);
       resetForm();
       refetchTransactions();
+      
+      // Send to printer after successful save (non-blocking)
+      sendToPrinter(transaction, totals).catch(() => {
+        // Error already handled in sendToPrinter
+      });
     }
   };
 
@@ -94,14 +167,17 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   return (
     <OwnerPageLayout>
       <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
-        <OwnerTabList>
-          <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
-            Billing
-          </OwnerTab>
-          <OwnerTab value="history" icon={<History className="w-4 h-4" />}>
-            Transaction History
-          </OwnerTab>
-        </OwnerTabList>
+        <div className="flex items-center justify-between mb-4">
+          <OwnerTabList>
+            <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
+              Billing
+            </OwnerTab>
+            <OwnerTab value="history" icon={<History className="w-4 h-4" />}>
+              Transaction History
+            </OwnerTab>
+          </OwnerTabList>
+          <PrinterStatus />
+        </div>
 
         {/* Single shared content container - only one panel rendered at a time */}
         <div className="pos-billing-tab-content flex-1 flex flex-col min-h-0 overflow-hidden mt-4">
