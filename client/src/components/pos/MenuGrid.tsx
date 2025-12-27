@@ -35,24 +35,25 @@ export function MenuGrid({
         </OwnerBadge>
       }
       className="lg:col-span-2 flex flex-col overflow-hidden h-full"
-      contentClassName="flex-1 flex flex-col overflow-hidden p-4 min-h-0"
+      contentClassName="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 min-h-0"
     >
       {/* Search and Filters */}
-      <div className="space-y-3 mb-4 flex-shrink-0">
+      <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4 flex-shrink-0">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             placeholder="Search items..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 h-10"
+            className="pl-9 h-9 sm:h-10 text-sm"
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 app-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-2 app-scrollbar -mx-1 px-1">
           <OwnerButton
             variant={selectedCategory === "all" ? "primary" : "secondary"}
             size="sm"
             onClick={() => onCategoryChange("all")}
+            className="whitespace-nowrap"
           >
             All
           </OwnerButton>
@@ -62,6 +63,7 @@ export function MenuGrid({
               variant={selectedCategory === cat.id ? "primary" : "secondary"}
               size="sm"
               onClick={() => onCategoryChange(cat.id)}
+              className="whitespace-nowrap"
             >
               {cat.name}
             </OwnerButton>
@@ -85,15 +87,15 @@ export function MenuGrid({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
             {menuItems.map(item => (
               <button
                 key={item.id}
                 onClick={() => onItemClick(item)}
-                className="group relative bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-all duration-200 hover:border-primary/50"
+                className="group relative bg-card border border-border rounded-lg overflow-hidden hover:shadow-md active:scale-95 transition-all duration-200 hover:border-primary/50 touch-manipulation"
               >
                 {item.imageUrl && (
-                  <div className="w-full h-32 bg-muted overflow-hidden">
+                  <div className="w-full h-24 sm:h-32 bg-muted overflow-hidden">
                     <img
                       src={item.imageUrl}
                       alt={item.name}
@@ -101,15 +103,15 @@ export function MenuGrid({
                     />
                   </div>
                 )}
-                <div className="p-3">
-                  <h3 className="font-medium text-sm mb-2 line-clamp-1 text-left">{item.name}</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-primary">{formatCurrency(item.price)}</span>
+                <div className="p-2 sm:p-3">
+                  <h3 className="font-medium text-xs sm:text-sm mb-1 sm:mb-2 line-clamp-1 text-left">{item.name}</h3>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-semibold text-primary text-sm sm:text-base">{formatCurrency(item.price)}</span>
                     <OwnerBadge 
                       variant={item.stock > 5 ? "default" : "warning"} 
-                      className="text-xs"
+                      className="text-[10px] sm:text-xs px-1.5 py-0.5"
                     >
-                      {item.stock} left
+                      {item.stock}
                     </OwnerBadge>
                   </div>
                 </div>
