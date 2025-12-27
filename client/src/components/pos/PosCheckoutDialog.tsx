@@ -418,7 +418,7 @@ export function PosCheckoutDialog({
         subtotal: cachedTotals.subtotal || 0,
         tax: cachedTotals.tax || 0,
         total: createdOrder.amount || cachedTotals.total || 0,
-        paymentMode: isOfflineOrder ? 'OFFLINE' : 'UPI',
+        paymentMode: isOfflineOrder ? 'CASH' : 'UPI',
         timestamp: new Date().toISOString(),
         currency: "INR",
         orderOtp: orderOtp,
