@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { ShoppingCart, History } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ShoppingCart, History, TestTube2 } from "lucide-react";
 import { toast } from "sonner";
 import { OwnerPageLayout, OwnerTabs, OwnerTabList, OwnerTab } from "@/components/owner";
 import { usePosCart } from "@/hooks/usePosCart";
@@ -12,7 +12,8 @@ import { PosCheckoutDialog } from "@/components/pos/PosCheckoutDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
 import { TransactionHistory } from "@/components/pos/TransactionHistory";
 import PrinterStatus from "@/components/common/PrinterStatus";
-import { printWithRetry } from "@/services/localPrinterService";
+import { printWithRetry, printBill } from "@/services/localPrinterService";
+import { Button } from "@/components/ui/button";
 import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
 
 export default function PosBilling({ canteenId }: PosBillingProps) {
@@ -34,6 +35,9 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [lastTransactionForPrint, setLastTransactionForPrint] = useState<Transaction | null>(null);
   const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; total: number } | null>(null);
+  
+  // Test Print State
+  const [isTestPrinting, setIsTestPrinting] = useState(false);
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
@@ -48,6 +52,59 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const totals = useMemo(() => {
     return calculateOrderTotals(cart, discountConfig);
   }, [cart, discountConfig]);
+
+  // Test Print Handler
+  const handleTestPrint = async () => {
+    setIsTestPrinting(true);
+    
+    try {
+      const dummyReceiptData = {
+        orderNumber: `TEST-${Date.now()}`,
+        customerName: "Test Customer",
+        items: [
+          {
+            name: "Coffee",
+            quantity: 2,
+            price: 50,
+            subtotal: 100,
+          },
+          {
+            name: "Sandwich",
+            quantity: 1,
+            price: 80,
+            subtotal: 80,
+          },
+          {
+            name: "Burger",
+            quantity: 1,
+            price: 120,
+            subtotal: 120,
+          },
+        ],
+        subtotal: 300,
+        discount: 30,
+        total: 270,
+        paymentMethod: "cash",
+        date: new Date().toISOString(),
+        status: "completed",
+      };
+      
+      const result = await printBill(dummyReceiptData);
+      
+      if (result.success) {
+        toast.success("Test print sent successfully");
+      } else {
+        toast.error(`Test print failed: ${result.message || "Unknown error"}`, {
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error('Error sending test print:', error);
+      toast.error('Failed to send test print');
+    } finally {
+      setIsTestPrinting(false);
+    }
+  };
 
   // Handlers
   const handleCheckout = () => {
@@ -176,7 +233,19 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
               Transaction History
             </OwnerTab>
           </OwnerTabList>
-          <PrinterStatus />
+          <div className="flex items-center gap-2">
+            <PrinterStatus />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestPrint}
+              disabled={isTestPrinting}
+              className="flex items-center gap-2"
+            >
+              <TestTube2 className={`w-4 h-4 ${isTestPrinting ? 'animate-pulse' : ''}`} />
+              {isTestPrinting ? 'Testing...' : 'Test Printer'}
+            </Button>
+          </div>
         </div>
 
         {/* Single shared content container - only one panel rendered at a time */}
