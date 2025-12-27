@@ -61,52 +61,48 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     setIsTestPrinting(true);
     
     try {
-      const subtotal = 300;
-      const discount = 30;
-      const taxableAmount = subtotal - discount;
-      const tax = taxableAmount * 0.05; // 5% GST
+      const subtotal = 470.00;
+      const discount = 50.00;
+      const deliveryCharge = 40.00;
+      const packagingFee = 15.00;
+      
+      const taxableAmount = subtotal - discount + deliveryCharge + packagingFee;
+      const tax = 84.60; // Pre-calculated tax
       const total = taxableAmount + tax;
+      
+      const testBillId = `TEST-${Date.now()}`;
       
       const dummyReceiptData = {
         version: "1.0.0",
-        billId: `TEST-${Date.now()}`,
+        billId: testBillId,
         vendorId: canteenId,
         items: [
           {
-            itemId: "ITEM-1",
-            name: "Coffee",
-            quantity: 2,
-            unitPrice: 50,
-            totalPrice: 100,
-            description: "Hot beverage",
-            taxRate: 5.0,
-            discount: 0,
+            itemId: "PROD-101",
+            name: "Espresso Coffee",
+            quantity: 2.0,
+            unitPrice: 120.00,
+            totalPrice: 240.00,
           },
           {
-            itemId: "ITEM-2",
-            name: "Sandwich",
-            quantity: 1,
-            unitPrice: 80,
-            totalPrice: 80,
-            description: "Veg sandwich",
-            taxRate: 5.0,
-            discount: 0,
+            itemId: "PROD-205",
+            name: "Chocolate Muffin",
+            quantity: 1.0,
+            unitPrice: 80.00,
+            totalPrice: 80.00,
           },
           {
-            itemId: "ITEM-3",
-            name: "Burger",
-            quantity: 1,
-            unitPrice: 120,
-            totalPrice: 120,
-            description: "Chicken burger",
-            taxRate: 5.0,
-            discount: 0,
+            itemId: "PROD-350",
+            name: "Fresh Orange Juice (Large)",
+            quantity: 1.5,
+            unitPrice: 100.00,
+            totalPrice: 150.00,
           },
         ],
         subtotal: subtotal,
         tax: tax,
         total: total,
-        paymentMode: "CASH",
+        paymentMode: "UPI",
         timestamp: new Date().toISOString(),
         currency: "INR",
         customerInfo: {
@@ -115,8 +111,25 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
           email: "test@example.com",
         },
         discount: discount,
-        notes: "Test print for printer setup verification",
-        metadata: {},
+        charges: [
+          {
+            name: "Delivery Charge",
+            value: deliveryCharge,
+            isPercentage: false,
+          },
+          {
+            name: "Packaging Fee",
+            value: packagingFee,
+            isPercentage: false,
+          },
+        ],
+        orderOtp: "8745",
+        barcode: testBillId,
+        notes: "Thank you for your order! This is a test print.",
+        metadata: {
+          testPrint: true,
+          timestamp: Date.now(),
+        },
       };
       
       const result = await printBill(dummyReceiptData);
@@ -153,7 +166,10 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
 
   // Format transaction data for printing
   const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; tax: number; total: number }) => {
-    return {
+    // Generate 4-digit OTP for order verification
+    const orderOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    
+    const payload: any = {
       version: "1.0.0",
       billId: transaction.orderNumber,
       vendorId: canteenId,
@@ -163,9 +179,6 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         quantity: item.quantity,
         unitPrice: item.price,
         totalPrice: item.price * item.quantity,
-        description: "",
-        taxRate: 5.0,
-        discount: 0,
       })),
       subtotal: totals.subtotal,
       tax: totals.tax,
@@ -173,15 +186,27 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
       paymentMode: transaction.paymentMethod.toUpperCase(),
       timestamp: transaction.createdAt.toISOString(),
       currency: "INR",
-      customerInfo: {
-        name: transaction.customerName,
-        phone: "",
-        email: "",
-      },
-      discount: totals.discount,
-      notes: "",
-      metadata: {},
     };
+
+    // Add customerInfo only if customer name is provided
+    if (transaction.customerName && transaction.customerName.trim()) {
+      payload.customerInfo = {
+        name: transaction.customerName,
+      };
+    }
+
+    // Add discount only if it exists
+    if (totals.discount > 0) {
+      payload.discount = totals.discount;
+    }
+
+    // Add order OTP for pickup verification
+    payload.orderOtp = orderOtp;
+
+    // Add barcode data (use order number as barcode)
+    payload.barcode = transaction.orderNumber;
+
+    return payload;
   };
 
   // Send bill to printer
