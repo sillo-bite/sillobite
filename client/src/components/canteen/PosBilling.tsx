@@ -14,6 +14,8 @@ import { TransactionHistory } from "@/components/pos/TransactionHistory";
 import PrinterStatus from "@/components/common/PrinterStatus";
 import { printWithRetry, printBill } from "@/services/localPrinterService";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
 
 export default function PosBilling({ canteenId }: PosBillingProps) {
@@ -23,6 +25,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [activeTab, setActiveTab] = useState<"billing" | "history">("billing");
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showCartSheet, setShowCartSheet] = useState(false);
   
   // Form State
   const [customerName, setCustomerName] = useState("");
@@ -224,16 +227,16 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   return (
     <OwnerPageLayout>
       <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <OwnerTabList>
             <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
               Billing
             </OwnerTab>
             <OwnerTab value="history" icon={<History className="w-4 h-4" />}>
-              Transaction History
+              History
             </OwnerTab>
           </OwnerTabList>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <PrinterStatus />
             <Button
               variant="outline"
@@ -243,7 +246,8 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
               className="flex items-center gap-2"
             >
               <TestTube2 className={`w-4 h-4 ${isTestPrinting ? 'animate-pulse' : ''}`} />
-              {isTestPrinting ? 'Testing...' : 'Test Printer'}
+              <span className="hidden sm:inline">{isTestPrinting ? 'Testing...' : 'Test Printer'}</span>
+              <span className="sm:hidden">{isTestPrinting ? 'Test...' : 'Test'}</span>
             </Button>
           </div>
         </div>
@@ -251,32 +255,81 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         {/* Single shared content container - only one panel rendered at a time */}
         <div className="pos-billing-tab-content flex-1 flex flex-col min-h-0 overflow-hidden mt-4">
           {activeTab === "billing" ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
-              <MenuGrid
-                menuItems={menuItems}
-                categories={categories}
-                searchQuery={searchQuery}
-                selectedCategory={selectedCategory}
-                isLoading={isLoading}
-                onSearchChange={setSearchQuery}
-                onCategoryChange={setSelectedCategory}
-                onItemClick={addToCart}
-              />
+            <>
+              {/* Desktop: Side by side | Mobile: Full width menu only */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
+                <MenuGrid
+                  menuItems={menuItems}
+                  categories={categories}
+                  searchQuery={searchQuery}
+                  selectedCategory={selectedCategory}
+                  isLoading={isLoading}
+                  onSearchChange={setSearchQuery}
+                  onCategoryChange={setSelectedCategory}
+                  onItemClick={addToCart}
+                />
 
-              <CartPanel
-                cart={cart}
-                customerName={customerName}
-                discountConfig={discountConfig}
-                totals={totals}
-                isProcessing={isProcessing}
-                onCustomerNameChange={setCustomerName}
-                onQuantityChange={updateQuantity}
-                onRemoveItem={removeFromCart}
-                onClearCart={resetForm}
-                onDiscountConfigChange={handleDiscountConfigChange}
-                onCheckout={handleCheckout}
-              />
-            </div>
+                {/* Desktop Cart - Hidden on mobile */}
+                <div className="hidden lg:block">
+                  <CartPanel
+                    cart={cart}
+                    customerName={customerName}
+                    discountConfig={discountConfig}
+                    totals={totals}
+                    isProcessing={isProcessing}
+                    onCustomerNameChange={setCustomerName}
+                    onQuantityChange={updateQuantity}
+                    onRemoveItem={removeFromCart}
+                    onClearCart={resetForm}
+                    onDiscountConfigChange={handleDiscountConfigChange}
+                    onCheckout={handleCheckout}
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Floating Cart Button */}
+              {cart.length > 0 && (
+                <button
+                  onClick={() => setShowCartSheet(true)}
+                  className="lg:hidden fixed bottom-6 right-6 z-40 bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 pr-5"
+                >
+                  <ShoppingCart className="w-6 h-6" />
+                  <Badge className="bg-white text-primary font-bold">
+                    {cart.length}
+                  </Badge>
+                </button>
+              )}
+
+              {/* Mobile Cart Sheet */}
+              <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
+                <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5" />
+                      Cart ({cart.length} items)
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-hidden">
+                    <CartPanel
+                      cart={cart}
+                      customerName={customerName}
+                      discountConfig={discountConfig}
+                      totals={totals}
+                      isProcessing={isProcessing}
+                      onCustomerNameChange={setCustomerName}
+                      onQuantityChange={updateQuantity}
+                      onRemoveItem={removeFromCart}
+                      onClearCart={resetForm}
+                      onDiscountConfigChange={handleDiscountConfigChange}
+                      onCheckout={() => {
+                        setShowCartSheet(false);
+                        handleCheckout();
+                      }}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </>
           ) : (
             <TransactionHistory transactions={transactions} />
           )}
