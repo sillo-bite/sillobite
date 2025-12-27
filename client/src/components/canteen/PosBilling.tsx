@@ -8,7 +8,7 @@ import { usePosOrder } from "@/hooks/usePosOrder";
 import { calculateOrderTotals } from "@/utils/posCalculations";
 import { MenuGrid } from "@/components/pos/MenuGrid";
 import { CartPanel } from "@/components/pos/CartPanel";
-import { PaymentDialog } from "@/components/pos/PaymentDialog";
+import { PosCheckoutDialog } from "@/components/pos/PosCheckoutDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
 import { TransactionHistory } from "@/components/pos/TransactionHistory";
 import PrinterStatus from "@/components/common/PrinterStatus";
@@ -20,7 +20,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"billing" | "history">("billing");
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   
   // Form State
@@ -56,12 +56,12 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
       return;
     }
 
+    // Set default customer name if not provided
     if (!customerName.trim()) {
-      toast.error("Please enter customer name.");
-      return;
+      setCustomerName("Customer");
     }
 
-    setShowPaymentDialog(true);
+    setShowCheckoutDialog(true);
   };
 
   // Format transaction data for printing
@@ -135,7 +135,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     });
 
     if (transaction) {
-      setShowPaymentDialog(false);
+      setShowCheckoutDialog(false);
       setShowReceipt(true);
       setLastTransactionForPrint(transaction);
       setLastTotalsForPrint(totals);
@@ -214,15 +214,18 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         </div>
       </OwnerTabs>
 
-      {/* Payment Method Dialog */}
-      <PaymentDialog
-        open={showPaymentDialog}
-        onOpenChange={setShowPaymentDialog}
-        selectedPaymentMethod={selectedPaymentMethod}
+      {/* POS Checkout Dialog */}
+      <PosCheckoutDialog
+        open={showCheckoutDialog}
+        onOpenChange={setShowCheckoutDialog}
         totals={totals}
-        isProcessing={isProcessing}
-        onPaymentMethodChange={setSelectedPaymentMethod}
-        onConfirm={handlePayment}
+        cart={cart}
+        customerName={customerName || "Customer"}
+        canteenId={canteenId}
+        onOrderCreated={() => {
+          refetchTransactions();
+          resetForm();
+        }}
       />
 
       {/* Receipt Dialog */}

@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Router, Route, Switch, useRoute, useLocation } from "wouter";
 import { CartProvider } from "@/contexts/CartContext";
+import { LocationProvider } from "@/contexts/LocationContext";
 import { CanteenProvider } from "@/contexts/CanteenContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -173,14 +174,15 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider>
-          <CartProvider>
-            <CanteenProvider>
-              <FavoritesProvider>
-                <NotificationProvider>
-                  <SEOHead />
-                  <PerformanceOptimizer />
-                  <InstallPWA />
-                  <Router>
+          <LocationProvider>
+            <CartProvider>
+              <CanteenProvider>
+                <FavoritesProvider>
+                  <NotificationProvider>
+                    <SEOHead />
+                    <PerformanceOptimizer />
+                    <InstallPWA />
+                    <Router>
                     <Switch>
                       <Route path="/" component={PartnerLandingPage} />
                       <Route path="/splashscreen" component={SplashScreen} />
@@ -548,10 +550,11 @@ const App = () => {
                       <Route component={NotFound} />
                     </Switch>
                   </Router>
-                </NotificationProvider>
-              </FavoritesProvider>
-            </CanteenProvider>
-          </CartProvider>
+                  </NotificationProvider>
+                </FavoritesProvider>
+              </CanteenProvider>
+            </CartProvider>
+          </LocationProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

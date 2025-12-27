@@ -32,6 +32,10 @@ model User {
   // For organization guest users
   organizationId      String?  @map("organization_id")
   
+  // User selected location (for filtering canteens, menu, etc.)
+  selectedLocationType String?  @map("selected_location_type") // "college", "organization", or "restaurant"
+  selectedLocationId   String?  @map("selected_location_id") // ID of the selected college/organization/restaurant
+  
   // Profile completion status
   isProfileComplete   Boolean? @default(false) @map("is_profile_complete")
   

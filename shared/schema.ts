@@ -37,6 +37,8 @@ export type MenuItem = {
   storeCounterId?: string; // Store counter ID for this menu item
   paymentCounterId?: string; // Payment counter ID for this menu item
   kotCounterId?: string; // KOT (Kitchen Order Ticket) counter ID for this menu item (optional)
+  cookingTime?: number; // Cooking/preparation time in minutes (optional, defaults to 0)
+  calories?: number; // Calorie content in kcal (optional, defaults to 0)
   createdAt: Date;
 };
 
@@ -652,6 +654,8 @@ export const insertUserSchema = z.object({
   isPassed: z.boolean().optional(),
   staffId: z.string().optional(),
   organizationId: z.string().optional(), // Organization ID for guest users
+  selectedLocationType: z.string().optional(), // Selected location type (college, organization, restaurant)
+  selectedLocationId: z.string().optional(), // Selected location ID
   isProfileComplete: z.boolean().optional(),
   passwordHash: z.string().optional(), // Password hash for email/password authentication
 });
@@ -680,6 +684,9 @@ export const insertMenuItemSchema = z.object({
   storeCounterId: z.string().nullable().optional(),
   paymentCounterId: z.string().nullable().optional(),
   kotCounterId: z.string().nullable().optional(),
+  // Cooking time and calories (optional, defaults to 0)
+  cookingTime: z.number().min(0).optional(),
+  calories: z.number().min(0).optional(),
 });
 
 export const insertOrderSchema = z.object({

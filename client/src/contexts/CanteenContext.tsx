@@ -7,6 +7,7 @@ import { useCart } from './CartContext';
 import { useAuthSync } from '@/hooks/useDataSync';
 import { useUserFromCache } from '@/hooks/useUserFromCache';
 import { isTempUser, getTempUserData, getServerTempUserSession } from '@/utils/tempUser';
+import { useLocation as useLocationContext } from './LocationContext';
 
 interface CanteenContextType {
   selectedCanteen: Canteen | null;
@@ -34,6 +35,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const hasManuallySelected = React.useRef(false); // Track if user manually selected a canteen
   const { user, isAuthenticated } = useAuthSync();
   const { initializeCartForCanteen } = useCart();
+  const { selectedLocationType, selectedLocationId, isLoading: locationLoading } = useLocationContext();
 
   // Sequential flow: Fetch user from cache first, then use that to fetch canteens
   const { data: cachedUser, isLoading: userLoading } = useUserFromCache();
@@ -128,15 +130,17 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const isAdminPage = window.location.pathname.startsWith('/admin');
   
   // Sequential flow: Only fetch canteens after user data is available
-  const shouldFetchCanteens = (effectiveIsAuthenticated || isTemporaryUser) && !isAdminPage && !userLoading;
+  const shouldFetchCanteens = (effectiveIsAuthenticated || isTemporaryUser) && !isAdminPage && !userLoading && !locationLoading;
 
   // Determine institution type and ID for the new unified hook
-  // Use effective user data (cached or auth) or temp user data
-  const institutionType = shouldUseCollegeFilter ? 'college' : 
+  // PRIORITY: Use selectedLocation if available, otherwise fall back to user's college/organization
+  const institutionType = selectedLocationType ? selectedLocationType : 
+                         (shouldUseCollegeFilter ? 'college' : 
                          shouldUseOrganizationFilter ? 'organization' : 
                          shouldUseRestaurantFilter ? 'restaurant' :
-                         null;
-  const institutionId = shouldUseCollegeFilter ? userCollege : 
+                         null);
+  const institutionId = selectedLocationId ? selectedLocationId :
+                        (shouldUseCollegeFilter ? userCollege : 
                         shouldUseOrganizationFilter ? (userOrganization || (collegeIsOrganization ? userCollege : null)) : 
                         shouldUseRestaurantFilter ? (
                           // For authenticated users with restaurant context, use their restaurantId
@@ -144,11 +148,13 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
                           // For temporary users, use the restaurant ID from temp session
                           serverTempUser?.restaurantId || tempUserData?.restaurantId
                         ) :
-                        null;
+                        null);
   
   // Debug logging for organization detection and filter decisions (after variables are defined)
   useEffect(() => {
     console.log('🏢 ===== CANTEEN CONTEXT - ORGANIZATION DETECTION =====');
+    console.log('🏢 Selected Location Type:', selectedLocationType);
+    console.log('🏢 Selected Location ID:', selectedLocationId);
     console.log('🏢 Effective User:', effectiveUser);
     console.log('🏢 User College:', userCollege);
     console.log('🏢 User Organization:', userOrganization);
@@ -173,7 +179,18 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
       console.log('🏢   - Final Institution ID:', institutionId);
     }
     console.log('🏢 ===== END CANTEEN CONTEXT =====');
-  }, [effectiveUser, userCollege, userOrganization, effectiveIsAuthenticated, isAdmin, isTemporaryUser, hasRestaurantContext, shouldUseRestaurantFilter, collegeIsOrganization, hasRealCollege, hasRealOrganization, shouldUseCollegeFilter, shouldUseOrganizationFilter, institutionType, institutionId, shouldFetchCanteens]);
+  }, [selectedLocationType, selectedLocationId, effectiveUser, userCollege, userOrganization, effectiveIsAuthenticated, isAdmin, isTemporaryUser, hasRestaurantContext, shouldUseRestaurantFilter, collegeIsOrganization, hasRealCollege, hasRealOrganization, shouldUseCollegeFilter, shouldUseOrganizationFilter, institutionType, institutionId, shouldFetchCanteens]);
+  
+  // Listen for location changes and reset selected canteen
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setSelectedCanteen(null);
+      hasManuallySelected.current = false;
+    };
+    
+    window.addEventListener('locationChanged', handleLocationChange);
+    return () => window.removeEventListener('locationChanged', handleLocationChange);
+  }, []);
 
   // Use lazy loading for institution-specific canteens
   const { 

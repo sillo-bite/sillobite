@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Heart, Plus, Minus, Utensils } from "lucide-react";
+import { Heart, Plus, Minus, Utensils, Star, Clock, Flame } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCanteenContext } from "@/contexts/CanteenContext";
@@ -106,10 +106,10 @@ const MenuItemCard = React.memo(function MenuItemCard({
   }, [item.id, item.name, item.price, item.isVegetarian, item.imageUrl, item.description, selectedCanteen?.id, availableCanteens, toggleFavorite]);
 
   const cardClassName = useMemo(() => {
-    const baseClasses = 'rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-0 overflow-hidden transform relative';
+    const baseClasses = 'rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border-0 overflow-hidden transform relative';
     const themeClasses = resolvedTheme === 'dark' 
       ? 'bg-card hover:bg-gray-950' 
-      : 'bg-card hover:bg-gray-50';
+      : 'bg-white hover:bg-gray-50';
     
     return `${baseClasses} ${themeClasses}`;
   }, [resolvedTheme]);
@@ -143,13 +143,13 @@ const MenuItemCard = React.memo(function MenuItemCard({
 
   const textClassName = useMemo(() => {
     const baseClasses = {
-      title: 'font-bold text-lg truncate leading-tight',
-      price: 'text-lg font-bold leading-tight',
+      title: 'font-bold text-sm truncate leading-tight',
+      price: 'text-base font-bold leading-tight',
       description: 'text-xs leading-tight truncate'
     };
     
     const themeClasses = {
-      title: resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-800',
+      title: resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900',
       price: resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900',
       description: resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
     };
@@ -176,7 +176,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
 
   const contentPaddingClassName = useMemo(() => {
     if (variant === 'quickpick' || variant === 'trending') {
-      return 'px-3 py-2.5';
+      return 'px-3 py-3';
     }
     return 'px-3 py-3';
   }, [variant]);
@@ -225,15 +225,34 @@ const MenuItemCard = React.memo(function MenuItemCard({
         {/* Bottom Section - Content */}
         <div className={contentPaddingClassName}>
           {/* Content Section */}
-          <div className={`flex flex-col ${variant === 'quickpick' || variant === 'trending' ? 'gap-1 mb-1.5' : 'gap-1.5 mb-2'}`}>
-            {/* Item name */}
-            <h3 className={textClassName('title')}>
-              {item.name}
-            </h3>
+          <div className={`flex flex-col ${variant === 'quickpick' || variant === 'trending' ? 'gap-1 mb-2' : 'gap-1.5 mb-2'}`}>
+            {/* Item name and rating */}
+            <div className="flex items-center justify-between gap-2">
+              <h3 className={`${textClassName('title')} flex-1`}>
+                {item.name}
+              </h3>
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                <span className={`text-xs font-semibold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                  {(4.0 + Math.random() * 0.9).toFixed(1)}
+                </span>
+              </div>
+            </div>
             
-            {/* Price */}
-            <div className={textClassName('price')}>
-              ₹{item.price}
+            {/* Time and Calories */}
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              {(item.cookingTime && item.cookingTime > 0) && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{item.cookingTime} min</span>
+                </div>
+              )}
+              {(item.calories && item.calories > 0) && (
+                <div className="flex items-center gap-1">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>{item.calories} kcal</span>
+                </div>
+              )}
             </div>
             
             {/* Description */}
@@ -244,54 +263,54 @@ const MenuItemCard = React.memo(function MenuItemCard({
             )}
           </div>
           
-          {/* Add to cart button */}
-          <div className="flex justify-end items-center">
-              {item.id && getCartQuantity(item.id) > 0 ? (
-                <div className={quantitySelectorClassName}>
-                  <button
-                    onClick={handleRemoveFromCart}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                      resolvedTheme === 'dark' 
-                        ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                    }`}
-                  >
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <span className={`text-base font-bold min-w-[32px] text-center px-2 ${
-                      resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                    }`}>
-                    {String(item.id ? getCartQuantity(item.id) : 0).padStart(2, '0')}
-                  </span>
-                  <button
-                    onClick={handleAddToCart}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                      resolvedTheme === 'dark' 
-                        ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                        : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                    } ${
-                      !isItemAvailable 
-                        ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    disabled={!isItemAvailable}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
+          {/* Price and Add to cart button */}
+          <div className="flex justify-between items-center">
+            {/* Price */}
+            <div className={textClassName('price')}>
+              ₹{item.price}
+            </div>
+            
+            {/* Add to cart button */}
+            {item.id && getCartQuantity(item.id) > 0 ? (
+              <div className={quantitySelectorClassName}>
+                <button
+                  onClick={handleRemoveFromCart}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
+                    resolvedTheme === 'dark' 
+                      ? 'bg-gray-700 text-white hover:bg-gray-600' 
+                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                  }`}
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className={`text-sm font-bold min-w-[28px] text-center px-2 ${
+                    resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                  }`}>
+                  {String(item.id ? getCartQuantity(item.id) : 0).padStart(2, '0')}
+                </span>
                 <button
                   onClick={handleAddToCart}
-                  className={`${addButtonClassName} ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-orange-500 text-white hover:bg-orange-600 ${
                     !isItemAvailable 
                       ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                   disabled={!isItemAvailable}
                 >
-                  <Plus className={`w-5 h-5 ${
-                    resolvedTheme === 'dark' ? 'text-green-400' : 'text-green-600'
-                  }`} />
+                  <Plus className="w-3.5 h-3.5" />
                 </button>
-              )}
+              </div>
+            ) : (
+              <button
+                onClick={handleAddToCart}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 shadow-md bg-orange-500 text-white hover:bg-orange-600 ${
+                  !isItemAvailable 
+                    ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={!isItemAvailable}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </CardContent>
