@@ -1957,12 +1957,41 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         }
       }
 
-      // Create user in database
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
+      // Check if user exists first to decide between create (POST) or update (PUT)
+      console.log('🔍 Checking if user exists by email:', userEmail);
+      let response;
+      
+      try {
+        const userCheckResponse = await fetch(`/api/users/by-email/${encodeURIComponent(userEmail)}`);
+        
+        if (userCheckResponse.ok) {
+          const existingUser = await userCheckResponse.json();
+          console.log('✅ User exists, updating profile:', existingUser.id);
+          
+          // Use PUT to update existing user
+          response = await fetch(`/api/users/${existingUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+        } else {
+          console.log('✨ User does not exist, creating new user');
+          // Create user in database
+          response = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+          });
+        }
+      } catch (checkError) {
+        console.error('❌ Error checking user existence:', checkError);
+        // Fallback to POST if check fails
+        response = await fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData)
+        });
+      }
 
       if (response.ok) {
         const newUser = await response.json();

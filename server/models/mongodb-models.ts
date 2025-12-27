@@ -49,6 +49,8 @@ export interface IMenuItem extends Document {
   storeCounterId?: string; // Store counter ID for this menu item
   paymentCounterId?: string; // Payment counter ID for this menu item
   kotCounterId?: string; // KOT (Kitchen Order Ticket) counter ID for this menu item (optional)
+  cookingTime?: number; // Cooking/preparation time in minutes (optional, defaults to 0)
+  calories?: number; // Calorie content in kcal (optional, defaults to 0)
   createdAt: Date;
 }
 
@@ -70,6 +72,8 @@ const MenuItemSchema = new Schema<IMenuItem>({
   storeCounterId: { type: String }, // Store counter ID for this menu item
   paymentCounterId: { type: String }, // Payment counter ID for this menu item
   kotCounterId: { type: String }, // KOT counter ID for this menu item (optional)
+  cookingTime: { type: Number, default: 0 }, // Cooking/preparation time in minutes
+  calories: { type: Number, default: 0 }, // Calorie content in kcal
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -152,6 +156,7 @@ export interface IOrder extends Document {
   allCounterIds?: string[]; // All counter IDs for this order
   isOffline?: boolean; // For offline orders
   paymentStatus?: string; // Payment status for offline orders
+  paymentMethod?: string; // Payment method: 'online', 'offline', 'upi', 'cash', etc.
   isCounterOrder?: boolean; // For counter orders
   itemStatusByCounter?: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } }; // Item-level status per counter
   deliveryPersonId?: string; // Delivery person assigned to this order
@@ -202,6 +207,7 @@ const OrderSchema = new Schema<IOrder>({
   allCounterIds: { type: [String] }, // All counter IDs for this order
   isOffline: { type: Boolean }, // For offline orders
   paymentStatus: { type: String }, // Payment status for offline orders
+  paymentMethod: { type: String }, // Payment method: 'online', 'offline', 'upi', 'cash', etc.
   isCounterOrder: { type: Boolean }, // For counter orders
   itemStatusByCounter: { type: Schema.Types.Mixed, default: {} }, // Item-level status per counter
   deliveryPersonId: { type: String }, // Delivery person assigned to this order

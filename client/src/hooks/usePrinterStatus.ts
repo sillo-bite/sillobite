@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { checkStatus } from "@/services/localPrinterService";
 
 interface PrinterStatus {
@@ -7,49 +7,55 @@ interface PrinterStatus {
   error: string | null;
 }
 
+interface UsePrinterStatusReturn extends PrinterStatus {
+  retry: () => Promise<void>;
+}
+
 const POLL_INTERVAL = 5000; // Check every 5 seconds
 
 /**
  * Hook to monitor local printer helper status
- * Polls the status endpoint periodically
+ * Polls the status endpoint periodically and exposes manual retry
  */
-export function usePrinterStatus(): PrinterStatus {
+export function usePrinterStatus(): UsePrinterStatusReturn {
   const [status, setStatus] = useState<PrinterStatus>({
     isConnected: false,
     isLoading: true,
     error: null,
   });
 
+  const checkPrinterStatus = useCallback(async () => {
+    try {
+      const result = await checkStatus();
+      setStatus({
+        isConnected: result.available,
+        isLoading: false,
+        error: result.available ? null : result.message || "Not connected",
+      });
+    } catch (error) {
+      setStatus({
+        isConnected: false,
+        isLoading: false,
+        error: error instanceof Error ? error.message : "Failed to check printer status",
+      });
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     let pollInterval: NodeJS.Timeout | null = null;
 
-    const checkPrinterStatus = async () => {
-      try {
-        const result = await checkStatus();
-        if (isMounted) {
-          setStatus({
-            isConnected: result.available,
-            isLoading: false,
-            error: result.available ? null : result.message || "Not connected",
-          });
-        }
-      } catch (error) {
-        if (isMounted) {
-          setStatus({
-            isConnected: false,
-            isLoading: false,
-            error: error instanceof Error ? error.message : "Failed to check printer status",
-          });
-        }
+    const runCheck = async () => {
+      if (isMounted) {
+        await checkPrinterStatus();
       }
     };
 
     // Initial check
-    checkPrinterStatus();
+    runCheck();
 
     // Set up polling
-    pollInterval = setInterval(checkPrinterStatus, POLL_INTERVAL);
+    pollInterval = setInterval(runCheck, POLL_INTERVAL);
 
     return () => {
       isMounted = false;
@@ -57,9 +63,15 @@ export function usePrinterStatus(): PrinterStatus {
         clearInterval(pollInterval);
       }
     };
-  }, []);
+  }, [checkPrinterStatus]);
 
-  return status;
+  const retry = useCallback(async () => {
+    setStatus(prev => ({ ...prev, isLoading: true }));
+    await checkPrinterStatus();
+  }, [checkPrinterStatus]);
+
+  return { ...status, retry };
 }
+
 
 

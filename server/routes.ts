@@ -353,6 +353,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Auto-set initial location based on college or organization
+      if (validatedData.college && !(validatedData as any).organizationId) {
+        // User registered with college
+        (validatedData as any).selectedLocationType = 'college';
+        (validatedData as any).selectedLocationId = validatedData.college;
+        console.log(`📍 Auto-setting location to college: ${validatedData.college}`);
+      } else if ((validatedData as any).organizationId) {
+        // User registered via organization QR
+        (validatedData as any).selectedLocationType = 'organization';
+        (validatedData as any).selectedLocationId = (validatedData as any).organizationId;
+        console.log(`📍 Auto-setting location to organization: ${(validatedData as any).organizationId}`);
+      }
+      
       const user = await storage.createUser(validatedData);
       console.log(`✅ User created successfully - ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Role: ${user.role}`);
       res.status(201).json(user);
@@ -471,6 +484,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Auto-set initial location based on college or organization (if not already set)
+      if (!existingUser.selectedLocationType && !existingUser.selectedLocationId) {
+        if (req.body.college && !req.body.organizationId) {
+          // User registered with college
+          req.body.selectedLocationType = 'college';
+          req.body.selectedLocationId = req.body.college;
+          console.log(`📍 Auto-setting location to college: ${req.body.college}`);
+        } else if (req.body.organizationId) {
+          // User registered via organization QR
+          req.body.selectedLocationType = 'organization';
+          req.body.selectedLocationId = req.body.organizationId;
+          console.log(`📍 Auto-setting location to organization: ${req.body.organizationId}`);
+        }
+      }
+      
       const user = await storage.updateUser(userId, req.body);
       console.log(`✅ User ${userId} updated successfully:`, JSON.stringify(user, null, 2));
       
@@ -478,6 +506,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("❌ Error updating user:", error);
       res.status(500).json({ message: "Internal server error", error: error?.message || String(error) });
+    }
+  });
+
+  // Get locations by type (college, organization, restaurant)
+  app.get("/api/locations/:type", async (req, res) => {
+    try {
+      const type = req.params.type as 'college' | 'organization' | 'restaurant';
+      console.log(`📍 GET /api/locations/${type} - Fetching locations`);
+
+      // Fetch system settings to get the lists
+      const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
+      const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
+      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
+
+      let locations: any[] = [];
+
+      if (type === 'college') {
+        locations = settings?.colleges?.list || [];
+      } else if (type === 'organization') {
+        locations = settings?.organizations?.list || [];
+      } else if (type === 'restaurant') {
+        locations = settings?.restaurants?.list || [];
+      } else {
+        return res.status(400).json({ message: "Invalid location type. Must be 'college', 'organization', or 'restaurant'" });
+      }
+
+      console.log(`✅ Found ${locations.length} ${type}s`);
+      res.json({ locations });
+    } catch (error) {
+      console.error(`❌ Error fetching locations:`, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Save user's selected location
+  app.put("/api/users/:id/location", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { locationType, locationId } = req.body;
+      
+      console.log(`📍 PUT /api/users/${userId}/location - Saving location:`, { locationType, locationId });
+
+      if (!locationType || !locationId) {
+        return res.status(400).json({ message: "locationType and locationId are required" });
+      }
+
+      if (!['college', 'organization', 'restaurant'].includes(locationType)) {
+        return res.status(400).json({ message: "Invalid locationType. Must be 'college', 'organization', or 'restaurant'" });
+      }
+
+      // Get user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user with selected location
+      const updateData: any = {
+        selectedLocationType: locationType,
+        selectedLocationId: locationId
+      };
+
+      const updatedUser = await storage.updateUser(userId, updateData);
+      console.log(`✅ User ${userId} location updated successfully`);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error(`❌ Error updating user location:`, error);
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -947,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           available: true,
           stock: { $gt: 0 }
         })
-          .select('_id name price imageUrl isVegetarian description isTrending storeCounterId paymentCounterId')
+          .select('_id name price imageUrl isVegetarian description isTrending storeCounterId paymentCounterId cookingTime calories')
           .sort({ trendingOrder: 1, createdAt: -1 })
           .limit(4)
           .lean()
@@ -960,7 +1056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stock: { $gt: 0 },
           isQuickPick: true
         })
-          .select('_id name price imageUrl isVegetarian description isQuickPick storeCounterId paymentCounterId')
+          .select('_id name price imageUrl isVegetarian description isQuickPick storeCounterId paymentCounterId cookingTime calories')
           .sort({ quickPickOrder: 1, createdAt: -1 })
           .limit(4)
           .lean()
@@ -1386,7 +1482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // OPTIMIZED: Get paginated menu items with proper query chain order
       // Order matters: find -> select -> populate -> sort -> skip -> limit -> lean
       const menuItems = await MenuItem.find(query)
-        .select('name price categoryId canteenId available stock description addOns isVegetarian isMarkable isTrending isQuickPick imageUrl imagePublicId storeCounterId paymentCounterId kotCounterId createdAt') // Select fields first (reduces data transfer)
+        .select('name price categoryId canteenId available stock description addOns isVegetarian isMarkable isTrending isQuickPick imageUrl imagePublicId storeCounterId paymentCounterId kotCounterId cookingTime calories createdAt') // Select fields first (reduces data transfer)
         .populate('categoryId', 'name icon imageUrl') // Populate after select (only populated fields needed)
         .sort(sortOptions) // Sort before skip/limit (uses index)
         .skip(skip) // Skip after sort
@@ -3602,6 +3698,526 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POS UPI Payment Initiation (for canteen owners using POS billing)
+  app.post("/api/pos/payments/initiate", async (req, res) => {
+    try {
+      const { amount, customerName, cart, canteenId, checkoutSessionId, totals } = req.body;
+      
+      if (!amount || !customerName || !cart || !canteenId || !checkoutSessionId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required fields: amount, customerName, cart, canteenId, checkoutSessionId" 
+        });
+      }
+
+      // Validate checkout session exists and is active
+      const checkoutSession = await CheckoutSessionService.getSession(checkoutSessionId);
+      if (!checkoutSession) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Checkout session not found" 
+        });
+      }
+
+      // Check if session is still active
+      const isActive = await CheckoutSessionService.isSessionActive(checkoutSessionId);
+      if (!isActive) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Checkout session has expired or is no longer active" 
+        });
+      }
+
+      // Check for duplicate payment from the same checkout session
+      const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
+      if (sessionDuplicateCheck.isDuplicate) {
+        console.log(`⚠️ Duplicate POS payment request blocked for checkout session ${checkoutSessionId}`);
+        
+        if (sessionDuplicateCheck.existingPayment) {
+          return res.status(409).json({
+            success: false,
+            message: "Payment is already in progress for this checkout session.",
+            errorCode: 'DUPLICATE_PAYMENT_REQUEST',
+            existingPayment: sessionDuplicateCheck.existingPayment
+          });
+        } else {
+          return res.status(409).json({
+            success: false,
+            message: "Payment is already in progress for this checkout session.",
+            errorCode: 'DUPLICATE_PAYMENT_REQUEST'
+          });
+        }
+      }
+
+      // Generate unique merchant order ID
+      const merchantOrderId = `POS_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Validate Razorpay configuration
+      if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
+        console.error('🚨 Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
+        return res.status(500).json({ 
+          success: false, 
+          message: "Payment gateway configuration error. Please contact support." 
+        });
+      }
+
+      // Create Razorpay order
+      const razorpayOrder = await createRazorpayOrder(
+        amount,
+        'INR',
+        merchantOrderId,
+        {
+          customerName,
+          canteenId: canteenId,
+          checkoutSessionId: checkoutSessionId,
+          orderType: 'pos'
+        }
+      );
+
+      console.log(`💰 POS Razorpay order created: ${razorpayOrder.id}`);
+
+      // Update checkout session status to payment_initiated
+      await CheckoutSessionService.updateStatus(
+        checkoutSessionId,
+        'payment_initiated',
+        {
+          razorpayOrderId: razorpayOrder.id,
+          merchantTransactionId: merchantOrderId,
+          amount: amount,
+          customerName: customerName,
+          cart: cart,
+          totals: totals,
+          canteenId: canteenId,
+          orderType: 'pos',
+          paymentInitiatedAt: new Date().toISOString()
+        }
+      );
+
+      // Store payment record
+      await storage.createPayment({
+        merchantTransactionId: merchantOrderId,
+        amount: amount * 100,
+        status: PAYMENT_STATUS.PENDING,
+        canteenId: canteenId,
+        checksum: '',
+        metadata: JSON.stringify({
+          customerName,
+          canteenId,
+          checkoutSessionId,
+          razorpayOrderId: razorpayOrder.id,
+          orderType: 'pos',
+          cart: cart,
+          totals: totals
+        })
+      });
+
+      res.json({
+        success: true,
+        merchantTransactionId: merchantOrderId,
+        razorpayOrderId: razorpayOrder.id,
+        keyId: RAZORPAY_CONFIG.KEY_ID,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        checkoutSessionId: checkoutSessionId,
+        qrCodeUrl: `upi://pay?pa=${RAZORPAY_CONFIG.KEY_ID}@razorpay&pn=Merchant&am=${amount}&cu=INR&tn=Order%20${merchantOrderId}`
+      });
+    } catch (error) {
+      console.error('POS Payment initiation error:', error);
+      
+      const checkoutSessionId = req.body.checkoutSessionId;
+      if (checkoutSessionId) {
+        try {
+          await CheckoutSessionService.updateStatus(checkoutSessionId, 'payment_failed');
+        } catch (updateError) {
+          console.error('Error updating checkout session status:', updateError);
+        }
+      }
+      
+      if ((error as any).error) {
+        return res.status(502).json({ 
+          success: false, 
+          message: `Payment gateway error: ${(error as any).error?.description || 'Service unavailable'}` 
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error during payment initiation" 
+      });
+    }
+  });
+
+  // POS Order Creation After Payment Success
+  app.post("/api/pos/orders/create", async (req, res) => {
+    try {
+      const { checkoutSessionId, paymentId, razorpayOrderId, razorpaySignature } = req.body;
+      
+      if (!checkoutSessionId || !paymentId || !razorpayOrderId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required fields: checkoutSessionId, paymentId, razorpayOrderId" 
+        });
+      }
+
+      // Verify payment signature
+      const isValid = verifyPaymentSignature(razorpayOrderId, paymentId, razorpaySignature);
+      if (!isValid) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid payment signature" 
+        });
+      }
+
+      // Get checkout session to retrieve cart and order data
+      const session = await CheckoutSessionService.getSession(checkoutSessionId);
+      if (!session) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Checkout session not found" 
+        });
+      }
+
+      // Parse metadata to get order details
+      const metadata = session.metadata ? JSON.parse(session.metadata) : {};
+      const { cart, totals, customerName, canteenId } = metadata;
+
+      if (!cart || !totals || !customerName || !canteenId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Incomplete order data in checkout session" 
+        });
+      }
+
+      // Generate unique order number and barcode
+      const orderNumber = generateOrderNumber();
+      const barcode = generateOrderNumber();
+
+      // Prepare order items
+      const orderItems = cart.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      // Process each item to add counter IDs
+      const storeCounterIds = new Set<string>();
+      const paymentCounterIds = new Set<string>();
+      const kotCounterIds = new Set<string>();
+      
+      for (const item of orderItems) {
+        const menuItem = await storage.getMenuItem(item.id);
+        
+        if (menuItem) {
+          item.storeCounterId = menuItem.storeCounterId || null;
+          item.paymentCounterId = menuItem.paymentCounterId || null;
+          item.kotCounterId = menuItem.kotCounterId || null;
+          item.isMarkable = menuItem.isMarkable || false;
+          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
+          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
+          item.available = menuItem.available !== undefined ? menuItem.available : true;
+          
+          if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
+          if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
+          if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
+        } else {
+          item.storeCounterId = null;
+          item.paymentCounterId = null;
+          item.kotCounterId = null;
+          item.isMarkable = false;
+          item.isVegetarian = true;
+          item.categoryId = null;
+          item.available = true;
+        }
+      }
+
+      const allStoreCounterIds = Array.from(storeCounterIds);
+      const allPaymentCounterIds = Array.from(paymentCounterIds);
+      const allKotCounterIds = Array.from(kotCounterIds);
+      const allCounterIds = Array.from(new Set([...allStoreCounterIds, ...allPaymentCounterIds, ...allKotCounterIds]));
+
+      // Determine if order has markable items
+      let hasMarkableItem = false;
+      for (const item of orderItems) {
+        if (item.isMarkable) {
+          hasMarkableItem = true;
+          break;
+        }
+      }
+
+      // POS orders are always paid, status based on markable items
+      const orderStatus = hasMarkableItem ? "pending" : "ready";
+      const paymentStatus = 'paid';
+
+      // Initialize itemStatusByCounter for auto-ready items
+      const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
+      for (const counterId of allCounterIds) {
+        itemStatusByCounter[counterId] = {};
+        for (const item of orderItems) {
+          if (!item.isMarkable) {
+            itemStatusByCounter[counterId][item.id] = 'ready';
+          } else {
+            itemStatusByCounter[counterId][item.id] = 'pending';
+          }
+        }
+      }
+
+      // Create order
+      const order = await storage.createOrder({
+        customerName: customerName,
+        collegeName: 'POS Order',
+        canteenId: canteenId,
+        customerId: 0,
+        items: JSON.stringify(orderItems),
+        amount: totals.total,
+        originalAmount: totals.subtotal,
+        discountAmount: totals.discount,
+        status: orderStatus,
+        orderNumber: orderNumber,
+        barcode: barcode,
+        estimatedTime: 15,
+        isOffline: false,
+        paymentStatus: paymentStatus,
+        orderType: 'takeaway',
+        allStoreCounterIds: allStoreCounterIds,
+        allPaymentCounterIds: allPaymentCounterIds,
+        allKotCounterIds: allKotCounterIds,
+        allCounterIds: allCounterIds,
+        itemStatusByCounter: JSON.stringify(itemStatusByCounter),
+        metadata: JSON.stringify({
+          orderType: 'pos',
+          checkoutSessionId: checkoutSessionId,
+          paymentId: paymentId,
+          razorpayOrderId: razorpayOrderId
+        })
+      });
+
+      console.log(`✅ POS Order ${orderNumber} created successfully with payment ${paymentId}`);
+
+      // Update checkout session to completed
+      await CheckoutSessionService.updateStatus(checkoutSessionId, 'completed', {
+        orderId: order.id,
+        orderNumber: orderNumber
+      });
+
+      // Update payment status
+      const payment = await storage.getPaymentByMerchantTxnId(metadata.merchantTransactionId);
+      if (payment) {
+        await storage.updatePayment(payment.id, {
+          status: PAYMENT_STATUS.SUCCESS,
+          metadata: JSON.stringify({
+            ...metadata,
+            orderId: order.id,
+            orderNumber: orderNumber,
+            paymentId: paymentId
+          })
+        });
+      }
+
+      // Broadcast order to WebSocket rooms
+      const wsManager = getWebSocketManager();
+      if (wsManager) {
+        const orderWithParsedData = {
+          ...order,
+          items: orderItems,
+          itemStatusByCounter: itemStatusByCounter
+        };
+
+        wsManager.broadcastToCanteen(canteenId, 'new_order', orderWithParsedData);
+        allCounterIds.forEach((counterId) => {
+          wsManager.broadcastToCounter(counterId, 'new_order', orderWithParsedData);
+        });
+      }
+
+      res.json({
+        success: true,
+        order: {
+          id: order.id,
+          orderNumber: orderNumber,
+          barcode: barcode,
+          status: orderStatus,
+          amount: totals.total,
+          customerName: customerName
+        }
+      });
+    } catch (error) {
+      console.error('POS Order creation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error during order creation" 
+      });
+    }
+  });
+
+  // POS Offline Order Creation
+  app.post("/api/pos/orders/create-offline", async (req, res) => {
+    try {
+      const { checkoutSessionId, customerName, cart, canteenId, totals } = req.body;
+      
+      if (!checkoutSessionId || !customerName || !cart || !canteenId || !totals) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required fields: checkoutSessionId, customerName, cart, canteenId, totals" 
+        });
+      }
+
+      // Get checkout session
+      const session = await CheckoutSessionService.getSession(checkoutSessionId);
+      if (!session) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Checkout session not found" 
+        });
+      }
+
+      // Generate unique order number and barcode
+      const orderNumber = generateOrderNumber();
+      const barcode = generateOrderNumber();
+
+      // Prepare order items
+      const orderItems = cart.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      // Process each item to add counter IDs
+      const storeCounterIds = new Set<string>();
+      const paymentCounterIds = new Set<string>();
+      const kotCounterIds = new Set<string>();
+      
+      for (const item of orderItems) {
+        const menuItem = await storage.getMenuItem(item.id);
+        
+        if (menuItem) {
+          item.storeCounterId = menuItem.storeCounterId || null;
+          item.paymentCounterId = menuItem.paymentCounterId || null;
+          item.kotCounterId = menuItem.kotCounterId || null;
+          item.isMarkable = menuItem.isMarkable || false;
+          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
+          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
+          item.available = menuItem.available !== undefined ? menuItem.available : true;
+          
+          if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
+          if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
+          if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
+        } else {
+          item.storeCounterId = null;
+          item.paymentCounterId = null;
+          item.kotCounterId = null;
+          item.isMarkable = false;
+          item.isVegetarian = true;
+          item.categoryId = null;
+          item.available = true;
+        }
+      }
+
+      const allStoreCounterIds = Array.from(storeCounterIds);
+      const allPaymentCounterIds = Array.from(paymentCounterIds);
+      const allKotCounterIds = Array.from(kotCounterIds);
+      const allCounterIds = Array.from(new Set([...allStoreCounterIds, ...allPaymentCounterIds, ...allKotCounterIds]));
+
+      // Determine if order has markable items
+      let hasMarkableItem = false;
+      for (const item of orderItems) {
+        if (item.isMarkable) {
+          hasMarkableItem = true;
+          break;
+        }
+      }
+
+      // Offline orders are always paid, status based on markable items
+      const orderStatus = hasMarkableItem ? "pending" : "ready";
+      const paymentStatus = 'paid';
+
+      // Initialize itemStatusByCounter for auto-ready items
+      const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
+      for (const counterId of allCounterIds) {
+        itemStatusByCounter[counterId] = {};
+        for (const item of orderItems) {
+          if (!item.isMarkable) {
+            itemStatusByCounter[counterId][item.id] = 'ready';
+          } else {
+            itemStatusByCounter[counterId][item.id] = 'pending';
+          }
+        }
+      }
+
+      // Create order
+      const order = await storage.createOrder({
+        customerName: customerName,
+        collegeName: 'POS Order',
+        canteenId: canteenId,
+        customerId: 0,
+        items: JSON.stringify(orderItems),
+        amount: totals.total,
+        originalAmount: totals.subtotal,
+        discountAmount: totals.discount,
+        status: orderStatus,
+        orderNumber: orderNumber,
+        barcode: barcode,
+        estimatedTime: 15,
+        isOffline: false,
+        paymentStatus: paymentStatus,
+        paymentMethod: 'offline',
+        orderType: 'takeaway',
+        allStoreCounterIds: allStoreCounterIds,
+        allPaymentCounterIds: allPaymentCounterIds,
+        allKotCounterIds: allKotCounterIds,
+        allCounterIds: allCounterIds,
+        itemStatusByCounter: JSON.stringify(itemStatusByCounter),
+        metadata: JSON.stringify({
+          orderType: 'pos',
+          checkoutSessionId: checkoutSessionId,
+          paymentMethod: 'offline'
+        })
+      });
+
+      console.log(`✅ POS Offline Order ${orderNumber} created successfully`);
+
+      // Update checkout session to completed
+      await CheckoutSessionService.updateStatus(checkoutSessionId, 'completed', {
+        orderId: order.id,
+        orderNumber: orderNumber,
+        paymentMethod: 'offline'
+      });
+
+      // Broadcast order to WebSocket rooms
+      const wsManager = getWebSocketManager();
+      if (wsManager) {
+        const orderWithParsedData = {
+          ...order,
+          items: orderItems,
+          itemStatusByCounter: itemStatusByCounter
+        };
+
+        wsManager.broadcastToCanteen(canteenId, 'new_order', orderWithParsedData);
+        allCounterIds.forEach((counterId) => {
+          wsManager.broadcastToCounter(counterId, 'new_order', orderWithParsedData);
+        });
+      }
+
+      res.json({
+        success: true,
+        order: {
+          id: order.id,
+          orderNumber: orderNumber,
+          barcode: barcode,
+          status: orderStatus,
+          amount: totals.total,
+          customerName: customerName
+        }
+      });
+    } catch (error) {
+      console.error('POS Offline Order creation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error during order creation" 
+      });
+    }
+  });
+
   // Get payment job status (for polling)
   app.get("/api/payments/job-status/:jobId", async (req, res) => {
     try {
@@ -5246,19 +5862,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create checkout session (called when checkout page loads)
   app.post("/api/checkout-sessions/create", async (req, res) => {
     try {
-      const { customerId, canteenId } = req.body;
+      const { customerId, canteenId, sessionDurationMinutes, sessionType } = req.body;
       
-      if (!customerId) {
+      // For POS sessions, customerId can be 0 (no customer ID required)
+      const isPosSession = sessionType === 'pos';
+      
+      if (!isPosSession && !customerId) {
         return res.status(400).json({ 
           success: false, 
           message: "Customer ID is required" 
         });
       }
 
+      // Use custom duration if provided, otherwise default to 20 minutes
+      // For POS sessions, default to 15 minutes
+      const duration = sessionDurationMinutes || (isPosSession ? 15 : 20);
+
       const sessionId = await CheckoutSessionService.createSession(
-        customerId,
+        customerId || 0,
         canteenId,
-        20 // 20 minutes session duration
+        duration
       );
 
       const sessionStatus = await CheckoutSessionService.getSessionStatus(sessionId);
@@ -5266,6 +5889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         sessionId,
+        sessionType: sessionType || 'user',
         ...sessionStatus
       });
     } catch (error) {

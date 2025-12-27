@@ -31,14 +31,19 @@ import {
   MapPin,
   Bell,
   FileText,
-  Shield
+  Shield,
+  Building2,
+  GraduationCap,
+  UtensilsCrossed
 } from "lucide-react";
 import BottomNavigation from "@/components/navigation/BottomNavigation";
 import UserProfileDisplay from "./UserProfileDisplay";
 import AppUpdateButton from "@/components/common/AppUpdateButton";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLocation as useLocationContext } from '@/contexts/LocationContext';
 import AddressManagement from "./AddressManagement";
+import LocationSelector from "./LocationSelector";
 
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
@@ -47,7 +52,9 @@ export default function ProfilePage() {
 
   const { logout } = useAuth();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { selectedLocationType, selectedLocationName } = useLocationContext();
   const [showAddresses, setShowAddresses] = useState(false);
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
 
   // Check if this is a temporary user
   const isTemporary = isTempUser(user);
@@ -211,6 +218,7 @@ export default function ProfilePage() {
 
   return (
     <>
+      {showLocationSelector && <LocationSelector onClose={() => setShowLocationSelector(false)} />}
        <div className={`min-h-screen overflow-x-hidden ${
         'bg-background'
       }`}>
@@ -323,6 +331,35 @@ export default function ProfilePage() {
                 : 'bg-white border border-gray-200 shadow-sm'
             }`}>
               <CardContent className="p-0">
+                <button 
+                  className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
+                  onClick={() => setShowLocationSelector(true)}
+                >
+                  <div className="flex items-center flex-1">
+                    {selectedLocationType === 'college' && <GraduationCap className="w-5 h-5 text-muted-foreground mr-3" />}
+                    {selectedLocationType === 'organization' && <Building2 className="w-5 h-5 text-muted-foreground mr-3" />}
+                    {selectedLocationType === 'restaurant' && <UtensilsCrossed className="w-5 h-5 text-muted-foreground mr-3" />}
+                    {!selectedLocationType && <MapPin className="w-5 h-5 text-muted-foreground mr-3" />}
+                    <div className="flex-1 text-left">
+                      <span className={`block ${
+                        resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>
+                        Current Location
+                      </span>
+                      {selectedLocationName ? (
+                        <span className="text-sm text-muted-foreground block">
+                          {selectedLocationName}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground block">
+                          Tap to select location
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+                
                 <button 
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={() => {
