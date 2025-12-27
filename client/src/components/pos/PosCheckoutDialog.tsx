@@ -50,6 +50,7 @@ export function PosCheckoutDialog({
   const razorpayRef = useRef<any>(null);
   const cachedCartRef = useRef<any[]>([]);
   const cachedTotalsRef = useRef<OrderTotals | null>(null);
+  const isPaymentInProgressRef = useRef(false);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -150,17 +151,22 @@ export function PosCheckoutDialog({
       createCheckoutSession();
     } else {
       // Only abandon session if not in payment processing or success stage
-      if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_selection') {
+      // Don't abandon if Razorpay payment is in progress
+      if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_selection' && !isPaymentInProgressRef.current) {
         abandonCheckoutSession(checkoutSessionId);
       }
-      setCheckoutSessionId(null);
-      setSessionTimeLeft(SESSION_DURATION_MINUTES * 60);
-      setPaymentMethod("offline");
-      setShowOfflineConfirm(false);
-      setCanteenCharges([]);
-      if (sessionTimerRef.current) {
-        clearInterval(sessionTimerRef.current);
-        sessionTimerRef.current = null;
+      
+      // Only reset state if not in payment processing
+      if (!isPaymentInProgressRef.current) {
+        setCheckoutSessionId(null);
+        setSessionTimeLeft(SESSION_DURATION_MINUTES * 60);
+        setPaymentMethod("offline");
+        setShowOfflineConfirm(false);
+        setCanteenCharges([]);
+        if (sessionTimerRef.current) {
+          clearInterval(sessionTimerRef.current);
+          sessionTimerRef.current = null;
+        }
       }
     }
 
@@ -203,8 +209,8 @@ export function PosCheckoutDialog({
   }, [checkoutSessionId, open, onOpenChange, stage]);
 
   const handleClose = () => {
-    // Prevent closing when payment is being processed
-    if (stage === 'payment_processing') {
+    // Prevent closing when Razorpay payment is in progress
+    if (isPaymentInProgressRef.current) {
       return;
     }
     
@@ -278,11 +284,11 @@ export function PosCheckoutDialog({
         },
         modal: {
           ondismiss: () => {
+            isPaymentInProgressRef.current = false;
             // When Razorpay modal is closed, abandon the checkout session
             if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_processing') {
               abandonCheckoutSession(checkoutSessionId);
               toast.info('Payment cancelled');
-              onOpenChange(false);
             }
           }
         },
@@ -292,11 +298,15 @@ export function PosCheckoutDialog({
       };
 
       razorpayRef.current = new (window as any).Razorpay(options);
+      isPaymentInProgressRef.current = true;
       razorpayRef.current.open();
+      // Close our dialog to allow Razorpay modal to be interactable
+      onOpenChange(false);
     };
     script.onerror = () => {
       toast.error('Failed to load payment gateway');
       setStage('payment_selection');
+      isPaymentInProgressRef.current = false;
     };
     document.body.appendChild(script);
   };
@@ -304,6 +314,7 @@ export function PosCheckoutDialog({
   const handlePaymentSuccess = async (razorpayResponse: any) => {
     try {
       setIsLoading(true);
+      isPaymentInProgressRef.current = false;
       
       // Create order after successful payment
       const orderResponse = await apiRequest('/api/pos/orders/create', {
@@ -320,6 +331,9 @@ export function PosCheckoutDialog({
         setCreatedOrder(orderResponse.order);
         setStage('payment_success');
         toast.success('Order created successfully!');
+        
+        // Reopen dialog to show success screen
+        onOpenChange(true);
         
         if (onOrderCreated) {
           onOrderCreated();
@@ -477,7 +491,7 @@ export function PosCheckoutDialog({
             </DialogTitle>
             <button
               onClick={handleClose}
-              disabled={isLoading || stage === 'payment_processing'}
+              disabled={isLoading}
               className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
             >
               <X className="h-4 w-4" />
