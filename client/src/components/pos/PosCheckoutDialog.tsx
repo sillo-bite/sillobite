@@ -169,7 +169,7 @@ export function PosCheckoutDialog({
         clearInterval(sessionTimerRef.current);
       }
     };
-  }, [open, cart, totals]);
+  }, [open]);
 
   useEffect(() => {
     if (!checkoutSessionId || !open) return;
