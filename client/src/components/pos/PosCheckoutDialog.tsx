@@ -9,6 +9,7 @@ import { OwnerButton } from "@/components/owner";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/utils/posCalculations";
 import { toast } from "sonner";
+import { printBill } from "@/services/localPrinterService";
 import type { OrderTotals } from "@/types/pos";
 
 interface PosCheckoutDialogProps {
@@ -42,9 +43,13 @@ export function PosCheckoutDialog({
   const [paymentData, setPaymentData] = useState<any>(null);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [canteenCharges, setCanteenCharges] = useState<any[]>([]);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasAbandonedRef = useRef(false);
   const razorpayRef = useRef<any>(null);
+  const cachedCartRef = useRef<any[]>([]);
+  const cachedTotalsRef = useRef<OrderTotals | null>(null);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -52,9 +57,52 @@ export function PosCheckoutDialog({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const fetchCanteenCharges = async () => {
+    try {
+      const chargesResponse = await apiRequest(`/api/canteens/${canteenId}/charges`);
+      if (chargesResponse && Array.isArray(chargesResponse)) {
+        const activeCharges = chargesResponse.filter((charge: any) => charge.active);
+        setCanteenCharges(activeCharges);
+        return activeCharges;
+      }
+      return [];
+    } catch (error) {
+      console.warn('Failed to fetch canteen charges:', error);
+      return [];
+    }
+  };
+
+  const calculateTotalsWithCharges = (baseTotals: OrderTotals, charges: any[], includeCharges: boolean): OrderTotals => {
+    if (!includeCharges || charges.length === 0) {
+      return baseTotals;
+    }
+
+    let chargesTotal = 0;
+    charges.forEach((charge) => {
+      if (charge.type === 'percent') {
+        chargesTotal += (baseTotals.subtotal * charge.value) / 100;
+      } else {
+        chargesTotal += charge.value;
+      }
+    });
+
+    const total = baseTotals.subtotal - baseTotals.discount + baseTotals.tax + chargesTotal;
+
+    return {
+      ...baseTotals,
+      total,
+    };
+  };
+
+  const getDisplayTotals = (): OrderTotals => {
+    return calculateTotalsWithCharges(totals, canteenCharges, paymentMethod === 'upi');
+  };
+
   const createCheckoutSession = async () => {
     try {
       setIsLoading(true);
+      await fetchCanteenCharges();
+      
       const response = await apiRequest('/api/checkout-sessions/create', {
         method: 'POST',
         body: JSON.stringify({
@@ -98,6 +146,7 @@ export function PosCheckoutDialog({
       setStage('payment_selection');
       setPaymentData(null);
       setCreatedOrder(null);
+      cachedCartRef.current = cart;
       createCheckoutSession();
     } else {
       // Only abandon session if not in payment processing or success stage
@@ -108,6 +157,7 @@ export function PosCheckoutDialog({
       setSessionTimeLeft(SESSION_DURATION_MINUTES * 60);
       setPaymentMethod("offline");
       setShowOfflineConfirm(false);
+      setCanteenCharges([]);
       if (sessionTimerRef.current) {
         clearInterval(sessionTimerRef.current);
         sessionTimerRef.current = null;
@@ -119,7 +169,7 @@ export function PosCheckoutDialog({
         clearInterval(sessionTimerRef.current);
       }
     };
-  }, [open]);
+  }, [open, cart, totals]);
 
   useEffect(() => {
     if (!checkoutSessionId || !open) return;
@@ -171,15 +221,18 @@ export function PosCheckoutDialog({
     try {
       setIsLoading(true);
       
+      const upiTotals = calculateTotalsWithCharges(totals, canteenCharges, true);
+      cachedTotalsRef.current = upiTotals;
+      
       const response = await apiRequest('/api/pos/payments/initiate', {
         method: 'POST',
         body: JSON.stringify({
-          amount: totals.total,
+          amount: upiTotals.total,
           customerName: customerName,
           cart: cart,
           canteenId: canteenId,
           checkoutSessionId: checkoutSessionId,
-          totals: totals
+          totals: upiTotals
         })
       });
 
@@ -292,6 +345,8 @@ export function PosCheckoutDialog({
     try {
       setIsLoading(true);
       
+      cachedTotalsRef.current = totals;
+      
       console.log('🔵 Creating offline order with:', {
         checkoutSessionId,
         customerName,
@@ -300,7 +355,7 @@ export function PosCheckoutDialog({
         totals
       });
       
-      // Create order with offline payment
+      // Create order with offline payment (no charges)
       const orderResponse = await apiRequest('/api/pos/orders/create-offline', {
         method: 'POST',
         body: JSON.stringify({
@@ -334,8 +389,76 @@ export function PosCheckoutDialog({
     }
   };
 
-  const handlePrintReceipt = () => {
-    toast.info('Print receipt will be implemented later');
+  const handlePrintReceipt = async () => {
+    if (!createdOrder) {
+      toast.error('No order data available for printing');
+      return;
+    }
+
+    try {
+      setIsPrinting(true);
+
+      const cachedCart = cachedCartRef.current || [];
+      const cachedTotals = cachedTotalsRef.current || { subtotal: 0, discount: 0, tax: 0, total: 0 };
+      const isOfflineOrder = paymentMethod === 'offline';
+
+      const orderOtp = createdOrder.barcode ? createdOrder.barcode.substring(0, 4) : '0000';
+
+      const printPayload: any = {
+        version: "1.0.0",
+        billId: createdOrder.orderNumber || createdOrder.id || 'UNKNOWN',
+        vendorId: canteenId,
+        items: cachedCart.map((item, index) => ({
+          itemId: item.id || `ITEM-${index + 1}`,
+          name: item.name || 'Unknown Item',
+          quantity: item.quantity || 0,
+          unitPrice: item.price || 0,
+          totalPrice: (item.price || 0) * (item.quantity || 0),
+        })),
+        subtotal: cachedTotals.subtotal || 0,
+        tax: cachedTotals.tax || 0,
+        total: createdOrder.amount || cachedTotals.total || 0,
+        paymentMode: isOfflineOrder ? 'OFFLINE' : 'UPI',
+        timestamp: new Date().toISOString(),
+        currency: "INR",
+        orderOtp: orderOtp,
+        barcode: createdOrder.barcode || createdOrder.orderNumber || '',
+        notes: "Thank You"
+      };
+
+      if (createdOrder.customerName && createdOrder.customerName.trim()) {
+        printPayload.customerInfo = {
+          name: createdOrder.customerName,
+        };
+      }
+
+      if (cachedTotals.discount && cachedTotals.discount > 0) {
+        printPayload.discount = cachedTotals.discount;
+      }
+
+      if (!isOfflineOrder && canteenCharges.length > 0) {
+        printPayload.charges = canteenCharges.map((charge: any) => ({
+          name: charge.name || 'Charge',
+          value: charge.value || 0,
+          isPercentage: charge.type === 'percent',
+        }));
+      }
+
+      const result = await printBill(printPayload);
+
+      if (result.success) {
+        toast.success('Receipt sent to printer successfully');
+      } else {
+        toast.error(`Print failed: ${result.message || 'Unknown error'}`, {
+          duration: 5000,
+        });
+      }
+    } catch (error) {
+      console.error('Error printing receipt:', error);
+      toast.error('Failed to print receipt');
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   return (
@@ -430,10 +553,31 @@ export function PosCheckoutDialog({
                       </div>
                     )}
 
+                    {totals.tax > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Tax (5% GST)</span>
+                        <span className="font-medium">{formatCurrency(totals.tax)}</span>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'upi' && canteenCharges.length > 0 && canteenCharges.map((charge, idx) => {
+                      const chargeAmount = charge.type === 'percent' 
+                        ? (totals.subtotal * charge.value) / 100 
+                        : charge.value;
+                      return (
+                        <div key={idx} className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            {charge.name} {charge.type === 'percent' ? `(${charge.value}%)` : ''}
+                          </span>
+                          <span className="font-medium">{formatCurrency(chargeAmount)}</span>
+                        </div>
+                      );
+                    })}
+
                     <div className="flex justify-between items-center pt-2 border-t">
                       <span className="font-bold text-lg">Total</span>
                       <span className="font-bold text-lg text-primary">
-                        {formatCurrency(totals.total)}
+                        {formatCurrency(getDisplayTotals().total)}
                       </span>
                     </div>
                   </div>
@@ -497,7 +641,7 @@ export function PosCheckoutDialog({
                   disabled={isLoading}
                   isLoading={isLoading}
                 >
-                  {paymentMethod === 'offline' ? 'Confirm Order' : `Pay ${formatCurrency(totals.total)}`}
+                  {paymentMethod === 'offline' ? 'Confirm Order' : `Pay ${formatCurrency(getDisplayTotals().total)}`}
                 </OwnerButton>
               </div>
             </>
@@ -554,14 +698,17 @@ export function PosCheckoutDialog({
                   variant="secondary"
                   onClick={handlePrintReceipt}
                   className="flex-1"
-                  icon={<Printer className="w-4 h-4" />}
+                  icon={isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                  disabled={isPrinting}
+                  isLoading={isPrinting}
                 >
-                  Print Receipt
+                  {isPrinting ? 'Printing...' : 'Print Receipt'}
                 </OwnerButton>
                 <OwnerButton
                   variant="primary"
                   onClick={() => onOpenChange(false)}
                   className="flex-1"
+                  disabled={isPrinting}
                 >
                   Done
                 </OwnerButton>
