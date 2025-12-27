@@ -18,6 +18,23 @@ interface PrintBillResponse {
   jobId?: string;
 }
 
+interface BluetoothPrinter {
+  name: string;
+  address: string;
+}
+
+interface PrintersListResponse {
+  success: boolean;
+  printers?: BluetoothPrinter[];
+  message?: string;
+}
+
+interface ConnectPrinterResponse {
+  success: boolean;
+  message?: string;
+  connected?: boolean;
+}
+
 /**
  * Check if the local printer helper is available
  * @returns Promise with status information
@@ -74,7 +91,7 @@ export async function printBill(payload: any): Promise<PrintBillResponse> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT * 2); // Longer timeout for print jobs
 
-    const response = await fetch(`${LOCAL_PRINTER_BASE_URL}/print/bill`, {
+    const response = await fetch(`${LOCAL_PRINTER_BASE_URL}/print`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -206,7 +223,7 @@ export async function testPrint(): Promise<PrintBillResponse> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT * 2); // Longer timeout for print jobs
 
-    const response = await fetch(`${LOCAL_PRINTER_BASE_URL}/print/test`, {
+    const response = await fetch(`${LOCAL_PRINTER_BASE_URL}/test-print`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -240,6 +257,101 @@ export async function testPrint(): Promise<PrintBillResponse> {
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to send test print',
+    };
+  }
+}
+
+/**
+ * Get list of paired Bluetooth printers
+ * @returns Promise with list of available printers
+ */
+export async function getPrinters(): Promise<PrintersListResponse> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+
+    const response = await fetch(`${LOCAL_PRINTER_BASE_URL}/printers`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `HTTP error! status: ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      printers: data.printers || [],
+      message: data.message,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        message: 'Request timeout - printer helper may not be running',
+      };
+    }
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to get printers list',
+    };
+  }
+}
+
+/**
+ * Connect to a specific Bluetooth printer by address
+ * @param address - Bluetooth address of the printer to connect
+ * @returns Promise with connection result
+ */
+export async function connectPrinter(address: string): Promise<ConnectPrinterResponse> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT * 2); // Longer timeout for connection
+
+    const response = await fetch(`${LOCAL_PRINTER_BASE_URL}/connect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ address }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        message: errorData.message || `HTTP error! status: ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: true,
+      connected: data.connected,
+      message: data.message || 'Connected to printer successfully',
+    };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        message: 'Request timeout - connection may be taking too long',
+      };
+    }
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to connect to printer',
     };
   }
 }
