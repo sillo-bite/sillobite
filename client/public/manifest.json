@@ -8,7 +8,7 @@
   "orientation": "portrait",
   "scope": "/",
   "start_url": "/splashscreen?pwa=true&utm_source=pwa",
-  "id": "sillobyte-canteen-app-v3",
+  "id": "sillobyte-canteen-app-v4",
   "categories": ["food", "lifestyle", "shopping"],
   "lang": "en",
   "dir": "ltr",

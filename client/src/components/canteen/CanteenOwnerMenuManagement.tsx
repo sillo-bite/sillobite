@@ -69,7 +69,9 @@ export default function CanteenOwnerMenuManagement({
     imagePublicId: "",
     storeCounterId: "",
     paymentCounterId: "",
-    kotCounterId: ""
+    kotCounterId: "",
+    cookingTime: "",
+    calories: ""
   });
   
   // Store the pending image file for new items
@@ -297,7 +299,10 @@ export default function CanteenOwnerMenuManagement({
       imageUrl: "",
       imagePublicId: "",
       storeCounterId: "",
-      paymentCounterId: ""
+      paymentCounterId: "",
+      kotCounterId: "",
+      cookingTime: "",
+      calories: ""
     });
     setAddOns([]);
     setPendingImageFile(null);
@@ -381,6 +386,8 @@ export default function CanteenOwnerMenuManagement({
           storeCounterCode: storeCounters?.find(counter => counter.id === item.storeCounterId)?.code || '',
           paymentCounterCode: paymentCounters?.find(counter => counter.id === item.paymentCounterId)?.code || '',
           kotCounterCode: kotCounters?.find(counter => counter.id === item.kotCounterId)?.code || '',
+          cookingTime: item.cookingTime || 0,
+          calories: item.calories || 0,
           imageUrl: '' // Keep image blank as requested
         }))
       };
@@ -419,6 +426,8 @@ export default function CanteenOwnerMenuManagement({
       <storeCounterCode>${item.storeCounterCode}</storeCounterCode>
       <paymentCounterCode>${item.paymentCounterCode}</paymentCounterCode>
       <kotCounterCode>${item.kotCounterCode || ''}</kotCounterCode>
+      <cookingTime>${item.cookingTime}</cookingTime>
+      <calories>${item.calories}</calories>
       <imageUrl>${item.imageUrl}</imageUrl>
     </menuItem>`).join('')}
   </menuItems>
@@ -613,6 +622,8 @@ export default function CanteenOwnerMenuManagement({
         const storeCounterCode = item.getElementsByTagName('storeCounterCode')[0]?.textContent || '';
         const paymentCounterCode = item.getElementsByTagName('paymentCounterCode')[0]?.textContent || '';
         const kotCounterCode = item.getElementsByTagName('kotCounterCode')[0]?.textContent || '';
+        const cookingTime = parseInt(item.getElementsByTagName('cookingTime')[0]?.textContent || '0');
+        const calories = parseInt(item.getElementsByTagName('calories')[0]?.textContent || '0');
         const imageUrl = item.getElementsByTagName('imageUrl')[0]?.textContent || '';
 
         if (name && price > 0 && categoryName) {
@@ -661,6 +672,8 @@ export default function CanteenOwnerMenuManagement({
                   storeCounterId, // Now mandatory
                   paymentCounterId, // Now mandatory
                   kotCounterId: kotCounterId || undefined, // Optional KOT counter
+                  cookingTime: cookingTime || 0,
+                  calories: calories || 0,
                   imageUrl: imageUrl || undefined // Only include if not empty
                 }),
                 headers: { 'Content-Type': 'application/json' }
@@ -729,7 +742,9 @@ export default function CanteenOwnerMenuManagement({
       imagePublicId: item.imagePublicId || "",
       storeCounterId: item.storeCounterId || "",
       paymentCounterId: item.paymentCounterId || "",
-      kotCounterId: item.kotCounterId || ""
+      kotCounterId: item.kotCounterId || "",
+      cookingTime: item.cookingTime?.toString() || "0",
+      calories: item.calories?.toString() || "0"
     };
     
     setEditForm(formData);
@@ -783,7 +798,9 @@ export default function CanteenOwnerMenuManagement({
       addOns: JSON.stringify(addOns.filter(addon => addon.name && addon.price)),
       storeCounterId: editForm.storeCounterId, // Now mandatory
       paymentCounterId: editForm.paymentCounterId, // Now mandatory
-      kotCounterId: editForm.kotCounterId || undefined // Optional KOT counter
+      kotCounterId: editForm.kotCounterId || undefined, // Optional KOT counter
+      cookingTime: parseInt(editForm.cookingTime) || 0,
+      calories: parseInt(editForm.calories) || 0
     };
     
     // Only include imagePublicId if it exists (from a previously uploaded image)
@@ -854,7 +871,9 @@ export default function CanteenOwnerMenuManagement({
       addOns: JSON.stringify(addOns.filter(addon => addon.name && addon.price)),
       storeCounterId: editForm.storeCounterId, // Now mandatory
       paymentCounterId: editForm.paymentCounterId, // Now mandatory
-      kotCounterId: editForm.kotCounterId || undefined // Optional KOT counter
+      kotCounterId: editForm.kotCounterId || undefined, // Optional KOT counter
+      cookingTime: parseInt(editForm.cookingTime) || 0,
+      calories: parseInt(editForm.calories) || 0
     };
     
     // Don't include imageUrl or imagePublicId for new items
@@ -1395,6 +1414,35 @@ export default function CanteenOwnerMenuManagement({
               />
             </div>
 
+            {/* Cooking Time and Calories in a row */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Cooking Time */}
+              <div className="space-y-2">
+                <Label htmlFor="add-cooking-time">Cooking Time (min)</Label>
+                <Input
+                  id="add-cooking-time"
+                  data-testid="input-item-cooking-time"
+                  type="number"
+                  value={editForm.cookingTime}
+                  onChange={(e) => setEditForm({...editForm, cookingTime: e.target.value})}
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Calories */}
+              <div className="space-y-2">
+                <Label htmlFor="add-calories">Calories (kcal)</Label>
+                <Input
+                  id="add-calories"
+                  data-testid="input-item-calories"
+                  type="number"
+                  value={editForm.calories}
+                  onChange={(e) => setEditForm({...editForm, calories: e.target.value})}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
             {/* Available */}
             <div className="flex items-center space-x-2">
               <Switch
@@ -1698,6 +1746,35 @@ export default function CanteenOwnerMenuManagement({
                   onChange={(e) => setEditForm({...editForm, stock: e.target.value})}
                   placeholder="0"
                 />
+              </div>
+
+              {/* Cooking Time and Calories in a row */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Cooking Time */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cooking-time">Cooking Time (min)</Label>
+                  <Input
+                    id="edit-cooking-time"
+                    data-testid="input-edit-cooking-time"
+                    type="number"
+                    value={editForm.cookingTime}
+                    onChange={(e) => setEditForm({...editForm, cookingTime: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
+
+                {/* Calories */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-calories">Calories (kcal)</Label>
+                  <Input
+                    id="edit-calories"
+                    data-testid="input-edit-calories"
+                    type="number"
+                    value={editForm.calories}
+                    onChange={(e) => setEditForm({...editForm, calories: e.target.value})}
+                    placeholder="0"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">

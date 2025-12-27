@@ -83,15 +83,19 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
     completedOrders.forEach((order) => {
       const orderId = order._id.toString();
       
-      // Verify order is paid:
+      // Verify order is paid AND eligible for payout:
       // 1. For online orders: check if there's a successful payment record (by orderId or orderNumber)
-      // 2. For offline orders: check if paymentStatus is 'paid' or 'completed' or paymentConfirmedBy exists
+      // 2. Exclude offline POS payments (paymentMethod === 'offline') - not included in payouts
+      // 3. For counter offline orders: check if paymentStatus is 'paid' or 'completed' or paymentConfirmedBy exists
+      const isOfflinePOSPayment = order.paymentMethod === 'offline';
       const isPaid = 
-        paidOrderIds.has(orderId) || // Has successful payment record by orderId
-        paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
-        order.paymentStatus === 'paid' || 
-        order.paymentStatus === 'completed' ||
-        order.paymentConfirmedBy !== undefined; // Offline payment confirmed
+        !isOfflinePOSPayment && ( // Exclude offline POS payments from payout
+          paidOrderIds.has(orderId) || // Has successful payment record by orderId
+          paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
+          order.paymentStatus === 'paid' || 
+          order.paymentStatus === 'completed' ||
+          order.paymentConfirmedBy !== undefined // Counter offline payment confirmed
+        );
 
       // Only include if:
       // - Order is paid
@@ -215,16 +219,19 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
       }
     });
 
-    // Filter to only include paid orders
+    // Filter to only include paid orders eligible for payout (exclude offline POS payments)
     const paidOrders = orders.filter((order) => {
       const orderId = order._id.toString();
+      const isOfflinePOSPayment = order.paymentMethod === 'offline';
       return (
-        paidOrderIds.has(orderId) || // Has successful payment record by orderId
-        paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
-        order.paymentStatus === 'paid' ||
-        order.paymentStatus === 'completed' ||
-        order.paymentConfirmedBy !== undefined // Offline payment confirmed
-      ) && order.amount && order.amount > 0; // Has valid amount
+        !isOfflinePOSPayment && ( // Exclude offline POS payments from payout
+          paidOrderIds.has(orderId) || // Has successful payment record by orderId
+          paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
+          order.paymentStatus === 'paid' ||
+          order.paymentStatus === 'completed' ||
+          order.paymentConfirmedBy !== undefined // Counter offline payment confirmed
+        ) && order.amount && order.amount > 0 // Has valid amount
+      );
     });
 
     if (paidOrders.length === 0) {

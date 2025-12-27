@@ -11,8 +11,7 @@ import {
   ArrowLeft,
   Utensils,
   Store,
-  FileText,
-  Printer
+  FileText
 } from "lucide-react";
 
 import {
@@ -42,7 +41,6 @@ const managementItems = [
   { title: "Payment Management", url: "payments", icon: CreditCard },
   { title: "Counter Management", url: "counters", icon: Store },
   { title: "Notification Management", url: "notifications", icon: Bell },
-  { title: "Print Agents", url: "print-agents", icon: Printer },
 ];
 
 const contentItems = [

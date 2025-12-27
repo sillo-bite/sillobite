@@ -11,7 +11,6 @@ import CanteenAdminReviewManagement from "./CanteenAdminReviewManagement";
 import CanteenAdminCouponManagement from "./CanteenAdminCouponManagement";
 import CanteenAdminCounterManagement from "./CanteenAdminCounterManagement";
 import CanteenAdminContentManagement from "./CanteenAdminContentManagement";
-import PrintAgentManagement from "./PrintAgentManagement";
 
 export default function CanteenAdminWrapper() {
   const [match, params] = useRoute("/admin/canteen/:canteenId/:page?");
@@ -44,8 +43,6 @@ export default function CanteenAdminWrapper() {
         return <CanteenAdminCounterManagement canteenId={canteenId} />;
       case 'content':
         return <CanteenAdminContentManagement canteenId={canteenId} />;
-      case 'print-agents':
-        return <PrintAgentManagement canteenId={canteenId} />;
       default:
         return <CanteenAdminOverview canteenId={canteenId} />;
     }

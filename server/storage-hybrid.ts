@@ -52,6 +52,9 @@ export type InsertOrder = {
   allCounterIds?: string[];
   // Delivery person assignment
   deliveryPersonId?: string;
+  // Payment information
+  paymentStatus?: string;
+  paymentMethod?: string;
 };
 export type InsertNotification = { type: string; message: string; read?: boolean };
 export type InsertLoginIssue = { 
@@ -600,7 +603,11 @@ export class HybridStorage implements IStorage {
   }
 
   async updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<any> {
-    const updatedItem = await MenuItem.findByIdAndUpdate(id, item, { new: true });
+    const updatedItem = await MenuItem.findByIdAndUpdate(
+      id, 
+      { $set: item }, 
+      { new: true, runValidators: true }
+    );
     return mongoToPlain(updatedItem);
   }
 
@@ -2532,7 +2539,11 @@ export class HybridStorage implements IStorage {
       
       // Initialize itemStatusByCounter for auto-ready items (non-markable items)
       // Auto-ready items should be marked as 'ready' by default for their assigned counters
-      const currentItemStatus = currentOrder.itemStatusByCounter || {};
+      const currentItemStatus = currentOrder.itemStatusByCounter 
+        ? (typeof currentOrder.itemStatusByCounter === 'string' 
+          ? JSON.parse(currentOrder.itemStatusByCounter) 
+          : currentOrder.itemStatusByCounter)
+        : {};
       const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = { ...currentItemStatus };
       
       for (const item of orderItems) {
@@ -2660,7 +2671,11 @@ export class HybridStorage implements IStorage {
       const orderItems = JSON.parse(currentOrder.items);
       
       // Initialize itemStatusByCounter if it doesn't exist
-      const currentItemStatus = currentOrder.itemStatusByCounter || {};
+      const currentItemStatus = currentOrder.itemStatusByCounter 
+        ? (typeof currentOrder.itemStatusByCounter === 'string' 
+          ? JSON.parse(currentOrder.itemStatusByCounter) 
+          : currentOrder.itemStatusByCounter)
+        : {};
       
       // If counterId is provided, mark items for that specific counter
       // Otherwise, mark all markable items as ready (for orders without counter assignment)
@@ -2881,7 +2896,11 @@ export class HybridStorage implements IStorage {
       const orderItems = JSON.parse(currentOrder.items);
       
       // Initialize itemStatusByCounter if it doesn't exist
-      const currentItemStatus = currentOrder.itemStatusByCounter || {};
+      const currentItemStatus = currentOrder.itemStatusByCounter 
+        ? (typeof currentOrder.itemStatusByCounter === 'string' 
+          ? JSON.parse(currentOrder.itemStatusByCounter) 
+          : currentOrder.itemStatusByCounter)
+        : {};
       if (!currentItemStatus[counterId]) {
         currentItemStatus[counterId] = {};
       }
@@ -2982,7 +3001,11 @@ export class HybridStorage implements IStorage {
       });
 
       // Initialize itemStatusByCounter if it doesn't exist
-      const currentItemStatus = currentOrder.itemStatusByCounter || {};
+      const currentItemStatus = currentOrder.itemStatusByCounter 
+        ? (typeof currentOrder.itemStatusByCounter === 'string' 
+          ? JSON.parse(currentOrder.itemStatusByCounter) 
+          : currentOrder.itemStatusByCounter)
+        : {};
       if (!currentItemStatus[counterId]) {
         currentItemStatus[counterId] = {};
       }
