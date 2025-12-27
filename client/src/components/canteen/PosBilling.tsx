@@ -37,7 +37,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [lastTransactionForPrint, setLastTransactionForPrint] = useState<Transaction | null>(null);
-  const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; total: number } | null>(null);
+  const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; tax: number; total: number } | null>(null);
   
   // Test Print State
   const [isTestPrinting, setIsTestPrinting] = useState(false);
@@ -61,35 +61,62 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     setIsTestPrinting(true);
     
     try {
+      const subtotal = 300;
+      const discount = 30;
+      const taxableAmount = subtotal - discount;
+      const tax = taxableAmount * 0.05; // 5% GST
+      const total = taxableAmount + tax;
+      
       const dummyReceiptData = {
-        orderNumber: `TEST-${Date.now()}`,
-        customerName: "Test Customer",
+        version: "1.0.0",
+        billId: `TEST-${Date.now()}`,
+        vendorId: canteenId,
         items: [
           {
+            itemId: "ITEM-1",
             name: "Coffee",
             quantity: 2,
-            price: 50,
-            subtotal: 100,
+            unitPrice: 50,
+            totalPrice: 100,
+            description: "Hot beverage",
+            taxRate: 5.0,
+            discount: 0,
           },
           {
+            itemId: "ITEM-2",
             name: "Sandwich",
             quantity: 1,
-            price: 80,
-            subtotal: 80,
+            unitPrice: 80,
+            totalPrice: 80,
+            description: "Veg sandwich",
+            taxRate: 5.0,
+            discount: 0,
           },
           {
+            itemId: "ITEM-3",
             name: "Burger",
             quantity: 1,
-            price: 120,
-            subtotal: 120,
+            unitPrice: 120,
+            totalPrice: 120,
+            description: "Chicken burger",
+            taxRate: 5.0,
+            discount: 0,
           },
         ],
-        subtotal: 300,
-        discount: 30,
-        total: 270,
-        paymentMethod: "cash",
-        date: new Date().toISOString(),
-        status: "completed",
+        subtotal: subtotal,
+        tax: tax,
+        total: total,
+        paymentMode: "CASH",
+        timestamp: new Date().toISOString(),
+        currency: "INR",
+        customerInfo: {
+          name: "Test Customer",
+          phone: "+919876543210",
+          email: "test@example.com",
+        },
+        discount: discount,
+        notes: "Test print for printer setup verification",
+        metadata: {},
       };
       
       const result = await printBill(dummyReceiptData);
@@ -125,27 +152,40 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   };
 
   // Format transaction data for printing
-  const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; total: number }) => {
+  const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; tax: number; total: number }) => {
     return {
-      orderNumber: transaction.orderNumber,
-      customerName: transaction.customerName,
-      items: transaction.items.map(item => ({
+      version: "1.0.0",
+      billId: transaction.orderNumber,
+      vendorId: canteenId,
+      items: transaction.items.map((item, index) => ({
+        itemId: item.id || `ITEM-${index + 1}`,
         name: item.name,
         quantity: item.quantity,
-        price: item.price,
-        subtotal: item.price * item.quantity,
+        unitPrice: item.price,
+        totalPrice: item.price * item.quantity,
+        description: "",
+        taxRate: 5.0,
+        discount: 0,
       })),
       subtotal: totals.subtotal,
-      discount: totals.discount,
+      tax: totals.tax,
       total: totals.total,
-      paymentMethod: transaction.paymentMethod,
-      date: transaction.createdAt.toISOString(),
-      status: transaction.status,
+      paymentMode: transaction.paymentMethod.toUpperCase(),
+      timestamp: transaction.createdAt.toISOString(),
+      currency: "INR",
+      customerInfo: {
+        name: transaction.customerName,
+        phone: "",
+        email: "",
+      },
+      discount: totals.discount,
+      notes: "",
+      metadata: {},
     };
   };
 
   // Send bill to printer
-  const sendToPrinter = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; total: number }) => {
+  const sendToPrinter = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; tax: number; total: number }) => {
     setIsPrinting(true);
     setPrintError(null);
 
