@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { handleGoogleRedirect } from '@/lib/googleAuth';
 import { useAuth } from '@/hooks/useAuth';
 import { isPWAInstalled } from '@/utils/pwaAuth';
 
@@ -16,25 +15,36 @@ export default function OAuthCallback() {
       try {
         console.log('🔄 OAuthCallback component mounted');
         console.log('📍 Current URL:', window.location.href);
-        console.log('📍 Current pathname:', window.location.pathname);
-        console.log('📍 PWA detected:', isPWAInstalled());
         
-        // Add a small delay to ensure the page is fully loaded
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        const result = await handleGoogleRedirect();
-        
-        if (result) {
-          setIsSuccess(true);
-          await handleUserAuthentication(result.user);
-        } else {
-          setError("No authentication result received");
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorParam = urlParams.get('error');
+
+        if (errorParam) {
+          setError(`Authentication failed: ${errorParam}`);
           setIsLoading(false);
+          setTimeout(() => setLocation('/login'), 3000);
+          return;
         }
+
+        console.log('Fetching authenticated user from session...');
+        const response = await fetch('/api/auth/google/me', {
+          credentials: 'include'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get authenticated user');
+        }
+
+        const googleUser = await response.json();
+        console.log('Google user authenticated:', googleUser.email);
+        
+        setIsSuccess(true);
+        await handleUserAuthentication(googleUser);
       } catch (error) {
         console.error('OAuth callback error:', error);
         setError(error instanceof Error ? error.message : 'Authentication failed');
         setIsLoading(false);
+        setTimeout(() => setLocation('/login'), 3000);
       }
     };
 

@@ -4,21 +4,11 @@
  */
 
 import { Router } from 'express';
-import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
 
-// Initialize Google OAuth client
-const oauth2Client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
-
 // Initiate Google OAuth flow
 router.get('/', (req, res) => {
-  console.log('🔐 OAuth Init - GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
-  
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID!,
     redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
@@ -34,64 +24,65 @@ router.get('/', (req, res) => {
 router.get('/callback', async (req, res) => {
   try {
     const { code, error } = req.query;
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
-
-    console.log('🔐 OAuth Callback - redirect_uri used:', process.env.GOOGLE_REDIRECT_URI);
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sillobite.in';
 
     if (error) {
-      console.error('OAuth error:', error);
       return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error as string)}`);
     }
 
     if (!code || typeof code !== 'string') {
-      console.error('No authorization code provided');
       return res.redirect(`${frontendUrl}/auth/callback?error=no_code`);
     }
 
-    console.log('OAuth callback - exchanging code for tokens');
-
-    const { tokens } = await oauth2Client.getToken({
-      code,
-      redirect_uri: process.env.GOOGLE_REDIRECT_URI!
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
+        grant_type: 'authorization_code',
+      }),
     });
 
-    if (!tokens.id_token) {
-      console.error('No ID token received');
-      return res.redirect(`${frontendUrl}/auth/callback?error=no_id_token`);
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      console.error('Token exchange failed:', error);
+      return res.redirect(`${frontendUrl}/auth/callback?error=token_exchange_failed`);
     }
 
-    const ticket = await oauth2Client.verifyIdToken({
-      idToken: tokens.id_token,
-      audience: process.env.GOOGLE_CLIENT_ID
+    const tokens = await tokenResponse.json();
+
+    // Fetch user profile
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
 
-    const payload = ticket.getPayload();
-
-    if (!payload) {
-      console.error('No payload in ID token');
-      return res.redirect(`${frontendUrl}/auth/callback?error=invalid_token`);
+    if (!userResponse.ok) {
+      console.error('Failed to fetch user info');
+      return res.redirect(`${frontendUrl}/auth/callback?error=user_info_failed`);
     }
 
-    const userData = {
-      id: payload.sub,
-      email: payload.email,
-      name: payload.name,
-      picture: payload.picture,
-      emailVerified: payload.email_verified
-    };
+    const userInfo = await userResponse.json();
 
-    console.log('User authenticated:', { email: userData.email });
-
+    // Store user in session (tokens never exposed to frontend)
     if (req.session) {
-      req.session.googleUser = userData;
+      req.session.googleUser = {
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
+        emailVerified: userInfo.verified_email,
+      };
     }
 
     res.redirect(`${frontendUrl}/auth/callback`);
-  } catch (error: any) {
+  } catch (error) {
     console.error('OAuth callback error:', error);
-    const errorMessage = error?.message || 'authentication_failed';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
-    res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sillobite.in';
+    res.redirect(`${frontendUrl}/auth/callback?error=authentication_failed`);
   }
 });
 
@@ -102,169 +93,6 @@ router.get('/me', (req, res) => {
   }
 
   res.json(req.session.googleUser);
-});
-
-// Exchange authorization code for access token
-router.post('/token', async (req, res) => {
-  try {
-    const { code, redirect_uri } = req.body;
-    console.log('Token exchange request received:', { 
-      code: code ? 'present' : 'missing', 
-      redirect_uri,
-      configured_redirect_uri: process.env.GOOGLE_REDIRECT_URI 
-    });
-
-    if (!code) {
-      console.error('No authorization code provided');
-      return res.status(400).json({ error: 'Authorization code is required' });
-    }
-
-    if (!redirect_uri) {
-      console.error('No redirect_uri provided');
-      return res.status(400).json({ error: 'Redirect URI is required' });
-    }
-
-    console.log('Exchanging code for tokens...');
-    // Create a new OAuth2Client instance with the redirect_uri from the request
-    // This ensures the redirect_uri matches what was used in the authorization request
-    const oauth2ClientForExchange = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri // Use the redirect_uri from the request
-    );
-
-    // Exchange code for tokens
-    const { tokens } = await oauth2ClientForExchange.getToken({
-      code,
-      redirect_uri
-    });
-
-    console.log('Token exchange successful');
-    res.json({
-      access_token: tokens.access_token,
-      id_token: tokens.id_token,
-      refresh_token: tokens.refresh_token,
-      expires_in: tokens.expiry_date
-    });
-  } catch (error: any) {
-    console.error('Token exchange error:', error);
-    const errorMessage = error?.message || 'Unknown error';
-    const errorDetails = error?.response?.data || errorMessage;
-    
-    // Provide more helpful error messages
-    let userFriendlyError = 'Failed to exchange authorization code';
-    if (errorMessage.includes('unauthorized_client')) {
-      userFriendlyError = 'Redirect URI mismatch. Please ensure http://localhost:5000/auth/callback is added to Google Cloud Console authorized redirect URIs.';
-    } else if (errorMessage.includes('invalid_grant')) {
-      userFriendlyError = 'Authorization code expired or already used. Please try logging in again.';
-    }
-    
-    res.status(400).json({ 
-      error: userFriendlyError,
-      details: errorDetails
-    });
-  }
-});
-
-// Get user info from Google
-router.post('/user', async (req, res) => {
-  try {
-    const { access_token, id_token } = req.body;
-    console.log('User info request received:', { 
-      access_token: access_token ? 'present' : 'missing', 
-      id_token: id_token ? 'present' : 'missing' 
-    });
-
-    if (!access_token && !id_token) {
-      console.error('No tokens provided for user info request');
-      return res.status(400).json({ error: 'Access token or ID token is required' });
-    }
-
-    let userInfo;
-
-    if (id_token) {
-      console.log('Verifying ID token...');
-      // Verify and decode ID token
-      const ticket = await oauth2Client.verifyIdToken({
-        idToken: id_token,
-        audience: process.env.GOOGLE_CLIENT_ID
-      });
-      
-      userInfo = ticket.getPayload();
-      console.log('ID token verified, user info:', { id: userInfo?.sub, email: userInfo?.email });
-    } else if (access_token) {
-      console.log('Fetching user info from Google API...');
-      // Get user info from Google API
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${access_token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user info from Google');
-      }
-
-      userInfo = await response.json();
-      console.log('User info fetched from Google API:', { id: userInfo.id, email: userInfo.email });
-    }
-
-    if (!userInfo) {
-      console.error('No user info received');
-      return res.status(400).json({ error: 'Failed to get user info' });
-    }
-
-    const responseData = {
-      id: userInfo.sub || userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name,
-      picture: userInfo.picture,
-      verified_email: userInfo.email_verified
-    };
-
-    console.log('Returning user info:', responseData);
-    res.json(responseData);
-  } catch (error) {
-    console.error('User info error:', error);
-    res.status(400).json({ 
-      error: 'Failed to get user info',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Verify Google ID token
-router.post('/verify', async (req, res) => {
-  try {
-    const { id_token } = req.body;
-
-    if (!id_token) {
-      return res.status(400).json({ error: 'ID token is required' });
-    }
-
-    const ticket = await oauth2Client.verifyIdToken({
-      idToken: id_token,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-
-    const payload = ticket.getPayload();
-    
-    res.json({
-      valid: true,
-      user: {
-        id: payload?.sub,
-        email: payload?.email,
-        name: payload?.name,
-        picture: payload?.picture
-      }
-    });
-  } catch (error) {
-    console.error('Token verification error:', error);
-    res.status(400).json({ 
-      error: 'Invalid token',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
 });
 
 export default router;
