@@ -210,7 +210,7 @@ export default function OAuthCallback() {
           // Create guest user - no registerNumber, department, or joiningYear needed
           const guestUser = {
             email: user.email,
-            name: user.displayName || user.name || '',
+            name: user.name || '',
             phoneNumber: '', // Will be collected in profile setup
             role: 'guest',
             college: organization.name, // Store organization name in college field

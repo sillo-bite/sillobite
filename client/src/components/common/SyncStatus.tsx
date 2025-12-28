@@ -1,12 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Wifi, WifiOff, RefreshCw } from "lucide-react";
 import { useDataSync } from "@/hooks/useDataSync";
+import { cn } from "@/lib/utils";
 
-/**
- * Component to show real-time synchronization status
- * Displays across all dashboards to confirm data consistency
- */
-export default function SyncStatus() {
+interface SyncStatusProps {
+  showStats?: boolean;
+  className?: string;
+}
+
+export default function SyncStatus({ showStats = true, className }: SyncStatusProps) {
   const { isLoading, hasError, stats, queries } = useDataSync();
 
   const getSyncStatus = () => {
@@ -22,13 +24,13 @@ export default function SyncStatus() {
   const Icon = status.icon;
 
   return (
-    <div className="flex items-center space-x-2 text-xs">
+    <div className={cn("flex items-center space-x-2 text-xs", className)}>
       <Badge variant={status.variant} className="flex items-center space-x-1">
         <Icon className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
         <span>{status.text}</span>
       </Badge>
       
-      {status.variant !== "destructive" && !isLoading && (
+      {showStats && status.variant !== "destructive" && !isLoading && (
         <div className="flex items-center space-x-1 text-muted-foreground">
           <span>{stats.totalMenuItems} items</span>
           <span>•</span>

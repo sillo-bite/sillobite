@@ -2116,8 +2116,8 @@ export default function CanteenOwnerDashboardSidebar() {
 
         {/* Top Header */}
         <div className="border-b border-border bg-card flex-shrink-0">
-          <div className="flex h-16 items-center justify-between px-4 md:px-6">
-            <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 md:px-6 py-3">
+            <div className="flex items-center gap-3 min-w-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -2127,18 +2127,27 @@ export default function CanteenOwnerDashboardSidebar() {
               >
                 {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
-              <div>
-                <h2 className="text-lg font-semibold capitalize text-foreground">{activeTab.replace('-', ' ')}</h2>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-semibold capitalize text-foreground truncate">{activeTab.replace('-', ' ')}</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
-              <SyncStatus />
+            <div className="flex items-center justify-between sm:justify-end gap-2">
+              <SyncStatus showStats={false} className="shrink-0" />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setLocation("/login")}
+                className="sm:hidden"
+                aria-label="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
               <Button 
                 variant="ghost" 
                 size="sm"
                 onClick={() => setLocation("/login")}
-                className="hover:bg-accent hover:text-accent-foreground"
+                className="hidden sm:inline-flex hover:bg-accent hover:text-accent-foreground"
               >
                 Logout
               </Button>
