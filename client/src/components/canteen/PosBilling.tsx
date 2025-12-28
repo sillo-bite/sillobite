@@ -44,7 +44,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
-  const { menuItems, categories, transactions, isLoading, refetchTransactions } = usePosData(
+  const { menuItems, categories, transactions, transactionsPagination, isLoading, refetchTransactions, setTransactionsPage } = usePosData(
     canteenId,
     searchQuery,
     selectedCategory
@@ -396,7 +396,11 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
               </Sheet>
             </>
           ) : (
-            <TransactionHistory transactions={transactions} />
+            <TransactionHistory 
+              transactions={transactions} 
+              pagination={transactionsPagination}
+              onPageChange={setTransactionsPage}
+            />
           )}
         </div>
       </OwnerTabs>
