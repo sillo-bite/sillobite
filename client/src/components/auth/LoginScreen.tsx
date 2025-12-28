@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInWithGoogle, handleGoogleRedirect } from "@/lib/googleAuth";
+import { signInWithGoogle } from "@/lib/googleAuth";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { ProfileSetupScreen } from "@/components/auth/ProfileSetupScreen";
@@ -255,24 +255,6 @@ export default function LoginScreen() {
 
     handleOrgQRWithCache();
   }, [existingUser, authLoading, login, setLocation]);
-
-  // Handle Google OAuth redirect result
-  useEffect(() => {
-    // Only run this effect if we're on the login page and not on the callback page
-    if (window.location.pathname === '/login') {
-      handleGoogleRedirect()
-        .then(async (result) => {
-          if (result) {
-            await handleUserAuthentication(result.user);
-          }
-        })
-        .catch((error) => {
-          // Only show error if it's not a "no code" error (which is normal on login page)
-          if (error.message && !error.message.includes('No authentication result')) {
-          }
-        });
-    }
-  }, []);
 
   const handleUserAuthentication = async (user: any) => {
     try {
