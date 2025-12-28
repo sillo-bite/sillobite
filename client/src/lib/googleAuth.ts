@@ -1,52 +1,7 @@
 /**
  * Google OAuth 2.0 Authentication Service
- * Replaces Firebase Auth with native Google OAuth
+ * Simplified client-side implementation - OAuth URL generation handled by backend
  */
-
-// Google OAuth configuration
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const GOOGLE_REDIRECT_URI = import.meta.env.VITE_GOOGLE_REDIRECT_URI || `${window.location.origin}/auth/callback`;
-
-// Validate required environment variables
-const requiredEnvVars = [
-  'VITE_GOOGLE_CLIENT_ID'
-];
-
-// Check if environment variables are properly loaded
-const isConfigValid = () => {
-  return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.trim() !== '';
-};
-
-// Validate configuration on load
-if (!isConfigValid()) {
-  console.error('Google OAuth configuration is invalid. Please check your environment variables.');
-}
-
-// Google OAuth scopes
-const SCOPES = [
-  'openid',
-  'email',
-  'profile'
-].join(' ');
-
-// Generate Google OAuth URL
-export const generateGoogleAuthUrl = (): string => {
-  if (!isConfigValid()) {
-    throw new Error('Google OAuth configuration is invalid. Please check your environment variables.');
-  }
-
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    redirect_uri: GOOGLE_REDIRECT_URI,
-    response_type: 'code',
-    scope: SCOPES,
-    access_type: 'online',
-    prompt: 'select_account', // Force account selection
-    include_granted_scopes: 'false'
-  });
-
-  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-};
 
 // Handle Google OAuth redirect
 export const handleGoogleRedirect = async (): Promise<{
@@ -58,7 +13,6 @@ export const handleGoogleRedirect = async (): Promise<{
   };
   accessToken: string;
 } | null> => {
-  // Check if we're on the callback page
   if (window.location.pathname !== '/auth/callback' && window.location.pathname !== '/api/auth/google/callback') {
     return null;
   }
@@ -77,19 +31,14 @@ export const handleGoogleRedirect = async (): Promise<{
 
   try {
     console.log('Starting OAuth token exchange...');
-    console.log('Using redirect URI:', GOOGLE_REDIRECT_URI);
     console.log('Authorization code:', code ? 'present' : 'missing');
     
-    // Exchange authorization code for access token
     const tokenResponse = await fetch('/api/auth/google/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        code,
-        redirect_uri: GOOGLE_REDIRECT_URI
-      })
+      body: JSON.stringify({ code })
     });
 
     console.log('Token response status:', tokenResponse.status);
@@ -104,7 +53,6 @@ export const handleGoogleRedirect = async (): Promise<{
     const { access_token, id_token } = tokenData;
     console.log('Token exchange successful');
 
-    // Get user info from Google
     console.log('Fetching user info...');
     const userResponse = await fetch('/api/auth/google/user', {
       method: 'POST',
@@ -145,16 +93,10 @@ export const handleGoogleRedirect = async (): Promise<{
 
 // Sign in with Google (redirect method)
 export const signInWithGoogle = (): void => {
-  try {
-    const authUrl = generateGoogleAuthUrl();
-    window.location.href = authUrl;
-  } catch (error) {
-    console.error('Failed to generate Google Auth URL:', error);
-    throw error;
-  }
+  window.location.href = '/api/auth/google';
 };
 
-// Sign in with Google (popup method - for development)
+// Sign in with Google (popup method)
 export const signInWithGooglePopup = async (): Promise<{
   user: {
     id: string;
@@ -166,7 +108,7 @@ export const signInWithGooglePopup = async (): Promise<{
 } | null> => {
   return new Promise((resolve, reject) => {
     const popup = window.open(
-      generateGoogleAuthUrl(),
+      '/api/auth/google',
       'google-auth',
       'width=500,height=600,scrollbars=yes,resizable=yes'
     );
