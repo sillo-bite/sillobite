@@ -21,6 +21,9 @@ import ErrorBoundary from "@/components/common/ErrorBoundary";
 import HomeScreenSkeleton from "@/components/pages/HomeScreenSkeleton";
 import CurrentOrderBottomSheet from "@/components/orders/CurrentOrderBottomSheet";
 import { updateStatusBarColor } from "@/utils/statusBar";
+import { useLocation as useLocationContext } from "@/contexts/LocationContext";
+import LocationSelector from "@/components/profile/LocationSelector";
+import { MapPin, ChevronRight } from "lucide-react";
 
 // Constants for better maintainability
 const SCROLL_THRESHOLD = 100;
@@ -57,6 +60,8 @@ export default function HomeScreen() {
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
   const { getTotalItems } = useCart();
+  const { selectedLocationType, selectedLocationId, selectedLocationName } = useLocationContext();
+  const [showLocationSelector, setShowLocationSelector] = useState(false);
 
   const cartItemCount = getTotalItems();
 
@@ -466,7 +471,7 @@ export default function HomeScreen() {
                   </Button>
                 )}
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3 mr-2">
                 {/* Streak and XP - Only show if coding challenges are enabled */}
                 {homeData?.codingChallengesEnabled && (
                   <button
@@ -494,10 +499,10 @@ export default function HomeScreen() {
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
                   }}
-                  className="text-white hover:bg-white/20 rounded-full relative"
+                  className="text-white hover:bg-white/20 rounded-full relative h-11 w-11"
                   aria-label={`View Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ''}`}
                 >
-                  <ShoppingCart className="w-5 h-5" />
+                  <ShoppingCart className="w-7 h-7" />
                   {cartItemCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-white text-[#724491] text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-sm">
                       {cartItemCount > 99 ? "99+" : cartItemCount}
@@ -512,15 +517,48 @@ export default function HomeScreen() {
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
                   }}
-                  className="text-white hover:bg-white/20 rounded-full"
+                  className="text-white hover:bg-white/20 rounded-full h-11 w-11"
                   aria-label="View Profile"
                 >
-                  <User className="w-5 h-5" />
+                  <User className="w-7 h-7" />
                 </Button>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Location Selector Prompt (shown when no location selected and not in restaurant) */}
+        {!hasRestaurantContext && (!selectedLocationType || !selectedLocationId) && (
+          <>
+            {showLocationSelector && (
+              <LocationSelector onClose={() => setShowLocationSelector(false)} />
+            )}
+            <div className="px-4 mt-4">
+              <button
+                className={`w-full p-4 rounded-xl flex items-center justify-between border transition-colors ${
+                  resolvedTheme === 'dark'
+                    ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/60'
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}
+                onClick={() => setShowLocationSelector(true)}
+                aria-label="Select Location"
+              >
+                <div className="flex items-center">
+                  <MapPin className="w-5 h-5 text-muted-foreground mr-3" />
+                  <div className="text-left">
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'}`}>
+                      Select Location
+                    </span>
+                    <span className="text-sm text-muted-foreground block">
+                      Tap to choose college, organization, or restaurant
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+          </>
+        )}
 
       {/* Incomplete Profile Message */}
       {showIncompleteProfileMessage && !hasRestaurantContext && (

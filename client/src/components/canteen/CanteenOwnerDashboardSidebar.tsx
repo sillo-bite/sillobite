@@ -86,24 +86,34 @@ interface SidebarNavItemProps {
   active: boolean;
   onClick: () => void;
   badge?: number;
+  collapsed?: boolean;
 }
 
-function SidebarNavItem({ icon: Icon, label, active, onClick, badge }: SidebarNavItemProps) {
+function SidebarNavItem({ icon: Icon, label, active, onClick, badge, collapsed }: SidebarNavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+      title={collapsed ? label : undefined}
+      className={`w-full relative flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3"} py-2 text-sm font-medium rounded-lg transition-colors ${
         active 
           ? 'bg-primary text-primary-foreground' 
           : 'text-muted-foreground hover:text-foreground hover:bg-accent'
       }`}
     >
       <div className="flex items-center">
-        <Icon className="w-4 h-4 mr-3" />
-        <span>{label}</span>
+        <Icon className={`w-4 h-4 ${collapsed ? "" : "mr-3"}`} />
+        {!collapsed && <span>{label}</span>}
       </div>
-      {badge !== undefined && (
+      {badge !== undefined && !collapsed && (
         <Badge variant={active ? "secondary" : "outline"} className="text-xs">
+          {badge}
+        </Badge>
+      )}
+      {badge !== undefined && collapsed && (
+        <Badge
+          variant={active ? "secondary" : "outline"}
+          className="absolute right-1.5 top-1.5 h-5 min-w-5 px-1 flex items-center justify-center text-[10px]"
+        >
           {badge}
         </Badge>
       )}
@@ -217,10 +227,25 @@ export default function CanteenOwnerDashboardSidebar() {
   const [isStoreMode, setIsStoreMode] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("ownerSidebarCollapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [isMobile, setIsMobile] = useState(false);
   const [isPushReady, setIsPushReady] = useState(false);
   const [showAllOrders, setShowAllOrders] = useState(false);
   const pushManagerRef = useRef<WebPushNotificationManager | null>(null);
+  const sidebarCollapsed = isSidebarCollapsed && !isMobile;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("ownerSidebarCollapsed", String(isSidebarCollapsed));
+    } catch {
+    }
+  }, [isSidebarCollapsed]);
 
   // Load version info on mount
   useEffect(() => {
@@ -1901,31 +1926,49 @@ export default function CanteenOwnerDashboardSidebar() {
 
       {/* Sidebar Navigation */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 md:w-56 lg:w-64 bg-card border-r border-border flex flex-col flex-shrink-0 transform transition-transform duration-200 ease-in-out lg:relative ${
+        className={`fixed inset-y-0 left-0 z-30 w-64 md:w-56 ${sidebarCollapsed ? "lg:w-16" : "lg:w-64"} bg-card border-r border-border flex flex-col flex-shrink-0 transform transition-[transform,width] duration-200 ease-in-out lg:relative ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center space-x-3 p-6 border-b flex-shrink-0">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <ChefHat className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold">
-              {canteenDataLoading ? 'Loading...' : (canteenData?.name || 'Canteen Dashboard')}
-            </h1>
-            <p className="text-sm text-muted-foreground">Owner Dashboard</p>
+        <div className={`border-b flex-shrink-0 ${sidebarCollapsed ? "p-3" : "p-6"}`}>
+          <div className={`${sidebarCollapsed ? "flex flex-col items-center gap-2" : "flex items-center justify-between"}`}>
+            <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "space-x-3"}`}>
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <ChefHat className="w-5 h-5 text-primary" />
+              </div>
+              {!sidebarCollapsed && (
+                <div>
+                  <h1 className="text-lg font-semibold">
+                    {canteenDataLoading ? 'Loading...' : (canteenData?.name || 'Canteen Dashboard')}
+                  </h1>
+                  <p className="text-sm text-muted-foreground">Owner Dashboard</p>
+                </div>
+              )}
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              onClick={() => setIsSidebarCollapsed((v) => !v)}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {sidebarCollapsed ? <Maximize className="w-4 h-4" /> : <Minimize className="w-4 h-4" />}
+            </Button>
           </div>
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto min-h-0 app-scrollbar">
+        <nav className={`flex-1 ${sidebarCollapsed ? "px-2" : "px-3"} py-4 space-y-2 overflow-y-auto min-h-0 app-scrollbar`}>
           {ownerSidebarConfig["overview"] && (
             <SidebarNavItem 
               icon={BarChart3} 
               label="Overview" 
               active={activeTab === "overview"}
               onClick={() => handleTabChange("overview")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["counters"] && (
@@ -1934,6 +1977,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Counter Selection" 
               active={activeTab === "counters"}
               onClick={() => handleNavigate(`/canteen-owner-dashboard/${canteenId}/counters`)}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["orders"] && (
@@ -1943,6 +1987,7 @@ export default function CanteenOwnerDashboardSidebar() {
               active={activeTab === "orders"}
               onClick={() => handleTabChange("orders")}
               badge={activeOrders.length > 0 ? activeOrders.length : undefined}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["payment-counter"] && (
@@ -1951,6 +1996,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Payment Counter" 
               active={activeTab === "payment-counter"}
               onClick={() => handleTabChange("payment-counter")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["pos-billing"] && (
@@ -1959,6 +2005,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="POS Billing" 
               active={activeTab === "pos-billing"}
               onClick={() => handleTabChange("pos-billing")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["menu"] && (
@@ -1967,6 +2014,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Menu Management" 
               active={activeTab === "menu"}
               onClick={() => handleTabChange("menu")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["content"] && (
@@ -1975,6 +2023,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Content Manager" 
               active={activeTab === "content"}
               onClick={() => handleTabChange("content")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["analytics"] && (
@@ -1983,6 +2032,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Analytics" 
               active={activeTab === "analytics"}
               onClick={() => handleTabChange("analytics")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["delivery-management"] && (
@@ -1991,6 +2041,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Delivery Management" 
               active={activeTab === "delivery-management"}
               onClick={() => handleTabChange("delivery-management")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["payout"] && (
@@ -1999,6 +2050,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Payout" 
               active={activeTab === "payout"}
               onClick={() => handleTabChange("payout")}
+              collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["position-bidding"] && (
@@ -2007,6 +2059,7 @@ export default function CanteenOwnerDashboardSidebar() {
               label="Bid for Position" 
               active={activeTab === "position-bidding"}
               onClick={() => handleTabChange("position-bidding")}
+              collapsed={sidebarCollapsed}
             />
           )}
           
@@ -2018,6 +2071,7 @@ export default function CanteenOwnerDashboardSidebar() {
                 label={isStoreMode ? "Exit Store Mode" : "Store Mode"} 
                 active={false}
                 onClick={() => setIsStoreMode(!isStoreMode)}
+                collapsed={sidebarCollapsed}
               />
             </div>
           )}
@@ -2025,19 +2079,20 @@ export default function CanteenOwnerDashboardSidebar() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t space-y-2 flex-shrink-0">
+        <div className={`${sidebarCollapsed ? "p-2" : "p-3"} border-t space-y-2 flex-shrink-0`}>
           <Button 
             variant="ghost" 
             size="sm"
             onClick={() => setShowNotifications(true)}
-            className="w-full justify-start relative"
+            className={`w-full ${sidebarCollapsed ? "justify-center px-2" : "justify-start"} relative`}
+            title={sidebarCollapsed ? "Notifications" : undefined}
           >
-            <Bell className="w-4 h-4 mr-2" />
-            Notifications
+            <Bell className={`w-4 h-4 ${sidebarCollapsed ? "" : "mr-2"}`} />
+            {!sidebarCollapsed && "Notifications"}
             {notifications.filter(n => !n.read).length > 0 && (
               <Badge 
                 variant="destructive" 
-                className="ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs"
+                className={sidebarCollapsed ? "absolute right-1.5 top-1.5 h-5 min-w-5 px-1 flex items-center justify-center text-[10px]" : "ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs"}
               >
                 {notifications.filter(n => !n.read).length}
               </Badge>
@@ -2047,10 +2102,11 @@ export default function CanteenOwnerDashboardSidebar() {
             variant="ghost" 
             size="sm"
             onClick={() => setShowSettings(true)}
-            className="w-full justify-start"
+            className={`w-full ${sidebarCollapsed ? "justify-center px-2" : "justify-start"}`}
+            title={sidebarCollapsed ? "Settings" : undefined}
           >
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
+            <Settings className={`w-4 h-4 ${sidebarCollapsed ? "" : "mr-2"}`} />
+            {!sidebarCollapsed && "Settings"}
           </Button>
         </div>
       </div>
@@ -2137,8 +2193,8 @@ export default function CanteenOwnerDashboardSidebar() {
                           onClick={() => setLocation(`/canteen-order-detail/${order.id}`)}
                         >
                           <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <div className="flex items-center font-medium">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex items-center font-medium whitespace-nowrap">
                                 <span>#{(() => {
                                   const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
                                   return formatted.prefix;
@@ -2150,7 +2206,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                   })()}
                                 </span>
                               </div>
-                              <Badge className={getOrderStatusColor(order.status)}>
+                              <Badge className={`${getOrderStatusColor(order.status)} whitespace-nowrap`}>
                                 {getOrderStatusText(order.status)}
                               </Badge>
                               {(() => {
@@ -2163,7 +2219,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                   return (
                                     <Badge 
                                       variant={hasMarkableItem ? "secondary" : "outline"}
-                                      className={hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"}
+                                      className={`${hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"} whitespace-nowrap`}
                                     >
                                       {hasMarkableItem ? "Requires Prep" : "Auto-Ready"}
                                     </Badge>
