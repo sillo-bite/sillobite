@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { performStartupCheck } from "./startup-check";
@@ -10,6 +11,19 @@ import { addPerformanceIndexes } from "./migrations/add-performance-indexes";
 import { printAgentService } from "./services/printAgentService";
 
 const app = express();
+
+// Session configuration for OAuth
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax'
+  }
+}));
 
 // Skip JSON parsing for file upload routes
 app.use((req, res, next) => {
