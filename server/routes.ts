@@ -322,8 +322,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for duplicate email first
       const existingEmailUser = await storage.getUserByEmail(validatedData.email);
       if (existingEmailUser) {
-        console.log(`❌ Email ${validatedData.email} is already registered`);
-        return res.status(409).json({ message: "Email is already registered" });
+        console.log(`ℹ️ Email ${validatedData.email} is already registered, returning existing user`);
+        return res.status(200).json(existingEmailUser);
       }
       
       // Prevent creating multiple super admins

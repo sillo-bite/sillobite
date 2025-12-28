@@ -12,7 +12,6 @@ import { PosCheckoutDialog } from "@/components/pos/PosCheckoutDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
 import { OrderDetailDialog } from "@/components/pos/OrderDetailDialog";
 import { TransactionHistory } from "@/components/pos/TransactionHistory";
-import PrinterStatus from "@/components/common/PrinterStatus";
 import { printWithRetry, printBill } from "@/services/localPrinterService";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -387,7 +386,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   return (
     <OwnerPageLayout>
       <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <OwnerTabList>
             <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
               Billing
@@ -396,20 +395,6 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
               History
             </OwnerTab>
           </OwnerTabList>
-          <div className="flex items-center gap-2 flex-wrap">
-            <PrinterStatus />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestPrint}
-              disabled={isTestPrinting}
-              className="flex items-center gap-2"
-            >
-              <TestTube2 className={`w-4 h-4 ${isTestPrinting ? 'animate-pulse' : ''}`} />
-              <span className="hidden sm:inline">{isTestPrinting ? 'Testing...' : 'Test Printer'}</span>
-              <span className="sm:hidden">{isTestPrinting ? 'Test...' : 'Test'}</span>
-            </Button>
-          </div>
         </div>
 
         {/* Single shared content container - only one panel rendered at a time */}
@@ -427,6 +412,19 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
                   onSearchChange={setSearchQuery}
                   onCategoryChange={setSelectedCategory}
                   onItemClick={addToCart}
+                  headerExtras={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestPrint}
+                      disabled={isTestPrinting}
+                      className="flex items-center gap-2"
+                    >
+                      <TestTube2 className={`w-4 h-4 ${isTestPrinting ? "animate-pulse" : ""}`} />
+                      <span className="hidden sm:inline">{isTestPrinting ? "Testing..." : "Test Printer"}</span>
+                      <span className="sm:hidden">{isTestPrinting ? "Test..." : "Test"}</span>
+                    </Button>
+                  }
                 />
 
                 {/* Desktop Cart - Hidden on mobile */}
