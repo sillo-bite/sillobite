@@ -453,7 +453,12 @@ export function PosCheckoutDialog({
 
       const cachedCart = cachedCartRef.current || [];
       const cachedTotals = cachedTotalsRef.current || { subtotal: 0, discount: 0, tax: 0, total: 0 };
-      const isOfflineOrder = paymentMethod === 'offline';
+      // Determine payment method from order if available, otherwise use state
+      const orderPaymentMethod = createdOrder.paymentMethod || paymentMethod;
+      const isOfflineOrder = orderPaymentMethod === 'offline' || orderPaymentMethod === 'cash';
+      
+      // Map payment method to printer API accepted values (CASH or UPI only)
+      const printerPaymentMode = isOfflineOrder ? 'CASH' : 'UPI';
 
       const orderOtp = createdOrder.barcode ? createdOrder.barcode.substring(0, 4) : '0000';
 
@@ -471,7 +476,7 @@ export function PosCheckoutDialog({
         subtotal: cachedTotals.subtotal || 0,
         tax: cachedTotals.tax || 0,
         total: createdOrder.amount || cachedTotals.total || 0,
-        paymentMode: isOfflineOrder ? 'CASH' : 'UPI',
+        paymentMode: printerPaymentMode,
         timestamp: new Date().toISOString(),
         currency: "INR",
         orderOtp: orderOtp,
@@ -489,12 +494,40 @@ export function PosCheckoutDialog({
         printPayload.discount = cachedTotals.discount;
       }
 
-      if (!isOfflineOrder && canteenCharges.length > 0) {
-        printPayload.charges = canteenCharges.map((charge: any) => ({
-          name: charge.name || 'Charge',
-          value: charge.value || 0,
-          isPercentage: charge.type === 'percent',
-        }));
+      if (!isOfflineOrder) {
+        // Use chargesApplied from order if available, otherwise calculate from canteen charges
+        let chargesForPrint: any[] = [];
+        
+        if (createdOrder.chargesApplied) {
+          // Parse chargesApplied from order (can be string or array)
+          chargesForPrint = typeof createdOrder.chargesApplied === 'string' 
+            ? JSON.parse(createdOrder.chargesApplied) 
+            : createdOrder.chargesApplied;
+        } else if (canteenCharges.length > 0) {
+          // Calculate charges from canteen charges
+          chargesForPrint = canteenCharges.map((charge: any) => {
+            let chargeAmount = 0;
+            if (charge.type === 'percent') {
+              chargeAmount = (cachedTotals.subtotal * charge.value) / 100;
+            } else {
+              chargeAmount = charge.value;
+            }
+            return {
+              name: charge.name,
+              type: charge.type,
+              value: charge.value,
+              amount: chargeAmount
+            };
+          });
+        }
+        
+        if (chargesForPrint.length > 0) {
+          printPayload.charges = chargesForPrint.map((charge: any) => ({
+            name: charge.name || 'Charge',
+            value: charge.amount || 0,
+            isPercentage: charge.type === 'percent',
+          }));
+        }
       }
 
       const result = await printBill(printPayload);
@@ -797,20 +830,16 @@ export function PosCheckoutDialog({
               <AlertDialogTitle className="text-xl">Confirm Offline Payment</AlertDialogTitle>
             </div>
             <AlertDialogDescription className="text-base pt-2">
-              <div className="space-y-3">
-                <p>
-                  You are about to create an order with <strong>offline payment</strong> of{' '}
-                  <strong className="text-primary">{formatCurrency(totals.total)}</strong> for{' '}
-                  <strong>{customerName}</strong>.
-                </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
-                  <p className="text-amber-800 text-sm font-medium">
-                    ⚠️ Note: This order will <strong>NOT</strong> be included in automatic payouts. 
-                    It will only appear in analytics and reports.
-                  </p>
-                </div>
-              </div>
+              You are about to create an order with <strong>offline payment</strong> of{' '}
+              <strong className="text-primary">{formatCurrency(totals.total)}</strong> for{' '}
+              <strong>{customerName}</strong>.
             </AlertDialogDescription>
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-3">
+              <p className="text-amber-800 text-sm font-medium">
+                ⚠️ Note: This order will <strong>NOT</strong> be included in automatic payouts. 
+                It will only appear in analytics and reports.
+              </p>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>

@@ -10,6 +10,7 @@ import { MenuGrid } from "@/components/pos/MenuGrid";
 import { CartPanel } from "@/components/pos/CartPanel";
 import { PosCheckoutDialog } from "@/components/pos/PosCheckoutDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
+import { OrderDetailDialog } from "@/components/pos/OrderDetailDialog";
 import { TransactionHistory } from "@/components/pos/TransactionHistory";
 import PrinterStatus from "@/components/common/PrinterStatus";
 import { printWithRetry, printBill } from "@/services/localPrinterService";
@@ -26,6 +27,8 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [showCartSheet, setShowCartSheet] = useState(false);
+  const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
   
   // Form State
   const [customerName, setCustomerName] = useState("");
@@ -169,6 +172,10 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     // Generate 4-digit OTP for order verification
     const orderOtp = Math.floor(1000 + Math.random() * 9000).toString();
     
+    // Map payment method to printer API accepted values (CASH or UPI only)
+    const isOffline = transaction.paymentMethod === 'offline' || transaction.paymentMethod === 'cash';
+    const printerPaymentMode = isOffline ? 'CASH' : 'UPI';
+    
     const payload: any = {
       version: "1.0.0",
       billId: transaction.orderNumber,
@@ -183,7 +190,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
       subtotal: totals.subtotal,
       tax: totals.tax,
       total: totals.total,
-      paymentMode: transaction.paymentMethod.toUpperCase(),
+      paymentMode: printerPaymentMode,
       timestamp: transaction.createdAt.toISOString(),
       currency: "INR",
     };
@@ -287,6 +294,92 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
 
   const handleDiscountConfigChange = (config: DiscountConfig) => {
     setDiscountConfig(config);
+  };
+
+  const handleTransactionClick = (transaction: any) => {
+    setSelectedTransaction(transaction);
+    setShowOrderDetail(true);
+  };
+
+  const handlePrintHistoricalReceipt = async (transaction: any) => {
+    const items = JSON.parse(transaction.items || '[]');
+    const totalsForPrint = {
+      subtotal: transaction.itemsSubtotal || transaction.amount,
+      discount: transaction.discountAmount || 0,
+      tax: transaction.taxAmount || 0,
+      total: transaction.amount,
+    };
+    
+    const transactionForPrint: Transaction = {
+      id: transaction.id,
+      orderNumber: transaction.orderNumber,
+      customerName: transaction.customerName,
+      amount: transaction.amount,
+      paymentMethod: transaction.paymentMethod,
+      items: items,
+      discount: transaction.discountAmount,
+      createdAt: new Date(transaction.createdAt),
+      status: transaction.status,
+    };
+    
+    // Fetch canteen charges if payment method is UPI or QR
+    const shouldIncludeCharges = transaction.paymentMethod === 'upi' || transaction.paymentMethod === 'card' || transaction.paymentMethod === 'netbanking' || transaction.paymentMethod === 'qr';
+    let chargesForPrint: any[] = [];
+    
+    if (shouldIncludeCharges && transaction.chargesApplied) {
+      // chargesApplied can be a JSON string or already an array
+      chargesForPrint = typeof transaction.chargesApplied === 'string' 
+        ? JSON.parse(transaction.chargesApplied) 
+        : transaction.chargesApplied;
+    }
+    
+    await sendToPrinterWithCharges(transactionForPrint, totalsForPrint, chargesForPrint);
+  };
+
+  const sendToPrinterWithCharges = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; tax: number; total: number }, charges: any[]) => {
+    setIsPrinting(true);
+    setPrintError(null);
+
+    const printPayload = formatTransactionForPrint(transaction, totalsForPrint);
+    
+    // Add charges if available and payment method requires them
+    if (charges && charges.length > 0) {
+      printPayload.charges = charges.map((charge: any) => ({
+        name: charge.name || 'Charge',
+        value: charge.amount || 0,
+        isPercentage: charge.type === 'percent',
+      }));
+    }
+    
+    try {
+      const result = await printWithRetry(printPayload, 2, 1000);
+      
+      if (result.success) {
+        toast.success("Bill sent to printer successfully");
+        setPrintError(null);
+      } else {
+        setPrintError(result.message || "Failed to print bill");
+        toast.error(`Print failed: ${result.message || "Unknown error"}`, {
+          action: {
+            label: "Retry",
+            onClick: () => sendToPrinterWithCharges(transaction, totalsForPrint, charges),
+          },
+          duration: 10000,
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to print bill";
+      setPrintError(errorMessage);
+      toast.error(`Print error: ${errorMessage}`, {
+        action: {
+          label: "Retry",
+          onClick: () => sendToPrinterWithCharges(transaction, totalsForPrint, charges),
+        },
+        duration: 10000,
+      });
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   return (
@@ -400,6 +493,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
               transactions={transactions} 
               pagination={transactionsPagination}
               onPageChange={setTransactionsPage}
+              onTransactionClick={handleTransactionClick}
             />
           )}
         </div>
@@ -425,6 +519,15 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         onOpenChange={setShowReceipt}
         transaction={currentTransaction}
         onPrint={handlePrintReceipt}
+      />
+
+      {/* Order Detail Dialog for History */}
+      <OrderDetailDialog
+        open={showOrderDetail}
+        onOpenChange={setShowOrderDetail}
+        transaction={selectedTransaction}
+        onPrint={handlePrintHistoricalReceipt}
+        isPrinting={isPrinting}
       />
     </OwnerPageLayout>
   );
