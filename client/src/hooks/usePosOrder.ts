@@ -39,14 +39,17 @@ export function usePosOrder(canteenId: string) {
         isOffline: true,
         paymentStatus: 'completed',
         isCounterOrder: true,
-        status: 'completed',
         orderType: 'takeaway',
       };
+
+      console.log('🔍 POS Order Payload:', payload);
 
       const data = await apiRequest('/api/orders', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
+
+      console.log('✅ Order Response:', data);
 
       // Create transaction from response
       const transaction: Transaction = {

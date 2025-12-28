@@ -11,9 +11,10 @@ interface TransactionHistoryProps {
     totalCount: number;
   };
   onPageChange?: (page: number) => void;
+  onTransactionClick?: (transaction: any) => void;
 }
 
-export function TransactionHistory({ transactions, pagination, onPageChange }: TransactionHistoryProps) {
+export function TransactionHistory({ transactions, pagination, onPageChange, onTransactionClick }: TransactionHistoryProps) {
   return (
     <OwnerCard
       title={
@@ -40,7 +41,8 @@ export function TransactionHistory({ transactions, pagination, onPageChange }: T
               return (
                 <div 
                   key={transaction.id} 
-                  className="p-4 bg-card border border-border rounded-lg hover:shadow-md transition-shadow"
+                  onClick={() => onTransactionClick?.(transaction)}
+                  className="p-4 bg-card border border-border rounded-lg hover:shadow-md transition-shadow cursor-pointer hover:border-primary/50"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
