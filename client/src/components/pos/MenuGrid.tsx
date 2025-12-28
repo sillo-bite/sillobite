@@ -2,6 +2,8 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { OwnerCard, OwnerButton, OwnerBadge } from "@/components/owner";
 import { formatCurrency } from "@/utils/posCalculations";
+import { usePrinterStatus } from "@/hooks/usePrinterStatus";
+import type { ReactNode } from "react";
 import type { MenuItem, Category } from "@shared/schema";
 
 interface MenuGridProps {
@@ -13,6 +15,7 @@ interface MenuGridProps {
   onSearchChange: (query: string) => void;
   onCategoryChange: (categoryId: string) => void;
   onItemClick: (item: MenuItem) => void;
+  headerExtras?: ReactNode;
 }
 
 export function MenuGrid({
@@ -24,15 +27,32 @@ export function MenuGrid({
   onSearchChange,
   onCategoryChange,
   onItemClick,
+  headerExtras,
 }: MenuGridProps) {
+  const { isConnected: isPrinterConnected, isLoading: isPrinterLoading, error: printerError } = usePrinterStatus();
+  const printerTitle = isPrinterLoading
+    ? "Checking printer..."
+    : isPrinterConnected
+      ? "Local printer: connected"
+      : `Local printer: not connected${printerError ? ` (${printerError})` : ""}`;
+
   return (
     <OwnerCard
       title="Menu Items"
       description="Select items to add to cart"
       headerActions={
-        <OwnerBadge variant="default" className="text-xs">
-          {menuItems.length} items
-        </OwnerBadge>
+        <div className="flex items-center gap-2">
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${
+              isPrinterLoading ? "bg-muted-foreground animate-pulse" : isPrinterConnected ? "bg-success" : "bg-destructive"
+            }`}
+            title={printerTitle}
+          />
+          <OwnerBadge variant="default" className="text-xs">
+            {menuItems.length} items
+          </OwnerBadge>
+          {headerExtras}
+        </div>
       }
       className="lg:col-span-2 flex flex-col overflow-hidden h-full"
       contentClassName="flex-1 flex flex-col overflow-hidden p-3 sm:p-4 min-h-0"
