@@ -5,8 +5,7 @@
 
 export const signInWithGoogle = (): void => {
   window.location.href = '/api/auth/google';
- * Simplified client-side implementation - OAuth URL generation handled by backend
- */
+};
 
 // Handle Google OAuth redirect
 export const handleGoogleRedirect = async (): Promise<{
@@ -94,11 +93,6 @@ export const handleGoogleRedirect = async (): Promise<{
     console.error('Google OAuth redirect error:', error);
     throw error;
   }
-};
-
-// Sign in with Google (redirect method)
-export const signInWithGoogle = (): void => {
-  window.location.href = '/api/auth/google';
 };
 
 // Sign in with Google (popup method)

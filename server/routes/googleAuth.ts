@@ -4,8 +4,15 @@
  */
 
 import { Router } from 'express';
+import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
+
+const oauth2Client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
 
 
 // Initiate Google OAuth flow
@@ -102,31 +109,10 @@ router.post('/token', async (req, res) => {
       redirect_uri
     });
 
-    if (error) {
-      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error as string)}`);
-    }
-
     if (!code || typeof code !== 'string') {
-      return res.redirect(`${frontendUrl}/auth/callback?error=no_code`);
+      return res.status(400).json({ error: 'Authorization code is required' });
     }
 
-    // Exchange code for tokens
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
-        grant_type: 'authorization_code',
-      }),
-    });
-
-    if (!tokenResponse.ok) {
-      const error = await tokenResponse.text();
-      console.error('Token exchange failed:', error);
-      return res.redirect(`${frontendUrl}/auth/callback?error=token_exchange_failed`);
     console.log('Exchanging code for tokens...');
     const { tokens } = await oauth2Client.getToken({
       code,
@@ -143,7 +129,6 @@ router.post('/token', async (req, res) => {
   } catch (error: any) {
     console.error('Token exchange error:', error);
     const errorMessage = error?.message || 'Unknown error';
-    const errorDetails = error?.response?.data || errorMessage;
     
     let userFriendlyError = 'Failed to exchange authorization code';
     if (errorMessage.includes('unauthorized_client')) {
@@ -152,36 +137,10 @@ router.post('/token', async (req, res) => {
       userFriendlyError = 'Authorization code expired or already used. Please try logging in again.';
     }
 
-    const tokens = await tokenResponse.json();
-
-    // Fetch user profile
-    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    res.status(400).json({
+      error: userFriendlyError,
+      details: errorMessage
     });
-
-    if (!userResponse.ok) {
-      console.error('Failed to fetch user info');
-      return res.redirect(`${frontendUrl}/auth/callback?error=user_info_failed`);
-    }
-
-    const userInfo = await userResponse.json();
-
-    // Store user in session (tokens never exposed to frontend)
-    if (req.session) {
-      req.session.googleUser = {
-        id: userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-        emailVerified: userInfo.verified_email,
-      };
-    }
-
-    res.redirect(`${frontendUrl}/auth/callback`);
-  } catch (error) {
-    console.error('OAuth callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'https://sillobite.in';
-    res.redirect(`${frontendUrl}/auth/callback?error=authentication_failed`);
   }
 });
 
@@ -226,8 +185,6 @@ router.post('/verify', async (req, res) => {
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
-
-  res.json(req.session.googleUser);
 });
 
 export default router;
