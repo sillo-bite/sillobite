@@ -2298,6 +2298,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         discountAmount: req.body.discountAmount,
         appliedCoupon: req.body.appliedCoupon,
         isOffline: req.body.isOffline,
+        isCounterOrder: req.body.isCounterOrder,
+        status: req.body.status,
         paymentStatus: req.body.paymentStatus,
         orderType: req.body.orderType,
         hasDeliveryAddress: !!req.body.deliveryAddress,
@@ -2313,6 +2315,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const orderData = { ...req.body, orderNumber, barcode };
       const validatedData = insertOrderSchema.parse(orderData);
+      
+      console.log('✅ Validated order data:', {
+        isCounterOrder: validatedData.isCounterOrder,
+        isOffline: validatedData.isOffline,
+        status: validatedData.status,
+        paymentStatus: validatedData.paymentStatus
+      });
       
       // Parse order items
       let orderItems = [];
@@ -2412,11 +2421,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let orderStatus;
       let paymentStatus = validatedData.paymentStatus; // Keep existing paymentStatus if provided
       
+      console.log('🔍 Status determination - isCounterOrder:', validatedData.isCounterOrder, 'isOffline:', validatedData.isOffline);
+      
       if (validatedData.isCounterOrder) {
-        // For counter orders, keep the original status sent from client (usually "delivered")
-        orderStatus = validatedData.status || "delivered";
+        // For counter orders (POS): payment already collected, but order still needs preparation
+        // Status determined by markable items (same as regular orders)
+        orderStatus = hasMarkableItem ? "pending" : "ready";
+        paymentStatus = paymentStatus || 'completed'; // POS orders are already paid at counter
+        console.log('✅ Counter order detected - status:', orderStatus, '(payment already completed)');
       } else if (validatedData.isOffline) {
-        // For offline orders, check if amount is 0 (free orders don't need payment)
+        // For offline orders (pay at counter), check if amount is 0 (free orders don't need payment)
         const orderAmount = validatedData.amount || 0;
         if (orderAmount <= 0) {
           // Free orders: determine status based on markable items (no payment needed)
@@ -2467,16 +2481,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : 'none'
       });
       
+      // Calculate chargesApplied if chargesTotal exists and payment method requires charges
+      let chargesApplied: any[] = [];
+      const userChargesTotal = validatedData.chargesTotal || 0;
+      
+      if (userChargesTotal > 0 && validatedData.canteenId) {
+        const paymentMethod = validatedData.paymentMethod || (validatedData.isOffline ? 'offline' : 'online');
+        const shouldIncludeCharges = paymentMethod !== 'offline' && paymentMethod !== 'cash';
+        
+        if (shouldIncludeCharges) {
+          try {
+            const canteenCharges = await storage.getCanteenCharges(validatedData.canteenId);
+            const activeCharges = canteenCharges.filter((charge: any) => charge.active);
+            const subtotal = validatedData.itemsSubtotal || validatedData.originalAmount || validatedData.amount || 0;
+            
+            chargesApplied = activeCharges.map((charge: any) => {
+              let chargeAmount = 0;
+              if (charge.type === 'percent') {
+                chargeAmount = (subtotal * charge.value) / 100;
+              } else {
+                chargeAmount = charge.value;
+              }
+              
+              return {
+                name: charge.name,
+                type: charge.type,
+                value: charge.value,
+                amount: chargeAmount
+              };
+            });
+          } catch (error) {
+            console.error('Error fetching canteen charges for user order:', error);
+          }
+        }
+      }
+
       // Update validated data with appropriate status and counter assignments
       // IMPORTANT: Update items string to include counter IDs in each item
       const finalOrderData = {
         ...validatedData,
         status: orderStatus,
         paymentStatus: paymentStatus, // Ensure paymentStatus is set correctly
+        isCounterOrder: validatedData.isCounterOrder, // Explicitly preserve counter order flag
+        isOffline: validatedData.isOffline, // Explicitly preserve offline flag
         items: JSON.stringify(orderItems), // Items now include storeCounterId, paymentCounterId, kotCounterId, isMarkable, etc.
         itemsSubtotal: validatedData.itemsSubtotal || validatedData.originalAmount || validatedData.amount || 0,
         taxAmount: validatedData.taxAmount || 0,
-        chargesTotal: validatedData.chargesTotal || 0,
+        chargesTotal: userChargesTotal,
+        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
         paymentMethod: validatedData.paymentMethod || (validatedData.isOffline ? 'offline' : 'online'),
         storeCounterId: allStoreCounterIds[0] || null, // Keep first for backward compatibility
         paymentCounterId: allPaymentCounterIds[0] || null, // Keep first for backward compatibility
@@ -2490,6 +2542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Debug: Check what fields are being passed to storage
       console.log(`🔍 Final order data being passed to storage:`, {
+        isCounterOrder: finalOrderData.isCounterOrder,
         isOffline: finalOrderData.isOffline,
         paymentStatus: finalOrderData.paymentStatus,
         status: finalOrderData.status,
@@ -2542,8 +2595,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`✅ Order ${orderNumber} created successfully with canteenId: ${order.canteenId}`);
-      console.log(`📦 Order details:`, {
+      console.log(`📦 Order details saved to MongoDB:`, {
         id: order.id,
+        isCounterOrder: order.isCounterOrder,
         isOffline: order.isOffline,
         paymentStatus: order.paymentStatus,
         status: order.status
@@ -3983,6 +4037,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Calculate charges from totals (UPI/online payments include charges)
+      let chargesTotal = 0;
+      let chargesApplied: any[] = [];
+      
+      if (totals.subtotal && totals.total) {
+        // chargesTotal = total - (subtotal - discount + tax)
+        const expectedTotalWithoutCharges = totals.subtotal - (totals.discount || 0) + (totals.tax || 0);
+        chargesTotal = totals.total - expectedTotalWithoutCharges;
+        
+        // Try to fetch canteen charges to reconstruct chargesApplied array
+        if (chargesTotal > 0) {
+          try {
+            const canteenCharges = await storage.getCanteenCharges(canteenId);
+            const activeCharges = canteenCharges.filter((charge: any) => charge.active);
+            
+            chargesApplied = activeCharges.map((charge: any) => {
+              let chargeAmount = 0;
+              if (charge.type === 'percent') {
+                chargeAmount = (totals.subtotal * charge.value) / 100;
+              } else {
+                chargeAmount = charge.value;
+              }
+              
+              return {
+                name: charge.name,
+                type: charge.type,
+                value: charge.value,
+                amount: chargeAmount
+              };
+            });
+          } catch (error) {
+            console.error('Error fetching canteen charges:', error);
+          }
+        }
+      }
+
       // Create order
       const order = await storage.createOrder({
         customerName: customerName,
@@ -3993,6 +4083,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: totals.total,
         itemsSubtotal: totals.subtotal,
         taxAmount: totals.tax || 0,
+        chargesTotal: chargesTotal,
+        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
         originalAmount: totals.subtotal,
         discountAmount: totals.discount,
         status: orderStatus,
@@ -4169,6 +4261,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Offline orders (cash) do NOT include canteen charges
+      const chargesTotal = 0;
+      const chargesApplied: any[] = [];
+
       // Create order
       const order = await storage.createOrder({
         customerName: customerName,
@@ -4179,13 +4275,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: totals.total,
         itemsSubtotal: totals.subtotal,
         taxAmount: totals.tax || 0,
+        chargesTotal: chargesTotal,
+        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
         originalAmount: totals.subtotal,
         discountAmount: totals.discount,
         status: orderStatus,
         orderNumber: orderNumber,
         barcode: barcode,
         estimatedTime: 15,
-        isOffline: false,
+        isOffline: true,
+        isCounterOrder: true,
         paymentStatus: paymentStatus,
         paymentMethod: 'offline',
         orderType: 'takeaway',
@@ -4353,6 +4452,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`💳 Razorpay QR code created: ${qrCode.id} for order ${orderNumber}`);
 
+      // Calculate charges from totals (QR payments include charges)
+      let chargesTotal = 0;
+      let chargesApplied: any[] = [];
+      
+      if (totals && totals.subtotal && totals.total) {
+        const expectedTotalWithoutCharges = totals.subtotal - (totals.discount || 0) + (totals.tax || 0);
+        chargesTotal = totals.total - expectedTotalWithoutCharges;
+        
+        if (chargesTotal > 0) {
+          try {
+            const canteenCharges = await storage.getCanteenCharges(canteenId);
+            const activeCharges = canteenCharges.filter((charge: any) => charge.active);
+            
+            chargesApplied = activeCharges.map((charge: any) => {
+              let chargeAmount = 0;
+              if (charge.type === 'percent') {
+                chargeAmount = (totals.subtotal * charge.value) / 100;
+              } else {
+                chargeAmount = charge.value;
+              }
+              
+              return {
+                name: charge.name,
+                type: charge.type,
+                value: charge.value,
+                amount: chargeAmount
+              };
+            });
+          } catch (error) {
+            console.error('Error fetching canteen charges:', error);
+          }
+        }
+      }
+
       // Create order with PENDING payment status
       const order = await storage.createOrder({
         customerName: customerName,
@@ -4363,6 +4496,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: totals?.total || amount,
         itemsSubtotal: totals?.subtotal || amount,
         taxAmount: totals?.tax || 0,
+        chargesTotal: chargesTotal,
+        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
         originalAmount: totals?.subtotal || amount,
         discountAmount: totals?.discount || 0,
         status: orderStatus,
