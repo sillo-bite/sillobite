@@ -7,7 +7,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import { toast } from "sonner";
 import { updateStatusBarColor } from "@/utils/statusBar";
 
@@ -189,7 +188,7 @@ export default function FavoritesPage() {
       </div>
 
       {/* Scrollable content area */}
-      <div className="flex flex-col px-4 pb-24 mt-4">
+      <div className="flex flex-col px-4 pb-12 mt-4">
         {currentCanteenFavorites.length > 0 ? (
           <div className="space-y-4">
             <p className="text-muted-foreground">
@@ -346,10 +345,6 @@ export default function FavoritesPage() {
           </div>
         )}
         </div>
-      </div>
-      {/* Bottom Navigation - fixed at bottom */}
-      <div className="flex-shrink-0">
-        <BottomNavigation currentPage="favorites" />
       </div>
     </>
   );

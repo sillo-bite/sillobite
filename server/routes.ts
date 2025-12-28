@@ -1407,16 +1407,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         query.isVegetarian = true;
       }
       
-      // Search filter - use text index for better performance
+      // Search filter - use escaped regex for robust substring matching
       if (search && search.trim()) {
-        // Use MongoDB text search (much faster than regex)
-        // This uses the text index we created on name and description fields
-        query.$text = { $search: search.trim() };
+        const searchTerm = search.trim();
+        const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const searchRegex = new RegExp(escapedSearchTerm, 'i');
         
-        // Note: Text search is case-insensitive by default and supports:
-        // - Multiple words: "chicken biryani" 
-        // - Partial matching with proper text index
-        // - Much faster than regex (5-10x improvement)
+        // Also search for categories that match the search term
+        const matchingCategories = await Category.find({
+          canteenId,
+          name: searchRegex
+        }).select('_id');
+        
+        const matchingCategoryIds = matchingCategories.map(cat => cat._id);
+        
+        query.$or = [
+          { name: searchRegex },
+          { description: searchRegex }
+        ];
+        
+        if (matchingCategoryIds.length > 0) {
+          query.$or.push({ categoryId: { $in: matchingCategoryIds } });
+        }
+        
+        console.log('🔍 Substring search applied:', escapedSearchTerm, 'Matching categories:', matchingCategoryIds.length);
       }
       
       // Stock filter (for admin views - overrides availableOnly filter)
@@ -1432,9 +1446,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Category filter - find category ID first for better performance
       if (category && category !== 'all') {
-        const categoryDoc = await Category.findOne({ name: category, canteenId });
-        if (categoryDoc) {
-          query.categoryId = categoryDoc._id;
+        let categoryId = null;
+        
+        // Check if category is a valid ObjectId (directly passed from UI)
+        if (mongoose.Types.ObjectId.isValid(category)) {
+          categoryId = category;
+        } else {
+          // If not an ID, find by name
+          const categoryDoc = await Category.findOne({ name: category, canteenId });
+          if (categoryDoc) {
+            categoryId = categoryDoc._id;
+          }
+        }
+
+        if (categoryId) {
+          query.categoryId = categoryId;
         } else {
           // If category not found, return empty results
           return res.json({
@@ -1459,8 +1485,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Build sort object
-      const sortObj: any = {};
-      sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
+      let sortOptions: any = {};
+      sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
       
       // OPTIMIZED: Get total count for pagination
       // Note: For very large collections, consider caching or using estimatedDocumentCount()
@@ -1477,15 +1503,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit,
         skip
       });
-      
-      // Build sort object - for text search, sort by relevance score first
-      let sortOptions: any = {};
-      if (search && search.trim()) {
-        // Sort by text search relevance score, then by name
-        sortOptions = { score: { $meta: "textScore" }, ...sortObj };
-      } else {
-        sortOptions = sortObj;
-      }
       
       // OPTIMIZED: Get paginated menu items with proper query chain order
       // Order matters: find -> select -> populate -> sort -> skip -> limit -> lean

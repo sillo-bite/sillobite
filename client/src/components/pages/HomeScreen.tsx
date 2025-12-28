@@ -5,11 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuthSync } from "@/hooks/useDataSync";
 import { useCategoriesLazyLoad } from "@/hooks/useCategoriesLazyLoad";
 import { useHomeData } from "@/hooks/useHomeData";
-import { ChefHat, Loader2, Bell, X, XCircle, CheckCircle, TrendingUp, Zap, Sparkles, Flame, Trophy } from "lucide-react";
+import { ChefHat, Loader2, XCircle, CheckCircle, TrendingUp, Zap, Sparkles, Flame, Trophy, User, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/contexts/CartContext";
 import { clearRestaurantContext, resolveUserSessionConflict, securelyUpdateUserData } from "@/utils/sessionConflictResolver";
 import { setPWAAuth } from "@/utils/pwaAuth";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import type { MenuItem, Category } from "@shared/schema";
 import { CanteenSelector } from "@/components/canteen/CanteenSelector";
 import { useCanteenContext } from "@/contexts/CanteenContext";
@@ -19,8 +19,6 @@ import MenuItemCard from "@/components/menu/MenuItemCard";
 import CategoryCarousel from "@/components/menu/CategoryCarousel";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import HomeScreenSkeleton from "@/components/pages/HomeScreenSkeleton";
-import NotificationPanel from "@/components/common/NotificationPanel";
-import { useNotificationContext } from "@/contexts/NotificationContext";
 import CurrentOrderBottomSheet from "@/components/orders/CurrentOrderBottomSheet";
 import { updateStatusBarColor } from "@/utils/statusBar";
 
@@ -58,6 +56,9 @@ export default function HomeScreen() {
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
+  const { getTotalItems } = useCart();
+
+  const cartItemCount = getTotalItems();
 
   // Update status bar to match header color
   useEffect(() => {
@@ -343,24 +344,6 @@ export default function HomeScreen() {
       </div>
     );
   }
-  // Notification state
-  const [showNotifications, setShowNotifications] = useState(false);
-  
-  // Use real notification context
-  const {
-    notifications,
-    markAsRead,
-    markAllAsRead,
-    clearAllNotifications
-  } = useNotificationContext();
-  
-  // Calculate unread count once to avoid redundant filtering
-  const unreadNotificationsCount = useMemo(() => 
-    notifications.filter(n => !n.read).length, 
-    [notifications]
-  );
-
-
   // Lazy loading categories with infinite scroll
   const { 
     data: categoriesData, 
@@ -373,16 +356,27 @@ export default function HomeScreen() {
 
   // Flatten all pages of lazy loaded categories with error handling
   const categories: Category[] = useMemo(() => {
-    if (!categoriesData?.pages) return [];
-    return categoriesData.pages.flatMap(page => {
+    const baseCategories = categoriesData?.pages ? categoriesData.pages.flatMap(page => {
       if (!page?.items || !Array.isArray(page.items)) {
         return [];
       }
       return page.items;
-    });
-  }, [categoriesData]);
+    }) : [];
+
+    // Add "all" category at the beginning
+    return [
+      {
+        id: 'all',
+        name: 'all',
+        canteenId: selectedCanteen?.id || '',
+        imageUrl: '/White Brown Modern QR Code Food Menu Flyer.svg',
+        createdAt: new Date()
+      } as Category,
+      ...baseCategories
+    ];
+  }, [categoriesData, selectedCanteen?.id]);
   
-  const totalCategories = categoriesData?.pages?.[0]?.total || 0;
+  const totalCategories = (categoriesData?.pages?.[0]?.total || 0) + 1;
 
   // Home data batch API - media banners, trending items, quick picks, active orders
   // Wait for both canteen AND user to be ready before fetching to prevent multiple calls
@@ -421,28 +415,6 @@ export default function HomeScreen() {
 
   const isLoading = categoriesLoading || homeDataLoading;
 
-
-  // Notification handlers
-  const handleToggleNotifications = useCallback(() => {
-    setShowNotifications(prev => !prev);
-  }, []);
-
-  const handleCloseNotifications = useCallback(() => {
-    setShowNotifications(false);
-  }, []);
-
-  const handleMarkAsRead = useCallback((id: string) => {
-    markAsRead(id);
-  }, [markAsRead]);
-
-  const handleMarkAllAsRead = useCallback(() => {
-    markAllAsRead();
-  }, [markAllAsRead]);
-
-  const handleClearAll = useCallback(() => {
-    clearAllNotifications();
-  }, [clearAllNotifications]);
-
   // Get data from home API - backend already limits to 4 items, no need to slice
   // Memoize to prevent recreation on every render
   const mediaBanners = useMemo(() => homeData?.mediaBanners || [], [homeData?.mediaBanners]);
@@ -464,7 +436,6 @@ export default function HomeScreen() {
     return (
       <>
         <HomeScreenSkeleton />
-        <BottomNavigation currentPage="home" />
       </>
     );
   }
@@ -476,7 +447,7 @@ export default function HomeScreen() {
       }`} style={{ maxWidth: '100vw' }}>
         {/* Header Container */}
         <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
-          {/* Top section - Canteen selector, exit restaurant button, and notifications */}
+          {/* Top section - Canteen selector */}
           <div className="px-4 pt-12 pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -515,23 +486,40 @@ export default function HomeScreen() {
                     </div>
                   </button>
                 )}
-                <button
-                  onClick={handleToggleNotifications}
-                  className="relative p-2 rounded-full hover:bg-white/5 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white/10"
-                  aria-label="Notifications"
-                  aria-expanded={showNotifications}
+                
+                {/* Cart Navigation */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+                  }}
+                  className="text-white hover:bg-white/20 rounded-full relative"
+                  aria-label={`View Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ''}`}
                 >
-                  <Bell className="w-5 h-5 text-white" />
-                  {unreadNotificationsCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#C397E1] text-[#31084A] text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                      {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-white text-[#724491] text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-sm">
+                      {cartItemCount > 99 ? "99+" : cartItemCount}
                     </span>
                   )}
-                </button>
+                </Button>
+                
+                {/* Profile Navigation */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
+                  }}
+                  className="text-white hover:bg-white/20 rounded-full"
+                  aria-label="View Profile"
+                >
+                  <User className="w-5 h-5" />
+                </Button>
               </div>
             </div>
           </div>
-
         </div>
 
       {/* Incomplete Profile Message */}
@@ -679,7 +667,7 @@ export default function HomeScreen() {
               }`}>Quick Picks</h2>
             </div>
             {quickPickItems.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 pb-[60px]">
+              <div className="grid grid-cols-2 gap-4">
                 {quickPickItems.map((item, index) => (
                   <div
                     key={item.id}
@@ -754,29 +742,17 @@ export default function HomeScreen() {
         )}
       </div>
 
-      </div>
-      
       {/* Bottom spacing for bottom sheet - bottom sheet height + visible gap */}
-      {/* Bottom sheet height: ~4.5rem + Visible gap: 1rem + Extra: 2.25rem (36px) = ~7.75rem */}
-      <div className="pb-[calc(7.75rem+env(safe-area-inset-bottom))]"></div>
-      
-      {/* Notification Panel */}
-      <NotificationPanel
-        isOpen={showNotifications}
-        onClose={handleCloseNotifications}
-        notifications={notifications}
-        onMarkAsRead={handleMarkAsRead}
-        onMarkAllAsRead={handleMarkAllAsRead}
-        onClearAll={handleClearAll}
-      />
+      {/* Bottom sheet height increased to ensure quick picks are not covered by the carousel */}
+      <div className="pb-[calc(7.5rem+env(safe-area-inset-bottom))]"></div>
+
+      </div>
       
       {/* Current Order Bottom Sheet - Only shows on home page */}
       <CurrentOrderBottomSheet 
         activeOrders={Array.isArray(homeData?.activeOrders) ? homeData.activeOrders : []} 
         refetchOrders={refetchHomeData}
       />
-      
-      <BottomNavigation currentPage="home" />
     </>
   );
 }

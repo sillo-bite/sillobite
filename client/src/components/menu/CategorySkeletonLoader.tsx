@@ -16,12 +16,12 @@ export function CategorySkeletonLoader({ count = 5 }: CategorySkeletonLoaderProp
         return (
           <div
             key={index}
-            className={`cursor-pointer hover:scale-105 transition-transform flex-shrink-0 w-[100px] flex flex-col items-center justify-center ${
+            className={`cursor-pointer hover:scale-105 transition-transform flex-shrink-0 w-[85px] flex flex-col items-center justify-center ${
               isFirst ? 'pl-4' : ''} ${isLast ? 'pr-4' : ''}`}
           >
             {/* Icon skeleton */}
-            <div className="flex items-center justify-center mx-auto mb-2">
-              <div className={`w-12 h-12 rounded-full animate-pulse ${
+            <div className="flex items-center justify-center mx-auto h-20 mb-1">
+              <div className={`w-14 h-14 rounded-xl animate-pulse ${
                 resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'
               }`} />
             </div>

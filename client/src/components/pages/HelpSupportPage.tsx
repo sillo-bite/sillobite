@@ -48,7 +48,7 @@ export default function HelpSupportPage() {
       'bg-background'
     }`}>
       {/* Header */}
-      <div className="bg-red-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl">
+      <div className="bg-purple-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl">
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 

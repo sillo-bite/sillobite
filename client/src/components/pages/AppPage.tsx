@@ -7,7 +7,6 @@ import MenuListingPage from "@/components/menu/MenuListingPage";
 import ProfilePage from "@/components/profile/ProfilePage";
 import OrdersPage from "@/components/orders/OrdersPage";
 import CodingChallengesPage from "./CodingChallengesPage";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import { useNavigationHistory, type NavigationView } from "@/hooks/useNavigationHistory";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -62,10 +61,10 @@ function MenuWrapper({ category, children }: { category: string; children: React
 export default function AppPage() {
   const [currentView, setCurrentView] = useState<ViewType>("home");
   const [menuCategory, setMenuCategory] = useState<string>("all");
+  const [menuSearchQuery, setMenuSearchQuery] = useState<string>("");
   const [, setLocation] = useLocation();
   const { navigateTo, navigateBack, getPreviousView, history, navigateToWithCurrent } = useNavigationHistory();
   const [showExitToast, setShowExitToast] = useState(false);
-  const [shouldHideBottomNav, setShouldHideBottomNav] = useState(false);
   const { user } = useAuth();
   
   // Ref to track current view for event handlers (prevents closure issues)
@@ -150,11 +149,6 @@ export default function AppPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Determine current page for BottomNavigation
-  const getCurrentPage = (): "home" | "menu" | "cart" | "profile" | "favorites" => {
-    return currentView as "home" | "menu" | "cart" | "profile" | "favorites";
-  };
-
   // Listen for menu category changes and navigation events
   useEffect(() => {
     const handleCategoryChange = (e: CustomEvent) => {
@@ -197,13 +191,27 @@ export default function AppPage() {
       window.history.replaceState({}, "", "/app");
     };
     
+    // Listen for navigation to favorites view
+    const handleNavigateToFavorites = () => {
+      // Ensure we're not already on favorites
+      if (currentView === "favorites") {
+        return;
+      }
+      
+      navigateToWithCurrent("favorites", currentView as NavigationView);
+      setCurrentView("favorites");
+      window.history.replaceState({}, "", "/app");
+    };
+    
     // Listen for navigation to menu view from category clicks
     const handleNavigateToMenu = (e: CustomEvent) => {
       const category = e.detail?.category || "all";
+      const search = e.detail?.search || "";
       // MenuListingPage expects category to be lowercase for matching
       const normalizedCategory = category === "all" ? "all" : category.toLowerCase();
       setCurrentView("menu");
       setMenuCategory(normalizedCategory);
+      setMenuSearchQuery(search);
       window.history.replaceState({}, "", "/app");
       // Scroll to top when switching views
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -267,6 +275,7 @@ export default function AppPage() {
     window.addEventListener('appNavigateHome' as any, handleNavigateHome);
     window.addEventListener('appNavigateToCart' as any, handleNavigateToCart);
     window.addEventListener('appNavigateToOrders' as any, handleNavigateToOrders);
+    window.addEventListener('appNavigateToFavorites' as any, handleNavigateToFavorites);
     window.addEventListener('appNavigateToProfile' as any, handleNavigateToProfile);
     window.addEventListener('appNavigateToChallenges' as any, handleNavigateToChallenges);
     window.addEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
@@ -278,6 +287,7 @@ export default function AppPage() {
       window.removeEventListener('appNavigateHome' as any, handleNavigateHome);
       window.removeEventListener('appNavigateToCart' as any, handleNavigateToCart);
       window.removeEventListener('appNavigateToOrders' as any, handleNavigateToOrders);
+      window.removeEventListener('appNavigateToFavorites' as any, handleNavigateToFavorites);
       window.removeEventListener('appNavigateToProfile' as any, handleNavigateToProfile);
       window.removeEventListener('appNavigateToChallenges' as any, handleNavigateToChallenges);
       window.removeEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
@@ -677,46 +687,8 @@ export default function AppPage() {
     }
   }, [currentView]);
 
-  // Listen for menu search focus changes to hide bottom nav when keyboard is open
-  useEffect(() => {
-    const handleMenuSearchFocusChange = (event: CustomEvent<{ isFocused: boolean }>) => {
-      setShouldHideBottomNav(event.detail.isFocused);
-    };
-
-    window.addEventListener('menuSearchFocusChange', handleMenuSearchFocusChange as EventListener);
-    
-    return () => {
-      window.removeEventListener('menuSearchFocusChange', handleMenuSearchFocusChange as EventListener);
-    };
-  }, []);
-
-  // Reset shouldHideBottomNav when navigating away from menu
-  useEffect(() => {
-    if (currentView !== 'menu') {
-      setShouldHideBottomNav(false);
-    }
-  }, [currentView]);
-
-  // Hide BottomNavigation from HomeScreen, CartPage, FavoritesPage, MenuListingPage, ProfilePage, and OrdersPage
-  useEffect(() => {
-    const hideDuplicateBottomNav = () => {
-      const allBottomNavs = document.querySelectorAll('[class*="fixed"][class*="bottom"][class*="border-t"]');
-      // Keep only the last one (our AppPage navigation)
-      if (allBottomNavs.length > 1) {
-        for (let i = 0; i < allBottomNavs.length - 1; i++) {
-          (allBottomNavs[i] as HTMLElement).style.display = 'none';
-        }
-      }
-    };
-    
-    // Check periodically
-    const interval = setInterval(hideDuplicateBottomNav, 100);
-    
-    return () => clearInterval(interval);
-  }, [currentView]);
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       {/* Conditionally render HomeScreen, CartPage, FavoritesPage, MenuListingPage, ProfilePage, or OrdersPage */}
       {currentView === "home" && (
         <HomeScreen />
@@ -738,7 +710,7 @@ export default function AppPage() {
 
       {currentView === "menu" && (
         <MenuWrapper category={menuCategory}>
-          <MenuListingPage />
+          <MenuListingPage initialSearchQuery={menuSearchQuery} />
         </MenuWrapper>
       )}
 
@@ -760,14 +732,9 @@ export default function AppPage() {
         </div>
       )}
 
-      {/* Single BottomNavigation for AppPage - hide when menu search is focused */}
-      {!shouldHideBottomNav && (
-        <BottomNavigation currentPage={getCurrentPage()} onNavigate={handleNavigation} />
-      )}
-      
       {/* Exit app toast notification (Android) */}
       {showExitToast && (
-        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[10000] animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[10000] animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />

@@ -110,7 +110,7 @@ export default function NotificationsPage() {
       'bg-background'
     }`}>
       {/* Header */}
-      <div className="bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl shadow-lg">
+      <div className="bg-purple-600 px-4 pt-12 pb-6 rounded-b-2xl shadow-lg">
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
@@ -148,7 +148,7 @@ export default function NotificationsPage() {
         {/* Notification Preferences */}
         <div className="space-y-4">
           <h2 className={`text-lg font-semibold ${
-            resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+            resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
           }`}>Notification Preferences</h2>
           
           <Card className={`${
@@ -161,10 +161,10 @@ export default function NotificationsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className={`w-10 h-10 ${
-                      resolvedTheme === 'dark' ? 'bg-red-500/10' : 'bg-red-100'
+                      resolvedTheme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-100'
                     } rounded-lg flex items-center justify-center`}>
                       <Bell className={`w-5 h-5 ${
-                        resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+                        resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
                       }`} />
                     </div>
                     <div>
@@ -177,7 +177,7 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                   <Switch 
-                    variant="red"
+                    variant="purple"
                     checked={notifications.orderUpdates}
                     onCheckedChange={() => updateNotification('orderUpdates')}
                   />
@@ -202,7 +202,7 @@ export default function NotificationsPage() {
                     </div>
                   </div>
                   <Switch 
-                    variant="red"
+                    variant="purple"
                     checked={notifications.promotions}
                     onCheckedChange={() => updateNotification('promotions')}
                   />
@@ -215,7 +215,7 @@ export default function NotificationsPage() {
         {/* Push Notifications */}
         <div className="space-y-4">
           <h2 className={`text-lg font-semibold ${
-            resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+            resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
           }`}>Push Notifications</h2>
           
           <Card className={`${
@@ -227,11 +227,11 @@ export default function NotificationsPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 ${
-                    resolvedTheme === 'dark' ? 'bg-red-500/10' : 'bg-red-100'
+                    resolvedTheme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-100'
                   } rounded-lg flex items-center justify-center`}>
                     {isSubscribed ? (
                       <Bell className={`w-5 h-5 ${
-                        resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+                        resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
                       }`} />
                     ) : (
                       <BellOff className={`w-5 h-5 ${
@@ -256,18 +256,18 @@ export default function NotificationsPage() {
             {!supportsNotifications ? (
               <div className={`flex items-center space-x-3 p-3 ${
                 resolvedTheme === 'dark' 
-                  ? 'bg-red-900/20 border-red-800' 
-                  : 'bg-red-50 border-red-200'
+                  ? 'bg-purple-900/20 border-purple-800' 
+                  : 'bg-purple-50 border-purple-200'
               } rounded-lg`}>
                 <AlertCircle className={`w-5 h-5 ${
-                  resolvedTheme === 'dark' ? 'text-red-400' : 'text-red-600'
+                  resolvedTheme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                 } flex-shrink-0`} />
                 <div>
                   <p className={`font-semibold ${
-                    resolvedTheme === 'dark' ? 'text-red-400' : 'text-red-600'
+                    resolvedTheme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                   }`}>Not Supported</p>
                   <p className={`text-sm ${
-                    resolvedTheme === 'dark' ? 'text-red-300' : 'text-red-500'
+                    resolvedTheme === 'dark' ? 'text-purple-300' : 'text-purple-500'
                   }`}>
                     Your browser doesn't support push notifications
                   </p>
@@ -322,11 +322,11 @@ export default function NotificationsPage() {
                 {permission === 'denied' && (
                   <div className={`p-3 ${
                     resolvedTheme === 'dark' 
-                      ? 'bg-red-900/20 border-red-800' 
-                      : 'bg-red-50 border-red-200'
+                      ? 'bg-purple-900/20 border-purple-800' 
+                      : 'bg-purple-50 border-purple-200'
                   } rounded-lg mb-4`}>
                     <p className={`text-sm ${
-                      resolvedTheme === 'dark' ? 'text-red-400' : 'text-red-600'
+                      resolvedTheme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                     }`}>
                       Notifications are blocked. Please enable them in your device settings or browser.
                     </p>
@@ -336,11 +336,11 @@ export default function NotificationsPage() {
                 {error && (
                   <div className={`p-3 ${
                     resolvedTheme === 'dark' 
-                      ? 'bg-red-900/20 border-red-800' 
-                      : 'bg-red-50 border-red-200'
+                      ? 'bg-purple-900/20 border-purple-800' 
+                      : 'bg-purple-50 border-purple-200'
                   } rounded-lg mb-4`}>
                     <p className={`text-sm ${
-                      resolvedTheme === 'dark' ? 'text-red-400' : 'text-red-600'
+                      resolvedTheme === 'dark' ? 'text-purple-400' : 'text-purple-600'
                     }`}>
                       {error}
                     </p>
@@ -362,7 +362,7 @@ export default function NotificationsPage() {
         {/* App Settings */}
         <div className="space-y-4">
           <h2 className={`text-lg font-semibold ${
-            resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+            resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
           }`}>App Settings</h2>
           
           <Card className={`${
@@ -382,7 +382,7 @@ export default function NotificationsPage() {
                     }`}>Play sound for notifications</p>
                   </div>
                   <Switch 
-                    variant="red"
+                    variant="purple"
                     checked={notifications.soundEnabled}
                     onCheckedChange={() => updateNotification('soundEnabled')}
                   />
@@ -398,7 +398,7 @@ export default function NotificationsPage() {
                     }`}>Vibrate for notifications</p>
                   </div>
                   <Switch 
-                    variant="red"
+                    variant="purple"
                     checked={notifications.vibration}
                     onCheckedChange={() => updateNotification('vibration')}
                   />
@@ -412,7 +412,7 @@ export default function NotificationsPage() {
         {isSubscribed && (
           <div className="space-y-4">
             <h2 className={`text-lg font-semibold ${
-              resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+              resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
             }`}>Test Notifications</h2>
             
             <Card className={`${

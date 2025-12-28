@@ -9,7 +9,6 @@ import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import CategoryIcon from "@/components/ui/CategoryIcon";
 import { ArrowLeft, Search, Star, Clock, Plus, Loader2, ChefHat, X } from "lucide-react";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { MenuItem, Category } from "@shared/schema";
 
@@ -235,8 +234,6 @@ export default function ViewAllQuickPicksPage() {
             }`} />
           </div>
         </div>
-
-        <BottomNavigation currentPage="home" />
       </div>
     );
   }
@@ -273,7 +270,7 @@ export default function ViewAllQuickPicksPage() {
   );
 
   return (
-    <div className={`min-h-screen pb-20 ${
+    <div className={`min-h-screen ${
       'bg-background'
     }`}>
 
@@ -429,11 +426,11 @@ export default function ViewAllQuickPicksPage() {
         )}
       </div>
       
-      {/* Bottom spacing for navigation and search bar */}
-      <div className="pb-[calc(9rem+env(safe-area-inset-bottom))]"></div>
+      {/* Bottom spacing for search bar */}
+      <div className="pb-[calc(6.5rem+env(safe-area-inset-bottom))]"></div>
       
-      {/* Fixed Search Bar above Bottom Navigation */}
-      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-3">
+      {/* Fixed Search Bar at the bottom */}
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-1">
         <div className={`px-4 py-3 shadow-lg backdrop-blur-sm rounded-2xl border ${
           resolvedTheme === 'dark' 
             ? 'bg-background/95 border-[#724491]/30' 
@@ -442,8 +439,6 @@ export default function ViewAllQuickPicksPage() {
           <SearchBar />
         </div>
       </div>
-
-      <BottomNavigation currentPage="home" />
     </div>
   );
 }

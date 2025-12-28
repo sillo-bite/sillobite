@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, ShoppingCart, User, Utensils, Heart, ArrowUp } from "lucide-react";
+import { Home, ShoppingCart, ArrowUp } from "lucide-react";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { useCart } from "@/contexts/CartContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -40,10 +40,7 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
 
   const navigationItems = [
     { id: "home", label: "Home", icon: Home, route: "/app" },
-    { id: "menu", label: "Menu", icon: Utensils, route: "/app" },
-    { id: "favorites", label: "Favorites", icon: Heart, route: "/app" },
-    { id: "cart", label: "Cart", icon: ShoppingCart, route: "/app" },
-    { id: "profile", label: "Profile", icon: User, route: "/app" }
+    { id: "cart", label: "Cart", icon: ShoppingCart, route: "/app" }
   ];
 
   // Calculate the position and width of the sliding indicator
@@ -55,10 +52,10 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
 
   return (
     <>
-      {/* Scroll to Top Button - positioned above search bar */}
+      {/* Scroll to Top Button - positioned above bottom navigation */}
       <button
         onClick={scrollToTop}
-        className={`fixed bottom-[calc(9rem+env(safe-area-inset-bottom)+0.5rem)] left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#724491] hover:bg-[#562A6E] text-white shadow-lg z-[10000] flex items-center justify-center transition-all duration-500 ease-in-out ${
+        className={`fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom)+1rem)] left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#724491] hover:bg-[#562A6E] text-white shadow-lg z-[10000] flex items-center justify-center transition-all duration-500 ease-in-out ${
           showScrollToTop 
             ? 'opacity-100 scale-100 translate-y-0' 
             : 'opacity-0 scale-75 translate-y-2 pointer-events-none'

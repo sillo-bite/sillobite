@@ -109,7 +109,7 @@ export default function AddressManagement({ userId, onBack }: AddressManagementP
       resolvedTheme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'
     }`}>
       {/* Header */}
-      <div className="relative bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+      <div className="relative bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
         <div className="relative z-10 flex items-center justify-between mb-6">
           <Button
             variant="ghost"
@@ -128,7 +128,7 @@ export default function AddressManagement({ userId, onBack }: AddressManagementP
         {/* Add New Address Button */}
         <Button
           onClick={handleAddNew}
-          className="w-full bg-red-600 hover:bg-red-700 text-white"
+          className="w-full bg-[#724491] hover:bg-[#5d3678] text-white"
         >
           <Plus className="w-5 h-5 mr-2" />
           Add New Address
@@ -167,7 +167,7 @@ export default function AddressManagement({ userId, onBack }: AddressManagementP
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-lg">{address.label}</h3>
                       {address.isDefault && (
-                        <Badge className="bg-red-600 text-white">Default</Badge>
+                        <Badge className="bg-[#724491] text-white">Default</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ export default function AddressManagement({ userId, onBack }: AddressManagementP
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-red-600 hover:text-red-700"
+                        className="h-8 w-8 text-[#724491] hover:text-[#5d3678]"
                         onClick={() => setDeleteAddressId(address.id)}
                       >
                         <Trash2 className="w-4 h-4" />
@@ -226,7 +226,7 @@ export default function AddressManagement({ userId, onBack }: AddressManagementP
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteAddressId && handleDelete(deleteAddressId)}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-[#724491] hover:bg-[#5d3678]"
             >
               Delete
             </AlertDialogAction>
