@@ -4,16 +4,9 @@
  */
 
 import { Router } from 'express';
-import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
 
-// Initialize Google OAuth client
-const oauth2Client = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
 
 // Initiate Google OAuth flow
 router.get('/', (req, res) => {
@@ -109,11 +102,31 @@ router.post('/token', async (req, res) => {
       redirect_uri
     });
 
-    if (!code) {
-      console.error('No authorization code provided');
-      return res.status(400).json({ error: 'Authorization code is required' });
+    if (error) {
+      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error as string)}`);
     }
 
+    if (!code || typeof code !== 'string') {
+      return res.redirect(`${frontendUrl}/auth/callback?error=no_code`);
+    }
+
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const error = await tokenResponse.text();
+      console.error('Token exchange failed:', error);
+      return res.redirect(`${frontendUrl}/auth/callback?error=token_exchange_failed`);
     console.log('Exchanging code for tokens...');
     const { tokens } = await oauth2Client.getToken({
       code,
@@ -138,78 +151,37 @@ router.post('/token', async (req, res) => {
     } else if (errorMessage.includes('invalid_grant')) {
       userFriendlyError = 'Authorization code expired or already used. Please try logging in again.';
     }
-    
-    res.status(400).json({ 
-      error: userFriendlyError,
-      details: errorDetails
-    });
-  }
-});
 
-// Get user info from Google
-router.post('/user', async (req, res) => {
-  try {
-    const { access_token, id_token } = req.body;
-    console.log('User info request received:', { 
-      access_token: access_token ? 'present' : 'missing', 
-      id_token: id_token ? 'present' : 'missing' 
+    const tokens = await tokenResponse.json();
+
+    // Fetch user profile
+    const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
 
-    if (!access_token && !id_token) {
-      console.error('No tokens provided for user info request');
-      return res.status(400).json({ error: 'Access token or ID token is required' });
+    if (!userResponse.ok) {
+      console.error('Failed to fetch user info');
+      return res.redirect(`${frontendUrl}/auth/callback?error=user_info_failed`);
     }
 
-    let userInfo;
+    const userInfo = await userResponse.json();
 
-    if (id_token) {
-      console.log('Verifying ID token...');
-      // Verify and decode ID token
-      const ticket = await oauth2Client.verifyIdToken({
-        idToken: id_token,
-        audience: process.env.GOOGLE_CLIENT_ID
-      });
-      
-      userInfo = ticket.getPayload();
-      console.log('ID token verified, user info:', { id: userInfo?.sub, email: userInfo?.email });
-    } else if (access_token) {
-      console.log('Fetching user info from Google API...');
-      // Get user info from Google API
-      const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: {
-          Authorization: `Bearer ${access_token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user info from Google');
-      }
-
-      userInfo = await response.json();
-      console.log('User info fetched from Google API:', { id: userInfo.id, email: userInfo.email });
+    // Store user in session (tokens never exposed to frontend)
+    if (req.session) {
+      req.session.googleUser = {
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
+        emailVerified: userInfo.verified_email,
+      };
     }
 
-    if (!userInfo) {
-      console.error('No user info received');
-      return res.status(400).json({ error: 'Failed to get user info' });
-    }
-
-    const responseData = {
-      id: userInfo.sub || userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name,
-      picture: userInfo.picture,
-      verified_email: userInfo.email_verified
-    };
-
-    console.log('Returning user info:', responseData);
-    res.json(responseData);
+    res.redirect(`${frontendUrl}/auth/callback`);
   } catch (error) {
-    console.error('User info error:', error);
-    res.status(400).json({ 
-      error: 'Failed to get user info',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    console.error('OAuth callback error:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sillobite.in';
+    res.redirect(`${frontendUrl}/auth/callback?error=authentication_failed`);
   }
 });
 
@@ -254,6 +226,8 @@ router.post('/verify', async (req, res) => {
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
+
+  res.json(req.session.googleUser);
 });
 
 export default router;

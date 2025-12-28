@@ -1,5 +1,10 @@
 /**
  * Google OAuth 2.0 Authentication Service
+ * All OAuth URL generation and token exchange handled by backend
+ */
+
+export const signInWithGoogle = (): void => {
+  window.location.href = '/api/auth/google';
  * Simplified client-side implementation - OAuth URL generation handled by backend
  */
 
@@ -147,19 +152,13 @@ export const signInWithGooglePopup = async (): Promise<{
   });
 };
 
-// Sign out (clear local storage)
 export const signOutGoogle = (): void => {
-  // Clear any stored tokens
   localStorage.removeItem('google_access_token');
   localStorage.removeItem('google_id_token');
   localStorage.removeItem('user');
   localStorage.removeItem('session_timestamp');
-  
-  // Redirect to Google logout (optional)
-  // window.location.href = 'https://accounts.google.com/logout';
 };
 
-// Check if user is authenticated
 export const isAuthenticated = (): boolean => {
   const user = localStorage.getItem('user');
   const sessionTimestamp = localStorage.getItem('session_timestamp');
@@ -168,9 +167,8 @@ export const isAuthenticated = (): boolean => {
     return false;
   }
 
-  // Check if session is expired (24 hours)
   const sessionAge = Date.now() - parseInt(sessionTimestamp);
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+  const maxAge = 24 * 60 * 60 * 1000;
 
   if (sessionAge > maxAge) {
     signOutGoogle();
@@ -180,7 +178,6 @@ export const isAuthenticated = (): boolean => {
   return true;
 };
 
-// Get current user
 export const getCurrentUser = (): any => {
   if (!isAuthenticated()) {
     return null;
