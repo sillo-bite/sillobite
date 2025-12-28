@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { MenuItem, Category } from "@shared/schema";
 
 export function usePosData(canteenId: string, searchQuery: string, selectedCategory: string) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const transactionsLimit = 10;
+
   // Fetch menu items
   const { data: menuData, isLoading: menuLoading } = useQuery<{
     items: MenuItem[];
@@ -31,15 +34,19 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
     ? categoriesResponse 
     : (categoriesResponse?.items || []);
 
-  // Fetch recent transactions (orders)
-  const { data: transactionsData = [], refetch: refetchTransactions } = useQuery<any[]>({
-    queryKey: ['/api/orders', canteenId, 'pos-transactions'],
+  // Fetch recent transactions (orders) with pagination
+  const { data: transactionsResponse, refetch: refetchTransactions } = useQuery<{
+    orders: any[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+  }>({
+    queryKey: ['/api/orders/paginated', canteenId, currentPage, 'pos-transactions'],
     queryFn: async () => {
-      const response = await apiRequest(`/api/orders?canteenId=${canteenId}&limit=50`);
-      // Handle both array and object response formats
-      const orders = Array.isArray(response) ? response : (response?.items || response?.orders || []);
-      // Filter for offline/counter orders which are POS transactions
-      return Array.isArray(orders) ? orders.filter((order: any) => order.isOffline || order.isCounterOrder || order.status === 'completed') : [];
+      const response = await apiRequest(
+        `/api/orders/paginated?canteenId=${canteenId}&page=${currentPage}&limit=${transactionsLimit}&isCounterOrder=true`
+      );
+      return response;
     },
     enabled: !!canteenId,
   });
@@ -71,9 +78,15 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
   return {
     menuItems: filteredMenuItems,
     categories: categoriesData,
-    transactions: transactionsData,
+    transactions: transactionsResponse?.orders || [],
+    transactionsPagination: {
+      currentPage: transactionsResponse?.currentPage || 1,
+      totalPages: transactionsResponse?.totalPages || 1,
+      totalCount: transactionsResponse?.totalCount || 0,
+    },
     isLoading: menuLoading,
     refetchTransactions,
+    setTransactionsPage: setCurrentPage,
   };
 }
 

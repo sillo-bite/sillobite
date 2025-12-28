@@ -621,6 +621,7 @@ export default function CheckoutPage() {
       items: JSON.stringify(enhancedCart),
       amount: total,
       itemsSubtotal: subtotal,
+      taxAmount: 0, // No tax for regular user orders (tax only applied in POS orders)
       chargesTotal: chargesTotal,
       chargesApplied: chargesApplied,
       originalAmount: appliedCoupon ? totalBeforeDiscount : total,
@@ -631,6 +632,7 @@ export default function CheckoutPage() {
       canteenId: canteenId,
       isOffline: isOffline,
       paymentStatus: orderPaymentStatus,
+      paymentMethod: isOffline ? 'offline' : paymentMethod, // 'offline', 'upi', etc.
       orderType: orderType, // Include orderType in all order creation paths
       storeCounterIds: counterIds.storeCounterIds,
       paymentCounterIds: counterIds.paymentCounterIds,

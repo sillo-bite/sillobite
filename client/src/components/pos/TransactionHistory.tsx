@@ -1,12 +1,19 @@
-import { History, User, Calendar, DollarSign, ShoppingCart } from "lucide-react";
+import { History, User, Calendar, DollarSign, ShoppingCart, ChevronLeft, ChevronRight } from "lucide-react";
 import { OwnerCard, OwnerBadge } from "@/components/owner";
 import { formatCurrency, formatDate } from "@/utils/posCalculations";
+import { Button } from "@/components/ui/button";
 
 interface TransactionHistoryProps {
   transactions: any[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalCount: number;
+  };
+  onPageChange?: (page: number) => void;
 }
 
-export function TransactionHistory({ transactions }: TransactionHistoryProps) {
+export function TransactionHistory({ transactions, pagination, onPageChange }: TransactionHistoryProps) {
   return (
     <OwnerCard
       title={
@@ -77,6 +84,37 @@ export function TransactionHistory({ transactions }: TransactionHistoryProps) {
           </div>
         )}
       </div>
+      
+      {pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+          <div className="text-sm text-muted-foreground">
+            Showing {transactions.length} of {pagination.totalCount} transactions
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange?.(pagination.currentPage - 1)}
+              disabled={pagination.currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Previous</span>
+            </Button>
+            <div className="text-sm">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange?.(pagination.currentPage + 1)}
+              disabled={pagination.currentPage === pagination.totalPages}
+            >
+              <span className="hidden sm:inline mr-1">Next</span>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </OwnerCard>
   );
 }

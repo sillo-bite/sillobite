@@ -24,6 +24,10 @@ import {
   verifyPaymentSignature,
   getPaymentDetails,
   getOrderDetails,
+  createRazorpayQR,
+  fetchRazorpayQR,
+  fetchAllRazorpayQRPayments,
+  closeRazorpayQR,
   PAYMENT_STATUS,
   RAZORPAY_RESPONSE_CODES
 } from "@shared/razorpay";
@@ -1898,8 +1902,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 15;
       const canteenId = req.query.canteenId as string;
+      const isCounterOrder = req.query.isCounterOrder === 'true' ? true : req.query.isCounterOrder === 'false' ? false : undefined;
+      const isOffline = req.query.isOffline === 'true' ? true : req.query.isOffline === 'false' ? false : undefined;
       
-      const result = await storage.getOrdersPaginated(page, limit, canteenId);
+      const result = await storage.getOrdersPaginated(page, limit, canteenId, isCounterOrder, isOffline);
       
       res.json(result);
     } catch (error) {
@@ -2468,6 +2474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: orderStatus,
         paymentStatus: paymentStatus, // Ensure paymentStatus is set correctly
         items: JSON.stringify(orderItems), // Items now include storeCounterId, paymentCounterId, kotCounterId, isMarkable, etc.
+        itemsSubtotal: validatedData.itemsSubtotal || validatedData.originalAmount || validatedData.amount || 0,
+        taxAmount: validatedData.taxAmount || 0,
+        chargesTotal: validatedData.chargesTotal || 0,
+        paymentMethod: validatedData.paymentMethod || (validatedData.isOffline ? 'offline' : 'online'),
         storeCounterId: allStoreCounterIds[0] || null, // Keep first for backward compatibility
         paymentCounterId: allPaymentCounterIds[0] || null, // Keep first for backward compatibility
         kotCounterId: allKotCounterIds[0] || null, // Keep first for backward compatibility
@@ -3949,6 +3959,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderStatus = hasMarkableItem ? "pending" : "ready";
       const paymentStatus = 'paid';
 
+      // Fetch payment details from Razorpay to get payment method
+      let paymentMethod = 'online'; // Default to 'online'
+      try {
+        const razorpayPayment = await razorpay.payments.fetch(paymentId);
+        paymentMethod = razorpayPayment.method || 'online'; // upi, card, netbanking, etc.
+        console.log(`💳 POS Payment method: ${paymentMethod}`);
+      } catch (error) {
+        console.error('❌ Failed to fetch Razorpay payment details:', error);
+        // Continue with default 'online'
+      }
+
       // Initialize itemStatusByCounter for auto-ready items
       const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
       for (const counterId of allCounterIds) {
@@ -3970,6 +3991,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId: 0,
         items: JSON.stringify(orderItems),
         amount: totals.total,
+        itemsSubtotal: totals.subtotal,
+        taxAmount: totals.tax || 0,
         originalAmount: totals.subtotal,
         discountAmount: totals.discount,
         status: orderStatus,
@@ -3978,6 +4001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimatedTime: 15,
         isOffline: false,
         paymentStatus: paymentStatus,
+        paymentMethod: paymentMethod,
         orderType: 'takeaway',
         allStoreCounterIds: allStoreCounterIds,
         allPaymentCounterIds: allPaymentCounterIds,
@@ -3988,7 +4012,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderType: 'pos',
           checkoutSessionId: checkoutSessionId,
           paymentId: paymentId,
-          razorpayOrderId: razorpayOrderId
+          razorpayOrderId: razorpayOrderId,
+          paymentMethod: paymentMethod
         })
       });
 
@@ -4152,6 +4177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customerId: 0,
         items: JSON.stringify(orderItems),
         amount: totals.total,
+        itemsSubtotal: totals.subtotal,
+        taxAmount: totals.tax || 0,
         originalAmount: totals.subtotal,
         discountAmount: totals.discount,
         status: orderStatus,
@@ -4214,6 +4241,564 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         message: "Internal server error during order creation" 
+      });
+    }
+  });
+
+  // Create Razorpay QR code for POS billing
+  app.post("/api/payments/create-qr", async (req, res) => {
+    try {
+      const { amount, customerName, canteenId, cart, totals, checkoutSessionId } = req.body;
+      
+      if (!amount || !customerName || !canteenId || !cart) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required fields: amount, customerName, canteenId, cart" 
+        });
+      }
+
+      if (amount <= 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Invalid amount: amount must be greater than 0" 
+        });
+      }
+
+      // Validate Razorpay configuration
+      if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
+        console.error('🚨 Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
+        return res.status(500).json({ 
+          success: false, 
+          message: "Payment gateway configuration error. Please contact support." 
+        });
+      }
+
+      // Generate unique order number and barcode
+      const orderNumber = generateOrderNumber();
+      const barcode = generateOrderNumber();
+
+      // Prepare order items
+      const orderItems = cart.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity
+      }));
+
+      // Process each item to add counter IDs
+      const storeCounterIds = new Set<string>();
+      const paymentCounterIds = new Set<string>();
+      const kotCounterIds = new Set<string>();
+      
+      for (const item of orderItems) {
+        const menuItem = await storage.getMenuItem(item.id);
+        
+        if (menuItem) {
+          item.storeCounterId = menuItem.storeCounterId || null;
+          item.paymentCounterId = menuItem.paymentCounterId || null;
+          item.kotCounterId = menuItem.kotCounterId || null;
+          item.isMarkable = menuItem.isMarkable || false;
+          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
+          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
+          item.available = menuItem.available !== undefined ? menuItem.available : true;
+          
+          if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
+          if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
+          if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
+        } else {
+          item.storeCounterId = null;
+          item.paymentCounterId = null;
+          item.kotCounterId = null;
+          item.isMarkable = false;
+          item.isVegetarian = true;
+          item.categoryId = null;
+          item.available = true;
+        }
+      }
+
+      const allStoreCounterIds = Array.from(storeCounterIds);
+      const allPaymentCounterIds = Array.from(paymentCounterIds);
+      const allKotCounterIds = Array.from(kotCounterIds);
+      const allCounterIds = Array.from(new Set([...allStoreCounterIds, ...allPaymentCounterIds, ...allKotCounterIds]));
+
+      // Determine if order has markable items
+      let hasMarkableItem = false;
+      for (const item of orderItems) {
+        if (item.isMarkable) {
+          hasMarkableItem = true;
+          break;
+        }
+      }
+
+      // QR orders start as pending payment
+      const orderStatus = 'pending';
+
+      // Initialize itemStatusByCounter
+      const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
+      for (const counterId of allCounterIds) {
+        itemStatusByCounter[counterId] = {};
+        for (const item of orderItems) {
+          itemStatusByCounter[counterId][item.id] = 'pending';
+        }
+      }
+
+      // Create Razorpay QR code
+      const qrCode = await createRazorpayQR(
+        orderNumber,
+        amount,
+        'INR',
+        `POS Order ${orderNumber}`,
+        customerName || 'POS Customer'
+      );
+
+      console.log(`💳 Razorpay QR code created: ${qrCode.id} for order ${orderNumber}`);
+
+      // Create order with PENDING payment status
+      const order = await storage.createOrder({
+        customerName: customerName,
+        collegeName: 'POS Order',
+        canteenId: canteenId,
+        customerId: 0,
+        items: JSON.stringify(orderItems),
+        amount: totals?.total || amount,
+        itemsSubtotal: totals?.subtotal || amount,
+        taxAmount: totals?.tax || 0,
+        originalAmount: totals?.subtotal || amount,
+        discountAmount: totals?.discount || 0,
+        status: orderStatus,
+        orderNumber: orderNumber,
+        barcode: barcode,
+        estimatedTime: 15,
+        isOffline: false,
+        paymentStatus: 'PENDING',
+        paymentMethod: 'qr',
+        qrId: qrCode.id,
+        orderType: 'takeaway',
+        allStoreCounterIds: allStoreCounterIds,
+        allPaymentCounterIds: allPaymentCounterIds,
+        allKotCounterIds: allKotCounterIds,
+        allCounterIds: allCounterIds,
+        itemStatusByCounter: JSON.stringify(itemStatusByCounter),
+        metadata: JSON.stringify({
+          orderType: 'pos_qr',
+          checkoutSessionId: checkoutSessionId,
+          paymentMethod: 'qr'
+        })
+      });
+
+      console.log(`✅ POS QR Order ${orderNumber} created with PENDING payment status`);
+
+      // Store QR code details in payment record
+      await storage.createPayment({
+        merchantTransactionId: orderNumber,
+        amount: amount * 100,
+        status: PAYMENT_STATUS.PENDING,
+        canteenId: canteenId,
+        orderId: order.id,
+        checksum: '',
+        metadata: JSON.stringify({
+          qrCodeId: qrCode.id,
+          orderId: order.id,
+          orderNumber: orderNumber,
+          customerName: customerName,
+          canteenId: canteenId,
+          checkoutSessionId: checkoutSessionId,
+          orderType: 'pos_qr',
+          cart: cart,
+          totals: totals,
+          qrCodeDetails: qrCode
+        })
+      });
+
+      // Update checkout session if provided
+      if (checkoutSessionId) {
+        await CheckoutSessionService.updateStatus(
+          checkoutSessionId,
+          'payment_initiated',
+          {
+            qrCodeId: qrCode.id,
+            orderId: order.id,
+            orderNumber: orderNumber,
+            merchantTransactionId: orderNumber,
+            amount: amount,
+            customerName: customerName,
+            cart: cart,
+            totals: totals,
+            canteenId: canteenId,
+            orderType: 'pos_qr',
+            paymentInitiatedAt: new Date().toISOString()
+          }
+        );
+      }
+
+      res.json({
+        success: true,
+        qrId: qrCode.id,
+        qrImageUrl: qrCode.image_url,
+        qrCodeData: qrCode,
+        orderId: order.id,
+        orderNumber: orderNumber,
+        amount: amount,
+        expiresAt: qrCode.close_by,
+        status: qrCode.status,
+        paymentStatus: 'PENDING'
+      });
+    } catch (error: any) {
+      console.error('QR code creation error:', error);
+      
+      const checkoutSessionId = req.body.checkoutSessionId;
+      if (checkoutSessionId) {
+        try {
+          await CheckoutSessionService.updateStatus(checkoutSessionId, 'payment_failed');
+        } catch (updateError) {
+          console.error('Error updating checkout session status:', updateError);
+        }
+      }
+      
+      if (error.message && error.message.includes('Razorpay QR API Error')) {
+        return res.status(502).json({ 
+          success: false, 
+          message: error.message 
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error during QR code creation",
+        error: error.message || 'Unknown error'
+      });
+    }
+  });
+
+  // Get Razorpay QR code status and update order if payment received
+  app.get("/api/payments/qr-status/:qrCodeId", async (req, res) => {
+    try {
+      const { qrCodeId } = req.params;
+      
+      if (!qrCodeId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required parameter: qrCodeId" 
+        });
+      }
+
+      // Fetch QR code details
+      const qrCode = await fetchRazorpayQR(qrCodeId);
+      
+      // Fetch all payments for this QR code
+      const payments = await fetchAllRazorpayQRPayments(qrCodeId);
+
+      console.log(`📊 QR code status fetched: ${qrCodeId}, status: ${qrCode.status}, payments: ${payments.count}`);
+
+      // Check if payment was received
+      let paymentReceived = false;
+      let razorpayPaymentId = null;
+      
+      if (payments.count > 0 && payments.items && payments.items.length > 0) {
+        const successfulPayment = payments.items.find((p: any) => 
+          p.status === 'captured' || p.status === 'authorized'
+        );
+        
+        if (successfulPayment) {
+          paymentReceived = true;
+          razorpayPaymentId = successfulPayment.id;
+
+          // Update order payment status
+          const order = await storage.getOrderByQrId(qrCodeId);
+          if (order && order.paymentStatus === 'PENDING') {
+            await storage.updateOrder(order.id, {
+              paymentStatus: 'PAID',
+              paymentId: razorpayPaymentId
+            });
+
+            // Update payment record
+            const paymentRecord = await storage.getPaymentByMetadataField('qrCodeId', qrCodeId);
+            if (paymentRecord) {
+              await storage.updatePaymentStatus(
+                paymentRecord.merchantTransactionId,
+                PAYMENT_STATUS.SUCCESS
+              );
+            }
+
+            // Update checkout session if exists
+            const metadata = order.metadata ? JSON.parse(order.metadata) : {};
+            if (metadata.checkoutSessionId) {
+              await CheckoutSessionService.updateStatus(
+                metadata.checkoutSessionId,
+                'payment_completed',
+                {
+                  paymentId: razorpayPaymentId,
+                  paymentCompletedAt: new Date().toISOString()
+                }
+              );
+            }
+
+            // Broadcast order update via WebSocket
+            const wsManager = getWebSocketManager();
+            if (wsManager) {
+              const updatedOrder = await storage.getOrder(order.id);
+              if (updatedOrder) {
+                wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
+                wsManager.broadcastToCanteen(order.canteenId, 'payment_success', {
+                  orderNumber: order.orderNumber,
+                  orderId: order.id,
+                  paymentId: razorpayPaymentId,
+                  qrCodeId: qrCodeId
+                });
+                
+                if (order.allCounterIds) {
+                  order.allCounterIds.forEach((counterId) => {
+                    wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
+                    wsManager.broadcastToCounter(counterId, 'payment_success', {
+                      orderNumber: order.orderNumber,
+                      orderId: order.id,
+                      paymentId: razorpayPaymentId,
+                      qrCodeId: qrCodeId
+                    });
+                  });
+                }
+              }
+            }
+
+            console.log(`✅ Order payment updated: ${order.orderNumber} - Payment ID: ${razorpayPaymentId}`);
+          }
+        }
+      }
+
+      // Get order details to include in response
+      const order = await storage.getOrderByQrId(qrCodeId);
+      
+      res.json({
+        success: true,
+        qrCode: qrCode,
+        payments: payments,
+        hasPayment: payments.count > 0,
+        paymentReceived: paymentReceived,
+        paymentId: razorpayPaymentId,
+        status: qrCode.status,
+        orderNumber: order?.orderNumber,
+        orderId: order?.id
+      });
+    } catch (error: any) {
+      console.error('QR status fetch error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to fetch QR code status",
+        error: error.message || 'Unknown error'
+      });
+    }
+  });
+
+  // Close Razorpay QR code
+  app.post("/api/payments/qr-close/:qrCodeId", async (req, res) => {
+    try {
+      const { qrCodeId } = req.params;
+      
+      if (!qrCodeId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required parameter: qrCodeId" 
+        });
+      }
+
+      // Close the QR code
+      const qrCode = await closeRazorpayQR(qrCodeId);
+
+      console.log(`🔒 QR code closed: ${qrCodeId}`);
+
+      res.json({
+        success: true,
+        qrCode: qrCode,
+        message: "QR code closed successfully"
+      });
+    } catch (error: any) {
+      console.error('QR close error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to close QR code",
+        error: error.message || 'Unknown error'
+      });
+    }
+  });
+
+  // Razorpay QR webhook handler for payment notifications
+  app.post("/api/webhooks/razorpay", async (req, res) => {
+    const startTime = Date.now();
+    try {
+      const receivedSignature = req.headers['x-razorpay-signature'] as string;
+      const payload = req.body;
+
+      console.log('📡 Razorpay QR webhook received:', {
+        event: payload.event,
+        timestamp: new Date().toISOString()
+      });
+
+      if (!receivedSignature) {
+        console.warn('📡 QR Webhook missing signature');
+        return res.status(401).json({ success: false, message: 'Missing signature' });
+      }
+
+      // Verify webhook signature
+      const payloadString = JSON.stringify(payload);
+      
+      if (!verifyWebhookSignature(payloadString, receivedSignature)) {
+        console.error('📡 Invalid QR webhook signature - potential security issue');
+        
+        // In development/test environment, be more lenient
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('📡 Proceeding with QR webhook processing despite signature failure in development');
+        } else {
+          return res.status(401).json({ success: false, message: 'Invalid signature' });
+        }
+      }
+
+      // Handle Razorpay webhook payload structure
+      const event = payload.event;
+      const entity = payload.payload?.payment?.entity || payload.payload?.qr_code?.entity;
+      
+      if (!entity) {
+        console.error('📡 Invalid QR webhook payload structure:', payload);
+        return res.status(400).json({ success: false, message: 'Invalid payload structure' });
+      }
+
+      console.log('📡 QR Webhook event:', event);
+
+      // Handle payment.captured event for QR code payments
+      if (event === 'payment.captured' || event === 'payment.authorized') {
+        const razorpayPaymentId = entity.id;
+        const paymentStatus = entity.status;
+        const paymentMethod = entity.method;
+        const notes = entity.notes || {};
+        
+        // Extract QR code reference from notes
+        const orderId = notes.orderId || notes.reference_id;
+        const qrCodeId = entity.qr_code_id;
+
+        console.log('📡 Payment captured:', {
+          paymentId: razorpayPaymentId,
+          orderId: orderId,
+          qrCodeId: qrCodeId,
+          status: paymentStatus
+        });
+
+        if (!orderId && !qrCodeId) {
+          console.error('📡 No orderId or qrCodeId found in payment notes');
+          return res.status(400).json({ success: false, message: 'Missing order reference' });
+        }
+
+        // Find order by QR ID or order number
+        let order = null;
+        
+        if (qrCodeId) {
+          order = await storage.getOrderByQrId(qrCodeId);
+          console.log('📡 Order lookup by QR ID:', { qrCodeId, found: !!order });
+        }
+        
+        if (!order && orderId) {
+          order = await storage.getOrderByOrderNumber(orderId);
+          console.log('📡 Order lookup by order number:', { orderId, found: !!order });
+        }
+
+        if (!order) {
+          console.error('📡 Order not found for payment:', { orderId, qrCodeId });
+          return res.status(404).json({ success: false, message: 'Order not found' });
+        }
+
+        // Check if payment is already processed
+        if (order.paymentStatus === 'PAID') {
+          console.log('📡 Payment already processed for order:', order.orderNumber);
+          return res.status(200).json({ 
+            success: true, 
+            message: 'Payment already processed' 
+          });
+        }
+
+        // Update order payment status
+        await storage.updateOrder(order.id, {
+          paymentStatus: 'PAID',
+          paymentId: razorpayPaymentId,
+          paymentMethod: paymentMethod || 'qr'
+        });
+
+        console.log(`✅ Order payment updated via webhook: ${order.orderNumber} - Payment ID: ${razorpayPaymentId}`);
+
+        // Update payment record if exists
+        const paymentRecord = await storage.getPaymentByMetadataField('qrCodeId', qrCodeId || '');
+        if (!paymentRecord && order.orderNumber) {
+          const paymentByOrderNumber = await storage.getPaymentByMerchantTxnId(order.orderNumber);
+          if (paymentByOrderNumber) {
+            await storage.updatePaymentStatus(order.orderNumber, PAYMENT_STATUS.SUCCESS);
+            await storage.updatePaymentByMerchantTxnId(order.orderNumber, {
+              razorpayTransactionId: razorpayPaymentId,
+              paymentMethod: paymentMethod || 'qr'
+            });
+          }
+        } else if (paymentRecord) {
+          await storage.updatePaymentStatus(paymentRecord.merchantTransactionId, PAYMENT_STATUS.SUCCESS);
+          await storage.updatePaymentByMerchantTxnId(paymentRecord.merchantTransactionId, {
+            razorpayTransactionId: razorpayPaymentId,
+            paymentMethod: paymentMethod || 'qr'
+          });
+        }
+
+        // Update checkout session if exists
+        const metadata = order.metadata ? JSON.parse(order.metadata) : {};
+        if (metadata.checkoutSessionId) {
+          await CheckoutSessionService.updateStatus(
+            metadata.checkoutSessionId,
+            'payment_completed',
+            {
+              paymentId: razorpayPaymentId,
+              paymentCompletedAt: new Date().toISOString()
+            }
+          );
+        }
+
+        // Broadcast order update via WebSocket
+        const wsManager = getWebSocketManager();
+        if (wsManager) {
+          const updatedOrder = await storage.getOrder(order.id);
+          if (updatedOrder) {
+            wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
+            wsManager.broadcastToCanteen(order.canteenId, 'payment_success', {
+              orderNumber: order.orderNumber,
+              paymentId: razorpayPaymentId
+            });
+            
+            if (order.allCounterIds) {
+              order.allCounterIds.forEach((counterId) => {
+                wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
+                wsManager.broadcastToCounter(counterId, 'payment_success', {
+                  orderNumber: order.orderNumber,
+                  paymentId: razorpayPaymentId
+                });
+              });
+            }
+          }
+        }
+
+        const processingTime = Date.now() - startTime;
+        console.log(`✅ QR webhook processed successfully in ${processingTime}ms`);
+
+        res.status(200).json({ 
+          success: true,
+          message: 'Payment processed successfully',
+          orderNumber: order.orderNumber
+        });
+      } else {
+        console.log('📡 Unhandled QR webhook event:', event);
+        res.status(200).json({ 
+          success: true,
+          message: 'Event acknowledged but not processed'
+        });
+      }
+    } catch (error: any) {
+      console.error('📡 QR Webhook processing error:', error);
+      console.error('📡 Error stack:', error.stack);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Webhook processing failed',
+        error: error.message || 'Unknown error'
       });
     }
   });

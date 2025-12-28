@@ -165,7 +165,7 @@ export interface IStorage {
   
   // Orders (MongoDB)
   getOrders(): Promise<any[]>;
-  getOrdersPaginated(page: number, limit: number, canteenId?: string): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }>;
+  getOrdersPaginated(page: number, limit: number, canteenId?: string, isCounterOrder?: boolean, isOffline?: boolean): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getActiveOrdersPaginated(page: number, limit: number, canteenId?: string, customerId?: number): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getOrderStats(canteenId?: string): Promise<{ pending: number, preparing: number, completed: number, cancelled: number, total: number }>;
   getFilteredOrders(params: {
@@ -185,6 +185,7 @@ export interface IStorage {
   getOrder(id: string): Promise<any | undefined>;
   getOrderByBarcode(barcode: string): Promise<any | undefined>;
   getOrderByOrderNumber(orderNumber: string): Promise<any | undefined>;
+  getOrderByQrId(qrId: string): Promise<any | undefined>;
   createOrder(order: InsertOrder): Promise<any>;
   updateOrder(id: string, order: Partial<InsertOrder & { deliveredAt?: Date; barcodeUsed?: boolean; seenBy?: number[] }>): Promise<any>;
   deleteOrder(id: string): Promise<boolean>;
@@ -213,6 +214,8 @@ export interface IStorage {
   getPaymentsByCanteen(canteenId: string, page?: number, limit?: number): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getPayment(id: string): Promise<any | undefined>;
   getPaymentByMerchantTxnId(merchantTransactionId: string): Promise<any | undefined>;
+  getPaymentByMetadataField(field: string, value: string): Promise<any | undefined>;
+  updatePaymentStatus(merchantTransactionId: string, status: string): Promise<any | undefined>;
   createPayment(payment: InsertPayment): Promise<any>;
   updatePayment(id: string, payment: Partial<InsertPayment>): Promise<any>;
   updatePaymentByMerchantTxnId(merchantTransactionId: string, payment: Partial<InsertPayment>): Promise<any | undefined>;
@@ -621,9 +624,17 @@ export class HybridStorage implements IStorage {
     return mongoToPlain(orders);
   }
 
-  async getOrdersPaginated(page: number = 1, limit: number = 15, canteenId?: string): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }> {
+  async getOrdersPaginated(page: number = 1, limit: number = 15, canteenId?: string, isCounterOrder?: boolean, isOffline?: boolean): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }> {
     const skip = (page - 1) * limit;
-    const filter = canteenId ? { canteenId } : {};
+    const filter: any = canteenId ? { canteenId } : {};
+    
+    if (isCounterOrder !== undefined) {
+      filter.isCounterOrder = isCounterOrder;
+    }
+    
+    if (isOffline !== undefined) {
+      filter.isOffline = isOffline;
+    }
     
     const [orders, totalCount] = await Promise.all([
       Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
@@ -958,6 +969,11 @@ export class HybridStorage implements IStorage {
     return order ? mongoToPlain(order) : undefined;
   }
 
+  async getOrderByQrId(qrId: string): Promise<any | undefined> {
+    const order = await Order.findOne({ qrId });
+    return order ? mongoToPlain(order) : undefined;
+  }
+
   async deleteOrder(id: string): Promise<boolean> {
     try {
       const result = await Order.findByIdAndDelete(id);
@@ -1122,6 +1138,31 @@ export class HybridStorage implements IStorage {
       );
       return updatedPayment ? mongoToPlain(updatedPayment) : undefined;
     } catch (error) {
+      return undefined;
+    }
+  }
+
+  async getPaymentByMetadataField(field: string, value: string): Promise<any | undefined> {
+    try {
+      const regex = new RegExp(`"${field}":"${value}"`, 'i');
+      const payment = await Payment.findOne({ metadata: { $regex: regex } });
+      return payment ? mongoToPlain(payment) : undefined;
+    } catch (error) {
+      console.error('Error fetching payment by metadata field:', error);
+      return undefined;
+    }
+  }
+
+  async updatePaymentStatus(merchantTransactionId: string, status: string): Promise<any | undefined> {
+    try {
+      const updatedPayment = await Payment.findOneAndUpdate(
+        { merchantTransactionId },
+        { status, updatedAt: new Date() },
+        { new: true }
+      );
+      return updatedPayment ? mongoToPlain(updatedPayment) : undefined;
+    } catch (error) {
+      console.error('Error updating payment status:', error);
       return undefined;
     }
   }
