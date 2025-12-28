@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { OwnerCard, OwnerButton, OwnerBadge } from "@/components/owner";
@@ -35,6 +36,26 @@ export function MenuGrid({
     : isPrinterConnected
       ? "Local printer: connected"
       : `Local printer: not connected${printerError ? ` (${printerError})` : ""}`;
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchHeaderRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isSearchExpanded) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      const clickedHeader = searchHeaderRef.current?.contains(target) ?? false;
+      const clickedInput = searchInputRef.current?.contains(target) ?? false;
+      if (!clickedHeader && !clickedInput) {
+        setIsSearchExpanded(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [isSearchExpanded]);
 
   return (
     <OwnerCard
@@ -51,6 +72,16 @@ export function MenuGrid({
           <OwnerBadge variant="default" className="text-xs">
             {menuItems.length} items
           </OwnerBadge>
+          <div ref={searchHeaderRef}>
+            <OwnerButton
+              variant="icon"
+              size="sm"
+              icon={<Search className="w-4 h-4" />}
+              onClick={() => setIsSearchExpanded((v) => !v)}
+              aria-label={isSearchExpanded ? "Collapse search" : "Expand search"}
+              title="Search"
+            />
+          </div>
           {headerExtras}
         </div>
       }
@@ -59,15 +90,17 @@ export function MenuGrid({
     >
       {/* Search and Filters */}
       <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4 flex-shrink-0">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 h-9 sm:h-10 text-sm"
-          />
-        </div>
+        {isSearchExpanded && (
+          <div ref={searchInputRef} className="flex items-center">
+            <Input
+              autoFocus
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="h-9 sm:h-10 text-sm w-full"
+            />
+          </div>
+        )}
         <div className="flex gap-2 overflow-x-auto pb-2 app-scrollbar -mx-1 px-1">
           <OwnerButton
             variant={selectedCategory === "all" ? "primary" : "secondary"}
