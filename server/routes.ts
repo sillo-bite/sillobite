@@ -935,7 +935,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/canteens/:canteenId/charges", async (req, res) => {
     try {
       const { canteenId } = req.params;
+      console.log(`🔍 Fetching charges for canteenId: ${canteenId}`);
       const charges = await CanteenCharge.find({ canteenId }).sort({ createdAt: -1 });
+      console.log(`📊 Found ${charges.length} total charges`);
       const items = charges.map((c) => {
         const obj: any = c.toObject ? c.toObject() : c;
         obj.id = obj._id?.toString();
@@ -943,6 +945,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         delete obj.__v;
         return obj;
       });
+      const activeCount = items.filter(i => i.active).length;
+      console.log(`✅ Returning ${items.length} charges (${activeCount} active)`);
       res.json({ items });
     } catch (error) {
       console.error("Error fetching charges:", error);
@@ -2098,6 +2102,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`✅ Order found: ${order.orderNumber || order.id}`);
+      console.log('  - Order chargesTotal:', order.chargesTotal);
+      console.log('  - Order chargesApplied:', JSON.stringify(order.chargesApplied, null, 2));
+      console.log('  - Order paymentMethod:', order.paymentMethod);
       res.json(order);
     } catch (error) {
       console.error("❌ Error fetching order:", error);
@@ -2491,7 +2498,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (shouldIncludeCharges) {
           try {
-            const canteenCharges = await storage.getCanteenCharges(validatedData.canteenId);
+            const canteenChargesDb = await CanteenCharge.find({ canteenId: validatedData.canteenId }).sort({ createdAt: -1 });
+            const canteenCharges = canteenChargesDb.map((c: any) => {
+              const obj: any = c.toObject ? c.toObject() : c;
+              obj.id = obj._id?.toString();
+              delete obj._id;
+              delete obj.__v;
+              return obj;
+            });
             const activeCharges = canteenCharges.filter((charge: any) => charge.active);
             const subtotal = validatedData.itemsSubtotal || validatedData.originalAmount || validatedData.amount || 0;
             
@@ -4049,7 +4063,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Try to fetch canteen charges to reconstruct chargesApplied array
         if (chargesTotal > 0) {
           try {
-            const canteenCharges = await storage.getCanteenCharges(canteenId);
+            const canteenChargesDb = await CanteenCharge.find({ canteenId }).sort({ createdAt: -1 });
+            const canteenCharges = canteenChargesDb.map((c: any) => {
+              const obj: any = c.toObject ? c.toObject() : c;
+              obj.id = obj._id?.toString();
+              delete obj._id;
+              delete obj.__v;
+              return obj;
+            });
             const activeCharges = canteenCharges.filter((charge: any) => charge.active);
             
             chargesApplied = activeCharges.map((charge: any) => {
@@ -4457,16 +4478,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let chargesTotal = 0;
       let chargesApplied: any[] = [];
       
+      console.log('🔍 [QR] Checking totals for charges calculation:', { totals, hasSubtotal: !!totals?.subtotal, hasTotal: !!totals?.total });
+      
       if (totals && totals.subtotal && totals.total) {
-        const expectedTotalWithoutCharges = totals.subtotal - (totals.discount || 0) + (totals.tax || 0);
-        chargesTotal = totals.total - expectedTotalWithoutCharges;
-        
-        if (chargesTotal > 0) {
-          try {
-            const canteenCharges = await storage.getCanteenCharges(canteenId);
-            const activeCharges = canteenCharges.filter((charge: any) => charge.active);
-            
-            chargesApplied = activeCharges.map((charge: any) => {
+        try {
+          console.log(`🔍 [QR] Fetching canteen charges for canteenId: ${canteenId}`);
+          const canteenChargesDb = await CanteenCharge.find({ canteenId }).sort({ createdAt: -1 });
+          const canteenCharges = canteenChargesDb.map((c: any) => {
+            const obj: any = c.toObject ? c.toObject() : c;
+            obj.id = obj._id?.toString();
+            delete obj._id;
+            delete obj.__v;
+            return obj;
+          });
+          console.log(`📊 [QR] Retrieved ${canteenCharges.length} total canteen charges`);
+          
+          const activeCharges = canteenCharges.filter((charge: any) => charge.active);
+          console.log(`📊 [QR] QR Payment - Found ${activeCharges.length} active canteen charges:`, activeCharges);
+          
+          if (activeCharges.length > 0) {
+            // Calculate charges and total
+            activeCharges.forEach((charge: any) => {
               let chargeAmount = 0;
               if (charge.type === 'percent') {
                 chargeAmount = (totals.subtotal * charge.value) / 100;
@@ -4474,19 +4506,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 chargeAmount = charge.value;
               }
               
-              return {
-                name: charge.name,
-                type: charge.type,
-                value: charge.value,
-                amount: chargeAmount
-              };
+              console.log(`  - Processing charge: ${charge.name} (${charge.type}=${charge.value}) = ${chargeAmount}`);
+              
+              if (chargeAmount > 0) {
+                chargesTotal += chargeAmount;
+                chargesApplied.push({
+                  name: charge.name,
+                  type: charge.type,
+                  value: charge.value,
+                  amount: chargeAmount
+                });
+              }
             });
-          } catch (error) {
-            console.error('Error fetching canteen charges:', error);
+            
+            console.log(`💰 [QR] Calculated chargesTotal: ${chargesTotal}`);
+            console.log(`💰 [QR] Calculated chargesApplied: ${JSON.stringify(chargesApplied)}`);
+          } else {
+            console.warn('⚠️ [QR] No active canteen charges found - order will have no charges');
           }
+        } catch (error) {
+          console.error('❌ [QR] Error fetching canteen charges:', error);
         }
+      } else {
+        console.warn('⚠️ [QR] Totals missing or invalid - cannot calculate charges');
       }
 
+      console.log('💰 QR Order Charges Debug:');
+      console.log('  - chargesTotal:', chargesTotal);
+      console.log('  - chargesApplied:', JSON.stringify(chargesApplied, null, 2));
+      
       // Create order with PENDING payment status
       const order = await storage.createOrder({
         customerName: customerName,
@@ -4524,6 +4572,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`✅ POS QR Order ${orderNumber} created with PENDING payment status`);
+      console.log('  - Saved chargesTotal:', order.chargesTotal);
+      console.log('  - Saved chargesApplied:', JSON.stringify(order.chargesApplied, null, 2));
 
       // Store QR code details in payment record
       await storage.createPayment({
