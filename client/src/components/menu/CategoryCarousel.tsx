@@ -48,7 +48,7 @@ const CategoryCarousel = React.memo(function CategoryCarousel({
       <div className="relative">
         {/* Native horizontal scrolling container */}
         <div 
-          className="flex gap-0 overflow-x-auto pb-4 scrollbar-hide"
+          className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
@@ -67,23 +67,31 @@ const CategoryCarousel = React.memo(function CategoryCarousel({
               {Array.isArray(categories) ? categories.map((category, index) => {
                 const isFirst = index === 0;
                 const isLast = index === categories.length - 1;
+                const categoryNameLower = (category.name || "").toLowerCase().trim();
+                const categoryId = String(category.id || (category as any)._id || "").toLowerCase();
+                
+                // Detection for the 'Menu' (all) category - check name, ID, or if it's the very first one with ID 'all'
+                const isMenu = categoryNameLower === 'all' || 
+                               categoryNameLower === 'menu' || 
+                               categoryId === 'all';
+                               
                 return (
                         <div
                           key={category.id || (category as any)._id || `category-${index}`}
-                          className={`cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0 w-[100px] flex flex-col items-center justify-center touch-manipulation ${
+                          className={`cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 flex-shrink-0 ${isMenu ? 'w-[110px]' : 'w-[85px]'} flex flex-col items-center justify-center touch-manipulation ${
                             isFirst ? 'pl-4' : ''} ${isLast ? 'pr-4' : ''}`}
                           onClick={() => handleCategoryClick(category.name)}
                         >
-                    <div className="flex items-center justify-center mx-auto">
-                      <CategoryIcon category={category} size="lg" />
+                    <div className="flex items-center justify-center mx-auto h-20">
+                      <CategoryIcon category={category} size="lg" isMenu={isMenu} />
                     </div>
-                    <p className={`${getCategoryTextClassName()} px-1`} title={category.name} style={{ 
+                    <p className={`${getCategoryTextClassName()} px-1 mt-1`} title={isMenu ? 'Menu' : category.name} style={{ 
                       wordBreak: 'break-word',
                       hyphens: 'auto',
                       WebkitHyphens: 'auto',
                       msHyphens: 'auto'
                     }}>
-                      {category.name}
+                      {isMenu ? 'Menu' : category.name}
                     </p>
                   </div>
                 );
@@ -91,7 +99,7 @@ const CategoryCarousel = React.memo(function CategoryCarousel({
               
               {/* Show loading indicator for next page */}
               {isFetchingNextPage && (
-                <div className="flex-shrink-0 w-[100px] flex flex-col items-center justify-center pr-4">
+                <div className="flex-shrink-0 w-[85px] flex flex-col items-center justify-center pr-4">
                   <CategoryLoadingIndicator 
                     isFetching={isFetchingNextPage}
                     hasNextPage={hasNextPage}

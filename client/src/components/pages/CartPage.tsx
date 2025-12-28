@@ -18,7 +18,6 @@ import { useCart } from "@/contexts/CartContext";
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Loader2, AlertTriangle, Package, X } from "lucide-react";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import { useStockValidation } from "@/hooks/useStockValidation";
 import StockValidationWarning from "@/components/canteen/StockValidationWarning";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -340,8 +339,8 @@ export default function CartPage() {
         className="flex flex-col px-4 space-y-4 mt-4"
         style={{
           paddingBottom: cart.length > 0 
-            ? 'calc(150px + env(safe-area-inset-bottom, 0px))' 
-            : 'calc(80px + env(safe-area-inset-bottom, 0px))'
+            ? 'calc(100px + env(safe-area-inset-bottom, 0px))' 
+            : 'calc(40px + env(safe-area-inset-bottom, 0px))'
         }}
       >
         {/* Canteen Mismatch Warning */}
@@ -557,7 +556,7 @@ export default function CartPage() {
               : 'bg-white border-t border-gray-200'
           }`}
           style={{
-            bottom: 'calc(64px + 6px + env(safe-area-inset-bottom, 0px))',
+            bottom: 'env(safe-area-inset-bottom, 0px)',
             paddingTop: '16px',
             paddingBottom: '16px',
             paddingLeft: '16px',
@@ -608,7 +607,6 @@ export default function CartPage() {
         </div>
       )}
       
-      <BottomNavigation currentPage="cart" />
       </div>
 
       {/* Stock Validation Dialog */}

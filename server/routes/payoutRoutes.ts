@@ -84,25 +84,35 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
       const orderId = order._id.toString();
       
       // Verify order is paid AND eligible for payout:
-      // 1. For online orders: check if there's a successful payment record (by orderId or orderNumber)
-      // 2. Exclude offline POS payments (paymentMethod === 'offline') - not included in payouts
-      // 3. For counter offline orders: check if paymentStatus is 'paid' or 'completed' or paymentConfirmedBy exists
-      const isOfflinePOSPayment = order.paymentMethod === 'offline';
+      // 1. Only include specific payment methods: online, upi, qr
+      // 2. Exclude offline and cash payments
+      // 3. For online orders: check if there's a successful payment record (by orderId or orderNumber)
+      const paymentMethod = order.paymentMethod?.toLowerCase();
+      const isEligiblePaymentMethod = 
+        paymentMethod === 'online' || 
+        paymentMethod === 'upi' || 
+        paymentMethod === 'qr' ||
+        paymentMethod === 'card' ||
+        paymentMethod === 'netbanking';
+      
       const isPaid = 
-        !isOfflinePOSPayment && ( // Exclude offline POS payments from payout
+        isEligiblePaymentMethod && ( // Only eligible payment methods
           paidOrderIds.has(orderId) || // Has successful payment record by orderId
           paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
           order.paymentStatus === 'paid' || 
-          order.paymentStatus === 'completed' ||
-          order.paymentConfirmedBy !== undefined // Counter offline payment confirmed
+          order.paymentStatus === 'completed'
         );
 
       // Only include if:
-      // - Order is paid
+      // - Order is paid with eligible payment method
       // - Order is not already settled
       // - Order is not in a pending request
       // - Order has a valid amount
-      const payoutBaseAmount = order.itemsSubtotal ?? order.amount ?? 0;
+      
+      // Calculate payout amount: menu items + tax (for POS orders), exclude canteen charges
+      const itemsAmount = order.itemsSubtotal ?? order.originalAmount ?? order.amount ?? 0;
+      const taxAmount = order.taxAmount ?? 0;
+      const payoutBaseAmount = itemsAmount + taxAmount;
 
       if (
         isPaid &&
@@ -110,7 +120,7 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
         !requestedOrderIds.has(orderId) &&
         payoutBaseAmount > 0
       ) {
-        // Exclude checkout charges from payout (use items subtotal)
+        // Include menu items + tax, exclude canteen charges
         pendingAmount += Math.round(payoutBaseAmount * 100); // Convert to paise
         pendingOrderIds.push(orderId);
       }
@@ -219,17 +229,23 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
       }
     });
 
-    // Filter to only include paid orders eligible for payout (exclude offline POS payments)
+    // Filter to only include paid orders eligible for payout (only online/UPI/QR payments)
     const paidOrders = orders.filter((order) => {
       const orderId = order._id.toString();
-      const isOfflinePOSPayment = order.paymentMethod === 'offline';
+      const paymentMethod = order.paymentMethod?.toLowerCase();
+      const isEligiblePaymentMethod = 
+        paymentMethod === 'online' || 
+        paymentMethod === 'upi' || 
+        paymentMethod === 'qr' ||
+        paymentMethod === 'card' ||
+        paymentMethod === 'netbanking';
+      
       return (
-        !isOfflinePOSPayment && ( // Exclude offline POS payments from payout
+        isEligiblePaymentMethod && ( // Only eligible payment methods
           paidOrderIds.has(orderId) || // Has successful payment record by orderId
           paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
           order.paymentStatus === 'paid' ||
-          order.paymentStatus === 'completed' ||
-          order.paymentConfirmedBy !== undefined // Counter offline payment confirmed
+          order.paymentStatus === 'completed'
         ) && order.amount && order.amount > 0 // Has valid amount
       );
     });
@@ -257,9 +273,11 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
         .json({ error: "Some orders are already settled or in a pending request" });
     }
 
-    // Calculate total amount from REAL paid orders only
+    // Calculate total amount from REAL paid orders only (menu items + tax)
     const totalAmount = paidOrders.reduce((sum, order) => {
-      const payoutBaseAmount = order.itemsSubtotal ?? order.amount ?? 0;
+      const itemsAmount = order.itemsSubtotal ?? order.originalAmount ?? order.amount ?? 0;
+      const taxAmount = order.taxAmount ?? 0;
+      const payoutBaseAmount = itemsAmount + taxAmount;
       return sum + Math.round(payoutBaseAmount * 100); // Convert to paise
     }, 0);
 

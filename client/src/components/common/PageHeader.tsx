@@ -32,7 +32,7 @@ export default function PageHeader({
   useEffect(() => {
     if (headerRef.current) {
       // Extract background color from className or use default red-600
-      const bgClass = className.match(/bg-\w+-\d+/)?.[0] || 'bg-red-600';
+      const bgClass = className.match(/bg-\w+-\d+/)?.[0] || 'bg-purple-600';
       updateStatusBarColor('#724491'); // Default to purple primary color
     }
   }, [className]);
@@ -52,13 +52,13 @@ export default function PageHeader({
   };
 
   return (
-    <div ref={headerRef} className={`bg-red-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl ${className}`}>
+    <div ref={headerRef} className={`bg-purple-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl ${className}`}>
       <div className="flex items-center space-x-4">
         {showBackButton && (
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-red-700"
+            className="text-white hover:bg-purple-700"
             onClick={handleBack}
           >
             <ArrowLeft className="w-5 h-5" />

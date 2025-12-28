@@ -87,11 +87,11 @@ MenuItemSchema.index({ canteenId: 1, categoryId: 1, available: 1 });
 // Index for vegetarian filtering
 MenuItemSchema.index({ canteenId: 1, isVegetarian: 1, available: 1 });
 
-// Text index for search functionality (name and description)
-MenuItemSchema.index({ name: 'text', description: 'text' });
-
-// Compound index for text search within a canteen (more efficient)
+// Index for name search within a canteen (supports regex substring matching)
 MenuItemSchema.index({ canteenId: 1, name: 1 });
+
+// Index for description search
+MenuItemSchema.index({ description: 1 });
 
 export const MenuItem = mongoose.model<IMenuItem>('MenuItem', MenuItemSchema);
 
@@ -127,6 +127,7 @@ export interface IOrder extends Document {
   items: string; // JSON string
   amount: number;
   itemsSubtotal?: number;
+  taxAmount?: number; // Tax amount (e.g., 5% GST for POS orders)
   chargesTotal?: number;
   chargesApplied?: Array<{
     name: string;
@@ -155,8 +156,10 @@ export interface IOrder extends Document {
   allKotCounterIds?: string[]; // All KOT counter IDs for this order
   allCounterIds?: string[]; // All counter IDs for this order
   isOffline?: boolean; // For offline orders
-  paymentStatus?: string; // Payment status for offline orders
+  paymentStatus?: string; // Payment status: 'PENDING', 'PAID', etc.
   paymentMethod?: string; // Payment method: 'online', 'offline', 'upi', 'cash', etc.
+  qrId?: string; // Razorpay QR code ID for QR-based payments
+  paymentId?: string; // Razorpay payment ID after successful payment
   isCounterOrder?: boolean; // For counter orders
   itemStatusByCounter?: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } }; // Item-level status per counter
   deliveryPersonId?: string; // Delivery person assigned to this order
@@ -183,6 +186,7 @@ const OrderSchema = new Schema<IOrder>({
   items: { type: String, required: true },
   amount: { type: Number, required: true },
   itemsSubtotal: { type: Number, default: 0 },
+  taxAmount: { type: Number, default: 0 },
   chargesTotal: { type: Number, default: 0 },
   chargesApplied: { type: Schema.Types.Mixed, default: [] },
   originalAmount: { type: Number }, // Amount before discount
@@ -206,8 +210,10 @@ const OrderSchema = new Schema<IOrder>({
   allKotCounterIds: { type: [String] }, // All KOT counter IDs for this order
   allCounterIds: { type: [String] }, // All counter IDs for this order
   isOffline: { type: Boolean }, // For offline orders
-  paymentStatus: { type: String }, // Payment status for offline orders
+  paymentStatus: { type: String, default: 'PENDING' }, // Payment status: 'PENDING', 'PAID', etc.
   paymentMethod: { type: String }, // Payment method: 'online', 'offline', 'upi', 'cash', etc.
+  qrId: { type: String }, // Razorpay QR code ID for QR-based payments
+  paymentId: { type: String }, // Razorpay payment ID after successful payment
   isCounterOrder: { type: Boolean }, // For counter orders
   itemStatusByCounter: { type: Schema.Types.Mixed, default: {} }, // Item-level status per counter
   deliveryPersonId: { type: String }, // Delivery person assigned to this order

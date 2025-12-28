@@ -61,7 +61,7 @@ export default function FeedbackPage() {
 
   const feedbackCategories = [
     { name: "App Experience", emoji: "📱", color: "bg-black", iconColor: "text-blue-400" },
-    { name: "Technical Issues", emoji: "🔧", color: "bg-black", iconColor: "text-red-400" },
+    { name: "Technical Issues", emoji: "🔧", color: "bg-black", iconColor: "text-purple-400" },
     { name: "Feature Requests", emoji: "💡", color: "bg-black", iconColor: "text-yellow-400" },
     { name: "Performance", emoji: "⚡", color: "bg-black", iconColor: "text-green-400" },
     { name: "User Interface", emoji: "🎨", color: "bg-black", iconColor: "text-purple-400" },
@@ -73,7 +73,7 @@ export default function FeedbackPage() {
       'bg-background'
     }`}>
       {/* Header */}
-      <div className="bg-red-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl shadow-lg">
+      <div className="bg-purple-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl shadow-lg">
         <div className="flex items-center space-x-4">
           <Button 
             variant="ghost" 
@@ -138,7 +138,7 @@ export default function FeedbackPage() {
               {/* Introduction */}
               <div className="flex items-center space-x-3">
                 <MessageSquare className={`w-6 h-6 ${
-                  resolvedTheme === 'dark' ? 'text-red-500' : 'text-red-600'
+                  resolvedTheme === 'dark' ? 'text-purple-500' : 'text-purple-600'
                 }`} />
                 <div>
                   <h2 className={`text-base font-semibold ${
@@ -235,7 +235,7 @@ export default function FeedbackPage() {
                       key={index} 
                       className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
                         selectedCategory === category.name
-                          ? `border-2 border-red-500 ${resolvedTheme === 'dark' ? 'bg-red-900/20' : 'bg-red-50'}`
+                          ? `border-2 border-purple-500 ${resolvedTheme === 'dark' ? 'bg-purple-900/20' : 'bg-purple-50'}`
                           : resolvedTheme === 'dark' 
                             ? 'bg-black border-gray-800 hover:border-gray-700' 
                             : 'bg-white border-gray-200 hover:border-gray-300'
@@ -255,7 +255,7 @@ export default function FeedbackPage() {
                         </p>
                         {selectedCategory === category.name && (
                           <div className="mt-1">
-                            <div className="w-1.5 h-1.5 bg-red-500 rounded-full mx-auto"></div>
+                            <div className="w-1.5 h-1.5 bg-purple-500 rounded-full mx-auto"></div>
                           </div>
                         )}
                       </CardContent>

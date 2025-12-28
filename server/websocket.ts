@@ -470,22 +470,32 @@ class WebSocketManager {
   }
 
   // Broadcast to specific canteen room
-  public broadcastToCanteen(canteenId: string, message: any): void {
+  public broadcastToCanteen(canteenId: string, eventType: string, data: any): void {
     const roomName = `canteen_${canteenId}`;
     const roomMembers = this.canteenRooms.get(canteenId);
     
+    const message = {
+      type: eventType,
+      data: data
+    };
+    
     if (roomMembers && roomMembers.size > 0) {
       this.io.to(roomName).emit('orderUpdate', message);
-      console.log(`📢 Broadcasted message to canteen ${canteenId} (${roomMembers.size} clients)`);
+      console.log(`📢 Broadcasted ${eventType} to canteen ${canteenId} (${roomMembers.size} clients)`);
     } else {
       console.log(`📡 No clients in room ${roomName} for broadcast`);
     }
   }
 
   // Broadcast to specific counter room
-  public broadcastToCounter(counterId: string, message: any): void {
+  public broadcastToCounter(counterId: string, eventType: string, data: any): void {
     const roomName = `counter_${counterId}`;
     const roomMembers = this.counterRooms.get(counterId);
+    
+    const message = {
+      type: eventType,
+      data: data
+    };
     
     console.log(`📢 Attempting to broadcast to counter ${counterId}:`, {
       roomName,
@@ -498,7 +508,7 @@ class WebSocketManager {
     
     if (roomMembers && roomMembers.size > 0) {
       this.io.to(roomName).emit('orderUpdate', message);
-      console.log(`📢 ✅ Successfully broadcasted message to counter ${counterId} (${roomMembers.size} clients)`);
+      console.log(`📢 ✅ Successfully broadcasted ${eventType} to counter ${counterId} (${roomMembers.size} clients)`);
       console.log(`📢 Message details:`, {
         type: message.type,
         orderNumber: message.data?.orderNumber,

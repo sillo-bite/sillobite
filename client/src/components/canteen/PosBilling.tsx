@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { ShoppingCart, History, TestTube2 } from "lucide-react";
 import { toast } from "sonner";
 import { OwnerPageLayout, OwnerTabs, OwnerTabList, OwnerTab } from "@/components/owner";
@@ -10,10 +10,12 @@ import { MenuGrid } from "@/components/pos/MenuGrid";
 import { CartPanel } from "@/components/pos/CartPanel";
 import { PosCheckoutDialog } from "@/components/pos/PosCheckoutDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
+import { OrderDetailDialog } from "@/components/pos/OrderDetailDialog";
 import { TransactionHistory } from "@/components/pos/TransactionHistory";
-import PrinterStatus from "@/components/common/PrinterStatus";
 import { printWithRetry, printBill } from "@/services/localPrinterService";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
 
 export default function PosBilling({ canteenId }: PosBillingProps) {
@@ -23,6 +25,9 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [activeTab, setActiveTab] = useState<"billing" | "history">("billing");
   const [showCheckoutDialog, setShowCheckoutDialog] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showCartSheet, setShowCartSheet] = useState(false);
+  const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
   
   // Form State
   const [customerName, setCustomerName] = useState("");
@@ -34,14 +39,14 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [lastTransactionForPrint, setLastTransactionForPrint] = useState<Transaction | null>(null);
-  const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; total: number } | null>(null);
+  const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; tax: number; total: number } | null>(null);
   
   // Test Print State
   const [isTestPrinting, setIsTestPrinting] = useState(false);
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
-  const { menuItems, categories, transactions, isLoading, refetchTransactions } = usePosData(
+  const { menuItems, categories, transactions, transactionsPagination, isLoading, refetchTransactions, setTransactionsPage } = usePosData(
     canteenId,
     searchQuery,
     selectedCategory
@@ -58,35 +63,75 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     setIsTestPrinting(true);
     
     try {
+      const subtotal = 470.00;
+      const discount = 50.00;
+      const deliveryCharge = 40.00;
+      const packagingFee = 15.00;
+      
+      const taxableAmount = subtotal - discount + deliveryCharge + packagingFee;
+      const tax = 84.60; // Pre-calculated tax
+      const total = taxableAmount + tax;
+      
+      const testBillId = `TEST-${Date.now()}`;
+      
       const dummyReceiptData = {
-        orderNumber: `TEST-${Date.now()}`,
-        customerName: "Test Customer",
+        version: "1.0.0",
+        billId: testBillId,
+        vendorId: canteenId,
         items: [
           {
-            name: "Coffee",
-            quantity: 2,
-            price: 50,
-            subtotal: 100,
+            itemId: "PROD-101",
+            name: "Espresso Coffee",
+            quantity: 2.0,
+            unitPrice: 120.00,
+            totalPrice: 240.00,
           },
           {
-            name: "Sandwich",
-            quantity: 1,
-            price: 80,
-            subtotal: 80,
+            itemId: "PROD-205",
+            name: "Chocolate Muffin",
+            quantity: 1.0,
+            unitPrice: 80.00,
+            totalPrice: 80.00,
           },
           {
-            name: "Burger",
-            quantity: 1,
-            price: 120,
-            subtotal: 120,
+            itemId: "PROD-350",
+            name: "Fresh Orange Juice (Large)",
+            quantity: 1.5,
+            unitPrice: 100.00,
+            totalPrice: 150.00,
           },
         ],
-        subtotal: 300,
-        discount: 30,
-        total: 270,
-        paymentMethod: "cash",
-        date: new Date().toISOString(),
-        status: "completed",
+        subtotal: subtotal,
+        tax: tax,
+        total: total,
+        paymentMode: "UPI",
+        timestamp: new Date().toISOString(),
+        currency: "INR",
+        customerInfo: {
+          name: "Test Customer",
+          phone: "+919876543210",
+          email: "test@example.com",
+        },
+        discount: discount,
+        charges: [
+          {
+            name: "Delivery Charge",
+            value: deliveryCharge,
+            isPercentage: false,
+          },
+          {
+            name: "Packaging Fee",
+            value: packagingFee,
+            isPercentage: false,
+          },
+        ],
+        orderOtp: "8745",
+        barcode: testBillId,
+        notes: "Thank you for your order! This is a test print.",
+        metadata: {
+          testPrint: true,
+          timestamp: Date.now(),
+        },
       };
       
       const result = await printBill(dummyReceiptData);
@@ -122,27 +167,57 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   };
 
   // Format transaction data for printing
-  const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; total: number }) => {
-    return {
-      orderNumber: transaction.orderNumber,
-      customerName: transaction.customerName,
-      items: transaction.items.map(item => ({
+  const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; tax: number; total: number }) => {
+    // Get barcode from transaction and extract OTP from first 4 digits
+    const barcode = (transaction as any).barcode || transaction.orderNumber || '';
+    const orderOtp = barcode ? barcode.substring(0, 4) : '0000';
+    
+    // Map payment method to printer API accepted values (CASH or UPI only)
+    const isOffline = transaction.paymentMethod === 'offline' || transaction.paymentMethod === 'cash';
+    const printerPaymentMode = isOffline ? 'CASH' : 'UPI';
+    
+    const payload: any = {
+      version: "1.0.0",
+      billId: transaction.orderNumber,
+      vendorId: canteenId,
+      items: transaction.items.map((item, index) => ({
+        itemId: item.id || `ITEM-${index + 1}`,
         name: item.name,
         quantity: item.quantity,
-        price: item.price,
-        subtotal: item.price * item.quantity,
+        unitPrice: item.price,
+        totalPrice: item.price * item.quantity,
       })),
       subtotal: totals.subtotal,
-      discount: totals.discount,
+      tax: totals.tax,
       total: totals.total,
-      paymentMethod: transaction.paymentMethod,
-      date: transaction.createdAt.toISOString(),
-      status: transaction.status,
+      paymentMode: printerPaymentMode,
+      timestamp: transaction.createdAt.toISOString(),
+      currency: "INR",
     };
+
+    // Add customerInfo only if customer name is provided
+    if (transaction.customerName && transaction.customerName.trim()) {
+      payload.customerInfo = {
+        name: transaction.customerName,
+      };
+    }
+
+    // Add discount only if it exists
+    if (totals.discount > 0) {
+      payload.discount = totals.discount;
+    }
+
+    // Add order OTP for pickup verification
+    payload.orderOtp = orderOtp;
+
+    // Add barcode data (use actual barcode from order)
+    payload.barcode = barcode;
+
+    return payload;
   };
 
   // Send bill to printer
-  const sendToPrinter = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; total: number }) => {
+  const sendToPrinter = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; tax: number; total: number }) => {
     setIsPrinting(true);
     setPrintError(null);
 
@@ -221,64 +296,205 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     setDiscountConfig(config);
   };
 
+  const handleTransactionClick = (transaction: any) => {
+    setSelectedTransaction(transaction);
+    setShowOrderDetail(true);
+  };
+
+  const handlePrintHistoricalReceipt = async (transaction: any) => {
+    const items = JSON.parse(transaction.items || '[]');
+    const totalsForPrint = {
+      subtotal: transaction.itemsSubtotal || transaction.amount,
+      discount: transaction.discountAmount || 0,
+      tax: transaction.taxAmount || 0,
+      total: transaction.amount,
+    };
+    
+    const transactionForPrint: any = {
+      id: transaction.id,
+      orderNumber: transaction.orderNumber,
+      customerName: transaction.customerName,
+      amount: transaction.amount,
+      paymentMethod: transaction.paymentMethod,
+      items: items,
+      discount: transaction.discountAmount,
+      createdAt: new Date(transaction.createdAt),
+      status: transaction.status,
+      barcode: transaction.barcode,
+    };
+    
+    // Fetch canteen charges if payment method is UPI or QR
+    const shouldIncludeCharges = transaction.paymentMethod === 'upi' || transaction.paymentMethod === 'card' || transaction.paymentMethod === 'netbanking' || transaction.paymentMethod === 'qr';
+    let chargesForPrint: any[] = [];
+    
+    if (shouldIncludeCharges && transaction.chargesApplied) {
+      // chargesApplied can be a JSON string or already an array
+      chargesForPrint = typeof transaction.chargesApplied === 'string' 
+        ? JSON.parse(transaction.chargesApplied) 
+        : transaction.chargesApplied;
+    }
+    
+    await sendToPrinterWithCharges(transactionForPrint, totalsForPrint, chargesForPrint);
+  };
+
+  const sendToPrinterWithCharges = async (transaction: Transaction, totalsForPrint: { subtotal: number; discount: number; tax: number; total: number }, charges: any[]) => {
+    setIsPrinting(true);
+    setPrintError(null);
+
+    const printPayload = formatTransactionForPrint(transaction, totalsForPrint);
+    
+    // Add charges if available and payment method requires them
+    if (charges && charges.length > 0) {
+      printPayload.charges = charges.map((charge: any) => ({
+        name: charge.name || 'Charge',
+        value: charge.amount || 0,
+        isPercentage: charge.type === 'percent',
+      }));
+    }
+    
+    try {
+      const result = await printWithRetry(printPayload, 2, 1000);
+      
+      if (result.success) {
+        toast.success("Bill sent to printer successfully");
+        setPrintError(null);
+      } else {
+        setPrintError(result.message || "Failed to print bill");
+        toast.error(`Print failed: ${result.message || "Unknown error"}`, {
+          action: {
+            label: "Retry",
+            onClick: () => sendToPrinterWithCharges(transaction, totalsForPrint, charges),
+          },
+          duration: 10000,
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to print bill";
+      setPrintError(errorMessage);
+      toast.error(`Print error: ${errorMessage}`, {
+        action: {
+          label: "Retry",
+          onClick: () => sendToPrinterWithCharges(transaction, totalsForPrint, charges),
+        },
+        duration: 10000,
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   return (
     <OwnerPageLayout>
       <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <OwnerTabList>
             <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
               Billing
             </OwnerTab>
             <OwnerTab value="history" icon={<History className="w-4 h-4" />}>
-              Transaction History
+              History
             </OwnerTab>
           </OwnerTabList>
-          <div className="flex items-center gap-2">
-            <PrinterStatus />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestPrint}
-              disabled={isTestPrinting}
-              className="flex items-center gap-2"
-            >
-              <TestTube2 className={`w-4 h-4 ${isTestPrinting ? 'animate-pulse' : ''}`} />
-              {isTestPrinting ? 'Testing...' : 'Test Printer'}
-            </Button>
-          </div>
         </div>
 
         {/* Single shared content container - only one panel rendered at a time */}
         <div className="pos-billing-tab-content flex-1 flex flex-col min-h-0 overflow-hidden mt-4">
           {activeTab === "billing" ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
-              <MenuGrid
-                menuItems={menuItems}
-                categories={categories}
-                searchQuery={searchQuery}
-                selectedCategory={selectedCategory}
-                isLoading={isLoading}
-                onSearchChange={setSearchQuery}
-                onCategoryChange={setSelectedCategory}
-                onItemClick={addToCart}
-              />
+            <>
+              {/* Desktop: Side by side | Mobile: Full width menu only */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
+                <MenuGrid
+                  menuItems={menuItems}
+                  categories={categories}
+                  searchQuery={searchQuery}
+                  selectedCategory={selectedCategory}
+                  isLoading={isLoading}
+                  onSearchChange={setSearchQuery}
+                  onCategoryChange={setSelectedCategory}
+                  onItemClick={addToCart}
+                  headerExtras={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTestPrint}
+                      disabled={isTestPrinting}
+                      className="flex items-center gap-2"
+                    >
+                      <TestTube2 className={`w-4 h-4 ${isTestPrinting ? "animate-pulse" : ""}`} />
+                      <span className="hidden sm:inline">{isTestPrinting ? "Testing..." : "Test Printer"}</span>
+                      <span className="sm:hidden">{isTestPrinting ? "Test..." : "Test"}</span>
+                    </Button>
+                  }
+                />
 
-              <CartPanel
-                cart={cart}
-                customerName={customerName}
-                discountConfig={discountConfig}
-                totals={totals}
-                isProcessing={isProcessing}
-                onCustomerNameChange={setCustomerName}
-                onQuantityChange={updateQuantity}
-                onRemoveItem={removeFromCart}
-                onClearCart={resetForm}
-                onDiscountConfigChange={handleDiscountConfigChange}
-                onCheckout={handleCheckout}
-              />
-            </div>
+                {/* Desktop Cart - Hidden on mobile */}
+                <div className="hidden lg:block">
+                  <CartPanel
+                    cart={cart}
+                    customerName={customerName}
+                    discountConfig={discountConfig}
+                    totals={totals}
+                    isProcessing={isProcessing}
+                    onCustomerNameChange={setCustomerName}
+                    onQuantityChange={updateQuantity}
+                    onRemoveItem={removeFromCart}
+                    onClearCart={resetForm}
+                    onDiscountConfigChange={handleDiscountConfigChange}
+                    onCheckout={handleCheckout}
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Floating Cart Button */}
+              {cart.length > 0 && (
+                <button
+                  onClick={() => setShowCartSheet(true)}
+                  className="lg:hidden fixed bottom-6 right-6 z-40 bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 pr-5"
+                >
+                  <ShoppingCart className="w-6 h-6" />
+                  <Badge className="bg-white text-primary font-bold">
+                    {cart.length}
+                  </Badge>
+                </button>
+              )}
+
+              {/* Mobile Cart Sheet */}
+              <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
+                <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5" />
+                      Cart ({cart.length} items)
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-hidden">
+                    <CartPanel
+                      cart={cart}
+                      customerName={customerName}
+                      discountConfig={discountConfig}
+                      totals={totals}
+                      isProcessing={isProcessing}
+                      onCustomerNameChange={setCustomerName}
+                      onQuantityChange={updateQuantity}
+                      onRemoveItem={removeFromCart}
+                      onClearCart={resetForm}
+                      onDiscountConfigChange={handleDiscountConfigChange}
+                      onCheckout={() => {
+                        setShowCartSheet(false);
+                        handleCheckout();
+                      }}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </>
           ) : (
-            <TransactionHistory transactions={transactions} />
+            <TransactionHistory 
+              transactions={transactions} 
+              pagination={transactionsPagination}
+              onPageChange={setTransactionsPage}
+              onTransactionClick={handleTransactionClick}
+            />
           )}
         </div>
       </OwnerTabs>
@@ -303,6 +519,15 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         onOpenChange={setShowReceipt}
         transaction={currentTransaction}
         onPrint={handlePrintReceipt}
+      />
+
+      {/* Order Detail Dialog for History */}
+      <OrderDetailDialog
+        open={showOrderDetail}
+        onOpenChange={setShowOrderDetail}
+        transaction={selectedTransaction}
+        onPrint={handlePrintHistoricalReceipt}
+        isPrinting={isPrinting}
       />
     </OwnerPageLayout>
   );

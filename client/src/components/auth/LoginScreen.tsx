@@ -193,24 +193,26 @@ export default function LoginScreen() {
 
             console.log('✅ QR code validated, organization:', organization.name);
 
-            // Check if cached user needs profile completion
-            if (existingUser.role === 'guest' || !existingUser.phoneNumber || !existingUser.organizationId) {
-              console.log('📝 Cached user needs profile completion');
-              
-              // Store organization context for profile setup
-              sessionStorage.setItem('orgContext', JSON.stringify({
-                organizationId: organization.id,
-                organizationName: organization.name,
-                fullAddress: fullAddress,
-              }));
-
-              // Remove pending QR data
-              sessionStorage.removeItem('pendingOrgQRData');
-
-              // Redirect to profile setup with existing user data
-              setLocation(`/profile-setup?email=${encodeURIComponent(existingUser.email)}&name=${encodeURIComponent(existingUser.name)}`);
-              return;
+            // Apply organization context; do not force profile setup
+            if (!existingUser.organizationId) {
+              try {
+                await fetch(`/api/users/${existingUser.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    organizationId: organization.id,
+                  })
+                });
+              } catch (e) {
+                console.error('Error updating user with organizationId:', e);
+              }
             }
+            
+            sessionStorage.setItem('orgContext', JSON.stringify({
+              organizationId: organization.id,
+              organizationName: organization.name,
+              fullAddress: fullAddress,
+            }));
 
             // User is fully authenticated and profile is complete, log them in directly
             console.log('✅ Cached user is complete, logging in directly');
@@ -330,24 +332,6 @@ export default function LoginScreen() {
 
             // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
-
-            // If user is guest without phone or organization, show profile setup
-            if ((userData.role === 'guest' && (!userData.phoneNumber || !userData.organizationId))) {
-              setNeedsProfileSetup({
-                email: userData.email,
-                name: userData.name,
-              });
-              return;
-            }
-
-            // If user needs phone number, show profile setup
-            if (!userData.phoneNumber) {
-              setNeedsProfileSetup({
-                email: userData.email,
-                name: userData.name,
-              });
-              return;
-            }
           }
         }
         
@@ -551,17 +535,26 @@ export default function LoginScreen() {
               sessionStorage.setItem('orgContext', JSON.stringify({
                 organizationId: organization.id,
                 organizationName: organization.name,
-                fullAddress: fullAddress, // Store full address to auto-add to user addresses
+                fullAddress: fullAddress,
               }));
               
               // Remove pending QR data
               sessionStorage.removeItem('pendingOrgQRData');
               
-              // Set up profile setup for phone number collection
-              setNeedsProfileSetup({
-                email: newUser.email,
+              // Login directly with minimal user data
+              const userDisplayData = {
+                id: newUser.id,
                 name: newUser.name,
-              });
+                email: newUser.email,
+                role: newUser.role || 'guest',
+                phoneNumber: newUser.phoneNumber || '',
+                organization: organization.id,
+                organizationId: organization.id,
+              };
+              login(userDisplayData as any);
+              setTimeout(() => {
+                setLocation("/app");
+              }, 100);
             } else if (createResponse.status === 409) {
               // User already exists (race condition - Google OAuth created user first)
               // Fetch the existing user and continue with the flow
@@ -580,47 +573,38 @@ export default function LoginScreen() {
                 // Remove pending QR data
                 sessionStorage.removeItem('pendingOrgQRData');
                 
-                // Check if user needs profile completion
-                if (!existingUser.phoneNumber || !existingUser.organizationId) {
-                  // Update user with organizationId if missing
-                  if (!existingUser.organizationId) {
-                    try {
-                      await fetch(`/api/users/${existingUser.id}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          organizationId: organization.id,
-                        })
-                      });
-                    } catch (e) {
-                      console.error('Error updating user with organizationId:', e);
-                    }
+                // If missing organizationId, update it; phone number is optional
+                if (!existingUser.organizationId) {
+                  try {
+                    await fetch(`/api/users/${existingUser.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        organizationId: organization.id,
+                      })
+                    });
+                  } catch (e) {
+                    console.error('Error updating user with organizationId:', e);
                   }
-                  
-                  // Set up profile setup for phone number collection
-                  setNeedsProfileSetup({
-                    email: existingUser.email,
-                    name: existingUser.name,
-                  });
-                } else {
-                  // User is complete, log them in
-                  const organizationId = existingUser.organizationId || organization.id;
-                  const userDisplayData = {
-                    id: existingUser.id,
-                    name: existingUser.name,
-                    email: existingUser.email,
-                    role: existingUser.role || 'guest',
-                    phoneNumber: existingUser.phoneNumber || '',
-                    ...(organizationId && {
-                      organization: organizationId,
-                      organizationId: organizationId,
-                    }),
-                  };
-                  login(userDisplayData as any);
-                  setTimeout(() => {
-                    setLocation("/app");
-                  }, 100);
                 }
+                
+                // Log in regardless of phone number
+                const organizationId = existingUser.organizationId || organization.id;
+                const userDisplayData = {
+                  id: existingUser.id,
+                  name: existingUser.name,
+                  email: existingUser.email,
+                  role: existingUser.role || 'guest',
+                  phoneNumber: existingUser.phoneNumber || '',
+                  ...(organizationId && {
+                    organization: organizationId,
+                    organizationId: organizationId,
+                  }),
+                };
+                login(userDisplayData as any);
+                setTimeout(() => {
+                  setLocation("/app");
+                }, 100);
               } else {
                 const errorData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
                 alert(`Failed to create account: ${errorData.message || 'Unknown error'}`);
@@ -630,11 +614,54 @@ export default function LoginScreen() {
               alert(`Failed to create account: ${errorData.message || 'Unknown error'}`);
             }
           } else {
-            // New regular user - needs profile setup
-            setNeedsProfileSetup({
+            // New regular Google user - create minimal account and login
+            const minimalUser = {
               email: user.email,
-              name: user.displayName || '',
+              name: user.displayName || user.name || '',
+              role: 'guest',
+              isProfileComplete: false,
+            };
+            const createResponse = await fetch('/api/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(minimalUser)
             });
+            if (createResponse.ok) {
+              const created = await createResponse.json();
+              const userDisplayData = {
+                id: created.id,
+                name: created.name,
+                email: created.email,
+                role: created.role || 'guest',
+                phoneNumber: created.phoneNumber || '',
+              };
+              login(userDisplayData as any);
+              setTimeout(() => {
+                setLocation("/app");
+              }, 100);
+            } else if (createResponse.status === 409) {
+              const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
+              if (existingUserResponse.ok) {
+                const existingUser = await existingUserResponse.json();
+                const userDisplayData = {
+                  id: existingUser.id,
+                  name: existingUser.name,
+                  email: existingUser.email,
+                  role: existingUser.role || 'guest',
+                  phoneNumber: existingUser.phoneNumber || '',
+                };
+                login(userDisplayData as any);
+                setTimeout(() => {
+                  setLocation("/app");
+                }, 100);
+              } else {
+                const err = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
+                alert(`Failed to create account: ${err.message || 'Unknown error'}`);
+              }
+            } else {
+              const err = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
+              alert(`Failed to create account: ${err.message || 'Unknown error'}`);
+            }
           }
         }
       }
@@ -892,12 +919,20 @@ export default function LoginScreen() {
           return;
         }
 
-        // Registration successful - needs profile setup
-        // Use provided name or fallback to email username
-        setNeedsProfileSetup({
-          email: data.user.email,
+        // Registration successful - log in directly with minimal data
+        const userDisplayData = {
+          id: data.user.id,
           name: emailPasswordForm.name?.trim() || data.user.name || (isEmail ? trimmedIdentifier.split('@')[0] : trimmedIdentifier),
-        });
+          email: data.user.email,
+          role: data.user.role || 'student',
+          phoneNumber: data.user.phoneNumber || '',
+          college: data.user.college || '',
+        };
+        login(userDisplayData as any);
+        setIsEmailPasswordLoading(false);
+        setTimeout(() => {
+          setLocation("/app");
+        }, 100);
       }
     } catch (error: any) {
       console.error("Email/password auth error:", error);

@@ -79,8 +79,8 @@ export default function OAuthCallback() {
           return;
         }
         
-        // Check if user came from organization QR and needs profile completion
-        if (orgQRData && (userData.role === 'guest' || !userData.phoneNumber || !userData.organizationId)) {
+        // Check if user came from organization QR; apply context but do not force profile setup
+        if (orgQRData && (userData.role === 'guest' || !userData.organizationId)) {
           // Validate QR code first
           const validateResponse = await fetch(
             `/api/system-settings/qr-codes/validate/${orgQRData.organizationId}/${orgQRData.hash}?address=${encodeURIComponent(orgQRData.address)}`
@@ -90,31 +90,16 @@ export default function OAuthCallback() {
             const validationData = await validateResponse.json();
             const { organization, fullAddress } = validationData;
 
-            // Store organization context for profile setup (including full address)
+            // Store organization context (including full address)
             sessionStorage.setItem('orgContext', JSON.stringify({
               organizationId: organization.id,
               organizationName: organization.name,
-              fullAddress: fullAddress, // Store full address to auto-add to user addresses
+              fullAddress: fullAddress,
             }));
 
             // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
-
-            // If user is guest without phone or organization, show profile setup
-            if ((userData.role === 'guest' && (!userData.phoneNumber || !userData.organizationId))) {
-              console.log('✅ Existing guest user needs profile completion, redirecting to profile setup');
-              setIsLoading(false);
-              setLocation(`/profile-setup?email=${encodeURIComponent(userData.email)}&name=${encodeURIComponent(userData.name)}`);
-              return;
-            }
-
-            // If user needs phone number, show profile setup
-            if (!userData.phoneNumber) {
-              console.log('✅ Existing user needs phone number, redirecting to profile setup');
-              setIsLoading(false);
-              setLocation(`/profile-setup?email=${encodeURIComponent(userData.email)}&name=${encodeURIComponent(userData.name)}`);
-              return;
-            }
+            // Do not require phone number; continue to login flow
           }
         }
         
@@ -315,10 +300,60 @@ export default function OAuthCallback() {
             setLocation('/login');
           }
         } else {
-          // Regular new user - redirect to profile setup
-          console.log('User not found, redirecting to profile setup');
-          setIsLoading(false);
-          setLocation(`/profile-setup?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}`);
+          // Regular new Google user - create minimal account and login
+          const minimalUser = {
+            email: user.email,
+            name: user.name || '',
+            role: 'guest',
+            isProfileComplete: false,
+          };
+          const createResponse = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(minimalUser)
+          });
+          if (createResponse.ok) {
+            const created = await createResponse.json();
+            const userDisplayData = {
+              id: created.id,
+              name: created.name,
+              email: created.email,
+              role: created.role || 'guest',
+              phoneNumber: created.phoneNumber || '',
+            };
+            login(userDisplayData);
+            setIsLoading(false);
+            setTimeout(() => {
+              setLocation('/app');
+            }, 100);
+          } else if (createResponse.status === 409) {
+            const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
+            if (existingUserResponse.ok) {
+              const existingUser = await existingUserResponse.json();
+              const userDisplayData = {
+                id: existingUser.id,
+                name: existingUser.name,
+                email: existingUser.email,
+                role: existingUser.role || 'guest',
+                phoneNumber: existingUser.phoneNumber || '',
+              };
+              login(userDisplayData);
+              setIsLoading(false);
+              setTimeout(() => {
+                setLocation('/app');
+              }, 100);
+            } else {
+              const errData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
+              alert(`Failed to create account: ${errData.message || 'Unknown error'}`);
+              setIsLoading(false);
+              setLocation('/login');
+            }
+          } else {
+            const errData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
+            alert(`Failed to create account: ${errData.message || 'Unknown error'}`);
+            setIsLoading(false);
+            setLocation('/login');
+          }
         }
       }
     } catch (error) {

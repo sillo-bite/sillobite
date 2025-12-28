@@ -205,14 +205,13 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
   };
 
   const hasMultipleOrders = activeOrders.length > 1;
-  const bottomNavHeight = 64;
-  const gap = 16;
+  const gap = 10;
 
   return (
     <div
       className="fixed left-0 right-0 z-[9998]"
       style={{ 
-        bottom: `${bottomNavHeight + gap}px`,
+        bottom: `${gap}px`,
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
