@@ -4,12 +4,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Clock, CreditCard, HandCoins, Loader2, X, CheckCircle, Printer, AlertTriangle } from "lucide-react";
+import { Clock, CreditCard, HandCoins, Loader2, X, CheckCircle, Printer, AlertTriangle, QrCode } from "lucide-react";
 import { OwnerButton } from "@/components/owner";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/utils/posCalculations";
 import { toast } from "sonner";
 import { printBill } from "@/services/localPrinterService";
+import { QRPaymentScreen } from "@/components/payment/QRPaymentScreen";
 import type { OrderTotals } from "@/types/pos";
 
 interface PosCheckoutDialogProps {
@@ -37,12 +38,13 @@ export function PosCheckoutDialog({
 }: PosCheckoutDialogProps) {
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(SESSION_DURATION_MINUTES * 60);
-  const [paymentMethod, setPaymentMethod] = useState<"offline" | "upi">("offline");
+  const [paymentMethod, setPaymentMethod] = useState<"offline" | "upi" | "qr">("offline");
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState<CheckoutStage>('payment_selection');
   const [paymentData, setPaymentData] = useState<any>(null);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
+  const [showQRPayment, setShowQRPayment] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [canteenCharges, setCanteenCharges] = useState<any[]>([]);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,15 +62,17 @@ export function PosCheckoutDialog({
 
   const fetchCanteenCharges = async () => {
     try {
+      console.log('🔍 Fetching charges for canteen:', canteenId);
       const chargesResponse = await apiRequest(`/api/canteens/${canteenId}/charges`);
-      if (chargesResponse && Array.isArray(chargesResponse)) {
-        const activeCharges = chargesResponse.filter((charge: any) => charge.active);
-        setCanteenCharges(activeCharges);
-        return activeCharges;
-      }
-      return [];
+      console.log('📥 Charges API response:', chargesResponse);
+      
+      const chargesArray = Array.isArray(chargesResponse) ? chargesResponse : chargesResponse?.items || [];
+      const activeCharges = chargesArray.filter((charge: any) => charge.active);
+      console.log('📊 Active canteen charges:', activeCharges);
+      setCanteenCharges(activeCharges);
+      return activeCharges;
     } catch (error) {
-      console.warn('Failed to fetch canteen charges:', error);
+      console.error('❌ Failed to fetch canteen charges:', error);
       return [];
     }
   };
@@ -96,7 +100,10 @@ export function PosCheckoutDialog({
   };
 
   const getDisplayTotals = (): OrderTotals => {
-    return calculateTotalsWithCharges(totals, canteenCharges, paymentMethod === 'upi');
+    const includeCharges = paymentMethod === 'upi' || paymentMethod === 'qr';
+    const displayTotals = calculateTotalsWithCharges(totals, canteenCharges, includeCharges);
+    console.log('💰 Display totals:', { paymentMethod, hasCharges: canteenCharges.length, includeCharges, displayTotals });
+    return displayTotals;
   };
 
   const createCheckoutSession = async () => {
@@ -143,21 +150,25 @@ export function PosCheckoutDialog({
 
   useEffect(() => {
     if (open) {
-      hasAbandonedRef.current = false;
-      setStage('payment_selection');
-      setPaymentData(null);
-      setCreatedOrder(null);
-      cachedCartRef.current = cart;
-      createCheckoutSession();
+      // Don't reset if we're showing success screen after payment
+      if (stage !== 'payment_success' && !isPaymentInProgressRef.current) {
+        hasAbandonedRef.current = false;
+        setStage('payment_selection');
+        setPaymentData(null);
+        setCreatedOrder(null);
+        cachedCartRef.current = cart;
+        createCheckoutSession();
+      }
     } else {
       // Only abandon session if not in payment processing or success stage
-      // Don't abandon if Razorpay payment is in progress
-      if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_selection' && !isPaymentInProgressRef.current) {
+      // Don't abandon if Razorpay payment is in progress or QR payment is being shown
+      if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_selection' && !isPaymentInProgressRef.current && !showQRPayment) {
         abandonCheckoutSession(checkoutSessionId);
       }
       
-      // Only reset state if not in payment processing
-      if (!isPaymentInProgressRef.current) {
+      // Only reset state if not in payment processing, not showing success, and not showing QR payment
+      if (!isPaymentInProgressRef.current && stage !== 'payment_success' && !showQRPayment) {
+        setStage('payment_selection');
         setCheckoutSessionId(null);
         setSessionTimeLeft(SESSION_DURATION_MINUTES * 60);
         setPaymentMethod("offline");
@@ -168,6 +179,13 @@ export function PosCheckoutDialog({
           sessionTimerRef.current = null;
         }
       }
+      
+      // When closing after success, reset for next time
+      if (stage === 'payment_success') {
+        setStage('payment_selection');
+        setCreatedOrder(null);
+        setCanteenCharges([]);
+      }
     }
 
     return () => {
@@ -175,7 +193,14 @@ export function PosCheckoutDialog({
         clearInterval(sessionTimerRef.current);
       }
     };
-  }, [open]);
+  }, [open, showQRPayment]);
+
+  useEffect(() => {
+    if (createdOrder) {
+      console.log('🎯 Created order updated:', createdOrder);
+      console.log('🎯 Stage:', stage);
+    }
+  }, [createdOrder, stage]);
 
   useEffect(() => {
     if (!checkoutSessionId || !open) return;
@@ -352,6 +377,15 @@ export function PosCheckoutDialog({
   const handleConfirmPayment = () => {
     if (paymentMethod === 'upi') {
       initiateUpiPayment();
+    } else if (paymentMethod === 'qr') {
+      // Cache cart and totals for QR payment (with canteen charges)
+      const qrTotals = calculateTotalsWithCharges(totals, canteenCharges, true);
+      cachedCartRef.current = cart;
+      cachedTotalsRef.current = qrTotals;
+      
+      // Show QR payment screen
+      setShowQRPayment(true);
+      onOpenChange(false);
     } else {
       // For offline payment, show confirmation dialog
       setShowOfflineConfirm(true);
@@ -579,7 +613,7 @@ export function PosCheckoutDialog({
                       </div>
                     )}
 
-                    {paymentMethod === 'upi' && canteenCharges.length > 0 && canteenCharges.map((charge, idx) => {
+                    {(paymentMethod === 'upi' || paymentMethod === 'qr') && canteenCharges.length > 0 && canteenCharges.map((charge, idx) => {
                       const chargeAmount = charge.type === 'percent' 
                         ? (totals.subtotal * charge.value) / 100 
                         : charge.value;
@@ -610,7 +644,7 @@ export function PosCheckoutDialog({
                     <CreditCard className="w-5 h-5 mr-2 text-primary" />
                     Payment Method
                   </h3>
-                  <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "offline" | "upi")}>
+                  <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "offline" | "upi" | "qr")}>
                     <div className="space-y-3">
                       {/* Offline Payment */}
                       <div className="flex items-center space-x-3 p-3 border-2 rounded-lg transition-colors cursor-pointer hover:bg-accent" onClick={() => setPaymentMethod("offline")}>
@@ -621,6 +655,20 @@ export function PosCheckoutDialog({
                             <div>
                               <p className="font-medium">Offline Payment</p>
                               <p className="text-sm text-muted-foreground">Cash or Card at counter (Implementation pending)</p>
+                            </div>
+                          </div>
+                        </Label>
+                      </div>
+
+                      {/* QR Code Payment */}
+                      <div className="flex items-center space-x-3 p-3 border-2 rounded-lg transition-colors cursor-pointer hover:bg-accent" onClick={() => setPaymentMethod("qr")}>
+                        <RadioGroupItem value="qr" id="qr-pos" />
+                        <Label htmlFor="qr-pos" className="flex-1 cursor-pointer">
+                          <div className="flex items-center">
+                            <QrCode className="w-5 h-5 mr-3 text-purple-600" />
+                            <div>
+                              <p className="font-medium">QR Code Payment</p>
+                              <p className="text-sm text-muted-foreground">Scan with any UPI app</p>
                             </div>
                           </div>
                         </Label>
@@ -660,7 +708,7 @@ export function PosCheckoutDialog({
                   disabled={isLoading}
                   isLoading={isLoading}
                 >
-                  {paymentMethod === 'offline' ? 'Confirm Order' : `Pay ${formatCurrency(getDisplayTotals().total)}`}
+                  {paymentMethod === 'offline' ? 'Confirm Order' : paymentMethod === 'qr' ? 'Show QR Code' : `Pay ${formatCurrency(getDisplayTotals().total)}`}
                 </OwnerButton>
               </div>
             </>
@@ -693,19 +741,19 @@ export function PosCheckoutDialog({
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pb-3 border-b">
                       <span className="text-sm text-muted-foreground">Order Number</span>
-                      <span className="font-bold text-lg">{createdOrder.orderNumber}</span>
+                      <span className="font-bold text-lg">{createdOrder?.orderNumber || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between items-center pb-3 border-b">
                       <span className="text-sm text-muted-foreground">Customer Name</span>
-                      <span className="font-medium">{createdOrder.customerName}</span>
+                      <span className="font-medium">{createdOrder?.customerName || customerName || 'Customer'}</span>
                     </div>
                     <div className="flex justify-between items-center pb-3 border-b">
                       <span className="text-sm text-muted-foreground">Status</span>
-                      <span className="font-medium capitalize">{createdOrder.status}</span>
+                      <span className="font-medium capitalize">{createdOrder?.status || 'pending'}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Total Amount</span>
-                      <span className="font-bold text-lg text-primary">{formatCurrency(createdOrder.amount)}</span>
+                      <span className="font-bold text-lg text-primary">{formatCurrency(createdOrder.amount || cachedTotalsRef.current?.total || totals.total)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -783,6 +831,55 @@ export function PosCheckoutDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* QR Payment Screen */}
+      {showQRPayment && (
+        <QRPaymentScreen
+          amount={getDisplayTotals().total}
+          customerName={customerName}
+          canteenId={canteenId}
+          cart={cart}
+          totals={getDisplayTotals()}
+          checkoutSessionId={checkoutSessionId || undefined}
+          onSuccess={async (orderNumber) => {
+            setShowQRPayment(false);
+            
+            try {
+              // Fetch order details to show in success screen
+              console.log('📥 Fetching order details for:', orderNumber);
+              const orderResponse = await apiRequest(`/api/orders/${orderNumber}`);
+              console.log('📦 Order response:', orderResponse);
+              
+              if (orderResponse) {
+                setCreatedOrder(orderResponse);
+                setStage('payment_success');
+                onOpenChange(true);
+                toast.success('Order created successfully!');
+                
+                if (onOrderCreated) {
+                  onOrderCreated();
+                }
+              } else {
+                console.warn('⚠️ No order response received');
+                toast.success('Payment successful!');
+                if (onOrderCreated) {
+                  onOrderCreated();
+                }
+              }
+            } catch (error) {
+              console.error('❌ Error fetching order details:', error);
+              toast.success('Payment successful!');
+              if (onOrderCreated) {
+                onOrderCreated();
+              }
+            }
+          }}
+          onCancel={() => {
+            setShowQRPayment(false);
+            onOpenChange(true);
+          }}
+        />
+      )}
     </>
   );
 }

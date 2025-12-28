@@ -50,6 +50,9 @@ export type Order = {
   collegeName?: string; // College name for display
   items: string;
   amount: number;
+  itemsSubtotal?: number; // Subtotal of items only (no tax, no charges)
+  taxAmount?: number; // Tax amount (e.g., 5% GST for POS orders)
+  chargesTotal?: number; // Total canteen charges
   originalAmount?: number; // Amount before discount
   discountAmount?: number; // Discount applied
   appliedCoupon?: string; // Coupon code used
@@ -697,6 +700,7 @@ export const insertOrderSchema = z.object({
   items: z.string(),
   amount: z.number().min(0),
   itemsSubtotal: z.number().optional(), // Menu items total before charges
+  taxAmount: z.number().optional(), // Tax amount (e.g., 5% GST for POS orders)
   chargesTotal: z.number().optional(), // Total applied charges
   chargesApplied: z.array(z.object({
     name: z.string(),
@@ -713,6 +717,9 @@ export const insertOrderSchema = z.object({
   isCounterOrder: z.boolean().optional(),
   isOffline: z.boolean().optional(),
   paymentStatus: z.string().optional(),
+  paymentMethod: z.string().optional(),
+  qrId: z.string().optional(),
+  paymentId: z.string().optional(),
   canteenId: z.string().min(1),
   // Counter assignment fields
   counterId: z.string().optional(),

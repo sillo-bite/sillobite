@@ -139,3 +139,77 @@ export async function getOrderDetails(orderId: string) {
   }
 }
 
+export async function createRazorpayQR(
+  orderId: string,
+  amount: number,
+  currency: string = 'INR',
+  description?: string,
+  customerName?: string
+) {
+  if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
+    throw new Error('Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
+  }
+
+  if (amount <= 0) {
+    throw new Error('Invalid amount: amount must be greater than 0');
+  }
+
+  try {
+    const options = {
+      type: 'upi_qr' as const,
+      name: customerName || 'Customer',
+      usage: 'single_use' as const,
+      fixed_amount: true,
+      payment_amount: amount * 100,
+      description: description || `Order ${orderId}`,
+      close_by: Math.floor(Date.now() / 1000) + 600,
+      notes: {
+        orderId: orderId
+      }
+    };
+
+    const qrCode = await razorpayInstance.qrCode.create(options);
+    return qrCode;
+  } catch (error: any) {
+    console.error('Error creating Razorpay QR code:', error);
+    
+    if (error.error) {
+      const errorDescription = error.error.description || error.error.error?.description || 'Unknown error';
+      const errorCode = error.error.code || error.error.error?.code || 'UNKNOWN';
+      throw new Error(`Razorpay QR API Error [${errorCode}]: ${errorDescription}`);
+    }
+    
+    throw error;
+  }
+}
+
+export async function fetchRazorpayQR(qrCodeId: string) {
+  try {
+    const qrCode = await razorpayInstance.qrCode.fetch(qrCodeId);
+    return qrCode;
+  } catch (error) {
+    console.error('Error fetching Razorpay QR code:', error);
+    throw error;
+  }
+}
+
+export async function fetchAllRazorpayQRPayments(qrCodeId: string) {
+  try {
+    const payments = await razorpayInstance.qrCode.fetchAllPayments(qrCodeId);
+    return payments;
+  } catch (error) {
+    console.error('Error fetching Razorpay QR code payments:', error);
+    throw error;
+  }
+}
+
+export async function closeRazorpayQR(qrCodeId: string) {
+  try {
+    const qrCode = await razorpayInstance.qrCode.close(qrCodeId);
+    return qrCode;
+  } catch (error) {
+    console.error('Error closing Razorpay QR code:', error);
+    throw error;
+  }
+}
+
