@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, ShoppingCart, Heart, ArrowUp } from "lucide-react";
+import { Home, ShoppingCart, ArrowUp } from "lucide-react";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
 import { useCart } from "@/contexts/CartContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -40,7 +40,6 @@ export default function BottomNavigation({ currentPage, onNavigate }: BottomNavi
 
   const navigationItems = [
     { id: "home", label: "Home", icon: Home, route: "/app" },
-    { id: "favorites", label: "Favorites", icon: Heart, route: "/app" },
     { id: "cart", label: "Cart", icon: ShoppingCart, route: "/app" }
   ];
 

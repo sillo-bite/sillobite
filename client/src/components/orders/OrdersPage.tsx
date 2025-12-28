@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Search, Clock, CheckCircle, Package, Loader2, Receipt, X, SlidersHorizontal, ChevronDown, MapPin, Calendar, DollarSign, CreditCard, Filter, XCircle } from "lucide-react";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Order } from "@shared/schema";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -408,7 +407,6 @@ export default function OrdersPage() {
         <div className="flex justify-center items-center h-64">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
-        <BottomNavigation currentPage="profile" />
       </div>
     );
   }
@@ -444,7 +442,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <div className="px-4 space-y-4 mt-6 pb-28">
+        <div className="px-4 space-y-4 mt-6 pb-10">
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -983,8 +981,6 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
-      
-      <BottomNavigation currentPage="profile" />
     </>
   );
 }

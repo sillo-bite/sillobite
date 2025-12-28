@@ -777,8 +777,8 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
 
       </div>
       
-      {/* Bottom spacing for navigation */}
-      <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))]"></div>
+      {/* Bottom spacing */}
+      <div className="pb-[calc(1rem+env(safe-area-inset-bottom))]"></div>
     </>
   );
 }

@@ -30,13 +30,14 @@ import {
   Power,
   MapPin,
   Bell,
+  Heart,
   FileText,
   Shield,
   Building2,
   GraduationCap,
-  UtensilsCrossed
+  UtensilsCrossed,
+  ShoppingCart
 } from "lucide-react";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import UserProfileDisplay from "./UserProfileDisplay";
 import AppUpdateButton from "@/components/common/AppUpdateButton";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -376,6 +377,40 @@ export default function ProfilePage() {
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
+
+                <button 
+                  className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
+                  onClick={() => {
+                    // Dispatch custom event to switch to cart view in AppPage
+                    window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+                    setLocation("/app");
+                  }}
+                >
+                  <div className="flex items-center">
+                    <ShoppingCart className="w-5 h-5 text-muted-foreground mr-3" />
+                     <span className={`${
+                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                    }`}>My Cart</span>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+
+                <button 
+                  className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
+                  onClick={() => {
+                    // Dispatch custom event to switch to favorites view in AppPage
+                    window.dispatchEvent(new CustomEvent('appNavigateToFavorites', {}));
+                    setLocation("/app");
+                  }}
+                >
+                  <div className="flex items-center">
+                    <Heart className="w-5 h-5 text-muted-foreground mr-3" />
+                     <span className={`${
+                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                    }`}>My Favorites</span>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
                 
                 <button 
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
@@ -564,11 +599,6 @@ export default function ProfilePage() {
           {/* App Update Button */}
           <AppUpdateButton />
         </div>
-        
-        {/* Bottom spacing for navigation */}
-        <div className="mb-24"></div>
-
-        <BottomNavigation currentPage="profile" />
       </div>
     </>
   );

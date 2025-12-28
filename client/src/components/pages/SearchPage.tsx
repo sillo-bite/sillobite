@@ -11,7 +11,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import MenuItemCard from "@/components/menu/MenuItemCard";
 import type { MenuItem, Category } from "@shared/schema";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 
 // Utility function to get default category name
 const getDefaultCategoryName = (itemName: string): string => {
@@ -273,11 +272,11 @@ export default function SearchPage() {
         )}
       </div>
       
-      {/* Bottom spacing for navigation and search bar */}
-      <div className="pb-[calc(9rem+env(safe-area-inset-bottom))]"></div>
+      {/* Bottom spacing for search bar */}
+      <div className="pb-[calc(6.5rem+env(safe-area-inset-bottom))]"></div>
       
-      {/* Fixed Search Bar above Bottom Navigation */}
-      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-3">
+      {/* Fixed Search Bar at the bottom */}
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-1">
         <div className={`px-4 py-3 shadow-lg backdrop-blur-sm rounded-2xl border ${
           resolvedTheme === 'dark' 
             ? 'bg-background/95 border-[#724491]/30' 
@@ -286,8 +285,6 @@ export default function SearchPage() {
           <SearchBar />
         </div>
       </div>
-      
-      <BottomNavigation currentPage="menu" />
     </div>
   );
 }

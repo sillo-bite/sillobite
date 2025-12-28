@@ -5,11 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuthSync } from "@/hooks/useDataSync";
 import { useCategoriesLazyLoad } from "@/hooks/useCategoriesLazyLoad";
 import { useHomeData } from "@/hooks/useHomeData";
-import { ChefHat, Loader2, XCircle, CheckCircle, TrendingUp, Zap, Sparkles, Flame, Trophy, User } from "lucide-react";
+import { ChefHat, Loader2, XCircle, CheckCircle, TrendingUp, Zap, Sparkles, Flame, Trophy, User, ShoppingCart } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/contexts/CartContext";
 import { clearRestaurantContext, resolveUserSessionConflict, securelyUpdateUserData } from "@/utils/sessionConflictResolver";
 import { setPWAAuth } from "@/utils/pwaAuth";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 import type { MenuItem, Category } from "@shared/schema";
 import { CanteenSelector } from "@/components/canteen/CanteenSelector";
 import { useCanteenContext } from "@/contexts/CanteenContext";
@@ -56,6 +56,9 @@ export default function HomeScreen() {
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
+  const { getTotalItems } = useCart();
+
+  const cartItemCount = getTotalItems();
 
   // Update status bar to match header color
   useEffect(() => {
@@ -360,13 +363,13 @@ export default function HomeScreen() {
       return page.items;
     }) : [];
 
-    // Add "All" category at the beginning
+    // Add "all" category at the beginning
     return [
       {
         id: 'all',
-        name: 'All',
+        name: 'all',
         canteenId: selectedCanteen?.id || '',
-        icon: '🍴',
+        imageUrl: '/White Brown Modern QR Code Food Menu Flyer.svg',
         createdAt: new Date()
       } as Category,
       ...baseCategories
@@ -433,7 +436,6 @@ export default function HomeScreen() {
     return (
       <>
         <HomeScreenSkeleton />
-        <BottomNavigation currentPage="home" />
       </>
     );
   }
@@ -484,6 +486,24 @@ export default function HomeScreen() {
                     </div>
                   </button>
                 )}
+                
+                {/* Cart Navigation */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+                  }}
+                  className="text-white hover:bg-white/20 rounded-full relative"
+                  aria-label={`View Cart${cartItemCount > 0 ? `, ${cartItemCount} items` : ''}`}
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-white text-[#724491] text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold shadow-sm">
+                      {cartItemCount > 99 ? "99+" : cartItemCount}
+                    </span>
+                  )}
+                </Button>
                 
                 {/* Profile Navigation */}
                 <Button
@@ -647,7 +667,7 @@ export default function HomeScreen() {
               }`}>Quick Picks</h2>
             </div>
             {quickPickItems.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 pb-[60px]">
+              <div className="grid grid-cols-2 gap-4">
                 {quickPickItems.map((item, index) => (
                   <div
                     key={item.id}
@@ -722,19 +742,17 @@ export default function HomeScreen() {
         )}
       </div>
 
-      </div>
-      
       {/* Bottom spacing for bottom sheet - bottom sheet height + visible gap */}
-      {/* Bottom sheet height: ~4.5rem + Visible gap: 1rem + Extra: 2.25rem (36px) = ~7.75rem */}
-      <div className="pb-[calc(7.75rem+env(safe-area-inset-bottom))]"></div>
+      {/* Bottom sheet height increased to ensure quick picks are not covered by the carousel */}
+      <div className="pb-[calc(7.5rem+env(safe-area-inset-bottom))]"></div>
+
+      </div>
       
       {/* Current Order Bottom Sheet - Only shows on home page */}
       <CurrentOrderBottomSheet 
         activeOrders={Array.isArray(homeData?.activeOrders) ? homeData.activeOrders : []} 
         refetchOrders={refetchHomeData}
       />
-      
-      <BottomNavigation currentPage="home" />
     </>
   );
 }

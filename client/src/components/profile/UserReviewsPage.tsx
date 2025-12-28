@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from '@tanstack/react-query';
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 
 const UserReviewsPage = () => {
   const [, setLocation] = useLocation();
@@ -365,11 +364,6 @@ const UserReviewsPage = () => {
           </div>
         )}
       </div>
-      
-      {/* Bottom spacing for navigation */}
-      <div className="mb-24"></div>
-
-      <BottomNavigation currentPage="profile" />
     </div>
   );
 };
