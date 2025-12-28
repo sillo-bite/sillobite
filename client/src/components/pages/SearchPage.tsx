@@ -11,7 +11,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import MenuItemCard from "@/components/menu/MenuItemCard";
 import type { MenuItem, Category } from "@shared/schema";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
-import BottomNavigation from "@/components/navigation/BottomNavigation";
 
 // Utility function to get default category name
 const getDefaultCategoryName = (itemName: string): string => {
@@ -56,89 +55,59 @@ export default function SearchPage() {
   };
 
   // Fetch real menu items and categories
-  const { data: menuItems = [], isLoading } = useQuery<MenuItem[]>({
-    queryKey: ["/api/menu", "search-page", Date.now()], // Force fresh data
+  const { data: menuData, isLoading } = useQuery<{ items: MenuItem[], pagination: any }>({
+    queryKey: ["/api/menu", selectedCanteen?.id, debouncedSearchQuery],
     queryFn: async () => {
-      console.log('🔍 SearchPage: Fetching menu items...');
-      const response = await fetch('/api/menu');
+      if (!selectedCanteen?.id) return { items: [], pagination: {} };
+      
+      const params = new URLSearchParams({
+        canteenId: selectedCanteen.id,
+        availableOnly: 'true',
+        limit: '100', // Fetch more items for search page
+        ...(debouncedSearchQuery.trim() && { search: debouncedSearchQuery.trim() })
+      });
+      
+      const response = await fetch(`/api/menu?${params.toString()}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch menu items: ${response.status}`);
       }
-      const data = await response.json();
-      console.log('🔍 SearchPage: Raw API response:', data);
-      console.log('🔍 SearchPage: Menu items received:', data.map(item => ({
-        id: item.id,
-        name: item.name,
-        imageUrl: item.imageUrl,
-        hasImage: !!item.imageUrl
-      })));
-      return data;
+      return await response.json();
     },
-    staleTime: 1000 * 60 * 2, // 2 minutes - reasonable caching for search results
-    cacheTime: 0, // Disable cache completely
+    enabled: !!selectedCanteen?.id,
+    staleTime: 1000 * 60 * 2,
   });
 
-  const { data: categories = [] } = useQuery<Category[]>({
-    queryKey: ["/api/categories"],
+  const menuItems = menuData?.items || [];
+
+  const { data: categoriesData } = useQuery<{ items: Category[] } | Category[]>({
+    queryKey: ["/api/categories", selectedCanteen?.id],
+    queryFn: async () => {
+      if (!selectedCanteen?.id) return [];
+      const response = await fetch(`/api/categories?canteenId=${selectedCanteen.id}`);
+      if (!response.ok) throw new Error('Failed to fetch categories');
+      return await response.json();
+    },
+    enabled: !!selectedCanteen?.id,
   });
+
+  const categories = useMemo(() => {
+    if (Array.isArray(categoriesData)) return categoriesData;
+    return categoriesData?.items || [];
+  }, [categoriesData]);
 
   // Create item-category mapping
-  const getCategoryName = (categoryId?: string) => {
-    const category = categories.find(cat => cat.id === categoryId);
+  const getCategoryName = (categoryId?: string | mongoose.Types.ObjectId) => {
+    const idStr = categoryId?.toString();
+    const category = categories.find(cat => (cat.id || (cat as any)._id) === idStr);
     return category?.name || "Other";
   };
 
   const filteredItems = useMemo(() => {
-    const filtered = menuItems.filter(item => {
-      // First filter out items with 0 stock and unavailable items
-      if (!item.available || item.stock <= 0) return false;
-      
-      // If no search query, show all available items
-      if (!debouncedSearchQuery.trim()) return true;
-      
-      // Then apply search filter
-      const categoryName = getCategoryName(item.categoryId);
-      const searchLower = debouncedSearchQuery.toLowerCase();
-      
-      const matches = (
-        item.name.toLowerCase().includes(searchLower) ||
-        item.description?.toLowerCase().includes(searchLower) ||
-        categoryName.toLowerCase().includes(searchLower) ||
-        // Also search in ingredients if available
-        (item as any).ingredients?.toLowerCase().includes(searchLower) ||
-        // Search in tags if available
-        (item as any).tags?.some((tag: string) => tag.toLowerCase().includes(searchLower))
-      );
-
-      // Debug logging for search matches
-      if (matches && debouncedSearchQuery.trim()) {
-        console.log('🔍 Search match found:', {
-          itemName: item.name,
-          searchQuery: debouncedSearchQuery,
-          categoryName,
-          description: item.description,
-          ingredients: (item as any).ingredients,
-          tags: (item as any).tags
-        });
-      }
-
-      return matches;
-    });
-
-    // Remove duplicates based on item ID and name combination
-    const uniqueItems = filtered.reduce((acc, current) => {
-      const key = `${current.id}-${current.name}`;
-      if (!acc.has(key)) {
-        acc.set(key, current);
-      }
-      return acc;
-    }, new Map());
-
-    const result = Array.from(uniqueItems.values());
-    console.log('🔍 Final filtered items count:', result.length, 'for query:', debouncedSearchQuery);
-    
-    return result;
-  }, [menuItems, debouncedSearchQuery, categories]);
+    // Duplicates are already handled by server-side unique items in the canteen,
+    // but we can keep the unique logic if needed for any reason.
+    // For now, let's just return the menuItems directly as the server already filtered them.
+    return menuItems;
+  }, [menuItems]);
 
 
   // Generate search suggestions based on menu items
@@ -303,11 +272,11 @@ export default function SearchPage() {
         )}
       </div>
       
-      {/* Bottom spacing for navigation and search bar */}
-      <div className="pb-[calc(9rem+env(safe-area-inset-bottom))]"></div>
+      {/* Bottom spacing for search bar */}
+      <div className="pb-[calc(6.5rem+env(safe-area-inset-bottom))]"></div>
       
-      {/* Fixed Search Bar above Bottom Navigation */}
-      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-3">
+      {/* Fixed Search Bar at the bottom */}
+      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-1">
         <div className={`px-4 py-3 shadow-lg backdrop-blur-sm rounded-2xl border ${
           resolvedTheme === 'dark' 
             ? 'bg-background/95 border-[#724491]/30' 
@@ -316,8 +285,6 @@ export default function SearchPage() {
           <SearchBar />
         </div>
       </div>
-      
-      <BottomNavigation currentPage="menu" />
     </div>
   );
 }

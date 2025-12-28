@@ -7,13 +7,24 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
   const [currentPage, setCurrentPage] = useState(1);
   const transactionsLimit = 10;
 
-  // Fetch menu items
+  // Fetch menu items with server-side filtering
   const { data: menuData, isLoading: menuLoading } = useQuery<{
     items: MenuItem[];
     pagination?: any;
   }>({
-    queryKey: ['/api/menu', canteenId],
-    queryFn: () => apiRequest(`/api/menu?canteenId=${canteenId}&availableOnly=true&limit=1000`),
+    queryKey: ['/api/menu', canteenId, searchQuery, selectedCategory],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        canteenId,
+        availableOnly: 'true',
+        limit: '1000'
+      });
+      
+      if (searchQuery) params.append('search', searchQuery);
+      if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
+      
+      return apiRequest(`/api/menu?${params.toString()}`);
+    },
     enabled: !!canteenId,
   });
 
@@ -51,32 +62,8 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
     enabled: !!canteenId,
   });
 
-  // Filter menu items
-  const filteredMenuItems = useMemo(() => {
-    if (!Array.isArray(menuItemsData)) {
-      return [];
-    }
-    let filtered = menuItemsData.filter(item => item.available && item.stock > 0);
-    
-    // Filter by category
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter(item => item.categoryId === selectedCategory);
-    }
-    
-    // Filter by search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item => 
-        item.name.toLowerCase().includes(query) ||
-        item.description?.toLowerCase().includes(query)
-      );
-    }
-    
-    return filtered;
-  }, [menuItemsData, selectedCategory, searchQuery]);
-
   return {
-    menuItems: filteredMenuItems,
+    menuItems: menuItemsData,
     categories: categoriesData,
     transactions: transactionsResponse?.orders || [],
     transactionsPagination: {

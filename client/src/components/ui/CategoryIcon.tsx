@@ -3,21 +3,24 @@ import type { Category } from "@shared/schema";
 
 interface CategoryIconProps {
   category: Category;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  isMenu?: boolean;
 }
 
-const CategoryIcon = ({ category, size = "md", className = "" }: CategoryIconProps) => {
+const CategoryIcon = ({ category, size = "md", className = "", isMenu = false }: CategoryIconProps) => {
   const sizeClasses = {
     sm: "w-6 h-6",
     md: "w-8 h-8", 
-    lg: "w-10 h-10"
+    lg: isMenu ? "w-20 h-20" : "w-14 h-14",
+    xl: "w-24 h-24"
   };
 
   const containerClasses = {
     sm: "w-6 h-6",
     md: "w-8 h-8",
-    lg: "w-10 h-10"
+    lg: isMenu ? "w-20 h-20" : "w-14 h-14",
+    xl: "w-24 h-24"
   };
 
   // Priority: imageUrl > icon > default icon

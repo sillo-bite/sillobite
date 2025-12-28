@@ -40,7 +40,7 @@ export default function HomeScreenSkeleton() {
             <div className="flex items-center space-x-3">
               {/* Streak and XP placeholder */}
               <div className={`w-24 h-8 rounded-full ${getSkeletonClassName()}`} />
-              {/* Bell icon placeholder */}
+              {/* Profile icon placeholder */}
               <div className={`w-10 h-10 rounded-full ${getSkeletonClassName()}`} />
             </div>
           </div>
