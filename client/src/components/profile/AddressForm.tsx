@@ -84,7 +84,7 @@ export default function AddressForm({ userId, address, onClose, onSuccess }: Add
       resolvedTheme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-gray-50'
     }`}>
       {/* Header */}
-      <div className="relative bg-red-600 px-4 pt-12 pb-6 rounded-b-2xl">
+      <div className="relative bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
         <div className="relative z-10 flex items-center justify-between mb-6">
           <Button
             variant="ghost"
@@ -101,7 +101,7 @@ export default function AddressForm({ userId, address, onClose, onSuccess }: Add
         </div>
       </div>
 
-      <div className="px-4 py-6">
+      <div className="px-4 py-6 pb-28">
         <Card className={`${
           resolvedTheme === 'dark'
             ? 'bg-black border border-gray-800 shadow-sm'
@@ -244,7 +244,7 @@ export default function AddressForm({ userId, address, onClose, onSuccess }: Add
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-red-600 hover:bg-red-700"
+                  className="flex-1 bg-[#724491] hover:bg-[#5d3678]"
                 >
                   {isSubmitting ? (
                     'Saving...'

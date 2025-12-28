@@ -87,11 +87,11 @@ MenuItemSchema.index({ canteenId: 1, categoryId: 1, available: 1 });
 // Index for vegetarian filtering
 MenuItemSchema.index({ canteenId: 1, isVegetarian: 1, available: 1 });
 
-// Text index for search functionality (name and description)
-MenuItemSchema.index({ name: 'text', description: 'text' });
-
-// Compound index for text search within a canteen (more efficient)
+// Index for name search within a canteen (supports regex substring matching)
 MenuItemSchema.index({ canteenId: 1, name: 1 });
+
+// Index for description search
+MenuItemSchema.index({ description: 1 });
 
 export const MenuItem = mongoose.model<IMenuItem>('MenuItem', MenuItemSchema);
 

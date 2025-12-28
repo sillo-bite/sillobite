@@ -496,8 +496,8 @@ export default function OrdersPage() {
 
             {/* Floating Filter Panel */}
             {showFilters && (
-              <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-2xl shadow-xl border backdrop-blur-sm overflow-hidden">
-                <div className={`p-4 ${
+              <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-2xl shadow-xl border backdrop-blur-sm max-h-[calc(70vh-80px)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-transparent">
+                <div className={`p-4 pb-6 ${
                   resolvedTheme === 'dark' 
                     ? 'bg-[#2a2a2a]/95 border-gray-700' 
                     : 'bg-white/95 border-gray-300'
@@ -522,10 +522,13 @@ export default function OrdersPage() {
                   </div>
 
                   {/* Horizontal Compact Layout */}
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {/* Status Filter - Horizontal Pills */}
                     <div>
-                      <div className="flex items-center gap-2 overflow-x-auto pb-4">
+                      <label className={`text-xs font-medium mb-2 block ${
+                        resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Order Status</label>
+                      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-transparent">
                         {statusOptions.map((option, index) => {
                           const IconComponent = option.icon;
                           const isSelected = filterStatus === option.value;
@@ -534,7 +537,7 @@ export default function OrdersPage() {
                             <button
                               key={option.value}
                               onClick={() => setFilterStatus(option.value)}
-                              className={`flex items-center space-x-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 whitespace-nowrap ${
+                              className={`flex items-center space-x-1 px-3 py-2 rounded-full text-xs font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                                 isSelected
                                   ? 'bg-[#724491] text-white'
                                   : resolvedTheme === 'dark'
@@ -551,17 +554,21 @@ export default function OrdersPage() {
                     </div>
 
                     {/* Date Range Filter */}
-                    <div className="relative">
+                    <div>
+                      <label className={`text-xs font-medium mb-2 block ${
+                        resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Date Range</label>
                       <button
-                        onClick={() => setShowDateDropdown(!showDateDropdown)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors overflow-hidden ${
-                          filterDateRange === "all" 
-                            ? resolvedTheme === 'dark'
-                              ? 'bg-[#333333] text-white'
-                              : 'bg-gray-200 text-gray-900'
-                            : resolvedTheme === 'dark'
-                              ? 'hover:bg-[#333333]/50 text-white hover:text-white'
-                              : 'hover:bg-gray-200 text-gray-900 hover:text-gray-900'
+                        onClick={() => {
+                          setShowDateDropdown(!showDateDropdown);
+                          setShowAmountDropdown(false);
+                          setShowPaymentDropdown(false);
+                          setShowCanteenDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                          resolvedTheme === 'dark'
+                            ? 'bg-[#333333] text-white hover:bg-[#404040]'
+                            : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                         }`}
                       >
                         <div className="flex items-center space-x-2">
@@ -575,56 +582,54 @@ export default function OrdersPage() {
                         </div>
                         <ChevronDown className={`w-4 h-4 ${
                           resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-                        } transition-transform ${showDateDropdown ? 'rotate-180' : ''}`} />
+                        } transition-transform duration-200 ${showDateDropdown ? 'rotate-180' : ''}`} />
                       </button>
 
                       {showDateDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-60 overflow-y-auto rounded-lg shadow-xl border backdrop-blur-sm overflow-hidden">
-                          <div className={`space-y-2 p-4 ${
-                            resolvedTheme === 'dark' 
-                              ? 'bg-[#2a2a2a]/95 border-gray-700' 
-                              : 'bg-white/95 border-gray-300'
-                          }`}>
-                            {dateRangeOptions.map((option) => (
-                              <button
-                                key={option.value}
-                                onClick={() => {
-                                  setFilterDateRange(option.value);
-                                  setShowDateDropdown(false);
-                                }}
-                                className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
-                                  filterDateRange === option.value 
-                                    ? resolvedTheme === 'dark'
-                                      ? 'text-white bg-[#333333]'
-                                      : 'text-gray-900 bg-gray-200'
-                                    : resolvedTheme === 'dark'
-                                      ? 'text-white hover:text-white hover:bg-[#333333]/50'
-                                      : 'text-gray-900 hover:text-gray-900 hover:bg-gray-200'
-                                }`}
-                              >
-                                <div className={`w-3 h-3 rounded-full border ${
-                                  filterDateRange === option.value ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
-                                }`} />
-                                <span>{option.label}</span>
-                              </button>
-                            ))}
-                          </div>
+                        <div className={`mt-2 space-y-1 px-2 ${
+                          resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {dateRangeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                setFilterDateRange(option.value);
+                                setShowDateDropdown(false);
+                              }}
+                              className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
+                                filterDateRange === option.value 
+                                  ? 'bg-[#724491] text-white'
+                                  : resolvedTheme === 'dark'
+                                    ? 'hover:bg-[#404040]'
+                                    : 'hover:bg-gray-300'
+                              }`}
+                            >
+                              <div className={`w-3 h-3 rounded-full border flex-shrink-0 ${
+                                filterDateRange === option.value ? 'border-white bg-white' : 'border-gray-400'
+                              }`} />
+                              <span>{option.label}</span>
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
 
                     {/* Amount Range Filter */}
-                    <div className="relative">
+                    <div>
+                      <label className={`text-xs font-medium mb-2 block ${
+                        resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Amount Range</label>
                       <button
-                        onClick={() => setShowAmountDropdown(!showAmountDropdown)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors overflow-hidden ${
-                          filterAmountRange === "all" 
-                            ? resolvedTheme === 'dark'
-                              ? 'bg-[#333333] text-white'
-                              : 'bg-gray-200 text-gray-900'
-                            : resolvedTheme === 'dark'
-                              ? 'hover:bg-[#333333]/50 text-white hover:text-white'
-                              : 'hover:bg-gray-200 text-gray-900 hover:text-gray-900'
+                        onClick={() => {
+                          setShowAmountDropdown(!showAmountDropdown);
+                          setShowDateDropdown(false);
+                          setShowPaymentDropdown(false);
+                          setShowCanteenDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                          resolvedTheme === 'dark'
+                            ? 'bg-[#333333] text-white hover:bg-[#404040]'
+                            : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                         }`}
                       >
                         <div className="flex items-center space-x-2">
@@ -638,56 +643,54 @@ export default function OrdersPage() {
                         </div>
                         <ChevronDown className={`w-4 h-4 ${
                           resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-                        } transition-transform ${showAmountDropdown ? 'rotate-180' : ''}`} />
+                        } transition-transform duration-200 ${showAmountDropdown ? 'rotate-180' : ''}`} />
                       </button>
 
                       {showAmountDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-60 overflow-y-auto rounded-lg shadow-xl border backdrop-blur-sm overflow-hidden">
-                          <div className={`space-y-2 p-4 ${
-                            resolvedTheme === 'dark' 
-                              ? 'bg-[#2a2a2a]/95 border-gray-700' 
-                              : 'bg-white/95 border-gray-300'
-                          }`}>
-                            {amountRangeOptions.map((option) => (
-                              <button
-                                key={option.value}
-                                onClick={() => {
-                                  setFilterAmountRange(option.value);
-                                  setShowAmountDropdown(false);
-                                }}
-                                className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
-                                  filterAmountRange === option.value 
-                                    ? resolvedTheme === 'dark'
-                                      ? 'text-white bg-[#333333]'
-                                      : 'text-gray-900 bg-gray-200'
-                                    : resolvedTheme === 'dark'
-                                      ? 'text-white hover:text-white hover:bg-[#333333]/50'
-                                      : 'text-gray-900 hover:text-gray-900 hover:bg-gray-200'
-                                }`}
-                              >
-                                <div className={`w-3 h-3 rounded-full border ${
-                                  filterAmountRange === option.value ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
-                                }`} />
-                                <span>{option.label}</span>
-                              </button>
-                            ))}
-                          </div>
+                        <div className={`mt-2 space-y-1 px-2 ${
+                          resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {amountRangeOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                setFilterAmountRange(option.value);
+                                setShowAmountDropdown(false);
+                              }}
+                              className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
+                                filterAmountRange === option.value 
+                                  ? 'bg-[#724491] text-white'
+                                  : resolvedTheme === 'dark'
+                                    ? 'hover:bg-[#404040]'
+                                    : 'hover:bg-gray-300'
+                              }`}
+                            >
+                              <div className={`w-3 h-3 rounded-full border flex-shrink-0 ${
+                                filterAmountRange === option.value ? 'border-white bg-white' : 'border-gray-400'
+                              }`} />
+                              <span>{option.label}</span>
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
 
                     {/* Payment Status Filter */}
-                    <div className="relative">
+                    <div>
+                      <label className={`text-xs font-medium mb-2 block ${
+                        resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                      }`}>Payment Status</label>
                       <button
-                        onClick={() => setShowPaymentDropdown(!showPaymentDropdown)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors overflow-hidden ${
-                          filterPaymentStatus === "all" 
-                            ? resolvedTheme === 'dark'
-                              ? 'bg-[#333333] text-white'
-                              : 'bg-gray-200 text-gray-900'
-                            : resolvedTheme === 'dark'
-                              ? 'hover:bg-[#333333]/50 text-white hover:text-white'
-                              : 'hover:bg-gray-200 text-gray-900 hover:text-gray-900'
+                        onClick={() => {
+                          setShowPaymentDropdown(!showPaymentDropdown);
+                          setShowDateDropdown(false);
+                          setShowAmountDropdown(false);
+                          setShowCanteenDropdown(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                          resolvedTheme === 'dark'
+                            ? 'bg-[#333333] text-white hover:bg-[#404040]'
+                            : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                         }`}
                       >
                         <div className="flex items-center space-x-2">
@@ -701,57 +704,55 @@ export default function OrdersPage() {
                         </div>
                         <ChevronDown className={`w-4 h-4 ${
                           resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-                        } transition-transform ${showPaymentDropdown ? 'rotate-180' : ''}`} />
+                        } transition-transform duration-200 ${showPaymentDropdown ? 'rotate-180' : ''}`} />
                       </button>
 
                       {showPaymentDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-60 overflow-y-auto rounded-lg shadow-xl border backdrop-blur-sm overflow-hidden">
-                          <div className={`space-y-2 p-4 ${
-                            resolvedTheme === 'dark' 
-                              ? 'bg-[#2a2a2a]/95 border-gray-700' 
-                              : 'bg-white/95 border-gray-300'
-                          }`}>
-                            {paymentStatusOptions.map((option) => (
-                              <button
-                                key={option.value}
-                                onClick={() => {
-                                  setFilterPaymentStatus(option.value);
-                                  setShowPaymentDropdown(false);
-                                }}
-                                className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
-                                  filterPaymentStatus === option.value 
-                                    ? resolvedTheme === 'dark'
-                                      ? 'text-white bg-[#333333]'
-                                      : 'text-gray-900 bg-gray-200'
-                                    : resolvedTheme === 'dark'
-                                      ? 'text-white hover:text-white hover:bg-[#333333]/50'
-                                      : 'text-gray-900 hover:text-gray-900 hover:bg-gray-200'
-                                }`}
-                              >
-                                <div className={`w-3 h-3 rounded-full border ${
-                                  filterPaymentStatus === option.value ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
-                                }`} />
-                                <span>{option.label}</span>
-                              </button>
-                            ))}
-                          </div>
+                        <div className={`mt-2 space-y-1 px-2 ${
+                          resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {paymentStatusOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                setFilterPaymentStatus(option.value);
+                                setShowPaymentDropdown(false);
+                              }}
+                              className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
+                                filterPaymentStatus === option.value 
+                                  ? 'bg-[#724491] text-white'
+                                  : resolvedTheme === 'dark'
+                                    ? 'hover:bg-[#404040]'
+                                    : 'hover:bg-gray-300'
+                              }`}
+                            >
+                              <div className={`w-3 h-3 rounded-full border flex-shrink-0 ${
+                                filterPaymentStatus === option.value ? 'border-white bg-white' : 'border-gray-400'
+                              }`} />
+                              <span>{option.label}</span>
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
 
-                    {/* Canteen Filter - Compact Dropdown */}
+                    {/* Canteen Filter */}
                     {availableCanteens.length > 0 && (
-                      <div className="relative">
+                      <div>
+                        <label className={`text-xs font-medium mb-2 block ${
+                          resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>Canteen</label>
                         <button
-                          onClick={() => setShowCanteenDropdown(!showCanteenDropdown)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors overflow-hidden ${
-                            filterCanteen === "all" 
-                              ? resolvedTheme === 'dark'
-                                ? 'bg-[#333333] text-white'
-                                : 'bg-gray-200 text-gray-900'
-                              : resolvedTheme === 'dark'
-                                ? 'hover:bg-[#333333]/50 text-white hover:text-white'
-                                : 'hover:bg-gray-200 text-gray-900 hover:text-gray-900'
+                          onClick={() => {
+                            setShowCanteenDropdown(!showCanteenDropdown);
+                            setShowDateDropdown(false);
+                            setShowAmountDropdown(false);
+                            setShowPaymentDropdown(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                            resolvedTheme === 'dark'
+                              ? 'bg-[#333333] text-white hover:bg-[#404040]'
+                              : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                           }`}
                         >
                           <div className="flex items-center space-x-2">
@@ -765,61 +766,52 @@ export default function OrdersPage() {
                           </div>
                           <ChevronDown className={`w-4 h-4 ${
                             resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-                          } transition-transform ${showCanteenDropdown ? 'rotate-180' : ''}`} />
+                          } transition-transform duration-200 ${showCanteenDropdown ? 'rotate-180' : ''}`} />
                         </button>
 
-                        {/* Compact Canteen Options */}
                         {showCanteenDropdown && (
-                          <div className="absolute top-full left-0 right-0 mt-1 z-50 max-h-60 overflow-y-auto rounded-lg shadow-xl border backdrop-blur-sm overflow-hidden">
-                            <div className={`space-y-2 p-4 ${
-                              resolvedTheme === 'dark' 
-                                ? 'bg-[#2a2a2a]/95 border-gray-700' 
-                                : 'bg-white/95 border-gray-300'
-                            }`}>
+                          <div className={`mt-2 space-y-1 px-2 ${
+                            resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            <button
+                              onClick={() => {
+                                setFilterCanteen("all");
+                                setShowCanteenDropdown(false);
+                              }}
+                              className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
+                                filterCanteen === "all" 
+                                  ? 'bg-[#724491] text-white'
+                                  : resolvedTheme === 'dark'
+                                    ? 'hover:bg-[#404040]'
+                                    : 'hover:bg-gray-300'
+                              }`}
+                            >
+                              <div className={`w-3 h-3 rounded-full border flex-shrink-0 ${
+                                filterCanteen === "all" ? 'border-white bg-white' : 'border-gray-400'
+                              }`} />
+                              <span>All Canteens</span>
+                            </button>
+                            {availableCanteens.map((canteen) => (
                               <button
+                                key={canteen.id}
                                 onClick={() => {
-                                  setFilterCanteen("all");
+                                  setFilterCanteen(canteen.id);
                                   setShowCanteenDropdown(false);
                                 }}
                                 className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
-                                  filterCanteen === "all" 
-                                    ? resolvedTheme === 'dark'
-                                      ? 'text-white bg-[#333333]'
-                                      : 'text-gray-900 bg-gray-200'
+                                  filterCanteen === canteen.id 
+                                    ? 'bg-[#724491] text-white'
                                     : resolvedTheme === 'dark'
-                                      ? 'text-white hover:text-white hover:bg-[#333333]/50'
-                                      : 'text-gray-900 hover:text-gray-900 hover:bg-gray-200'
+                                      ? 'hover:bg-[#404040]'
+                                      : 'hover:bg-gray-300'
                                 }`}
                               >
-                                <div className={`w-3 h-3 rounded-full border ${
-                                  filterCanteen === "all" ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
+                                <div className={`w-3 h-3 rounded-full border flex-shrink-0 ${
+                                  filterCanteen === canteen.id ? 'border-white bg-white' : 'border-gray-400'
                                 }`} />
-                                <span>All Canteens</span>
+                                <span>{canteen.name}</span>
                               </button>
-                              {availableCanteens.map((canteen) => (
-                                <button
-                                  key={canteen.id}
-                                  onClick={() => {
-                                    setFilterCanteen(canteen.id);
-                                    setShowCanteenDropdown(false);
-                                  }}
-                                  className={`w-full flex items-center space-x-2 px-3 py-2 text-sm transition-colors rounded-lg ${
-                                    filterCanteen === canteen.id 
-                                      ? resolvedTheme === 'dark'
-                                        ? 'text-white bg-[#333333]'
-                                        : 'text-gray-900 bg-gray-200'
-                                      : resolvedTheme === 'dark'
-                                        ? 'text-white hover:text-white hover:bg-[#333333]/50'
-                                        : 'text-gray-900 hover:text-gray-900 hover:bg-gray-200'
-                                  }`}
-                                >
-                                  <div className={`w-3 h-3 rounded-full border ${
-                                    filterCanteen === canteen.id ? 'border-[#724491] bg-[#724491]' : 'border-gray-400'
-                                  }`} />
-                                  <span>{canteen.name}</span>
-                                </button>
-                              ))}
-                            </div>
+                            ))}
                           </div>
                         )}
                       </div>

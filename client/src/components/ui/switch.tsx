@@ -13,6 +13,7 @@ const switchVariants = cva(
         default: "data-[state=checked]:bg-primary",
         green: "data-[state=checked]:bg-green-600",
         red: "data-[state=checked]:bg-red-600",
+        purple: "data-[state=checked]:bg-purple-600",
       },
     },
     defaultVariants: {
@@ -29,6 +30,7 @@ const thumbVariants = cva(
         default: "bg-white",
         green: "bg-white",
         red: "bg-white",
+        purple: "bg-white",
       },
     },
     defaultVariants: {

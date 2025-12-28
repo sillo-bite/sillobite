@@ -62,6 +62,7 @@ function MenuWrapper({ category, children }: { category: string; children: React
 export default function AppPage() {
   const [currentView, setCurrentView] = useState<ViewType>("home");
   const [menuCategory, setMenuCategory] = useState<string>("all");
+  const [menuSearchQuery, setMenuSearchQuery] = useState<string>("");
   const [, setLocation] = useLocation();
   const { navigateTo, navigateBack, getPreviousView, history, navigateToWithCurrent } = useNavigationHistory();
   const [showExitToast, setShowExitToast] = useState(false);
@@ -200,10 +201,12 @@ export default function AppPage() {
     // Listen for navigation to menu view from category clicks
     const handleNavigateToMenu = (e: CustomEvent) => {
       const category = e.detail?.category || "all";
+      const search = e.detail?.search || "";
       // MenuListingPage expects category to be lowercase for matching
       const normalizedCategory = category === "all" ? "all" : category.toLowerCase();
       setCurrentView("menu");
       setMenuCategory(normalizedCategory);
+      setMenuSearchQuery(search);
       window.history.replaceState({}, "", "/app");
       // Scroll to top when switching views
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -738,7 +741,7 @@ export default function AppPage() {
 
       {currentView === "menu" && (
         <MenuWrapper category={menuCategory}>
-          <MenuListingPage />
+          <MenuListingPage initialSearchQuery={menuSearchQuery} />
         </MenuWrapper>
       )}
 

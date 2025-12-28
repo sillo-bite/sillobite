@@ -20,107 +20,11 @@ import { useReducedMotion } from "@/utils/dropdownAnimations";
 import MenuListingPageSkeleton from "./MenuListingPageSkeleton";
 import { updateStatusBarColor } from "@/utils/statusBar";
 
-// Search bar component - moved outside to prevent re-creation on every render
-interface SearchBarProps {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  debouncedSearchQuery: string;
-  menuItemsFetching: boolean;
-  resolvedTheme: string;
-  menuItems: MenuItem[];
-  onFocus?: () => void;
-  onBlur?: () => void;
+interface MenuListingPageProps {
+  initialSearchQuery?: string;
 }
 
-const SearchBar = React.memo(({ 
-  searchQuery, 
-  setSearchQuery, 
-  debouncedSearchQuery, 
-  menuItemsFetching, 
-  resolvedTheme,
-  menuItems,
-  onFocus,
-  onBlur
-}: SearchBarProps) => {
-  const isSearching = menuItemsFetching && debouncedSearchQuery.trim().length > 0;
-  const showMinCharWarning = searchQuery.trim().length > 0 && searchQuery.trim().length < 2;
-  
-  const clearSearch = useCallback(() => {
-    setSearchQuery("");
-  }, [setSearchQuery]);
-  
-  return (
-    <div className="relative w-full">
-      <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 transition-colors ${
-        isSearching 
-          ? 'text-blue-500 animate-pulse' 
-          : resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-      }`} />
-      <Input
-        placeholder="Search food (min 2 characters)..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        aria-describedby="search-description"
-        aria-label="Search for food items, categories, or dishes"
-        className={`pl-12 pr-12 rounded-lg h-12 text-base border transition-all ${
-          showMinCharWarning
-            ? resolvedTheme === 'dark'
-              ? 'bg-[#2a2a2a] border-yellow-700 text-white placeholder:text-gray-400 focus:border-yellow-600 focus:bg-[#2a2a2a] focus:ring-2 focus:ring-yellow-600/50'
-              : 'bg-white border-yellow-400 text-gray-900 placeholder:text-gray-500 focus:border-yellow-500 focus:bg-white focus:ring-2 focus:ring-yellow-300'
-            : resolvedTheme === 'dark' 
-              ? 'bg-[#2a2a2a] border-gray-700 text-white placeholder:text-gray-400 focus:border-gray-600 focus:bg-[#2a2a2a] focus:ring-2 focus:ring-gray-600/50' 
-              : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-500 focus:border-gray-300 focus:bg-white focus:ring-2 focus:ring-gray-200'
-        }`}
-      />
-      {searchQuery && (
-        <button
-          onClick={clearSearch}
-          className={`absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full transition-colors ${
-            resolvedTheme === 'dark' 
-              ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700' 
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-      
-      {/* Minimum character warning */}
-      {showMinCharWarning && (
-        <div className={`absolute top-full left-0 right-0 mt-1 px-2 py-1 text-xs rounded ${
-          resolvedTheme === 'dark' 
-            ? 'bg-yellow-900/50 text-yellow-300' 
-            : 'bg-yellow-50 text-yellow-700'
-        }`}>
-          Type at least 2 characters to search
-        </div>
-      )}
-      
-      {/* Search result count */}
-      {debouncedSearchQuery.trim().length >= 2 && menuItems.length > 0 && !isSearching && (
-        <div className={`absolute top-full left-0 right-0 mt-1 px-2 py-1 text-xs rounded ${
-          resolvedTheme === 'dark' 
-            ? 'bg-blue-900/50 text-blue-300' 
-            : 'bg-blue-50 text-blue-700'
-        }`}>
-          {menuItems.length} {menuItems.length === 1 ? 'result' : 'results'} found
-          {menuItems.length >= 100 && ' (showing first 100)'}
-        </div>
-      )}
-      
-      {/* Hidden description for screen readers */}
-      <div id="search-description" className="sr-only">
-        Search for food items, browse categories, or find specific dishes. Minimum 2 characters required.
-      </div>
-    </div>
-  );
-});
-
-SearchBar.displayName = 'SearchBar';
-
-export default function MenuListingPage() {
+export default function MenuListingPage({ initialSearchQuery = "" }: MenuListingPageProps) {
   const [location, setLocation] = useLocation();
   const { goToHome } = usePWANavigation();
   const [, params] = useRoute("/menu/:category");
@@ -137,16 +41,12 @@ export default function MenuListingPage() {
     }
   }, []);
   const [vegOnly, setVegOnly] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery);
   const { addToCart, getCartQuantity, decreaseQuantity } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const initialViewportHeightRef = useRef<number | null>(null);
-  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const prefersReducedMotion = useReducedMotion();
   const observerTarget = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -195,14 +95,11 @@ export default function MenuListingPage() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Debounce search query with minimum character requirement
+  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Only search if query is empty (to clear) or has at least 2 characters
-      if (searchQuery.trim().length === 0 || searchQuery.trim().length >= 2) {
-        setDebouncedSearchQuery(searchQuery);
-      }
-    }, 600); // 600ms for more aggressive debouncing (reduces API calls by ~33%)
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -231,63 +128,7 @@ export default function MenuListingPage() {
     }
   }, []);
 
-  // Detect on-screen keyboard (mobile) to hide bottom navigation when search is focused
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const viewport = window.visualViewport;
-    if (!viewport) return;
 
-    const handleViewportResize = () => {
-      if (initialViewportHeightRef.current === null) {
-        initialViewportHeightRef.current = viewport.height;
-        return;
-      }
-      const initialHeight = initialViewportHeightRef.current;
-      const currentHeight = viewport.height;
-      const heightDiff = initialHeight - currentHeight;
-
-      // Consider keyboard open if height shrinks significantly (threshold: 120px)
-      // Only set keyboard state if search is focused to avoid false positives
-      if (isSearchFocused) {
-        setIsKeyboardOpen(heightDiff > 120);
-      }
-
-      // Refresh baseline when keyboard closes (height restores)
-      if (heightDiff <= 0) {
-        initialViewportHeightRef.current = currentHeight;
-        // If search is not focused, ensure keyboard state is cleared
-        if (!isSearchFocused) {
-          setIsKeyboardOpen(false);
-        }
-      }
-    };
-
-    viewport.addEventListener('resize', handleViewportResize);
-    return () => {
-      viewport.removeEventListener('resize', handleViewportResize);
-      // Cleanup blur timeout on unmount
-      if (blurTimeoutRef.current) {
-        clearTimeout(blurTimeoutRef.current);
-        blurTimeoutRef.current = null;
-      }
-    };
-  }, [isSearchFocused]);
-
-  const shouldHideBottomNav = isSearchFocused || isKeyboardOpen;
-
-  // Notify AppPage to hide bottom nav when search is focused
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('menuSearchFocusChange', {
-      detail: { isFocused: shouldHideBottomNav }
-    }));
-    
-    // Cleanup: notify when component unmounts
-    return () => {
-      window.dispatchEvent(new CustomEvent('menuSearchFocusChange', {
-        detail: { isFocused: false }
-      }));
-    };
-  }, [shouldHideBottomNav]);
 
 
   // Fetch categories with lazy loading (5 per page, DB-level pagination)
@@ -321,65 +162,21 @@ export default function MenuListingPage() {
     }
   };
 
-  // Helper function to get category name for API
-  const getCategoryNameForAPI = useCallback(() => {
+  // Helper function to get category ID/name for API
+  const getCategoryForAPI = useCallback(() => {
     if (!category || category === "all") return "all";
-    if (categories.length === 0) return "all"; // Wait for categories to load
+    if (categories.length === 0) return category; // Use the URL slug if categories aren't loaded yet
+    
     const decodedCategory = safeDecodeCategory(category);
     const foundCategory = categories.find(cat => 
       cat && cat.name && cat.name.toLowerCase().trim() === decodedCategory
     );
-    return foundCategory?.name || "all";
+    
+    // Return the ID if found, otherwise return the original category slug
+    return foundCategory?.id || foundCategory?._id || category;
   }, [category, categories]);
 
-  // Get cached items from "all" category to reuse when switching categories
-  const getCachedItemsForCategory = useCallback((targetCategory: string) => {
-    if (targetCategory === "all") return [];
-    
-    // Try to get cached data from "all" category
-    const allCategoryKey = [
-      '/api/menu',
-      selectedCanteen?.id,
-      'all',
-      '', // no search
-      false // not veg only
-    ];
-    
-    const cachedData = queryClient.getQueryData<{
-      pages: Array<{
-        items: MenuItem[];
-        pagination: any;
-      }>;
-      pageParams: any[];
-    }>(allCategoryKey);
-    
-    if (!cachedData?.pages) return [];
-    
-    // Flatten all cached items from "all" category
-    const allCachedItems = cachedData.pages.flatMap(page => page.items);
-    
-    // Find the target category ID
-    const decodedCategory = safeDecodeCategory(targetCategory);
-    const foundCategory = categories.find(cat => 
-      cat && cat.name && cat.name.toLowerCase().trim() === decodedCategory
-    );
-    
-    if (!foundCategory) return [];
-    
-    // Filter cached items that match the target category
-    const filteredItems = allCachedItems.filter(item => {
-      const itemCategoryId = typeof item.categoryId === 'object' 
-        ? (item.categoryId as any)?._id || (item.categoryId as any)?.id 
-        : item.categoryId;
-      const categoryId = foundCategory.id || (foundCategory as any)._id;
-      
-      return itemCategoryId === categoryId;
-    });
-    
-    return filteredItems;
-  }, [queryClient, selectedCanteen?.id, categories]);
-
-  // Infinite query for menu items with server-side filtering and smart caching
+  // Infinite query for menu items with server-side filtering
   const {
     data: menuData,
     fetchNextPage,
@@ -402,128 +199,33 @@ export default function MenuListingPage() {
     queryKey: [
       '/api/menu',
       selectedCanteen?.id,
-      getCategoryNameForAPI(),
+      getCategoryForAPI(),
       debouncedSearchQuery,
       vegOnly
     ],
     // Keep previous data while fetching new search results (prevents UI flickering)
     placeholderData: (previousData) => previousData,
     queryFn: async ({ pageParam = 1, signal }) => {
-      const categoryName = getCategoryNameForAPI();
-      
-      // Smart caching: check if we can reuse items from "all" category
-      let cachedItems: MenuItem[] = [];
-      let excludeIds: string[] = [];
-      
-      if (pageParam === 1 && categoryName !== 'all' && !debouncedSearchQuery && !vegOnly) {
-        cachedItems = getCachedItemsForCategory(category || '');
-        excludeIds = cachedItems.map(item => item.id || (item as any)._id).filter(Boolean);
-      }
-      
-      // Calculate how many items we need to fetch
-      const cachedCount = cachedItems.length;
-      const needToFetch = Math.max(0, 10 - cachedCount);
-      
-      // Limit total items to prevent excessive loading
-      // For "all" category: 50 items max
-      // For search: 100 items max (more results for search)
-      const isSearching = debouncedSearchQuery.trim().length > 0;
-      const MAX_ITEMS_FOR_ALL = 50;
-      const MAX_ITEMS_FOR_SEARCH = 100;
-      const maxItems = isSearching ? MAX_ITEMS_FOR_SEARCH : MAX_ITEMS_FOR_ALL;
-      
-      // Calculate how many items we've already loaded (pageParam starts at 1)
-      // Page 1 = 0 items loaded, Page 2 = 10 items, Page 3 = 20 items, etc.
-      const itemsAlreadyLoaded = (pageParam - 1) * 10;
-      
-      // If we've loaded max items, don't fetch more (only for "all" category without search)
-      if (categoryName === 'all' && !isSearching && itemsAlreadyLoaded >= maxItems) {
-        return {
-          items: [],
-          pagination: {
-            currentPage: pageParam,
-            totalPages: Math.ceil(MAX_ITEMS_FOR_ALL / 10),
-            totalItems: MAX_ITEMS_FOR_ALL,
-            itemsPerPage: 10,
-            hasNextPage: false,
-            hasPrevPage: pageParam > 1
-          }
-        };
-      }
-      
-      // Adjust limit to respect max limit (only for "all" category without search)
-      let fetchLimit = needToFetch > 0 ? needToFetch : 10;
-      if (categoryName === 'all' && !isSearching && itemsAlreadyLoaded + fetchLimit > maxItems) {
-        fetchLimit = Math.max(0, maxItems - itemsAlreadyLoaded);
-        if (fetchLimit === 0) {
-          return {
-            items: [],
-            pagination: {
-              currentPage: pageParam,
-              totalPages: Math.ceil(MAX_ITEMS_FOR_ALL / 10),
-              totalItems: MAX_ITEMS_FOR_ALL,
-              itemsPerPage: 10,
-              hasNextPage: false,
-              hasPrevPage: pageParam > 1
-            }
-          };
-        }
-      }
+      const categoryIdOrName = getCategoryForAPI();
       
       const params = new URLSearchParams({
         page: pageParam.toString(),
-        limit: fetchLimit.toString(),
+        limit: '10',
         availableOnly: 'true',
         ...(selectedCanteen?.id && { canteenId: selectedCanteen.id }),
-        ...(categoryName !== 'all' && { category: categoryName }),
-        ...(debouncedSearchQuery.trim() && { search: debouncedSearchQuery.trim() }),
-        ...(vegOnly && { vegOnly: 'true' }),
-        ...(excludeIds.length > 0 && { excludeIds: excludeIds.join(',') })
+        ...(!debouncedSearchQuery && categoryIdOrName !== 'all' && { category: categoryIdOrName }),
+        ...(debouncedSearchQuery && { search: debouncedSearchQuery }),
+        ...(vegOnly && { vegOnly: 'true' })
       });
       
-      // Use AbortController signal for request cancellation
-      // If user types again, this cancels the in-flight request
-      const response = await fetch(`/api/menu?${params.toString()}`, {
-        signal
-      });
+      const response = await fetch(`/api/menu?${params.toString()}`, { signal });
       if (!response.ok) {
         throw new Error(`Failed to fetch menu items: ${response.status}`);
       }
-      const data = await response.json();
-      
-      // Combine cached items with fetched items (only for first page)
-      if (pageParam === 1 && cachedItems.length > 0) {
-        return {
-          ...data,
-          items: [...cachedItems, ...data.items],
-          pagination: {
-            ...data.pagination,
-            totalItems: data.pagination.totalItems + cachedCount
-          }
-        };
-      }
-      
-      return data;
+      return await response.json();
     },
     initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      // Stop loading based on context
-      const isAllCategory = !category || category === 'all';
-      const isSearching = debouncedSearchQuery.trim().length > 0;
-      const MAX_ITEMS_FOR_ALL = 50;
-      const MAX_ITEMS_FOR_SEARCH = 100;
-      const totalItemsLoaded = allPages.reduce((sum, page) => sum + (page.items?.length || 0), 0);
-      
-      // For "all" category without search, stop at 50 items
-      if (isAllCategory && !isSearching && totalItemsLoaded >= MAX_ITEMS_FOR_ALL) {
-        return undefined;
-      }
-      
-      // For search results, stop at 100 items
-      if (isSearching && totalItemsLoaded >= MAX_ITEMS_FOR_SEARCH) {
-        return undefined;
-      }
-      
+    getNextPageParam: (lastPage) => {
       return lastPage.pagination.hasNextPage 
         ? lastPage.pagination.currentPage + 1 
         : undefined;
@@ -544,6 +246,7 @@ export default function MenuListingPage() {
   const menuItems = menuData?.pages.flatMap(page => page.items) || [];
 
   const isLoading = categoriesLoading || menuItemsLoading;
+  const isSearching = menuItemsFetching && debouncedSearchQuery.length > 0;
 
   // Utility function to get default category name
   const getDefaultCategoryName = (itemName: string): string => {
@@ -697,18 +400,18 @@ export default function MenuListingPage() {
         {/* Header Container */}
         <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
           {/* Top section - Back button, title, and veg toggle */}
-          <div className="px-4 pt-12 pb-4">
-            <div className="flex items-center justify-between">
+          <div className="px-4 pt-12 pb-2">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-4">
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={handleBackClick} 
-                  className={`${resolvedTheme === 'dark' ? 'text-white hover:bg-white/20' : 'text-white hover:bg-white/20'}`}
+                  className="text-white hover:bg-white/20"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <h1 className={`text-xl font-bold capitalize ${resolvedTheme === 'dark' ? 'text-white' : 'text-white'}`}>
+                <h1 className="text-xl font-bold capitalize text-white">
                   {categoryDisplayName}
                 </h1>
               </div>
@@ -720,11 +423,30 @@ export default function MenuListingPage() {
                   onCheckedChange={handleVegModeToggle}
                   className="shadow-lg shadow-black/20"
                 />
-                <Label htmlFor="veg-toggle" className={`flex items-center space-x-1 cursor-pointer ${resolvedTheme === 'dark' ? 'text-white' : 'text-white'}`}>
-                  <Leaf className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-green-600' : 'text-green-400'}`} />
+                <Label htmlFor="veg-toggle" className="flex items-center space-x-1 cursor-pointer hidden sm:flex text-white">
+                  <Leaf className="w-4 h-4 text-green-400" />
                   <span>Veg Only</span>
                 </Label>
               </div>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative pb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/60" />
+              <Input
+                placeholder="Search food..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-white/10 border-white/20 text-white placeholder:text-white/60 pl-10 pr-10 h-10 rounded-full focus:bg-white/20 transition-all border-none focus:ring-1 focus:ring-white/30"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -795,19 +517,57 @@ export default function MenuListingPage() {
 
       {/* Menu Items */}
       <div className="p-4 space-y-4">
-          {/* Show minimum character message if user is typing but hasn't reached minimum */}
-          {searchQuery.trim().length > 0 && searchQuery.trim().length < 2 ? (
-            <div className={`text-center py-8 ${
-              resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="text-lg font-medium mb-1">Keep typing...</p>
-              <p className="text-sm">Enter at least 2 characters to search</p>
-            </div>
+          {/* Show skeleton when searching */}
+          {isSearching ? (
+            <>
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Card 
+                  key={`skeleton-${index}`}
+                  className={`${
+                    resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
+                  } rounded-2xl shadow-lg border-0 overflow-hidden animate-pulse`}
+                >
+                  <CardContent className="p-0">
+                    <div className="w-full relative aspect-[21/9] overflow-hidden">
+                      <div className={`absolute inset-0 overflow-hidden rounded-t-2xl ${
+                        resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                      }`}>
+                        <div className={`w-full h-full flex items-center justify-center ${
+                          resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                        }`}>
+                          <span className="text-5xl opacity-50">🔍</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`${
+                      resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
+                    } relative`} style={{ 
+                      marginTop: '-12px', 
+                      borderRadius: '0 0 0.75rem 0.75rem'
+                    }}>
+                      <div className="px-3 pt-3 pb-3">
+                        <div className={`h-5 w-32 rounded mb-3 ${
+                          resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                        }`} />
+                        <div className="flex items-center justify-between">
+                          <div className={`h-5 w-16 rounded ${
+                            resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                          }`} />
+                          <div className={`w-10 h-10 rounded-full ${
+                            resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                          }`} />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
           ) : filteredItems.length === 0 && !isLoading ? (
             <div className="text-center py-8 text-muted-foreground">
+              <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>
-                {debouncedSearchQuery.trim() 
+                {debouncedSearchQuery 
                   ? `No items found for "${debouncedSearchQuery}"`
                   : category === "all" 
                     ? "No items available" 
@@ -1017,47 +777,8 @@ export default function MenuListingPage() {
 
       </div>
       
-      {/* Bottom spacing for navigation and search bar */}
-      <div className="pb-[calc(10rem+env(safe-area-inset-bottom))]"></div>
-      
-      {/* Fixed Search Bar above Bottom Navigation - positioned directly above nav bar */}
-      <div className={`fixed left-0 right-0 w-full z-[9998] transition-transform duration-300 ${
-        shouldHideBottomNav 
-          ? 'bottom-0' 
-          : 'bottom-[calc(4.375rem+env(safe-area-inset-bottom))]'
-      }`}>
-        <div className={`px-4 py-4 shadow-lg ${
-          resolvedTheme === 'dark' 
-            ? 'bg-background border-t border-gray-800' 
-            : 'bg-white border-t border-gray-200'
-        }`}>
-          <SearchBar 
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            debouncedSearchQuery={debouncedSearchQuery}
-            menuItemsFetching={menuItemsFetching}
-            resolvedTheme={resolvedTheme}
-            menuItems={menuItems}
-            onFocus={() => {
-              // Clear any pending blur timeout
-              if (blurTimeoutRef.current) {
-                clearTimeout(blurTimeoutRef.current);
-                blurTimeoutRef.current = null;
-              }
-              setIsSearchFocused(true);
-            }}
-            onBlur={() => {
-              // Delay clearing focus state to handle keyboard animations
-              // This prevents the bottom nav from flickering when keyboard closes
-              blurTimeoutRef.current = setTimeout(() => {
-                setIsSearchFocused(false);
-                setIsKeyboardOpen(false);
-                blurTimeoutRef.current = null;
-              }, 150); // 150ms delay to allow keyboard animation to complete
-            }}
-          />
-        </div>
-      </div>
+      {/* Bottom spacing for navigation */}
+      <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))]"></div>
     </>
   );
 }
