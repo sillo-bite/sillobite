@@ -112,6 +112,15 @@ export function QRPaymentScreen({
       setIsLoading(true);
       setError(null);
 
+      console.log('🚀 [QR] Creating QR payment with:', {
+        amount,
+        customerName,
+        canteenId,
+        cart: cart.length,
+        totals,
+        checkoutSessionId
+      });
+
       const response = await apiRequest('/api/payments/create-qr', {
         method: 'POST',
         body: JSON.stringify({
@@ -123,6 +132,8 @@ export function QRPaymentScreen({
           checkoutSessionId
         })
       });
+
+      console.log('✅ [QR] QR payment creation response:', response);
 
       if (response.success) {
         setQrData(response);

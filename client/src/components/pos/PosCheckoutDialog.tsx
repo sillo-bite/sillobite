@@ -62,17 +62,26 @@ export function PosCheckoutDialog({
 
   const fetchCanteenCharges = async () => {
     try {
-      console.log('🔍 Fetching charges for canteen:', canteenId);
+      console.log('🔍 [CHECKOUT] Fetching charges for canteenId:', canteenId);
       const chargesResponse = await apiRequest(`/api/canteens/${canteenId}/charges`);
-      console.log('📥 Charges API response:', chargesResponse);
+      console.log('📥 [CHECKOUT] Charges API response:', chargesResponse);
       
       const chargesArray = Array.isArray(chargesResponse) ? chargesResponse : chargesResponse?.items || [];
+      console.log(`📋 [CHECKOUT] Total charges found: ${chargesArray.length}`);
+      
       const activeCharges = chargesArray.filter((charge: any) => charge.active);
-      console.log('📊 Active canteen charges:', activeCharges);
+      console.log(`📊 [CHECKOUT] Active canteen charges: ${activeCharges.length}`, activeCharges);
+      
+      if (activeCharges.length === 0) {
+        console.warn(`⚠️ [CHECKOUT] No active canteen charges configured for canteen ${canteenId}`);
+        console.warn('⚠️ [CHECKOUT] All charges:', chargesArray);
+      }
+      
       setCanteenCharges(activeCharges);
       return activeCharges;
     } catch (error) {
-      console.error('❌ Failed to fetch canteen charges:', error);
+      console.error('❌ [CHECKOUT] Failed to fetch canteen charges:', error);
+      setCanteenCharges([]);
       return [];
     }
   };
@@ -498,11 +507,18 @@ export function PosCheckoutDialog({
         // Use chargesApplied from order if available, otherwise calculate from canteen charges
         let chargesForPrint: any[] = [];
         
+        console.log('🔍 Print Debug - Order Payment Method:', orderPaymentMethod);
+        console.log('🔍 Print Debug - Created Order:', createdOrder);
+        console.log('🔍 Print Debug - chargesApplied:', createdOrder.chargesApplied);
+        console.log('🔍 Print Debug - chargesTotal:', createdOrder.chargesTotal);
+        console.log('🔍 Print Debug - Canteen Charges:', canteenCharges);
+        
         if (createdOrder.chargesApplied) {
           // Parse chargesApplied from order (can be string or array)
           chargesForPrint = typeof createdOrder.chargesApplied === 'string' 
             ? JSON.parse(createdOrder.chargesApplied) 
             : createdOrder.chargesApplied;
+          console.log('✅ Using chargesApplied from order:', chargesForPrint);
         } else if (canteenCharges.length > 0) {
           // Calculate charges from canteen charges
           chargesForPrint = canteenCharges.map((charge: any) => {
@@ -519,6 +535,9 @@ export function PosCheckoutDialog({
               amount: chargeAmount
             };
           });
+          console.log('✅ Calculated charges from canteen charges:', chargesForPrint);
+        } else {
+          console.warn('⚠️ No charges found - neither chargesApplied nor canteenCharges');
         }
         
         if (chargesForPrint.length > 0) {
@@ -527,6 +546,9 @@ export function PosCheckoutDialog({
             value: charge.amount || 0,
             isPercentage: charge.type === 'percent',
           }));
+          console.log('📄 Final print payload charges:', printPayload.charges);
+        } else {
+          console.warn('⚠️ No charges added to print payload');
         }
       }
 
