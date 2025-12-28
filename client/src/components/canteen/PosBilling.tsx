@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { ShoppingCart, History, TestTube2 } from "lucide-react";
 import { toast } from "sonner";
 import { OwnerPageLayout, OwnerTabs, OwnerTabList, OwnerTab } from "@/components/owner";
@@ -169,8 +169,9 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
 
   // Format transaction data for printing
   const formatTransactionForPrint = (transaction: Transaction, totals: { subtotal: number; discount: number; tax: number; total: number }) => {
-    // Generate 4-digit OTP for order verification
-    const orderOtp = Math.floor(1000 + Math.random() * 9000).toString();
+    // Get barcode from transaction and extract OTP from first 4 digits
+    const barcode = (transaction as any).barcode || transaction.orderNumber || '';
+    const orderOtp = barcode ? barcode.substring(0, 4) : '0000';
     
     // Map payment method to printer API accepted values (CASH or UPI only)
     const isOffline = transaction.paymentMethod === 'offline' || transaction.paymentMethod === 'cash';
@@ -210,8 +211,8 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     // Add order OTP for pickup verification
     payload.orderOtp = orderOtp;
 
-    // Add barcode data (use order number as barcode)
-    payload.barcode = transaction.orderNumber;
+    // Add barcode data (use actual barcode from order)
+    payload.barcode = barcode;
 
     return payload;
   };
@@ -302,11 +303,6 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   };
 
   const handlePrintHistoricalReceipt = async (transaction: any) => {
-    console.log('🖨️ [Historical Print] Starting print for transaction:', transaction.orderNumber);
-    console.log('🖨️ [Historical Print] Payment Method:', transaction.paymentMethod);
-    console.log('🖨️ [Historical Print] chargesApplied:', transaction.chargesApplied);
-    console.log('🖨️ [Historical Print] chargesTotal:', transaction.chargesTotal);
-    
     const items = JSON.parse(transaction.items || '[]');
     const totalsForPrint = {
       subtotal: transaction.itemsSubtotal || transaction.amount,
@@ -315,7 +311,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
       total: transaction.amount,
     };
     
-    const transactionForPrint: Transaction = {
+    const transactionForPrint: any = {
       id: transaction.id,
       orderNumber: transaction.orderNumber,
       customerName: transaction.customerName,
@@ -325,22 +321,18 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
       discount: transaction.discountAmount,
       createdAt: new Date(transaction.createdAt),
       status: transaction.status,
+      barcode: transaction.barcode,
     };
     
     // Fetch canteen charges if payment method is UPI or QR
     const shouldIncludeCharges = transaction.paymentMethod === 'upi' || transaction.paymentMethod === 'card' || transaction.paymentMethod === 'netbanking' || transaction.paymentMethod === 'qr';
     let chargesForPrint: any[] = [];
     
-    console.log('🖨️ [Historical Print] Should include charges?', shouldIncludeCharges);
-    
     if (shouldIncludeCharges && transaction.chargesApplied) {
       // chargesApplied can be a JSON string or already an array
       chargesForPrint = typeof transaction.chargesApplied === 'string' 
         ? JSON.parse(transaction.chargesApplied) 
         : transaction.chargesApplied;
-      console.log('🖨️ [Historical Print] Parsed charges:', chargesForPrint);
-    } else {
-      console.log('🖨️ [Historical Print] No charges to include');
     }
     
     await sendToPrinterWithCharges(transactionForPrint, totalsForPrint, chargesForPrint);
@@ -352,9 +344,6 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
 
     const printPayload = formatTransactionForPrint(transaction, totalsForPrint);
     
-    console.log('🖨️ [Print Payload] Base payload:', printPayload);
-    console.log('🖨️ [Print Payload] Charges to add:', charges);
-    
     // Add charges if available and payment method requires them
     if (charges && charges.length > 0) {
       printPayload.charges = charges.map((charge: any) => ({
@@ -362,12 +351,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         value: charge.amount || 0,
         isPercentage: charge.type === 'percent',
       }));
-      console.log('🖨️ [Print Payload] Mapped charges:', printPayload.charges);
-    } else {
-      console.log('🖨️ [Print Payload] No charges added to payload');
     }
-    
-    console.log('🖨️ [Print Payload] Final payload being sent:', JSON.stringify(printPayload, null, 2));
     
     try {
       const result = await printWithRetry(printPayload, 2, 1000);
