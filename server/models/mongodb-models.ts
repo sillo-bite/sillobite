@@ -118,6 +118,27 @@ CanteenChargeSchema.index({ canteenId: 1, name: 1 });
 
 export const CanteenCharge = mongoose.model<ICanteenCharge>('CanteenCharge', CanteenChargeSchema);
 
+// Canteen Settings Model
+export interface ICanteenSettings extends Document {
+  canteenId: string;
+  taxRate: number; // Tax rate as a percentage (e.g., 5 for 5%)
+  taxName: string; // Name of the tax (e.g., "GST", "VAT")
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const CanteenSettingsSchema = new Schema<ICanteenSettings>({
+  canteenId: { type: String, required: true, unique: true, index: true },
+  taxRate: { type: Number, default: 5, min: 0, max: 100 }, // Default 5% GST
+  taxName: { type: String, default: 'GST' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+CanteenSettingsSchema.index({ canteenId: 1 });
+
+export const CanteenSettings = mongoose.model<ICanteenSettings>('CanteenSettings', CanteenSettingsSchema);
+
 // Order Model
 export interface IOrder extends Document {
   orderNumber: string;
