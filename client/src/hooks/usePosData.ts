@@ -62,10 +62,11 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
     enabled: !!canteenId,
   });
 
-  // Fetch canteen settings (tax rate)
+  // Fetch canteen settings (tax rate and favorite counter)
   const { data: canteenSettings } = useQuery<{
     taxRate: number;
     taxName: string;
+    favoriteCounterId?: string;
   }>({
     queryKey: ['/api/canteens/settings', canteenId],
     queryFn: () => apiRequest(`/api/canteens/${canteenId}/settings`),

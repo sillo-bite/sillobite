@@ -34,7 +34,8 @@ import {
   QrCode,
   AlertTriangle,
   Zap,
-  Truck
+  Truck,
+  Receipt
 } from 'lucide-react';
 
 interface StoreModeProps {
@@ -1365,6 +1366,16 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                 <span>{showPrepSection ? "Hide Prep" : "Show Prep"}</span>
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLocation(`/canteen-owner-dashboard/${canteenId}?tab=pos-billing`)}
+              className="flex items-center space-x-2 flex-shrink-0"
+              aria-label="Navigate to POS Billing"
+            >
+              <Receipt className="h-4 w-4" />
+              <span className="hidden sm:inline">POS Billing</span>
+            </Button>
             <Button
               variant="outline"
               size="sm"

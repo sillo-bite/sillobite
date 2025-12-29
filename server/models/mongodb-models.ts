@@ -123,6 +123,7 @@ export interface ICanteenSettings extends Document {
   canteenId: string;
   taxRate: number; // Tax rate as a percentage (e.g., 5 for 5%)
   taxName: string; // Name of the tax (e.g., "GST", "VAT")
+  favoriteCounterId?: string; // Favorite counter ID for owner
   createdAt: Date;
   updatedAt: Date;
 }
@@ -131,6 +132,7 @@ const CanteenSettingsSchema = new Schema<ICanteenSettings>({
   canteenId: { type: String, required: true, unique: true, index: true },
   taxRate: { type: Number, default: 5, min: 0, max: 100 }, // Default 5% GST
   taxName: { type: String, default: 'GST' },
+  favoriteCounterId: { type: String }, // Favorite counter ID for owner
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
