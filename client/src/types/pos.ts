@@ -26,6 +26,7 @@ export interface Transaction {
 
 export interface PosBillingProps {
   canteenId: string;
+  onOpenSettings?: () => void;
 }
 
 export interface OrderTotals {
