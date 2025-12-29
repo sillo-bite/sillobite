@@ -46,17 +46,17 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
-  const { menuItems, categories, transactions, transactionsPagination, isLoading, refetchTransactions, setTransactionsPage } = usePosData(
+  const { menuItems, categories, transactions, transactionsPagination, canteenSettings, isLoading, refetchTransactions, setTransactionsPage } = usePosData(
     canteenId,
     searchQuery,
     selectedCategory
   );
   const { createOrder, currentTransaction, setCurrentTransaction, isProcessing } = usePosOrder(canteenId);
 
-  // Calculate totals
+  // Calculate totals with dynamic tax rate
   const totals = useMemo(() => {
-    return calculateOrderTotals(cart, discountConfig);
-  }, [cart, discountConfig]);
+    return calculateOrderTotals(cart, discountConfig, canteenSettings.taxRate);
+  }, [cart, discountConfig, canteenSettings.taxRate]);
 
   // Test Print Handler
   const handleTestPrint = async () => {
@@ -69,7 +69,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
       const packagingFee = 15.00;
       
       const taxableAmount = subtotal - discount + deliveryCharge + packagingFee;
-      const tax = 84.60; // Pre-calculated tax
+      const tax = (taxableAmount * (canteenSettings.taxRate / 100)); // Dynamic tax calculation
       const total = taxableAmount + tax;
       
       const testBillId = `TEST-${Date.now()}`;
@@ -435,6 +435,8 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
                     discountConfig={discountConfig}
                     totals={totals}
                     isProcessing={isProcessing}
+                    taxRate={canteenSettings.taxRate}
+                    taxName={canteenSettings.taxName}
                     onCustomerNameChange={setCustomerName}
                     onQuantityChange={updateQuantity}
                     onRemoveItem={removeFromCart}
@@ -474,6 +476,8 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
                       discountConfig={discountConfig}
                       totals={totals}
                       isProcessing={isProcessing}
+                      taxRate={canteenSettings.taxRate}
+                      taxName={canteenSettings.taxName}
                       onCustomerNameChange={setCustomerName}
                       onQuantityChange={updateQuantity}
                       onRemoveItem={removeFromCart}
@@ -494,6 +498,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
               pagination={transactionsPagination}
               onPageChange={setTransactionsPage}
               onTransactionClick={handleTransactionClick}
+              onRefresh={refetchTransactions}
             />
           )}
         </div>
@@ -507,6 +512,8 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         cart={cart}
         customerName={customerName || "Customer"}
         canteenId={canteenId}
+        taxRate={canteenSettings.taxRate}
+        taxName={canteenSettings.taxName}
         onOrderCreated={() => {
           refetchTransactions();
           resetForm();

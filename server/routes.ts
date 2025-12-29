@@ -954,6 +954,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Canteen Settings Management (tax rate configuration)
+  app.get("/api/canteens/:canteenId/settings", async (req, res) => {
+    try {
+      const { canteenId } = req.params;
+      console.log(`🔍 Fetching settings for canteenId: ${canteenId}`);
+      
+      const { CanteenSettings } = await import('./models/mongodb-models');
+      let settings = await CanteenSettings.findOne({ canteenId });
+      
+      // If no settings exist, create default settings
+      if (!settings) {
+        console.log(`📝 Creating default settings for canteenId: ${canteenId}`);
+        settings = await CanteenSettings.create({
+          canteenId,
+          taxRate: 5, // Default 5% GST
+          taxName: 'GST'
+        });
+      }
+      
+      const settingsObj: any = settings.toObject ? settings.toObject() : settings;
+      settingsObj.id = settingsObj._id?.toString();
+      delete settingsObj._id;
+      delete settingsObj.__v;
+      
+      console.log(`✅ Returning settings:`, settingsObj);
+      res.json(settingsObj);
+    } catch (error) {
+      console.error("Error fetching canteen settings:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/canteens/:canteenId/settings", async (req, res) => {
+    try {
+      const { canteenId } = req.params;
+      const { taxRate, taxName } = req.body;
+      
+      console.log(`🔄 Updating settings for canteenId: ${canteenId}`, { taxRate, taxName });
+      
+      // Validate taxRate
+      if (taxRate !== undefined && (taxRate < 0 || taxRate > 100)) {
+        return res.status(400).json({ message: "Tax rate must be between 0 and 100" });
+      }
+      
+      const { CanteenSettings } = await import('./models/mongodb-models');
+      
+      const updateData: any = {
+        updatedAt: new Date()
+      };
+      
+      if (taxRate !== undefined) updateData.taxRate = taxRate;
+      if (taxName !== undefined) updateData.taxName = taxName;
+      
+      let settings = await CanteenSettings.findOneAndUpdate(
+        { canteenId },
+        updateData,
+        { new: true, upsert: true }
+      );
+      
+      const settingsObj: any = settings.toObject ? settings.toObject() : settings;
+      settingsObj.id = settingsObj._id?.toString();
+      delete settingsObj._id;
+      delete settingsObj.__v;
+      
+      console.log(`✅ Settings updated successfully:`, settingsObj);
+      res.json(settingsObj);
+    } catch (error) {
+      console.error("Error updating canteen settings:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/canteens/:canteenId/charges", async (req, res) => {
     try {
       const { canteenId } = req.params;
@@ -8469,6 +8541,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this is a delivery person delivery (either from body or order has deliveryPersonId)
       const isDeliveryPersonDelivery = !!deliveryPersonId || (!!oldOrder.deliveryPersonId && !counterId);
       
+      // Check if this is a direct complete order request (no counterId and no deliveryPersonId)
+      const isDirectComplete = !counterId && !deliveryPersonId && !oldOrder.deliveryPersonId;
+      
       let result;
       if (isDeliveryPersonDelivery) {
         // Delivery person delivery - mark entire order as delivered immediately
@@ -8477,6 +8552,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deliveryPersonId: deliveryPersonId || oldOrder.deliveryPersonId 
         });
         result = await storage.deliverOrderByDeliveryPerson(orderId, deliveryPersonId || oldOrder.deliveryPersonId);
+      } else if (isDirectComplete) {
+        // Direct complete - mark entire order as delivered (for POS orders without delivery person)
+        console.log(`📦 Directly completing order ${orderId} (POS order without delivery person)`);
+        const { Order } = await import('./models/mongodb-models');
+        result = await Order.findByIdAndUpdate(
+          orderId,
+          { 
+            status: 'delivered',
+            deliveredAt: new Date(),
+            barcodeUsed: true
+          },
+          { new: true }
+        );
       } else {
         // Counter delivery - mark items for specific counter
         result = await storage.deliverOrder(orderId, counterId);
