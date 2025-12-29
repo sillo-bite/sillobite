@@ -1,6 +1,7 @@
-import { CheckCircle2, Printer } from "lucide-react";
+import { CheckCircle2, Printer, CheckCircle, QrCode, Truck, UserPlus, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { OwnerButton } from "@/components/owner";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/utils/posCalculations";
 import type { Transaction } from "@/types/pos";
 
@@ -9,6 +10,12 @@ interface ReceiptDialogProps {
   onOpenChange: (open: boolean) => void;
   transaction: Transaction | null;
   onPrint: () => void;
+  onMarkAsReady?: () => void;
+  onScanBarcode?: () => void;
+  onAssignDeliveryPerson?: () => void;
+  onOutForDelivery?: () => void;
+  isMarkingReady?: boolean;
+  isMarkingOutForDelivery?: boolean;
 }
 
 export function ReceiptDialog({
@@ -16,8 +23,19 @@ export function ReceiptDialog({
   onOpenChange,
   transaction,
   onPrint,
+  onMarkAsReady,
+  onScanBarcode,
+  onAssignDeliveryPerson,
+  onOutForDelivery,
+  isMarkingReady = false,
+  isMarkingOutForDelivery = false,
 }: ReceiptDialogProps) {
   if (!transaction) return null;
+
+  const transactionAny = transaction as any;
+  const orderType = transactionAny.orderType || 'takeaway';
+  const isDeliveryOrder = orderType === 'delivery';
+  const hasDeliveryPerson = !!transactionAny.deliveryPersonId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -89,6 +107,76 @@ export function ReceiptDialog({
           {/* Success Message */}
           <div className="text-center pt-4 border-t border-border">
             <p className="font-semibold text-success">Payment Successful</p>
+          </div>
+
+          {/* Order Actions */}
+          <div className="border-t border-border pt-4">
+            <h3 className="font-semibold text-sm mb-3">Quick Actions</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {onMarkAsReady && (
+                <Button
+                  onClick={onMarkAsReady}
+                  disabled={isMarkingReady}
+                  size="sm"
+                  className="bg-warning hover:bg-warning/90 text-warning-foreground"
+                >
+                  {isMarkingReady ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Marking...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark as Ready
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {onScanBarcode && (
+                <Button
+                  onClick={onScanBarcode}
+                  variant="outline"
+                  size="sm"
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Scan Barcode
+                </Button>
+              )}
+              
+              {isDeliveryOrder && onAssignDeliveryPerson && !hasDeliveryPerson && (
+                <Button
+                  onClick={onAssignDeliveryPerson}
+                  variant="outline"
+                  size="sm"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Assign Delivery
+                </Button>
+              )}
+              
+              {isDeliveryOrder && onOutForDelivery && !hasDeliveryPerson && (
+                <Button
+                  onClick={onOutForDelivery}
+                  disabled={isMarkingOutForDelivery}
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {isMarkingOutForDelivery ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Truck className="h-4 w-4 mr-2" />
+                      Out for Delivery
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         <DialogFooter>

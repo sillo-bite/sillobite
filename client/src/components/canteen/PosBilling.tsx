@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { ShoppingCart, History, TestTube2 } from "lucide-react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { OwnerPageLayout, OwnerTabs, OwnerTabList, OwnerTab } from "@/components/owner";
 import { usePosCart } from "@/hooks/usePosCart";
 import { usePosData } from "@/hooks/usePosData";
@@ -16,9 +18,15 @@ import { printWithRetry, printBill } from "@/services/localPrinterService";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import BarcodeScanModal from "@/components/modals/BarcodeScanModal";
+import OrderFoundModal from "@/components/orders/OrderFoundModal";
+import OrderNotFoundModal from "@/components/orders/OrderNotFoundModal";
+import DeliveryPersonSelectModal from "@/components/canteen/DeliveryPersonSelectModal";
 import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
 
 export default function PosBilling({ canteenId }: PosBillingProps) {
+  const queryClient = useQueryClient();
+  
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -43,6 +51,16 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   
   // Test Print State
   const [isTestPrinting, setIsTestPrinting] = useState(false);
+  
+  // Barcode and Delivery Modal States
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [isOrderFoundModalOpen, setIsOrderFoundModalOpen] = useState(false);
+  const [isOrderNotFoundModalOpen, setIsOrderNotFoundModalOpen] = useState(false);
+  const [isDeliveryPersonModalOpen, setIsDeliveryPersonModalOpen] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState("");
+  const [currentOrderForBarcode, setCurrentOrderForBarcode] = useState<any>(null);
+  const [currentOrderForDelivery, setCurrentOrderForDelivery] = useState<any>(null);
+  const [isDelivering, setIsDelivering] = useState(false);
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
@@ -57,6 +75,57 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   const totals = useMemo(() => {
     return calculateOrderTotals(cart, discountConfig);
   }, [cart, discountConfig]);
+
+  // Mark order as ready mutation
+  const markReadyMutation = useMutation({
+    mutationFn: (orderId: string) => {
+      if (!orderId || orderId === 'undefined' || orderId === 'null') {
+        throw new Error('Invalid order ID');
+      }
+      return apiRequest(`/api/orders/${orderId}/mark-ready`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counterId: canteenId }),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Order marked as ready");
+      refetchTransactions();
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to mark order as ready: ${error.message || 'Unknown error'}`);
+    },
+  });
+
+  // Mark order as out for delivery mutation
+  const markOutForDeliveryMutation = useMutation({
+    mutationFn: ({ orderId, deliveryPersonId, deliveryPersonEmail }: { orderId: string; deliveryPersonId: string; deliveryPersonEmail: string | null }) => {
+      if (!orderId || orderId === 'undefined' || orderId === 'null') {
+        throw new Error('Invalid order ID');
+      }
+      if (!deliveryPersonId) {
+        throw new Error('Delivery person ID is required');
+      }
+      return apiRequest(`/api/orders/${orderId}/out-for-delivery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          counterId: canteenId,
+          deliveryPersonId,
+          deliveryPersonEmail
+        }),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Order marked as out for delivery");
+      refetchTransactions();
+      setIsDeliveryPersonModalOpen(false);
+      setCurrentOrderForDelivery(null);
+    },
+    onError: (error: any) => {
+      toast.error(`Failed to mark order as out for delivery: ${error.message || 'Unknown error'}`);
+    },
+  });
 
   // Test Print Handler
   const handleTestPrint = async () => {
@@ -383,6 +452,103 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
     }
   };
 
+  // Handler functions for order actions
+  const handleMarkAsReady = () => {
+    if (!currentTransaction) return;
+    const orderId = (currentTransaction as any).id || (currentTransaction as any)._id || currentTransaction.orderNumber;
+    if (orderId) {
+      markReadyMutation.mutate(orderId);
+    }
+  };
+
+  const handleScanBarcode = () => {
+    if (!currentTransaction) return;
+    setCurrentOrderForBarcode(currentTransaction);
+    setShowReceipt(false);
+    setIsBarcodeModalOpen(true);
+  };
+
+  const handleAssignDeliveryPerson = () => {
+    if (!currentTransaction) return;
+    setCurrentOrderForDelivery(currentTransaction);
+    setShowReceipt(false);
+    setIsDeliveryPersonModalOpen(true);
+  };
+
+  const handleOutForDelivery = () => {
+    if (!currentTransaction) return;
+    setCurrentOrderForDelivery(currentTransaction);
+    setShowReceipt(false);
+    setIsDeliveryPersonModalOpen(true);
+  };
+
+  const handleBarcodeScanned = async (barcode: string) => {
+    try {
+      const orderForVerification = currentOrderForBarcode;
+      setIsBarcodeModalOpen(false);
+      
+      if (orderForVerification && matchesBarcode(barcode, orderForVerification.barcode)) {
+        setScannedBarcode(barcode);
+        setCurrentOrderForBarcode(orderForVerification);
+        setIsOrderFoundModalOpen(true);
+      } else {
+        setScannedBarcode(barcode);
+        setCurrentOrderForBarcode(null);
+        setIsOrderNotFoundModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error processing barcode scan:', error);
+    }
+  };
+
+  const matchesBarcode = (scannedBarcode: string, orderBarcode: string): boolean => {
+    if (!orderBarcode) return false;
+    if (scannedBarcode === orderBarcode) return true;
+    if (scannedBarcode.length === 4 && orderBarcode.length >= 4) {
+      return scannedBarcode === orderBarcode.slice(0, 4);
+    }
+    if (scannedBarcode.length < orderBarcode.length) {
+      return orderBarcode.startsWith(scannedBarcode);
+    }
+    return false;
+  };
+
+  const handleMarkDelivered = async () => {
+    try {
+      if (!currentOrderForBarcode) return;
+      const orderId = currentOrderForBarcode.id || currentOrderForBarcode._id || currentOrderForBarcode.orderNumber;
+      if (!orderId) return;
+      
+      setIsDelivering(true);
+      await apiRequest(`/api/orders/${orderId}/deliver`, {
+        method: 'POST',
+        body: JSON.stringify({ counterId: canteenId })
+      });
+      
+      toast.success("Order delivered successfully");
+      refetchTransactions();
+      setIsOrderFoundModalOpen(false);
+      setCurrentOrderForBarcode(null);
+    } catch (error) {
+      console.error('Error marking order as delivered:', error);
+      toast.error('Failed to mark order as delivered');
+    } finally {
+      setIsDelivering(false);
+    }
+  };
+
+  const handleDeliveryPersonSelected = (deliveryPerson: any) => {
+    if (!currentOrderForDelivery) return;
+    const orderId = currentOrderForDelivery.id || currentOrderForDelivery._id || currentOrderForDelivery.orderNumber;
+    if (orderId) {
+      markOutForDeliveryMutation.mutate({
+        orderId,
+        deliveryPersonId: deliveryPerson.id,
+        deliveryPersonEmail: deliveryPerson.email || null,
+      });
+    }
+  };
+
   return (
     <OwnerPageLayout>
       <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
@@ -519,6 +685,12 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         onOpenChange={setShowReceipt}
         transaction={currentTransaction}
         onPrint={handlePrintReceipt}
+        onMarkAsReady={handleMarkAsReady}
+        onScanBarcode={handleScanBarcode}
+        onAssignDeliveryPerson={handleAssignDeliveryPerson}
+        onOutForDelivery={handleOutForDelivery}
+        isMarkingReady={markReadyMutation.isPending}
+        isMarkingOutForDelivery={markOutForDeliveryMutation.isPending}
       />
 
       {/* Order Detail Dialog for History */}
@@ -528,6 +700,47 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
         transaction={selectedTransaction}
         onPrint={handlePrintHistoricalReceipt}
         isPrinting={isPrinting}
+      />
+
+      {/* Barcode Scan Modal */}
+      <BarcodeScanModal
+        isOpen={isBarcodeModalOpen}
+        onClose={() => setIsBarcodeModalOpen(false)}
+        onBarcodeScanned={handleBarcodeScanned}
+        order={currentOrderForBarcode}
+      />
+
+      {/* Order Found Modal */}
+      <OrderFoundModal
+        isOpen={isOrderFoundModalOpen}
+        onClose={() => {
+          setIsOrderFoundModalOpen(false);
+          setCurrentOrderForBarcode(null);
+        }}
+        order={currentOrderForBarcode}
+        onMarkDelivered={handleMarkDelivered}
+        isDelivering={isDelivering}
+      />
+
+      {/* Order Not Found Modal */}
+      <OrderNotFoundModal
+        isOpen={isOrderNotFoundModalOpen}
+        onClose={() => {
+          setIsOrderNotFoundModalOpen(false);
+          setCurrentOrderForBarcode(null);
+        }}
+        scannedBarcode={scannedBarcode}
+      />
+
+      {/* Delivery Person Select Modal */}
+      <DeliveryPersonSelectModal
+        isOpen={isDeliveryPersonModalOpen}
+        onClose={() => {
+          setIsDeliveryPersonModalOpen(false);
+          setCurrentOrderForDelivery(null);
+        }}
+        onSelect={handleDeliveryPersonSelected}
+        canteenId={canteenId}
       />
     </OwnerPageLayout>
   );
