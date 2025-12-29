@@ -12,6 +12,9 @@ import { printAgentService } from "./services/printAgentService";
 
 const app = express();
 
+// Trust proxy - required for HTTPS detection behind reverse proxies (Render, etc.)
+app.set('trust proxy', 1);
+
 // Session configuration for OAuth
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
