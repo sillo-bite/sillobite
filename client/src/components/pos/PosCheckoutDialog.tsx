@@ -4,13 +4,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Clock, CreditCard, HandCoins, Loader2, X, CheckCircle, Printer, AlertTriangle, QrCode } from "lucide-react";
+import { Clock, CreditCard, HandCoins, Loader2, X, CheckCircle, Printer, AlertTriangle, QrCode, Truck } from "lucide-react";
 import { OwnerButton } from "@/components/owner";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/utils/posCalculations";
 import { toast } from "sonner";
 import { printBill } from "@/services/localPrinterService";
 import { QRPaymentScreen } from "@/components/payment/QRPaymentScreen";
+import BarcodeScanModal from "@/components/modals/BarcodeScanModal";
+import OrderFoundModal from "@/components/orders/OrderFoundModal";
+import OrderNotFoundModal from "@/components/orders/OrderNotFoundModal";
+import DeliveryPersonSelectModal from "@/components/canteen/DeliveryPersonSelectModal";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { OrderTotals } from "@/types/pos";
 
 interface PosCheckoutDialogProps {
@@ -20,6 +25,8 @@ interface PosCheckoutDialogProps {
   cart: Array<{ id: string; name: string; price: number; quantity: number }>;
   customerName: string;
   canteenId: string;
+  taxRate?: number;
+  taxName?: string;
   onOrderCreated?: () => void;
 }
 
@@ -34,6 +41,8 @@ export function PosCheckoutDialog({
   cart,
   customerName,
   canteenId,
+  taxRate = 5,
+  taxName = 'GST',
   onOrderCreated,
 }: PosCheckoutDialogProps) {
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
@@ -47,12 +56,19 @@ export function PosCheckoutDialog({
   const [showQRPayment, setShowQRPayment] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [canteenCharges, setCanteenCharges] = useState<any[]>([]);
+  const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
+  const [isOrderFoundModalOpen, setIsOrderFoundModalOpen] = useState(false);
+  const [isOrderNotFoundModalOpen, setIsOrderNotFoundModalOpen] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState('');
+  const [isDelivering, setIsDelivering] = useState(false);
+  const [isDeliveryPersonModalOpen, setIsDeliveryPersonModalOpen] = useState(false);
   const sessionTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hasAbandonedRef = useRef(false);
   const razorpayRef = useRef<any>(null);
   const cachedCartRef = useRef<any[]>([]);
   const cachedTotalsRef = useRef<OrderTotals | null>(null);
   const isPaymentInProgressRef = useRef(false);
+  const queryClient = useQueryClient();
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -203,13 +219,6 @@ export function PosCheckoutDialog({
       }
     };
   }, [open, showQRPayment]);
-
-  useEffect(() => {
-    if (createdOrder) {
-      console.log('🎯 Created order updated:', createdOrder);
-      console.log('🎯 Stage:', stage);
-    }
-  }, [createdOrder, stage]);
 
   useEffect(() => {
     if (!checkoutSessionId || !open) return;
@@ -409,14 +418,6 @@ export function PosCheckoutDialog({
       
       cachedTotalsRef.current = totals;
       
-      console.log('🔵 Creating offline order with:', {
-        checkoutSessionId,
-        customerName,
-        cart,
-        canteenId,
-        totals
-      });
-      
       // Create order with offline payment (no charges)
       const orderResponse = await apiRequest('/api/pos/orders/create-offline', {
         method: 'POST',
@@ -428,8 +429,6 @@ export function PosCheckoutDialog({
           totals: totals
         })
       });
-
-      console.log('📦 Offline order response:', orderResponse);
 
       if (orderResponse.success) {
         setCreatedOrder(orderResponse.order);
@@ -569,6 +568,194 @@ export function PosCheckoutDialog({
     }
   };
 
+  // Mark order as ready mutation (for POS orders)
+  const markReadyMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      if (!orderId || orderId === 'undefined' || orderId === 'null') {
+        throw new Error('Invalid order ID');
+      }
+      const response = await apiRequest(`/api/orders/${orderId}/mark-ready`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counterId: null }),
+      });
+      return response.order || response;
+    },
+    onSuccess: (updatedOrder) => {
+      toast.success('Order marked as ready!');
+      setCreatedOrder(prevOrder => ({
+        ...prevOrder,
+        ...updatedOrder,
+        orderNumber: updatedOrder.orderNumber || prevOrder?.orderNumber,
+        id: updatedOrder.id || prevOrder?.id,
+        _id: updatedOrder._id || prevOrder?._id,
+      }));
+      if (onOrderCreated) {
+        onOrderCreated();
+      }
+    },
+    onError: (error: any) => {
+      console.error('Failed to mark order as ready:', error.message || 'Unknown error');
+      toast.error('Failed to mark order as ready');
+    },
+  });
+
+  // Mark order as out for delivery mutation (for POS orders)
+  const markOutForDeliveryMutation = useMutation({
+    mutationFn: async ({ orderId, deliveryPersonId, deliveryPersonEmail }: { orderId: string; deliveryPersonId: string; deliveryPersonEmail: string | null }) => {
+      if (!orderId || orderId === 'undefined' || orderId === 'null') {
+        throw new Error('Invalid order ID');
+      }
+      if (!deliveryPersonId) {
+        throw new Error('Delivery person ID is required');
+      }
+      const response = await apiRequest(`/api/orders/${orderId}/out-for-delivery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          counterId: null,
+          deliveryPersonId,
+          deliveryPersonEmail
+        }),
+      });
+      return response.order || response;
+    },
+    onSuccess: (updatedOrder) => {
+      toast.success('Order marked as out for delivery!');
+      setCreatedOrder(prevOrder => ({
+        ...prevOrder,
+        ...updatedOrder,
+        orderNumber: updatedOrder.orderNumber || prevOrder?.orderNumber,
+        id: updatedOrder.id || prevOrder?.id,
+        _id: updatedOrder._id || prevOrder?._id,
+      }));
+      setIsDeliveryPersonModalOpen(false);
+      if (onOrderCreated) {
+        onOrderCreated();
+      }
+    },
+    onError: (error: any) => {
+      console.error('Failed to mark order as out for delivery:', error.message || 'Unknown error');
+      toast.error('Failed to mark order as out for delivery');
+    },
+  });
+
+  // Helper function to check if scanned barcode matches order (full barcode or first 4 digits)
+  const matchesBarcode = (scannedBarcode: string, orderBarcode: string): boolean => {
+    if (!orderBarcode) return false;
+    
+    // Exact match
+    if (scannedBarcode === orderBarcode) return true;
+    
+    // Check if scanned barcode matches first 4 digits (OTP)
+    if (scannedBarcode.length === 4 && orderBarcode.startsWith(scannedBarcode)) return true;
+    
+    return false;
+  };
+
+  // Barcode scan handlers
+  const handleBarcodeScan = () => {
+    setIsBarcodeModalOpen(true);
+  };
+
+  const handleCloseBarcodeModal = () => {
+    setIsBarcodeModalOpen(false);
+  };
+
+  const handleBarcodeScanned = async (barcode: string) => {
+    try {
+      console.log('📱 Barcode scanned:', barcode);
+      setIsBarcodeModalOpen(false);
+      
+      // Verify if the scanned barcode matches the order's barcode (full or first 4 digits)
+      if (createdOrder && matchesBarcode(barcode, createdOrder.barcode)) {
+        console.log('✅ Barcode/OTP matches! Showing order found modal');
+        setScannedBarcode(barcode);
+        setIsOrderFoundModalOpen(true);
+      } else {
+        console.log('❌ Barcode/OTP does not match! Showing order not found modal');
+        setScannedBarcode(barcode);
+        setIsOrderNotFoundModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error processing barcode scan:', error);
+    }
+  };
+
+  const handleCloseOrderFoundModal = () => {
+    setIsOrderFoundModalOpen(false);
+  };
+
+  const handleCloseOrderNotFoundModal = () => {
+    setIsOrderNotFoundModalOpen(false);
+  };
+
+  const handleMarkDelivered = async () => {
+    try {
+      if (!createdOrder) {
+        console.error('❌ No order selected for delivery');
+        return;
+      }
+      
+      const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
+      
+      if (!orderId) {
+        console.error('❌ Order ID not found in order object:', createdOrder);
+        return;
+      }
+      
+      setIsDelivering(true);
+      console.log('📦 Marking order as delivered:', { orderId, orderNumber: createdOrder.orderNumber });
+      
+      // Call the deliver API endpoint
+      // For POS orders without delivery person, send deliveryPersonId if exists, otherwise send empty body
+      const requestBody = createdOrder.deliveryPersonId 
+        ? { deliveryPersonId: createdOrder.deliveryPersonId }
+        : {};
+        
+      await apiRequest(`/api/orders/${orderId}/deliver`, {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('✅ Order marked as delivered successfully');
+      toast.success('Order marked as delivered!');
+      
+      handleCloseOrderFoundModal();
+      onOpenChange(false);
+      
+      if (onOrderCreated) {
+        onOrderCreated();
+      }
+    } catch (error) {
+      console.error('Error marking order as delivered:', error);
+      toast.error('Failed to mark order as delivered');
+    } finally {
+      setIsDelivering(false);
+    }
+  };
+
+  // Delivery person assignment handlers
+  const handleAssignDeliveryPerson = () => {
+    setIsDeliveryPersonModalOpen(true);
+  };
+
+  const handleDeliveryPersonSelected = async (deliveryPersonId: string, deliveryPersonEmail: string | null) => {
+    if (!createdOrder) {
+      console.error('❌ No order for delivery person assignment');
+      return;
+    }
+    
+    const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
+    
+    if (!orderId) {
+      console.error('❌ Order ID not found in order object:', createdOrder);
+      return;
+    }
+    
+    markOutForDeliveryMutation.mutate({ orderId, deliveryPersonId, deliveryPersonEmail });
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
@@ -663,7 +850,7 @@ export function PosCheckoutDialog({
 
                     {totals.tax > 0 && (
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Tax (5% GST)</span>
+                        <span className="text-sm text-muted-foreground">Tax ({taxRate}% {taxName})</span>
                         <span className="font-medium">{formatCurrency(totals.tax)}</span>
                       </div>
                     )}
@@ -799,6 +986,10 @@ export function PosCheckoutDialog({
                       <span className="font-bold text-lg">{createdOrder?.orderNumber || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between items-center pb-3 border-b">
+                      <span className="text-sm text-muted-foreground">Order OTP</span>
+                      <span className="font-bold text-2xl text-primary tracking-wider">{createdOrder?.barcode ? createdOrder.barcode.substring(0, 4) : 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-3 border-b">
                       <span className="text-sm text-muted-foreground">Customer Name</span>
                       <span className="font-medium">{createdOrder?.customerName || customerName || 'Customer'}</span>
                     </div>
@@ -815,25 +1006,88 @@ export function PosCheckoutDialog({
               </Card>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-wrap gap-3 pt-4">
                 <OwnerButton
-                  variant="secondary"
+                  variant="outline"
                   onClick={handlePrintReceipt}
-                  className="flex-1"
-                  icon={isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                  className="flex-1 flex items-center justify-center gap-2"
                   disabled={isPrinting}
                   isLoading={isPrinting}
                 >
-                  {isPrinting ? 'Printing...' : 'Print Receipt'}
+                  <Printer className="w-4 h-4" />
+                  Print Receipt
                 </OwnerButton>
-                <OwnerButton
-                  variant="primary"
-                  onClick={() => onOpenChange(false)}
-                  className="flex-1"
-                  disabled={isPrinting}
-                >
-                  Done
-                </OwnerButton>
+                {(() => {
+                  const orderStatus = createdOrder.status;
+                  const isDeliveryOrder = createdOrder.orderType === 'delivery';
+                  const hasDeliveryPerson = !!createdOrder.deliveryPersonId;
+                  const isOutForDelivery = orderStatus === 'out_for_delivery';
+                  
+                  // Button visibility logic
+                  // 1. If status is pending/preparing → Show "Mark as Ready"
+                  if (orderStatus === 'pending' || orderStatus === 'preparing') {
+                    return (
+                      <>
+                        <OwnerButton
+                          variant="secondary"
+                          onClick={() => {
+                            const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
+                            if (orderId) {
+                              markReadyMutation.mutate(orderId);
+                            }
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2"
+                          disabled={markReadyMutation.isPending}
+                          isLoading={markReadyMutation.isPending}
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Mark as Ready
+                        </OwnerButton>
+                        <OwnerButton
+                          variant="primary"
+                          onClick={() => onOpenChange(false)}
+                          className="flex-1 flex items-center justify-center gap-2"
+                        >
+                          Done
+                        </OwnerButton>
+                      </>
+                    );
+                  }
+                  
+                  // 2. If status is ready or out_for_delivery → Show "Scan Barcode"
+                  if (orderStatus === 'ready' || isOutForDelivery) {
+                    return (
+                      <>
+                        <OwnerButton
+                          variant="secondary"
+                          onClick={handleBarcodeScan}
+                          className="flex-1 flex items-center justify-center gap-2"
+                        >
+                          <QrCode className="w-4 h-4" />
+                          Scan Barcode
+                        </OwnerButton>
+                        <OwnerButton
+                          variant="primary"
+                          onClick={() => onOpenChange(false)}
+                          className="flex-1 flex items-center justify-center gap-2"
+                        >
+                          Done
+                        </OwnerButton>
+                      </>
+                    );
+                  }
+                  
+                  // 3. Default - just show Done button
+                  return (
+                    <OwnerButton
+                      variant="primary"
+                      onClick={() => onOpenChange(false)}
+                      className="flex-1 flex items-center justify-center gap-2"
+                    >
+                      Done
+                    </OwnerButton>
+                  );
+                })()}
               </div>
             </>
           )}
@@ -929,6 +1183,42 @@ export function PosCheckoutDialog({
             setShowQRPayment(false);
             onOpenChange(true);
           }}
+        />
+      )}
+
+      {/* Barcode Scan Modal */}
+      <BarcodeScanModal
+        isOpen={isBarcodeModalOpen}
+        onClose={handleCloseBarcodeModal}
+        onBarcodeScanned={handleBarcodeScanned}
+      />
+
+      {/* Order Found Modal */}
+      {createdOrder && (
+        <OrderFoundModal
+          isOpen={isOrderFoundModalOpen}
+          onClose={handleCloseOrderFoundModal}
+          order={createdOrder}
+          onMarkDelivered={handleMarkDelivered}
+          isDelivering={isDelivering}
+        />
+      )}
+
+      {/* Order Not Found Modal */}
+      <OrderNotFoundModal
+        isOpen={isOrderNotFoundModalOpen}
+        onClose={handleCloseOrderNotFoundModal}
+        scannedBarcode={scannedBarcode}
+      />
+
+      {/* Delivery Person Select Modal */}
+      {createdOrder && (
+        <DeliveryPersonSelectModal
+          open={isDeliveryPersonModalOpen}
+          onClose={() => setIsDeliveryPersonModalOpen(false)}
+          onSelect={handleDeliveryPersonSelected}
+          canteenId={canteenId}
+          orderNumber={createdOrder.orderNumber || createdOrder.id}
         />
       )}
     </>
