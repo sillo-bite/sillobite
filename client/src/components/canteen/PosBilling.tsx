@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { ShoppingCart, History, TestTube2 } from "lucide-react";
 import { toast } from "sonner";
 import { OwnerPageLayout, OwnerTabs, OwnerTabList, OwnerTab } from "@/components/owner";
@@ -18,7 +19,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Badge } from "@/components/ui/badge";
 import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
 
-export default function PosBilling({ canteenId }: PosBillingProps) {
+export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProps) {
+  const [, setLocation] = useLocation();
   // UI State
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -386,7 +388,7 @@ export default function PosBilling({ canteenId }: PosBillingProps) {
   return (
     <OwnerPageLayout>
       <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 px-4">
           <OwnerTabList>
             <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
               Billing

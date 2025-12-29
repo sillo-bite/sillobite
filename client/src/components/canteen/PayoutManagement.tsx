@@ -194,90 +194,89 @@ export default function PayoutManagement({ canteenId }: PayoutManagementProps) {
   const isRefreshing = pendingFetching || requestsFetching || settlementsFetching;
 
   return (
-    <OwnerPageLayout>
-      <OwnerCard className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {/* Responsive Header */}
-        <div className="flex items-center gap-2 px-2 sm:px-3 md:px-4 pt-3 pb-2">
-          <div className="p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
-            <Wallet className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground leading-tight">
-                Payout
-              </h2>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="hidden sm:inline">Synced</span>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground leading-snug">
-              Manage payouts and settlement history
-            </p>
-          </div>
+    <div className="h-full flex flex-col min-h-0 bg-background">
+      {/* Responsive Header */}
+      <div className="flex items-center gap-2 px-3 sm:px-4 py-3 border-b border-border bg-card flex-shrink-0">
+        <div className="p-2 rounded-lg bg-primary/10 text-primary flex-shrink-0">
+          <Wallet className="w-5 h-5" />
         </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground leading-tight">
+              Payout
+            </h2>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="hidden sm:inline">Synced</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground leading-snug">
+            Manage payouts and settlement history
+          </p>
+        </div>
+      </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 md:p-4 pt-2 gap-2 sm:gap-3 app-scrollbar">
-          {/* Summary Statistics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 flex-shrink-0">
-            <OwnerCard className="border-l-4 border-l-warning">
-              <div className="p-2.5 sm:p-3">
-                <div className="flex items-start justify-between gap-2">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 app-scrollbar">
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-3 flex-shrink-0">
+            <OwnerCard className="border-l-2 sm:border-l-4 border-l-warning">
+              <div className="p-1.5 sm:p-3">
+                <div className="flex items-start justify-between gap-1">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">Pending Payout</p>
-                    <p className="text-lg sm:text-xl font-bold text-foreground break-words">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1 truncate">Pending Payout</p>
+                    <p className="text-sm sm:text-lg font-bold text-foreground truncate">
                       {pendingLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin inline" />
+                        <Loader2 className="w-3 h-3 animate-spin inline" />
                       ) : (
                         formatCurrency(pendingAmount)
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 break-words">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
                       {pendingOrderCount} {pendingOrderCount === 1 ? "order" : "orders"}
                     </p>
                   </div>
-                  <Wallet className="w-8 h-8 text-warning flex-shrink-0" />
+                  <Wallet className="hidden sm:block w-8 h-8 text-warning flex-shrink-0" />
                 </div>
               </div>
             </OwnerCard>
 
-            <OwnerCard className="border-l-4 border-l-success">
-              <div className="p-2.5 sm:p-3">
-                <div className="flex items-start justify-between gap-2">
+            <OwnerCard className="border-l-2 sm:border-l-4 border-l-success">
+              <div className="p-1.5 sm:p-3">
+                <div className="flex items-start justify-between gap-1">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">Total Settled</p>
-                    <p className="text-lg sm:text-xl font-bold text-success break-words">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1 truncate">Total Settled</p>
+                    <p className="text-sm sm:text-lg font-bold text-success truncate">
                       {settlementsLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin inline" />
+                        <Loader2 className="w-3 h-3 animate-spin inline" />
                       ) : (
                         formatCurrency(totalSettled)
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 break-words">
-                      {completedSettlements} {completedSettlements === 1 ? "settlement" : "settlements"}
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+                      {completedSettlements} {completedSettlements === 1 ? "settled" : "settled"}
                     </p>
                   </div>
-                  <TrendingUp className="w-8 h-8 text-success flex-shrink-0" />
+                  <TrendingUp className="hidden sm:block w-8 h-8 text-success flex-shrink-0" />
                 </div>
               </div>
             </OwnerCard>
 
-            <OwnerCard className="border-l-4 border-l-primary">
-              <div className="p-2.5 sm:p-3">
-                <div className="flex items-start justify-between gap-2">
+            <OwnerCard className="border-l-2 sm:border-l-4 border-l-primary">
+              <div className="p-1.5 sm:p-3">
+                <div className="flex items-start justify-between gap-1">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">Active Requests</p>
-                    <p className="text-lg sm:text-xl font-bold text-primary break-words">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-0.5 sm:mb-1 truncate">Active Requests</p>
+                    <p className="text-sm sm:text-lg font-bold text-primary truncate">
                       {requestsLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin inline" />
+                        <Loader2 className="w-3 h-3 animate-spin inline" />
                       ) : (
                         requests.length
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1 break-words">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
                       {pendingRequests} pending
                     </p>
                   </div>
-                  <FileText className="w-8 h-8 text-primary flex-shrink-0" />
+                  <FileText className="hidden sm:block w-8 h-8 text-primary flex-shrink-0" />
                 </div>
               </div>
             </OwnerCard>
@@ -365,196 +364,121 @@ export default function PayoutManagement({ canteenId }: PayoutManagementProps) {
             </div>
           )}
 
-          {/* Tabs for Organized Sections */}
-          <OwnerTabs value={activeTab} onValueChange={setActiveTab}>
-            <OwnerTabList className="overflow-x-auto no-scrollbar gap-2">
-              <OwnerTab value="requests" icon={<FileText className="w-4 h-4" />} badge={requests.length}>
-                Payout Requests
-              </OwnerTab>
-              <OwnerTab value="settlements" icon={<History className="w-4 h-4" />} badge={settlements.length}>
-                Settlement History
-              </OwnerTab>
-            </OwnerTabList>
+        {/* Tabs for Organized Sections */}
+        <OwnerTabs value={activeTab} onValueChange={setActiveTab}>
+          <OwnerTabList className="flex-nowrap overflow-x-auto no-scrollbar gap-2 mb-4 px-1">
+            <OwnerTab value="requests" icon={<FileText className="w-4 h-4" />} badge={requests.length}>
+              Payout Requests
+            </OwnerTab>
+            <OwnerTab value="settlements" icon={<History className="w-4 h-4" />} badge={settlements.length}>
+              Settlement History
+            </OwnerTab>
+          </OwnerTabList>
 
-            <OwnerTabPanel value="requests">
-              <OwnerCard
-                className="flex-1 flex flex-col min-h-0"
-                contentClassName="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 app-scrollbar"
-              >
-                {requestsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : requests.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <FileText className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                    <p className="text-base font-medium text-foreground mb-1">No payout requests yet</p>
-                    <p className="text-sm text-muted-foreground break-words">
-                      Your payout requests will appear here once you submit them
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 sm:space-y-3">
-                    {requests.map((request: any) => (
-                      <OwnerCard
-                        key={request.id}
-                        hover
-                        className="border-border"
-                      >
-                        <div className="p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center flex-wrap gap-2 mb-3">
-                                <span className="font-semibold text-base text-foreground break-words">
-                                  Request #{request.requestId}
-                                </span>
-                                <div className="flex-shrink-0">{getStatusBadge(request.status)}</div>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-3 mb-3">
-                                <div className="min-w-0">
-                                  <p className="text-xs text-muted-foreground mb-1">Amount</p>
-                                  <p className="text-base font-semibold text-foreground break-words">
-                                    {formatCurrency(request.amountInRupees)}
-                                  </p>
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs text-muted-foreground mb-1">Orders</p>
-                                  <p className="text-base font-semibold text-foreground break-words">
-                                    {request.orderCount}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 text-xs">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Clock className="w-3 h-3 flex-shrink-0" />
-                                  <span className="text-foreground break-words">
-                                    Requested: {safeFormatDate(request.requestedAt, "PPp")}
-                                  </span>
-                                </div>
-                                {request.approvedAt && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <CheckCircle className="w-3 h-3 flex-shrink-0 text-success" />
-                                    <span className="text-foreground break-words">
-                                      Approved: {safeFormatDate(request.approvedAt, "PPp")}
-                                    </span>
-                                  </div>
-                                )}
-                                {request.rejectedAt && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <XCircle className="w-3 h-3 flex-shrink-0 text-destructive" />
-                                    <span className="text-destructive break-words">
-                                      Rejected: {safeFormatDate(request.rejectedAt, "PPp")}
-                                    </span>
-                                  </div>
-                                )}
-                                {request.rejectionReason && (
-                                  <div className="flex items-start gap-2 text-muted-foreground mt-2">
-                                    <AlertCircle className="w-3 h-3 flex-shrink-0 text-destructive mt-0.5" />
-                                    <span className="text-destructive break-words text-xs">
-                                      Reason: {request.rejectionReason}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+          <OwnerTabPanel value="requests" className="mt-0 space-y-3">
+            {requestsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : requests.length === 0 ? (
+              <div className="text-center py-12 bg-card border border-border rounded-xl">
+                <FileText className="w-12 h-12 mx-auto mb-3 opacity-20 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground mb-1">No payout requests</p>
+                <p className="text-xs text-muted-foreground">Your requests will appear here</p>
+              </div>
+            ) : (
+              requests.map((request: any) => (
+                <OwnerCard key={request.id} className="p-3 sm:p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                         </div>
-                      </OwnerCard>
-                    ))}
-                  </div>
-                )}
-              </OwnerCard>
-            </OwnerTabPanel>
-
-            <OwnerTabPanel value="settlements">
-              <OwnerCard
-                className="flex-1 flex flex-col min-h-0"
-                contentClassName="flex-1 min-h-0 overflow-y-auto p-4 app-scrollbar"
-              >
-                {settlementsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : settlements.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CheckCircle className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
-                    <p className="text-base font-medium text-foreground mb-1">No settlements yet</p>
-                    <p className="text-sm text-muted-foreground break-words">
-                      Completed settlements will appear here
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {settlements.map((settlement: any) => (
-                      <OwnerCard
-                        key={settlement.id}
-                        hover
-                        className="border-border"
-                      >
-                        <div className="p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center flex-wrap gap-2 mb-3">
-                                <span className="font-semibold text-base text-foreground break-words">
-                                  Settlement #{settlement.settlementId}
-                                </span>
-                                <div className="flex-shrink-0">{getStatusBadge(settlement.status)}</div>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-4 mb-3">
-                                <div className="min-w-0">
-                                  <p className="text-xs text-muted-foreground mb-1">Amount</p>
-                                  <p className="text-base font-semibold text-foreground break-words">
-                                    {formatCurrency(settlement.amountInRupees)}
-                                  </p>
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs text-muted-foreground mb-1">Orders</p>
-                                  <p className="text-base font-semibold text-foreground break-words">
-                                    {settlement.orderCount}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1 text-xs">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Calendar className="w-3 h-3 flex-shrink-0" />
-                                  <span className="text-foreground break-words">
-                                    Period: {safeFormatDate(settlement.periodStart, "PP")} -{" "}
-                                    {safeFormatDate(settlement.periodEnd, "PP")}
-                                  </span>
-                                </div>
-                                {settlement.processedAt && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <CheckCircle className="w-3 h-3 flex-shrink-0 text-success" />
-                                    <span className="text-foreground break-words">
-                                      Processed: {safeFormatDate(settlement.processedAt, "PPp")}
-                                    </span>
-                                  </div>
-                                )}
-                                {settlement.transactionId && isValidTransactionId(settlement.transactionId) && (
-                                  <div className="flex items-center gap-2 text-muted-foreground">
-                                    <DollarSign className="w-3 h-3 flex-shrink-0 text-primary" />
-                                    <span className="font-mono text-xs text-foreground break-all">
-                                      Txn: {settlement.transactionId}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                        <div className="min-w-0">
+                          <p className="text-sm sm:text-base font-bold text-foreground truncate">
+                            {formatCurrency(request.amountInRupees)}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">
+                            {safeFormatDate(request.createdAt, "PPP")}
+                          </p>
                         </div>
-                      </OwnerCard>
-                    ))}
+                      </div>
+                      <div className="shrink-0">{getStatusBadge(request.status)}</div>
+                    </div>
+                    
+                    {request.notes && (
+                      <div className="text-xs bg-muted/30 p-2.5 rounded-lg border border-border/50 italic text-muted-foreground">
+                        "{request.notes}"
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs pt-2 border-t border-border/50 text-muted-foreground">
+                      <span>{request.orderIds?.length || 0} orders</span>
+                      <span className="font-mono uppercase opacity-70">
+                        #{request.id.toString().substring(0, 8)}
+                      </span>
+                    </div>
                   </div>
-                )}
-              </OwnerCard>
-            </OwnerTabPanel>
-          </OwnerTabs>
-        </div>
-      </OwnerCard>
-    </OwnerPageLayout>
+                </OwnerCard>
+              ))
+            )}
+          </OwnerTabPanel>
+
+          <OwnerTabPanel value="settlements" className="mt-0 space-y-3">
+            {settlementsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : settlements.length === 0 ? (
+              <div className="text-center py-12 bg-card border border-border rounded-xl">
+                <History className="w-12 h-12 mx-auto mb-3 opacity-20 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground mb-1">No settlements</p>
+                <p className="text-xs text-muted-foreground">Completed payouts appear here</p>
+              </div>
+            ) : (
+              settlements.map((settlement: any) => (
+                <OwnerCard key={settlement.id} className="p-3 sm:p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm sm:text-base font-bold text-success truncate">
+                            {formatCurrency(settlement.amountInRupees)}
+                          </p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">
+                            {safeFormatDate(settlement.processedAt || settlement.createdAt, "PPP")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0">{getStatusBadge(settlement.status)}</div>
+                    </div>
+
+                    {isValidTransactionId(settlement.transactionId) && (
+                      <div className="text-[10px] sm:text-xs bg-muted/30 p-2 rounded-lg border border-border/50 flex items-center justify-between overflow-hidden">
+                        <span className="text-muted-foreground shrink-0">Txn ID:</span>
+                        <span className="font-mono font-medium truncate ml-2 text-foreground">
+                          {settlement.transactionId}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-[10px] sm:text-xs pt-2 border-t border-border/50 text-muted-foreground">
+                      <span>{settlement.paymentMethod || "Bank Transfer"}</span>
+                      {settlement.utr && (
+                        <span className="opacity-70">UTR: {settlement.utr}</span>
+                      )}
+                    </div>
+                  </div>
+                </OwnerCard>
+              ))
+            )}
+          </OwnerTabPanel>
+        </OwnerTabs>
+      </div>
+    </div>
   );
 }

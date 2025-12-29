@@ -989,9 +989,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/canteens/:canteenId/settings", async (req, res) => {
     try {
       const { canteenId } = req.params;
-      const { taxRate, taxName } = req.body;
+      const { taxRate, taxName, favoriteCounterId } = req.body;
       
-      console.log(`🔄 Updating settings for canteenId: ${canteenId}`, { taxRate, taxName });
+      console.log(`🔄 Updating settings for canteenId: ${canteenId}`, { taxRate, taxName, favoriteCounterId });
       
       // Validate taxRate
       if (taxRate !== undefined && (taxRate < 0 || taxRate > 100)) {
@@ -1006,6 +1006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (taxRate !== undefined) updateData.taxRate = taxRate;
       if (taxName !== undefined) updateData.taxName = taxName;
+      if (favoriteCounterId !== undefined) updateData.favoriteCounterId = favoriteCounterId;
       
       let settings = await CanteenSettings.findOneAndUpdate(
         { canteenId },

@@ -148,7 +148,7 @@ const getOrderStatusText = (status: string) => {
 };
 
 export default function CanteenOwnerDashboardSidebar() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { canteenId } = useParams();
   const ownerSidebarDefaults: Record<string, boolean> = {
     overview: true,
@@ -179,6 +179,15 @@ export default function CanteenOwnerDashboardSidebar() {
     "store-mode"
   ];
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Initialize active tab from URL query parameter if present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ownerSidebarOrder.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location]);
 
   // Component to display counter name
   const CounterNameDisplay = ({ counterId }: { counterId: string }) => {
@@ -523,6 +532,43 @@ export default function CanteenOwnerDashboardSidebar() {
     ...ownerSidebarDefaults,
     ...(canteenData?.ownerSidebarConfig || {})
   }), [canteenData?.ownerSidebarConfig]);
+
+  // Fetch canteen settings
+  const { data: canteenSettings, refetch: refetchCanteenSettings } = useQuery({
+    queryKey: ["/api/canteens/settings", canteenId],
+    queryFn: async () => {
+      if (!canteenId) return null;
+      const response = await apiRequest(`/api/canteens/${canteenId}/settings`);
+      return response;
+    },
+    enabled: !!canteenId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch counters for favorite counter selection
+  const { data: counters = [] } = useQuery({
+    queryKey: ["/api/counters", canteenId],
+    queryFn: async () => {
+      if (!canteenId) return [];
+      const response = await apiRequest(`/api/counters?canteenId=${canteenId}`);
+      return response;
+    },
+    enabled: !!canteenId,
+  });
+
+  // Mutation to update favorite counter
+  const updateFavoriteCounterMutation = useMutation({
+    mutationFn: async (favoriteCounterId: string) => {
+      return apiRequest(`/api/canteens/${canteenId}/settings`, {
+        method: "PUT",
+        body: JSON.stringify({ favoriteCounterId }),
+      });
+    },
+    onSuccess: () => {
+      refetchCanteenSettings();
+      queryClient.invalidateQueries({ queryKey: ["/api/canteens/settings", canteenId] });
+    },
+  });
 
   const handleTabChange = (tab: string) => {
     if (ownerSidebarConfig[tab] === false) return;
@@ -2116,38 +2162,55 @@ export default function CanteenOwnerDashboardSidebar() {
 
         {/* Top Header */}
         <div className="border-b border-border bg-card flex-shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 md:px-6 py-3">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-4 md:px-6 py-2 sm:py-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => setIsSidebarOpen((open) => !open)}
                 aria-label="Toggle navigation"
               >
                 {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
               <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-semibold capitalize text-foreground truncate">{activeTab.replace('-', ' ')}</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground truncate">{user?.email}</p>
+                <h2 className="text-sm sm:text-base md:text-lg font-semibold capitalize text-foreground truncate">{activeTab.replace('-', ' ')}</h2>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{user?.email}</p>
               </div>
             </div>
-            <div className="flex items-center justify-between sm:justify-end gap-2">
-              <SyncStatus showStats={false} className="shrink-0" />
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {activeTab === 'pos-billing' && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    if (canteenSettings?.favoriteCounterId) {
+                      setLocation(`/canteen-owner-dashboard/${canteenId}/counter/${canteenSettings.favoriteCounterId}`);
+                    } else {
+                      setShowSettings(true);
+                    }
+                  }}
+                  title={canteenSettings?.favoriteCounterId ? "Go to Favorite Counter" : "Set Favorite Counter"}
+                  className="text-primary border-primary/20 hover:bg-primary/10 h-7 w-7 sm:h-8 sm:w-8 shrink-0"
+                >
+                  <Star className={`w-3.5 h-3.5 ${canteenSettings?.favoriteCounterId ? "fill-primary" : ""}`} />
+                </Button>
+              )}
+              <SyncStatus showStats={false} className="shrink-0 scale-90 sm:scale-100" />
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => setLocation("/login")}
-                className="sm:hidden"
+                className="sm:hidden h-8 w-8"
                 aria-label="Logout"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </Button>
               <Button 
                 variant="ghost" 
                 size="sm"
                 onClick={() => setLocation("/login")}
-                className="hidden sm:inline-flex hover:bg-accent hover:text-accent-foreground"
+                className="hidden sm:inline-flex hover:bg-accent hover:text-accent-foreground h-8"
               >
                 Logout
               </Button>
@@ -2684,7 +2747,10 @@ export default function CanteenOwnerDashboardSidebar() {
             {/* POS Billing Content */}
             {activeTab === "pos-billing" && (
               <div className="h-full flex flex-col min-h-0">
-                <PosBilling canteenId={canteenId || ''} />
+                <PosBilling 
+                  canteenId={canteenId || ''} 
+                  onOpenSettings={() => setShowSettings(true)}
+                />
               </div>
             )}
 
@@ -3296,6 +3362,31 @@ export default function CanteenOwnerDashboardSidebar() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
                       Current: {theme.charAt(0).toUpperCase() + theme.slice(1)} ({resolvedTheme})
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Favorite Counter</Label>
+                    <Select
+                      value={canteenSettings?.favoriteCounterId || "none"}
+                      onValueChange={(value) => {
+                        updateFavoriteCounterMutation.mutate(value === "none" ? "" : value);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a favorite counter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {counters.map((counter: any) => (
+                          <SelectItem key={counter.id} value={counter.id}>
+                            {counter.name} ({counter.type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Set your default counter for quick access
                     </p>
                   </div>
                 </CardContent>
