@@ -1,7 +1,5 @@
 import type { CartItem, OrderTotals, DiscountConfig } from "@/types/pos";
 
-const TAX_RATE = 0.05; // 5% GST
-
 export function calculateSubtotal(cart: CartItem[]): number {
   return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 }
@@ -16,8 +14,8 @@ export function calculateDiscount(
   return discountConfig.amount;
 }
 
-export function calculateTax(subtotal: number, discount: number): number {
-  return (subtotal - discount) * TAX_RATE;
+export function calculateTax(subtotal: number, discount: number, taxRate: number = 5): number {
+  return (subtotal - discount) * (taxRate / 100);
 }
 
 export function calculateTotal(
@@ -30,11 +28,12 @@ export function calculateTotal(
 
 export function calculateOrderTotals(
   cart: CartItem[],
-  discountConfig: DiscountConfig
+  discountConfig: DiscountConfig,
+  taxRate: number = 5
 ): OrderTotals {
   const subtotal = calculateSubtotal(cart);
   const discount = calculateDiscount(subtotal, discountConfig);
-  const tax = calculateTax(subtotal, discount);
+  const tax = calculateTax(subtotal, discount, taxRate);
   const total = calculateTotal(subtotal, discount, tax);
 
   return {

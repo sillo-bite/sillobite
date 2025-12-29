@@ -62,6 +62,16 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
     enabled: !!canteenId,
   });
 
+  // Fetch canteen settings (tax rate)
+  const { data: canteenSettings } = useQuery<{
+    taxRate: number;
+    taxName: string;
+  }>({
+    queryKey: ['/api/canteens/settings', canteenId],
+    queryFn: () => apiRequest(`/api/canteens/${canteenId}/settings`),
+    enabled: !!canteenId,
+  });
+
   return {
     menuItems: menuItemsData,
     categories: categoriesData,
@@ -71,6 +81,7 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
       totalPages: transactionsResponse?.totalPages || 1,
       totalCount: transactionsResponse?.totalCount || 0,
     },
+    canteenSettings: canteenSettings || { taxRate: 5, taxName: 'GST' },
     isLoading: menuLoading,
     refetchTransactions,
     setTransactionsPage: setCurrentPage,

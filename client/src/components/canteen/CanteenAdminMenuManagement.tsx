@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-
+import { toast } from "sonner";
 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -141,6 +141,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
   const [isImporting, setIsImporting] = useState(false);
   const [categorySearchTerm, setCategorySearchTerm] = useState("");
   const [showAllCategories, setShowAllCategories] = useState(false);
+  const [taxForm, setTaxForm] = useState({ taxRate: "", taxName: "" });
   const [chargeForm, setChargeForm] = useState({ name: "", type: "percent", value: "" });
   const [selectedCharge, setSelectedCharge] = useState<any>(null);
 
@@ -272,6 +273,28 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
   const storeCounters = (countersData as unknown as any[])?.filter((counter: any) => counter.type === 'store') || [];
   const paymentCounters = (countersData as unknown as any[])?.filter((counter: any) => counter.type === 'payment') || [];
   const kotCounters = (countersData as unknown as any[])?.filter((counter: any) => counter.type === 'kot') || [];
+
+  // Canteen Settings (tax rate)
+  const { data: canteenSettings, isLoading: settingsLoading, refetch: refetchSettings } = useQuery<{
+    taxRate: number;
+    taxName: string;
+  }>({
+    queryKey: ['/api/canteens', canteenId, 'settings'],
+    queryFn: async () => {
+      return apiRequest(`/api/canteens/${canteenId}/settings`);
+    },
+    enabled: !!canteenId
+  });
+
+  // Populate tax form when canteen settings load
+  useEffect(() => {
+    if (canteenSettings) {
+      setTaxForm({
+        taxRate: canteenSettings.taxRate?.toString() || "5",
+        taxName: canteenSettings.taxName || "GST"
+      });
+    }
+  }, [canteenSettings]);
 
   // Charges (checkout fees) for this canteen
   const { data: chargesData, isLoading: chargesLoading, refetch: refetchCharges } = useQuery<{
@@ -619,6 +642,20 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     },
     onError: (error) => {
       console.error('Upload new category image error:', error);
+    }
+  });
+
+  // Settings mutations
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (data: { taxRate: number; taxName: string }) => {
+      return apiRequest(`/api/canteens/${canteenId}/settings`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onSuccess: () => {
+      refetchSettings();
     }
   });
 
@@ -1464,6 +1501,87 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tax Settings Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Package className="h-5 w-5" />
+            <span>Tax Settings</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+              <Input
+                id="tax-rate"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={taxForm.taxRate}
+                onChange={(e) => setTaxForm({ ...taxForm, taxRate: e.target.value })}
+                placeholder="e.g., 5 for 5%"
+              />
+            </div>
+            <div>
+              <Label htmlFor="tax-name">Tax Name</Label>
+              <Input
+                id="tax-name"
+                value={taxForm.taxName}
+                onChange={(e) => setTaxForm({ ...taxForm, taxName: e.target.value })}
+                placeholder="e.g., GST, VAT, Sales Tax"
+              />
+            </div>
+          </div>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Current: {canteenSettings?.taxRate || 5}% {canteenSettings?.taxName || 'GST'}
+            </p>
+            <Button
+              disabled={
+                taxForm.taxRate === "" ||
+                taxForm.taxName === "" ||
+                updateSettingsMutation.isPending
+              }
+              onClick={() => {
+                const taxRateNumber = parseFloat(taxForm.taxRate);
+                if (isNaN(taxRateNumber) || taxRateNumber < 0 || taxRateNumber > 100) {
+                  toast.error("Tax rate must be between 0 and 100");
+                  return;
+                }
+                updateSettingsMutation.mutate(
+                  {
+                    taxRate: taxRateNumber,
+                    taxName: taxForm.taxName.trim()
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success("Tax settings updated successfully");
+                    },
+                    onError: () => {
+                      toast.error("Failed to update tax settings");
+                    }
+                  }
+                );
+              }}
+            >
+              {updateSettingsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Update Tax
+                </>
+              )}
+            </Button>
           </div>
         </CardContent>
       </Card>

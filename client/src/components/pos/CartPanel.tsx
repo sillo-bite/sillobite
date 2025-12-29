@@ -11,6 +11,8 @@ interface CartPanelProps {
   discountConfig: DiscountConfig;
   totals: OrderTotals;
   isProcessing: boolean;
+  taxRate?: number;
+  taxName?: string;
   onCustomerNameChange: (name: string) => void;
   onQuantityChange: (itemId: string, delta: number) => void;
   onRemoveItem: (itemId: string) => void;
@@ -25,6 +27,8 @@ export function CartPanel({
   discountConfig,
   totals,
   isProcessing,
+  taxRate = 5,
+  taxName = 'GST',
   onCustomerNameChange,
   onQuantityChange,
   onRemoveItem,
@@ -139,7 +143,7 @@ export function CartPanel({
             </div>
           )}
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Tax (5% GST)</span>
+            <span className="text-muted-foreground">Tax ({taxRate}% {taxName})</span>
             <span className="font-medium">{formatCurrency(totals.tax)}</span>
           </div>
           <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">

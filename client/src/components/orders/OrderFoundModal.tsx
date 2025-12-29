@@ -34,7 +34,7 @@ const OrderFoundModal: React.FC<OrderFoundModalProps> = ({
   }
 
   const formattedOrderId = formatOrderIdDisplay(order.orderNumber || order.id);
-  const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+  const items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
