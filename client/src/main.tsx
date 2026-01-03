@@ -4,17 +4,16 @@ import './index.css'
 import { updateManager } from './utils/updateManager'
 // Import 100% passive update detector (ZERO automatic calls)
 import './utils/passiveUpdateDetector'
-import { initializeCapacitor, isNativePlatform } from './utils/capacitorInit'
+
 
 // Initialize Capacitor for native platforms
-initializeCapacitor();
+
 
 // Suppress service worker errors in development and native apps
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const isNative = isNativePlatform();
+
 
 // Service Workers are not needed/available in native apps
-if (!isNative) {
   if (isDevelopment) {
     window.addEventListener('unhandledrejection', (event) => {
       if (event.reason?.message?.includes('ServiceWorker') || 
@@ -54,6 +53,5 @@ if (!isNative) {
         });
     });
   }
-}
 
 createRoot(document.getElementById("root")!).render(<App />);
