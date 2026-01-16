@@ -1,11 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Search, X } from "lucide-react";
+import { ArrowLeft, Search, X, Sparkles, Clock, TrendingUp, Loader2 } from "lucide-react";
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import MenuItemCard from "@/components/menu/MenuItemCard";
@@ -31,54 +28,100 @@ const getDefaultCategoryName = (itemName: string): string => {
 };
 
 export default function SearchPage() {
-  console.log('🔍 SearchPage: Component rendered');
   const [, setLocation] = useLocation();
   const { goToHome } = usePWANavigation();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
-  // Debounce search query to improve performance
+  // Load recent searches from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('recentSearches');
+    if (saved) {
+      try {
+        setRecentSearches(JSON.parse(saved).slice(0, 5));
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, []);
+
+  // Save search to recent searches
+  const saveRecentSearch = useCallback((query: string) => {
+    if (!query.trim()) return;
+    
+    setRecentSearches(prev => {
+      const filtered = prev.filter(s => s.toLowerCase() !== query.toLowerCase());
+      const updated = [query, ...filtered].slice(0, 5);
+      localStorage.setItem('recentSearches', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  // Debounce search query for efficient API calls
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 300); // 300ms delay
+      if (searchQuery.trim().length >= 2) {
+        saveRecentSearch(searchQuery.trim());
+      }
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, saveRecentSearch]);
 
-  // Function to clear search
+  // Focus input on mount
+  useEffect(() => {
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  }, []);
+
   const clearSearch = () => {
     setSearchQuery("");
     setDebouncedSearchQuery("");
+    inputRef.current?.focus();
   };
 
-  // Fetch real menu items and categories
-  const { data: menuData, isLoading } = useQuery<{ items: MenuItem[], pagination: any }>({
-    queryKey: ["/api/menu", selectedCanteen?.id, debouncedSearchQuery],
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('recentSearches');
+  };
+
+  // Server-side search query
+  const { data: searchData, isLoading, isFetching } = useQuery<{ items: MenuItem[], pagination: any }>({
+    queryKey: ["/api/menu/search", selectedCanteen?.id, debouncedSearchQuery],
     queryFn: async () => {
-      if (!selectedCanteen?.id) return { items: [], pagination: {} };
+      if (!selectedCanteen?.id || !debouncedSearchQuery.trim()) {
+        return { items: [], pagination: {} };
+      }
       
       const params = new URLSearchParams({
         canteenId: selectedCanteen.id,
         availableOnly: 'true',
-        limit: '100', // Fetch more items for search page
-        ...(debouncedSearchQuery.trim() && { search: debouncedSearchQuery.trim() })
+        limit: '50',
+        search: debouncedSearchQuery.trim()
       });
       
       const response = await fetch(`/api/menu?${params.toString()}`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch menu items: ${response.status}`);
+        throw new Error(`Search failed: ${response.status}`);
       }
       return await response.json();
     },
-    enabled: !!selectedCanteen?.id,
+    enabled: !!selectedCanteen?.id && debouncedSearchQuery.trim().length >= 2,
     staleTime: 1000 * 60 * 2,
+    placeholderData: (prev) => prev,
   });
 
-  const menuItems = menuData?.items || [];
+  const searchResults = searchData?.items || [];
+  const isSearching = searchQuery !== debouncedSearchQuery || isFetching;
+  const hasSearchQuery = debouncedSearchQuery.trim().length >= 2;
 
+  // Fetch categories for suggestions
   const { data: categoriesData } = useQuery<{ items: Category[] } | Category[]>({
     queryKey: ["/api/categories", selectedCanteen?.id],
     queryFn: async () => {
@@ -88,6 +131,7 @@ export default function SearchPage() {
       return await response.json();
     },
     enabled: !!selectedCanteen?.id,
+    staleTime: 1000 * 60 * 5,
   });
 
   const categories = useMemo(() => {
@@ -95,196 +139,330 @@ export default function SearchPage() {
     return categoriesData?.items || [];
   }, [categoriesData]);
 
-  // Create item-category mapping
-  const getCategoryName = (categoryId?: string | mongoose.Types.ObjectId) => {
-    const idStr = categoryId?.toString();
-    const category = categories.find(cat => (cat.id || (cat as any)._id) === idStr);
-    return category?.name || "Other";
-  };
-
-  const filteredItems = useMemo(() => {
-    // Duplicates are already handled by server-side unique items in the canteen,
-    // but we can keep the unique logic if needed for any reason.
-    // For now, let's just return the menuItems directly as the server already filtered them.
-    return menuItems;
-  }, [menuItems]);
-
-
-  // Generate search suggestions based on menu items
-  const searchSuggestions = useMemo(() => {
-    if (!debouncedSearchQuery.trim()) return [];
-    
-    const suggestions = new Set<string>();
-    const searchLower = debouncedSearchQuery.toLowerCase();
-    
-    // Add item names that match
-    menuItems.forEach(item => {
-      if (item.name.toLowerCase().includes(searchLower)) {
-        suggestions.add(item.name);
-      }
-    });
-    
-    // Add category names that match
-    categories.forEach(category => {
-      if (category.name.toLowerCase().includes(searchLower)) {
-        suggestions.add(category.name);
-      }
-    });
-    
-    return Array.from(suggestions).slice(0, 5);
-  }, [debouncedSearchQuery, menuItems, categories]);
-
-  const popularSearches = ["Tea", "Snacks", "Chicken", "Roll", "Pizza", "Burger", "Rice", "Noodles"];
-
-  // Search bar component - modern design matching HomeScreen
-  const SearchBar = () => (
-    <div className="relative w-full">
-      <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
-        resolvedTheme === 'dark' ? 'text-[#B37ED7]' : 'text-[#724491]'
-      }`} />
-      <Input
-        placeholder="Search for food..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className={`pl-12 pr-12 rounded-full h-12 text-base shadow-sm border-2 transition-all ${
-          resolvedTheme === 'dark' 
-            ? 'bg-white/10 border-[#724491]/50 text-white placeholder:text-[#C397E1]/70 focus:border-[#B37ED7] focus:bg-white/15 focus:shadow-lg focus:shadow-[#724491]/20' 
-            : 'bg-white border-[#C397E1]/50 text-gray-900 placeholder:text-gray-500 focus:border-[#724491] focus:bg-white focus:shadow-lg focus:shadow-[#724491]/20'
-        }`}
-        autoFocus
-      />
-      {searchQuery && (
-        <button
-          onClick={clearSearch}
-          className={`absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full transition-colors ${
-            resolvedTheme === 'dark' 
-              ? 'text-[#C397E1] hover:text-[#B37ED7] hover:bg-[#724491]/30' 
-              : 'text-[#724491] hover:text-[#562A6E] hover:bg-[#C397E1]/30'
-          }`}
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-    </div>
-  );
+  const popularSearches = ["Tea", "Coffee", "Snacks", "Chicken", "Rice", "Biryani", "Burger", "Pizza"];
 
   return (
-    <div className={`min-h-screen ${
-      'bg-background'
-    }`}>
-      {/* Header Container */}
-      <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
-        {/* Top section - Back button and title */}
+    <div className={`min-h-screen ${resolvedTheme === 'dark' ? 'bg-[#0f0a18]' : 'bg-gray-50'}`}>
+      {/* Premium Header with Search */}
+      <div 
+        className="sticky top-0 z-50"
+        style={{
+          background: resolvedTheme === 'dark' 
+            ? 'linear-gradient(180deg, rgba(15, 10, 24, 0.98) 0%, rgba(15, 10, 24, 0.95) 100%)'
+            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
+      >
         <div className="px-4 pt-12 pb-4">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={goToHome}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <span className="text-white font-bold text-lg">Search</span>
+          {/* Back button and Search Input */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`rounded-full h-10 w-10 flex-shrink-0 ${
+                resolvedTheme === 'dark' 
+                  ? 'hover:bg-white/10 text-white' 
+                  : 'hover:bg-gray-100 text-gray-700'
+              }`}
+              onClick={goToHome}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            
+            {/* Premium Search Input */}
+            <div className="relative flex-1 group">
+              {/* Glow effect */}
+              <div 
+                className={`absolute -inset-0.5 rounded-2xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 blur-md pointer-events-none ${
+                  resolvedTheme === 'dark' ? 'bg-violet-500/30' : 'bg-violet-400/20'
+                }`}
+              />
+              
+              <div 
+                className={`relative flex items-center rounded-xl overflow-hidden transition-all duration-200 ${
+                  resolvedTheme === 'dark'
+                    ? 'bg-white/5 border border-white/10 focus-within:border-violet-500/50 focus-within:bg-white/8'
+                    : 'bg-white border border-gray-200 focus-within:border-violet-400 focus-within:shadow-lg focus-within:shadow-violet-500/10'
+                }`}
+              >
+                <Search className={`ml-4 w-5 h-5 flex-shrink-0 pointer-events-none ${
+                  resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`} />
+                
+                <input
+                  ref={inputRef}
+                  type="text"
+                  inputMode="search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  placeholder="Search dishes, categories..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`flex-1 py-3.5 px-3 bg-transparent outline-none text-[15px] w-full min-w-0 ${
+                    resolvedTheme === 'dark' 
+                      ? 'text-white placeholder:text-gray-500' 
+                      : 'text-gray-900 placeholder:text-gray-400'
+                  }`}
+                  style={{ WebkitAppearance: 'none' }}
+                />
+                
+                {/* Loading indicator */}
+                {isSearching && searchQuery && (
+                  <div className="pr-3">
+                    <Loader2 className={`w-4 h-4 animate-spin ${
+                      resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-500'
+                    }`} />
+                  </div>
+                )}
+                
+                {/* Clear button */}
+                {searchQuery && !isSearching && (
+                  <button
+                    onClick={clearSearch}
+                    className={`pr-3 transition-colors ${
+                      resolvedTheme === 'dark' 
+                        ? 'text-gray-500 hover:text-gray-300' 
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
+        
+        {/* Subtle border */}
+        <div className={`h-px ${
+          resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-gray-200/50'
+        }`} />
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Search Suggestions */}
-        {debouncedSearchQuery && searchSuggestions.length > 0 && (
-          <div>
-            <h3 className="font-semibold mb-3 text-foreground">Suggestions</h3>
-            <div className="flex flex-wrap gap-2">
-              {searchSuggestions.map((suggestion) => (
-                <Badge
-                  key={suggestion}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground"
-                  onClick={() => setSearchQuery(suggestion)}
-                >
-                  {suggestion}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Popular Searches */}
-        {!searchQuery && (
-          <div>
-            <h3 className="font-semibold mb-3 text-foreground">Popular Searches</h3>
-            <div className="flex flex-wrap gap-2">
-              {popularSearches.map((term) => (
-                <Badge
-                  key={term}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => setSearchQuery(term)}
-                >
-                  {term}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
+      {/* Content */}
+      <div className="px-4 py-6 space-y-6">
         {/* Search Results */}
-        {searchQuery && (
-          <div>
-            <h3 className="font-semibold mb-3 text-foreground">
-              {searchQuery !== debouncedSearchQuery ? (
-                "Searching..."
-              ) : filteredItems.length > 0 ? (
-                `${filteredItems.length} results for "${debouncedSearchQuery}"`
-              ) : (
-                `No results for "${debouncedSearchQuery}"`
-              )}
-            </h3>
-            
-            {isLoading || searchQuery !== debouncedSearchQuery ? (
-              <div className="space-y-3">
-                {[...Array(3)].map((_, index) => (
-                  <Card key={index} className="animate-pulse bg-card">
-                    <CardContent className="p-4">
-                      <div className="h-4 bg-muted rounded mb-2"></div>
-                      <div className="h-3 bg-muted rounded mb-2 w-3/4"></div>
-                      <div className="h-4 bg-muted rounded w-1/4"></div>
-                    </CardContent>
-                  </Card>
-                ))}
+        {hasSearchQuery ? (
+          <div className="animate-in fade-in duration-300">
+            {/* Results header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg ${
+                  resolvedTheme === 'dark' ? 'bg-violet-500/20' : 'bg-violet-100'
+                }`}>
+                  <Search className={`w-4 h-4 ${
+                    resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-600'
+                  }`} />
+                </div>
+                <span className={`text-sm font-medium ${
+                  resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  {isSearching ? 'Searching...' : (
+                    searchResults.length > 0 
+                      ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                      : 'No results'
+                  )}
+                </span>
               </div>
-            ) : filteredItems.length > 0 ? (
-              <div className="space-y-3">
-                {filteredItems.map((item) => (
-                  <MenuItemCard
-                    key={item.id}
-                    item={item}
-                    getDefaultCategoryName={getDefaultCategoryName}
+              {searchResults.length > 0 && (
+                <span className={`text-xs ${
+                  resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                }`}>
+                  for "{debouncedSearchQuery}"
+                </span>
+              )}
+            </div>
+
+            {/* Results grid */}
+            {isLoading && !searchResults.length ? (
+              <div className="grid grid-cols-2 gap-3">
+                {[...Array(4)].map((_, i) => (
+                  <div 
+                    key={i}
+                    className={`rounded-2xl h-48 animate-pulse ${
+                      resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-gray-200'
+                    }`}
                   />
                 ))}
               </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p>No available items found for "{searchQuery}"</p>
-                <p className="text-sm mt-1">Try searching for something else</p>
+            ) : searchResults.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {searchResults.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <MenuItemCard
+                      item={item}
+                      getDefaultCategoryName={getDefaultCategoryName}
+                      hideDescription={true}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : !isSearching && (
+              <div className={`text-center py-12 rounded-2xl ${
+                resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-white'
+              }`}>
+                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                  resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                }`}>
+                  <Search className={`w-8 h-8 ${
+                    resolvedTheme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                  }`} />
+                </div>
+                <p className={`font-medium mb-1 ${
+                  resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  No dishes found
+                </p>
+                <p className={`text-sm ${
+                  resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                }`}>
+                  Try a different search term
+                </p>
               </div>
             )}
           </div>
+        ) : (
+          <>
+            {/* Recent Searches */}
+            {recentSearches.length > 0 && (
+              <div className="animate-in fade-in duration-300">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${
+                      resolvedTheme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-100'
+                    }`}>
+                      <Clock className={`w-4 h-4 ${
+                        resolvedTheme === 'dark' ? 'text-amber-400' : 'text-amber-600'
+                      }`} />
+                    </div>
+                    <span className={`text-sm font-semibold ${
+                      resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                    }`}>
+                      Recent
+                    </span>
+                  </div>
+                  <button
+                    onClick={clearRecentSearches}
+                    className={`text-xs font-medium ${
+                      resolvedTheme === 'dark' ? 'text-gray-500 hover:text-gray-400' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                  >
+                    Clear all
+                  </button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {recentSearches.map((term, index) => (
+                    <button
+                      key={`${term}-${index}`}
+                      onClick={() => setSearchQuery(term)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                        resolvedTheme === 'dark'
+                          ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'
+                      }`}
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Popular Searches */}
+            <div className="animate-in fade-in duration-300" style={{ animationDelay: '100ms' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className={`p-1.5 rounded-lg ${
+                  resolvedTheme === 'dark' ? 'bg-rose-500/20' : 'bg-rose-100'
+                }`}>
+                  <TrendingUp className={`w-4 h-4 ${
+                    resolvedTheme === 'dark' ? 'text-rose-400' : 'text-rose-600'
+                  }`} />
+                </div>
+                <span className={`text-sm font-semibold ${
+                  resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                }`}>
+                  Popular
+                </span>
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                {popularSearches.map((term) => (
+                  <button
+                    key={term}
+                    onClick={() => setSearchQuery(term)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      resolvedTheme === 'dark'
+                        ? 'bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-violet-300 hover:from-violet-500/20 hover:to-fuchsia-500/20 border border-violet-500/20'
+                        : 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 hover:from-violet-100 hover:to-fuchsia-100 border border-violet-200'
+                    }`}
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Categories */}
+            {categories.length > 0 && (
+              <div className="animate-in fade-in duration-300" style={{ animationDelay: '200ms' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`p-1.5 rounded-lg ${
+                    resolvedTheme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                  }`}>
+                    <Sparkles className={`w-4 h-4 ${
+                      resolvedTheme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+                    }`} />
+                  </div>
+                  <span className={`text-sm font-semibold ${
+                    resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                  }`}>
+                    Categories
+                  </span>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {categories.slice(0, 8).map((category) => (
+                    <button
+                      key={category.id || (category as any)._id}
+                      onClick={() => setSearchQuery(category.name)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                        resolvedTheme === 'dark'
+                          ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'
+                      }`}
+                    >
+                      {category.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search tip */}
+            <div 
+              className={`text-center py-8 animate-in fade-in duration-300 ${
+                resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+              }`}
+              style={{ animationDelay: '300ms' }}
+            >
+              <p className="text-sm">
+                Type at least 2 characters to search
+              </p>
+            </div>
+          </>
         )}
       </div>
-      
-      {/* Bottom spacing for search bar */}
-      <div className="pb-[calc(6.5rem+env(safe-area-inset-bottom))]"></div>
-      
-      {/* Fixed Search Bar at the bottom */}
-      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-1">
-        <div className={`px-4 py-3 shadow-lg backdrop-blur-sm rounded-2xl border ${
-          resolvedTheme === 'dark' 
-            ? 'bg-background/95 border-[#724491]/30' 
-            : 'bg-white/95 border-[#C397E1]/30'
-        }`}>
-          <SearchBar />
-        </div>
-      </div>
+
+      {/* Bottom safe area */}
+      <div className="pb-[calc(2rem+env(safe-area-inset-bottom))]" />
     </div>
   );
 }

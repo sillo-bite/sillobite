@@ -7,6 +7,7 @@ import MenuListingPage from "@/components/menu/MenuListingPage";
 import ProfilePage from "@/components/profile/ProfilePage";
 import OrdersPage from "@/components/orders/OrdersPage";
 import CodingChallengesPage from "./CodingChallengesPage";
+import FloatingCart from "@/components/cart/FloatingCart";
 import { useNavigationHistory, type NavigationView } from "@/hooks/useNavigationHistory";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -730,6 +731,11 @@ export default function AppPage() {
         <div style={{ display: "block" }}>
           <CodingChallengesPage />
         </div>
+      )}
+
+      {/* Floating Cart - shown on home and menu views */}
+      {currentView === "menu" && (
+        <FloatingCart />
       )}
 
       {/* Exit app toast notification (Android) */}

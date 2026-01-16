@@ -777,8 +777,8 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
 
       </div>
       
-      {/* Bottom spacing */}
-      <div className="pb-[calc(1rem+env(safe-area-inset-bottom))]"></div>
+      {/* Bottom spacing for floating cart */}
+      <div className="pb-[calc(6rem+env(safe-area-inset-bottom))]"></div>
     </>
   );
 }

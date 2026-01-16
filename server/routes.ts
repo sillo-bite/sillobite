@@ -1111,7 +1111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const queries: Promise<any>[] = [
         // OPTIMIZED: Media Banners - direct DB query
         MediaBanner.find({ isActive: true })
-          .select('_id name type cloudinaryUrl fileId originalName mimeType')
+          .select('_id name type cloudinaryUrl fileId originalName mimeType displayMode')
           .sort({ displayOrder: 1, createdAt: -1 })
           .limit(10)
           .lean()
@@ -1480,11 +1480,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         query.isVegetarian = true;
       }
       
-      // Search filter - use escaped regex for robust substring matching
+      // Search filter - use fuzzy regex for typo-tolerant matching
       if (search && search.trim()) {
-        const searchTerm = search.trim();
-        const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const searchRegex = new RegExp(escapedSearchTerm, 'i');
+        const searchTerm = search.trim().toLowerCase();
+        
+        // Generate fuzzy regex pattern for typo tolerance
+        // Key insight: biryani vs biriyani - the difference is an extra 'i' between 'r' and 'y'
+        // Solution: Allow optional vowels between any two consonants
+        const generateFuzzyPattern = (term: string): string => {
+          const vowels = 'aeiou';
+          const isVowel = (c: string) => vowels.includes(c);
+          const isConsonant = (c: string) => /[a-z]/.test(c) && !isVowel(c) && c !== 'y';
+          
+          let pattern = '';
+          let i = 0;
+          
+          while (i < term.length) {
+            const char = term[i];
+            const nextChar = term[i + 1];
+            
+            // Escape special regex characters
+            const escapedChar = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            
+            if (isVowel(char)) {
+              // Vowels: match one or more vowels flexibly (handles 'i' vs 'ee', 'a' vs 'o', etc.)
+              pattern += '[aeiou]+';
+              // Skip consecutive vowels in the search term
+              while (i + 1 < term.length && isVowel(term[i + 1])) {
+                i++;
+              }
+            } else if (char === 'y') {
+              // Y is tricky - can act as vowel or consonant
+              // Make it match y, i, or e, and make it optional
+              pattern += '[yie]*';
+            } else if (isConsonant(char)) {
+              // Consonant
+              pattern += escapedChar;
+              
+              // Allow optional double consonant (coffee/coffe, birriyani/biriyani)
+              if ('fsltnprbdgmck'.includes(char)) {
+                pattern += char + '?';
+              }
+              
+              // KEY FIX: Allow optional vowel(s) between this consonant and the next consonant
+              // This handles biryani → biriyani (optional 'i' between 'r' and 'y')
+              if (nextChar && (isConsonant(nextChar) || nextChar === 'y')) {
+                pattern += '[aeiou]*';
+              }
+            } else {
+              // Non-letter characters (spaces, etc.)
+              pattern += escapedChar;
+            }
+            
+            i++;
+          }
+          
+          return pattern;
+        };
+        
+        const fuzzyPattern = generateFuzzyPattern(searchTerm);
+        const searchRegex = new RegExp(fuzzyPattern, 'i');
         
         // Also search for categories that match the search term
         const matchingCategories = await Category.find({
@@ -1503,7 +1558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           query.$or.push({ categoryId: { $in: matchingCategoryIds } });
         }
         
-        console.log('🔍 Substring search applied:', escapedSearchTerm, 'Matching categories:', matchingCategoryIds.length);
+        console.log('🔍 Fuzzy search applied:', searchTerm, '→ pattern:', fuzzyPattern, 'Matching categories:', matchingCategoryIds.length);
       }
       
       // Stock filter (for admin views - overrides availableOnly filter)
@@ -3480,6 +3535,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error toggling banner status:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Toggle failed" });
+    }
+  });
+
+  app.patch("/api/media-banners/:id/display-mode", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { displayMode } = req.body;
+      
+      if (!displayMode || !['fit', 'fill'].includes(displayMode)) {
+        return res.status(400).json({ message: "Display mode must be 'fit' or 'fill'" });
+      }
+      
+      const updatedBanner = await mediaService.updateBanner(id, { displayMode });
+
+      // Send WebSocket notification about display mode update
+      const wsManager = getWebSocketManager();
+      if (wsManager) {
+        wsManager.broadcastToAll({
+          type: 'banner_updated',
+          data: { action: 'display_mode_updated', banner: updatedBanner }
+        });
+        console.log('📢 Successfully broadcasted banner display mode update to all clients');
+      } else {
+        console.log('📡 WebSocket manager not available for banner broadcast');
+      }
+
+      res.json(updatedBanner);
+    } catch (error) {
+      console.error("Error updating banner display mode:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Update failed" });
     }
   });
 
