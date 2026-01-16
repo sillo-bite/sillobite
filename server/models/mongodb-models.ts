@@ -93,6 +93,15 @@ MenuItemSchema.index({ canteenId: 1, name: 1 });
 // Index for description search
 MenuItemSchema.index({ description: 1 });
 
+// Text index for efficient full-text search (name and description)
+MenuItemSchema.index(
+  { name: 'text', description: 'text' },
+  { 
+    weights: { name: 10, description: 5 },
+    name: 'menu_item_text_search'
+  }
+);
+
 export const MenuItem = mongoose.model<IMenuItem>('MenuItem', MenuItemSchema);
 
 // Canteen Charge Model
@@ -563,6 +572,7 @@ export interface IMediaBanner extends Document {
   cloudinaryUrl?: string; // Cloudinary secure URL
   isActive: boolean;
   displayOrder: number;
+  displayMode?: 'fit' | 'fill'; // How to display the image: fit (contain) or fill (cover)
   uploadedBy?: number; // User ID who uploaded
   createdAt: Date;
   updatedAt: Date;
@@ -583,6 +593,7 @@ const MediaBannerSchema = new Schema<IMediaBanner>({
   cloudinaryUrl: { type: String }, // Cloudinary secure URL
   isActive: { type: Boolean, default: true },
   displayOrder: { type: Number, default: 0 },
+  displayMode: { type: String, enum: ['fit', 'fill'], default: 'fill' }, // How to display the image
   uploadedBy: { type: Number }, // References PostgreSQL user ID
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

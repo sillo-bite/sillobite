@@ -73,6 +73,7 @@ export class MediaService {
         cloudinaryUrl: mediaBanner.cloudinaryUrl,
         isActive: mediaBanner.isActive,
         displayOrder: mediaBanner.displayOrder,
+        displayMode: mediaBanner.displayMode,
         uploadedBy: mediaBanner.uploadedBy,
         createdAt: mediaBanner.createdAt,
         updatedAt: mediaBanner.updatedAt
@@ -193,6 +194,7 @@ export class MediaService {
         cloudinaryUrl: banner.cloudinaryUrl,
         isActive: banner.isActive,
         displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
@@ -221,6 +223,7 @@ export class MediaService {
         cloudinaryUrl: banner.cloudinaryUrl,
         isActive: banner.isActive,
         displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
@@ -255,6 +258,7 @@ export class MediaService {
         cloudinaryUrl: banner.cloudinaryUrl,
         isActive: banner.isActive,
         displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
@@ -288,6 +292,7 @@ export class MediaService {
         cloudinaryUrl: banner.cloudinaryUrl,
         isActive: banner.isActive,
         displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt

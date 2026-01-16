@@ -358,11 +358,11 @@ const CanteenSelector = React.memo(function CanteenSelector() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center space-x-2 text-white px-3 py-1.5">
-        <MapPin className="w-3.5 h-3.5" />
+      <div className="flex items-center space-x-2 text-foreground px-4 py-2">
+        <MapPin className="w-5 h-5" />
         <div className="animate-pulse">
-          <div className="h-3 bg-white/20 rounded w-16"></div>
-          <div className="h-2 bg-white/20 rounded w-12 mt-1"></div>
+          <div className="h-4 bg-muted rounded w-20"></div>
+          <div className="h-3 bg-muted rounded w-16 mt-1"></div>
         </div>
       </div>
     );
@@ -370,10 +370,10 @@ const CanteenSelector = React.memo(function CanteenSelector() {
 
   if (!selectedCanteen) {
     return (
-      <div className="flex items-center space-x-2 text-white px-3 py-1.5">
-        <MapPin className="w-3.5 h-3.5" />
+      <div className="flex items-center space-x-2 text-foreground px-4 py-2">
+        <MapPin className="w-5 h-5" />
         <div>
-          <div className="text-xs font-medium">No Canteen</div>
+          <div className="text-sm font-medium">No Canteen</div>
         </div>
       </div>
     );
@@ -385,13 +385,13 @@ const CanteenSelector = React.memo(function CanteenSelector() {
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 text-white hover:bg-white/5 rounded-lg px-3 py-1.5 transition-all duration-200 hover:scale-105"
+        className="flex items-center space-x-2 text-foreground hover:bg-muted rounded-lg px-4 py-2 transition-all duration-200"
       >
-        <MapPin className="w-3.5 h-3.5" />
+        <MapPin className="w-5 h-5 text-primary" />
         <div className="text-left min-w-0 flex-1">
-          <div className="text-xs font-medium truncate max-w-32">{selectedCanteen.name}</div>
+          <div className="text-sm font-medium truncate max-w-40">{selectedCanteen.name}</div>
         </div>
-        <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Dropdown - Rendered via Portal to escape header container */}
