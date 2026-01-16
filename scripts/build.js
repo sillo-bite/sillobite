@@ -139,6 +139,14 @@ if (missingVars.length > 0) {
 }
 
 try {
+  console.log('🔧 Generating Prisma Client...');
+  
+  // Generate Prisma Client before building
+  execSync('npx prisma generate', {
+    cwd: rootDir,
+    stdio: 'inherit'
+  });
+  
   console.log('📦 Building frontend with Vite...');
   
   // Build the frontend

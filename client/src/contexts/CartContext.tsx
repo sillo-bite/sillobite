@@ -9,6 +9,7 @@ export interface CartItem {
   canteenId: string; // Add canteen ID to track which canteen the item belongs to
   category?: string; // Add category information
   description?: string; // Item description
+  imageUrl?: string; // Item image URL
   addedAt?: number; // Timestamp when item was added (for price staleness tracking)
   storeCounterId?: string; // Store counter ID for this menu item
   paymentCounterId?: string; // Payment counter ID for this menu item
@@ -16,7 +17,7 @@ export interface CartItem {
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: { id: string | number; name: string; price: number; isVegetarian: boolean; canteenId: string; category?: string; description?: string; storeCounterId?: string; paymentCounterId?: string }, quantity?: number) => void;
+  addToCart: (item: { id: string | number; name: string; price: number; isVegetarian: boolean; canteenId: string; category?: string; description?: string; imageUrl?: string; storeCounterId?: string; paymentCounterId?: string }, quantity?: number) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, newQuantity: number) => void;
   decreaseQuantity: (itemId: string | number) => void;

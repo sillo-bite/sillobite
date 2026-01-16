@@ -10,6 +10,7 @@ interface MediaBanner {
   fileId?: string;
   originalName: string;
   mimeType?: string;
+  displayMode?: 'fit' | 'fill';
 }
 
 interface HomeDataResponse {

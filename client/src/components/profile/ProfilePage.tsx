@@ -36,7 +36,9 @@ import {
   Building2,
   GraduationCap,
   UtensilsCrossed,
-  ShoppingCart
+  ShoppingCart,
+  Trophy,
+  Flame
 } from "lucide-react";
 import UserProfileDisplay from "./UserProfileDisplay";
 import AppUpdateButton from "@/components/common/AppUpdateButton";
@@ -410,6 +412,32 @@ export default function ProfilePage() {
                     }`}>My Favorites</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+                
+                <button 
+                  className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('appNavigateToChallenges', {}));
+                    setLocation("/app");
+                  }}
+                >
+                  <div className="flex items-center">
+                    <Trophy className="w-5 h-5 text-yellow-500 mr-3" />
+                     <span className={`${
+                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                    }`}>Coding Challenges</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-1">
+                      <Flame className="w-4 h-4 text-orange-500" />
+                      <span className="text-sm font-semibold text-foreground">7</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Trophy className="w-4 h-4 text-yellow-500" />
+                      <span className="text-sm font-medium text-foreground">1,250</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
                 </button>
                 
                 <button 
