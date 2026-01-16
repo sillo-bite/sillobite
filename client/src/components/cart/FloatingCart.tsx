@@ -20,12 +20,34 @@ export default function FloatingCart({
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
   
+  // Animation state for enter/exit
+  const [isVisible, setIsVisible] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+  
   // Draggable state for compact mode
   const [position, setPosition] = useState({ x: 16, y: window.innerHeight - 180 });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<HTMLButtonElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const hasDraggedRef = useRef(false);
+  
+  // Determine if cart should be shown based on conditions
+  const shouldShow = totalItems > 0 && (!showOnlyWhenLiveOrderHidden || isLiveOrderHidden);
+  
+  // Handle enter/exit animations
+  useEffect(() => {
+    if (shouldShow) {
+      setShouldRender(true);
+      // Small delay to ensure DOM is ready before animating in
+      const timer = setTimeout(() => setIsVisible(true), 20);
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
+      // Wait for exit animation to complete before unmounting
+      const timer = setTimeout(() => setShouldRender(false), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShow]);
   
   // Load saved position from localStorage
   useEffect(() => {
@@ -148,18 +170,8 @@ export default function FloatingCart({
     };
   }, [isDragging, position]);
   
-  // Don't render if cart is empty
-  if (totalItems === 0) {
-    return null;
-  }
-  
-  // New behavior: 
-  // - If showOnlyWhenLiveOrderHidden is false (search mode), always show
-  // - If showOnlyWhenLiveOrderHidden is true (normal mode):
-  //   - If there are active orders, only show when live order is hidden (scrolled down)
-  //   - If there are NO active orders, only show when scrolled down (isLiveOrderHidden = true)
-  //     This prevents showing cart at top when header cart icon is visible
-  if (showOnlyWhenLiveOrderHidden && !isLiveOrderHidden) {
+  // Don't render if not needed
+  if (!shouldRender) {
     return null;
   }
   
@@ -176,20 +188,30 @@ export default function FloatingCart({
     }
   };
   
+  // Animation classes for enter/exit
+  const animationStyle = {
+    transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
+    opacity: isVisible ? 1 : 0,
+    transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease-out',
+  };
+  
   // Premium Cart Card - shown when live order is hidden
   if (showOnlyWhenLiveOrderHidden && hasActiveOrders) {
     return (
       <div
-        className="fixed left-3 right-3 z-[9999] animate-in slide-in-from-bottom-8 fade-in duration-500 ease-out"
+        className="fixed left-3 right-3 z-[9999]"
         style={{
           bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          ...animationStyle,
         }}
       >
         {/* Ambient glow effect */}
         <div 
-          className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none opacity-60"
+          className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none"
           style={{
             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(168, 85, 247, 0.4), rgba(192, 132, 252, 0.3))',
+            opacity: isVisible ? 0.6 : 0,
+            transition: 'opacity 0.4s ease-out',
           }}
         />
         
@@ -307,7 +329,7 @@ export default function FloatingCart({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className={`fixed z-[9999] flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 animate-in zoom-in-75 fade-in duration-500 ease-out ${
+        className={`fixed z-[9999] flex items-center justify-center w-14 h-14 rounded-full ${
           isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab active:scale-95 hover:scale-105'
         }`}
         style={{
@@ -316,6 +338,9 @@ export default function FloatingCart({
           touchAction: 'none',
           background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.95), rgba(168, 85, 247, 0.95))',
           boxShadow: '0 8px 32px rgba(139, 92, 246, 0.4), 0 4px 12px rgba(0, 0, 0, 0.15)',
+          transform: isVisible ? 'scale(1)' : 'scale(0.5)',
+          opacity: isVisible ? 1 : 0,
+          transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease-out, box-shadow 0.3s ease',
         }}
         aria-label={`View cart with ${totalItems} items, total ₹${totalPrice}`}
       >
@@ -339,16 +364,19 @@ export default function FloatingCart({
   // Full floating bar when no active orders - Premium Design
   return (
     <div
-      className="fixed left-3 right-3 z-[9999] animate-in slide-in-from-bottom-8 fade-in duration-500 ease-out"
+      className="fixed left-3 right-3 z-[9999]"
       style={{
         bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        ...animationStyle,
       }}
     >
       {/* Ambient glow effect */}
       <div 
-        className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none opacity-60"
+        className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none"
         style={{
           background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(168, 85, 247, 0.4), rgba(192, 132, 252, 0.3))',
+          opacity: isVisible ? 0.6 : 0,
+          transition: 'opacity 0.4s ease-out',
         }}
       />
       
