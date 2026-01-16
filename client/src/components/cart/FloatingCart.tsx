@@ -20,24 +20,12 @@ export default function FloatingCart({
   const totalItems = getTotalItems();
   const totalPrice = getTotalPrice();
   
-  // Animation state for entrance
-  const [isAnimating, setIsAnimating] = useState(false);
-  
   // Draggable state for compact mode
   const [position, setPosition] = useState({ x: 16, y: window.innerHeight - 180 });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<HTMLButtonElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const hasDraggedRef = useRef(false);
-  
-  // Trigger entrance animation when becoming visible
-  useEffect(() => {
-    if (showOnlyWhenLiveOrderHidden && isLiveOrderHidden && hasActiveOrders && totalItems > 0) {
-      setIsAnimating(true);
-    } else {
-      setIsAnimating(false);
-    }
-  }, [showOnlyWhenLiveOrderHidden, isLiveOrderHidden, hasActiveOrders, totalItems]);
   
   // Load saved position from localStorage
   useEffect(() => {
@@ -192,11 +180,7 @@ export default function FloatingCart({
   if (showOnlyWhenLiveOrderHidden && hasActiveOrders) {
     return (
       <div
-        className={`fixed left-3 right-3 z-[9999] transition-all ${
-          isAnimating 
-            ? 'animate-in slide-in-from-bottom-8 fade-in duration-500 ease-out' 
-            : ''
-        }`}
+        className="fixed left-3 right-3 z-[9999] animate-in slide-in-from-bottom-8 fade-in duration-500 ease-out"
         style={{
           bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
         }}
@@ -323,7 +307,7 @@ export default function FloatingCart({
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
-        className={`fixed z-[9999] flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 ${
+        className={`fixed z-[9999] flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 animate-in zoom-in-75 fade-in duration-500 ease-out ${
           isDragging ? 'scale-110 cursor-grabbing' : 'cursor-grab active:scale-95 hover:scale-105'
         }`}
         style={{
@@ -355,7 +339,7 @@ export default function FloatingCart({
   // Full floating bar when no active orders - Premium Design
   return (
     <div
-      className="fixed left-3 right-3 z-[9999]"
+      className="fixed left-3 right-3 z-[9999] animate-in slide-in-from-bottom-8 fade-in duration-500 ease-out"
       style={{
         bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
       }}
