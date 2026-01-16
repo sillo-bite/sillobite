@@ -169,8 +169,9 @@ export default function FloatingCart({
   // - If showOnlyWhenLiveOrderHidden is false (search mode), always show
   // - If showOnlyWhenLiveOrderHidden is true (normal mode):
   //   - If there are active orders, only show when live order is hidden (scrolled down)
-  //   - If there are NO active orders, always show (no live order to compete with)
-  if (showOnlyWhenLiveOrderHidden && hasActiveOrders && !isLiveOrderHidden) {
+  //   - If there are NO active orders, only show when scrolled down (isLiveOrderHidden = true)
+  //     This prevents showing cart at top when header cart icon is visible
+  if (showOnlyWhenLiveOrderHidden && !isLiveOrderHidden) {
     return null;
   }
   
