@@ -165,13 +165,13 @@ export default function FloatingCart({
     return null;
   }
   
-  // New behavior: If showOnlyWhenLiveOrderHidden is true, only show when:
-  // 1. There are active orders AND
-  // 2. The live order bottom sheet is hidden due to scroll
-  if (showOnlyWhenLiveOrderHidden) {
-    if (!hasActiveOrders || !isLiveOrderHidden) {
-      return null;
-    }
+  // New behavior: 
+  // - If showOnlyWhenLiveOrderHidden is false (search mode), always show
+  // - If showOnlyWhenLiveOrderHidden is true (normal mode):
+  //   - If there are active orders, only show when live order is hidden (scrolled down)
+  //   - If there are NO active orders, always show (no live order to compete with)
+  if (showOnlyWhenLiveOrderHidden && hasActiveOrders && !isLiveOrderHidden) {
+    return null;
   }
   
   const handleClick = () => {
