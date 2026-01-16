@@ -21,6 +21,10 @@ export default {
         'medium': '0 4px 16px -4px rgba(15, 23, 42, 0.12)',
         'elevated': '0 12px 32px -8px rgba(15, 23, 42, 0.15)',
         'glow': '0 0 40px -8px rgba(99, 102, 241, 0.3)',
+        'premium': '0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)',
+        'premium-lg': '0 10px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05)',
+        'premium-purple': '0 4px 20px rgba(124, 77, 188, 0.15), 0 2px 8px rgba(124, 77, 188, 0.1)',
+        'card-hover': '0 20px 40px -12px rgba(124, 77, 188, 0.2)',
       },
       colors: {
         background: "hsl(var(--background))",

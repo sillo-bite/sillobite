@@ -172,6 +172,7 @@ export type MediaBanner = {
   cloudinaryUrl?: string; // Cloudinary secure URL
   isActive: boolean;
   displayOrder: number;
+  displayMode?: 'fit' | 'fill'; // How to display the image: fit (contain) or fill (cover)
   uploadedBy?: number; // User ID who uploaded
   createdAt: Date;
   updatedAt: Date;

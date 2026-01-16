@@ -126,6 +126,69 @@ export default function AdminContentManagementPage() {
       },
   });
 
+  // Update display mode mutation
+  const updateDisplayModeMutation = useMutation({
+    mutationFn: async ({ bannerId, displayMode }: { bannerId: string; displayMode: 'fit' | 'fill' }) => {
+      const response = await fetch(`/api/media-banners/${bannerId}/display-mode`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ displayMode }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Update failed');
+      }
+
+      const result = await response.json();
+      return result;
+    },
+    onMutate: async ({ bannerId, displayMode }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/media-banners', 'admin'] });
+
+      // Snapshot the previous value
+      const previousBanners = queryClient.getQueryData(['/api/media-banners', 'admin']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['/api/media-banners', 'admin'], (old: any) => {
+        if (!old) return old;
+        return old.map((banner: any) => 
+          banner.id === bannerId 
+            ? { ...banner, displayMode } 
+            : banner
+        );
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousBanners };
+    },
+    onSuccess: (data, variables) => {
+      // Update the cache with the server response
+      queryClient.setQueryData(['/api/media-banners', 'admin'], (old: any) => {
+        if (!old) return old;
+        return old.map((banner: any) => 
+          banner.id === variables.bannerId 
+            ? { ...banner, ...data } 
+            : banner
+        );
+      });
+      triggerBannerRefresh();
+    },
+    onError: (error: Error, variables, context) => {
+      // Rollback to the previous value on error
+      if (context?.previousBanners) {
+        queryClient.setQueryData(['/api/media-banners', 'admin'], context.previousBanners);
+      }
+    },
+    onSettled: () => {
+      // Refetch after mutation completes (success or error)
+      queryClient.invalidateQueries({ queryKey: ['/api/media-banners', 'admin'] });
+    },
+  });
+
   // File upload handlers
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -395,6 +458,29 @@ export default function AdminContentManagementPage() {
                     <span>{Math.round(item.size / 1024)} KB</span>
                     <span className="text-muted-foreground/60">•</span>
                     <span>Order: {item.displayOrder}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-xs text-muted-foreground">Display:</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant={item.displayMode === 'fit' ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => updateDisplayModeMutation.mutate({ bannerId: item.id, displayMode: 'fit' })}
+                        disabled={updateDisplayModeMutation.isPending}
+                      >
+                        Fit
+                      </Button>
+                      <Button
+                        variant={item.displayMode === 'fill' || !item.displayMode ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => updateDisplayModeMutation.mutate({ bannerId: item.id, displayMode: 'fill' })}
+                        disabled={updateDisplayModeMutation.isPending}
+                      >
+                        Fill
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
