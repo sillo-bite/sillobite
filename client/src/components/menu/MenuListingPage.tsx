@@ -515,54 +515,39 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
         </div>
       </div>
 
-      {/* Menu Items */}
-      <div className="p-4 space-y-4">
+      {/* Menu Items - Horizontal Scroll Grid */}
+      <div className="px-4 pb-4">
           {/* Show skeleton when searching */}
           {isSearching ? (
-            <>
+            <div className="grid grid-cols-1 gap-4">
               {Array.from({ length: 3 }).map((_, index) => (
                 <Card 
                   key={`skeleton-${index}`}
                   className={`${
                     resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
-                  } rounded-2xl shadow-lg border-0 overflow-hidden animate-pulse`}
+                  } rounded-3xl shadow-lg border-0 overflow-hidden animate-pulse w-full max-w-[354px]`}
+                  style={{ height: '254px' }}
                 >
-                  <CardContent className="p-0">
-                    <div className="w-full relative aspect-[21/9] overflow-hidden">
-                      <div className={`absolute inset-0 overflow-hidden rounded-t-2xl ${
+                  <CardContent className="p-0 h-full">
+                    <div className="relative h-[160px]">
+                      <div className={`w-full h-full ${
                         resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                      }`}>
-                        <div className={`w-full h-full flex items-center justify-center ${
-                          resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                        }`}>
-                          <span className="text-5xl opacity-50">🔍</span>
-                        </div>
+                      } flex items-center justify-center`}>
+                        <span className="text-5xl opacity-50">🔍</span>
                       </div>
                     </div>
-                    <div className={`${
-                      resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
-                    } relative`} style={{ 
-                      marginTop: '-12px', 
-                      borderRadius: '0 0 0.75rem 0.75rem'
-                    }}>
-                      <div className="px-3 pt-3 pb-3">
-                        <div className={`h-5 w-32 rounded mb-3 ${
-                          resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                        }`} />
-                        <div className="flex items-center justify-between">
-                          <div className={`h-5 w-16 rounded ${
-                            resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                          }`} />
-                          <div className={`w-10 h-10 rounded-full ${
-                            resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                          }`} />
-                        </div>
-                      </div>
+                    <div className="px-4 py-3">
+                      <div className={`h-5 w-32 rounded mb-2 ${
+                        resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                      }`} />
+                      <div className={`h-4 w-20 rounded ${
+                        resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
+                      }`} />
                     </div>
                   </CardContent>
                 </Card>
               ))}
-            </>
+            </div>
           ) : filteredItems.length === 0 && !isLoading ? (
             <div className="text-center py-8 text-muted-foreground">
               <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
@@ -577,22 +562,23 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
             </div>
           ) : (
             <>
+            <div className="grid grid-cols-1 gap-6">
             {filteredItems.map((item, index) => (
-              <Card 
-                key={item.id || (item as any)._id || `item-${index}`} 
-                className={`${
-                  resolvedTheme === 'dark' 
-                    ? 'bg-card hover:bg-gray-950' 
-                    : 'bg-card hover:bg-gray-50'
-                } rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-0 overflow-hidden`}
+              <div 
+                key={item.id || (item as any)._id || `item-${index}`}
+                className="relative w-[354px] mb-3"
                 onClick={() => handleDishClick(item.id || (item as any)._id || '', `/menu/${category}`)}
               >
-                <CardContent className="p-0">
-                  {/* Top Section - Image with rounded corners */}
-                  <div className="w-full relative aspect-[21/9] overflow-hidden">
-                    <div className={`absolute inset-0 overflow-hidden rounded-t-2xl ${
-                      resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                    }`}>
+                <Card 
+                  className={`${
+                    resolvedTheme === 'dark' 
+                      ? 'bg-gray-800 hover:bg-gray-750' 
+                      : 'bg-white hover:bg-gray-50'
+                  } rounded-[18px] shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-0 overflow-hidden`}
+                >
+                  <CardContent className="p-0">
+                    {/* Image Section */}
+                    <div className="relative h-[170px]">
                       {item.imageUrl ? (
                         <img 
                           src={item.imageUrl} 
@@ -612,7 +598,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                         </div>
                       )}
                       
-                      {/* Heart button - Top right corner */}
+                      {/* Heart button - Top right */}
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -626,133 +612,165 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                             description: item.description
                           });
                         }}
-                        className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all touch-manipulation z-10 backdrop-blur-sm ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-800/90 hover:bg-gray-700/90' 
-                            : 'bg-white/95 hover:bg-white'
-                        }`}
+                        className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md transition-all touch-manipulation z-10 hover:scale-110"
                       >
                         <Heart className={`w-4 h-4 transition-all ${
                           isFavorite(item.id || (item as any)._id || '') 
-                            ? 'fill-red-500 text-red-500 scale-110' 
-                            : resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            ? 'fill-red-500 text-red-500' 
+                            : 'text-gray-400'
                         }`} />
                       </button>
-                      
-                      {/* Rating badge - Bottom right on image */}
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className={`absolute bottom-3 right-3 px-2.5 py-1 rounded-lg flex items-center space-x-1 shadow-sm z-10 touch-manipulation ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-800 border border-gray-700' 
-                            : 'bg-white/95 border border-gray-200 backdrop-blur-sm'
-                        }`}
-                      >
-                        <span className={`text-sm font-bold ${
-                          resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                    </div>
+                    
+                    {/* Content Section */}
+                    <div className="px-4 pt-5 pb-4">
+                      {/* Name and Rating Row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className={`text-[16px] font-semibold leading-tight ${
+                          resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
-                          4.8
+                          {item.name}
+                        </h3>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                            item.isVegetarian ? 'bg-green-500' : 'bg-red-500'
+                          }`}>
+                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                          </div>
+                          <span className={`text-sm font-bold ${
+                            resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            4.8
+                          </span>
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        </div>
+                      </div>
+                      
+                      {/* Dashed Divider */}
+                      <div className={`border-t border-dashed my-2 ${
+                        resolvedTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                      }`}></div>
+                      
+                      {/* Offer Row */}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          resolvedTheme === 'dark' ? 'bg-orange-900/50' : 'bg-orange-100'
+                        }`}>
+                          <span className={`text-xs font-bold ${
+                            resolvedTheme === 'dark' ? 'text-orange-400' : 'text-orange-600'
+                          }`}>🔥</span>
+                        </div>
+                        <span className={`text-xs font-medium ${
+                          resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                          {item.calories ? `${item.calories} kcal` : '0 kcal'}
                         </span>
-                        <Star className={`w-3.5 h-3.5 ${
-                          resolvedTheme === 'dark' ? 'text-yellow-400' : 'text-yellow-500'
-                        } fill-current`} />
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Bottom Section - Content */}
-                  <div className={`${
-                    resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
-                  } relative`} style={{ 
-                    marginTop: '-12px', 
-                    borderRadius: '0 0 0.75rem 0.75rem',
-                    borderTopLeftRadius: '0',
-                    borderTopRightRadius: '0.5rem'
-                  }}>
-                    <div className="px-3 pt-3 pb-3">
-                      {/* Restaurant Name */}
-                      <h3 className={`font-bold text-lg mb-3 ${
-                        resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                      }`}>
-                        {item.name}
-                      </h3>
-                      
-                      {/* Quantity Selector and Add to Cart */}
-                      <div className="flex items-center justify-between">
-                        <div className={`text-lg font-bold ${
-                          resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
-                          ₹{item.price}
-                        </div>
-                        
-                        {/* Right: Add button */}
-                        <div className="ml-3">
-                      {getCartQuantity(item.id || (item as any)._id || '') > 0 ? (
-                        <div className={`flex items-center rounded-full px-1 py-1 ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-700' 
-                            : 'bg-gray-200'
-                        }`}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              decreaseQuantity(item.id || (item as any)._id || '');
-                            }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                              resolvedTheme === 'dark' 
-                                ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                            }`}
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <span className={`text-base font-bold min-w-[32px] text-center px-2 ${
-                              resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                            }`}>
-                            {String(getCartQuantity(item.id || (item as any)._id || '')).padStart(2, '0')}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAddToCart(item);
-                            }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                              resolvedTheme === 'dark' 
-                                ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                            }`}
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
+                    
+                    {/* Add Button - Bottom Right Corner */}
+                    {getCartQuantity(item.id || (item as any)._id || '') > 0 ? (
+                      <div
+                        className={`absolute bottom-0 right-0 w-32 h-12 flex items-center justify-between px-2 transition-all ${
+                          resolvedTheme === 'dark'
+                            ? 'bg-primary'
+                            : 'bg-primary'
+                        }`}
+                        style={{
+                          borderTopLeftRadius: '24px',
+                          borderBottomRightRadius: '18px'
+                        }}
+                      >
                         <button
                           onClick={(e) => {
-                            if (!item.available || item.stock === 0) return;
                             e.stopPropagation();
+                            decreaseQuantity(item.id || (item as any)._id || '');
+                          }}
+                          className="w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30"
+                        >
+                          <Minus className="w-4 h-4 text-white" />
+                        </button>
+                        <span className="text-sm font-bold text-white min-w-[32px] text-center">
+                          {String(getCartQuantity(item.id || (item as any)._id || '')).padStart(2, '0')}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!item.available || item.stock === 0) return;
                             handleAddToCart(item);
                           }}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 shadow-sm ${
-                            resolvedTheme === 'dark' 
-                              ? 'bg-gray-700 hover:bg-gray-600 text-green-400' 
-                              : 'bg-gray-200 hover:bg-gray-300 text-green-600'
-                          } ${
+                          disabled={!item.available || item.stock === 0}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30 ${
                             !item.available || item.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
-                          disabled={!item.available || item.stock === 0}
                         >
-                          <Plus className="w-5 h-5" />
+                          <Plus className="w-4 h-4 text-white" />
                         </button>
-                      )}
-                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!item.available || item.stock === 0) return;
+                          handleAddToCart(item);
+                        }}
+                        disabled={!item.available || item.stock === 0}
+                        className={`absolute bottom-0 right-0 w-12 h-12 flex items-center justify-center transition-all touch-manipulation ${
+                          resolvedTheme === 'dark'
+                            ? 'bg-primary hover:bg-primary/90'
+                            : 'bg-primary hover:bg-primary/90'
+                        } ${
+                          !item.available || item.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        style={{
+                          borderTopLeftRadius: '50%',
+                          borderBottomRightRadius: '18px'
+                        }}
+                      >
+                        <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </CardContent>
+                </Card>
+                
+                {/* Merged Bump Pill - Outside card with left notch */}
+                <div 
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-[85px] right-[-0px] z-20"
+                >
+                  <div 
+                    className={`rounded-l-full w-40 h-8 flex items-center justify-center gap-1.5 ${
+                      resolvedTheme === 'dark' 
+                        ? 'bg-gray-800' 
+                        : 'bg-white'
+                    }`}
+                    
+                  >
+                    <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                      <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2"/>
+                    </svg>
+                    <span className="text-[12px] text-gray-600 font-medium whitespace-nowrap">
+                      {item.cookingTime ? `${item.cookingTime} mins` : '0 mins'}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+
+                <div className="absolute bottom-[84px] right-[142px] z-20">
+                <svg width="30" height="30" viewBox="0 0 90 90" className="rotate-[160deg]">
+                  <path
+                    d="M20,70 Q100,10 240,70"
+                    stroke={resolvedTheme==="dark" ? "#1f2937" : "#ffffffff"}
+                    strokeWidth="28"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
+              </div>
+              </div>
             ))}
+            </div>
             
             {/* Infinite scroll trigger */}
             {hasNextPage && (
@@ -760,7 +778,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                 {isFetchingNextPage ? (
                   <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                 ) : (
-                  <div className="h-4" /> // Spacer for intersection observer
+                  <div className="h-4" />
                 )}
               </div>
             )}
