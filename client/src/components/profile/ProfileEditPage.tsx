@@ -24,6 +24,9 @@ const profileEditSchema = z.object({
     .min(10, "Phone number must be at least 10 digits")
     .max(15, "Phone number must be less than 15 digits")
     .regex(/^[+]?[0-9\s\-()]+$/, "Phone number can only contain numbers, spaces, hyphens, parentheses, and plus sign"),
+  currentStudyYear: z.number().min(1).max(10).optional(),
+  selectedLocationType: z.enum(["college", "organization", "restaurant"]).optional(),
+  selectedLocationId: z.string().optional(),
 });
 
 export default function ProfileEditPage() {
@@ -76,6 +79,9 @@ export default function ProfileEditPage() {
     defaultValues: {
       name: "",
       phoneNumber: "",
+      currentStudyYear: undefined,
+      selectedLocationType: undefined,
+      selectedLocationId: "",
     },
   });
 
@@ -85,6 +91,9 @@ export default function ProfileEditPage() {
       form.reset({
         name: userInfo.name || "",
         phoneNumber: userInfo.phoneNumber || "",
+        currentStudyYear: userInfo.currentStudyYear || undefined,
+        selectedLocationType: userInfo.selectedLocationType || undefined,
+        selectedLocationId: userInfo.selectedLocationId || "",
       });
     }
   }, [userInfo, form]);
@@ -250,6 +259,71 @@ export default function ProfileEditPage() {
                           </FormItem>
                         )}
                       />
+
+                      {userInfo?.role === "student" && (
+                        <FormField
+                          control={form.control}
+                          name="currentStudyYear"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={`text-sm font-medium ${
+                                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                              }`}>Current Study Year</FormLabel>
+                              <Select 
+                                onValueChange={(value) => field.onChange(parseInt(value))} 
+                                value={field.value?.toString()}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className={`h-11 text-sm ${
+                                    resolvedTheme === 'dark' 
+                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100' 
+                                      : 'bg-white border-gray-300 text-gray-900'
+                                  }`}>
+                                    <SelectValue placeholder="Select year" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {[1, 2, 3, 4, 5, 6].map((year) => (
+                                    <SelectItem key={year} value={year.toString()}>
+                                      Year {year}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      <FormField
+                        control={form.control}
+                        name="selectedLocationType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className={`text-sm font-medium ${
+                              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                            }`}>Preferred Location Type</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className={`h-11 text-sm ${
+                                  resolvedTheme === 'dark' 
+                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100' 
+                                    : 'bg-white border-gray-300 text-gray-900'
+                                }`}>
+                                  <SelectValue placeholder="Select location type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="college">College</SelectItem>
+                                <SelectItem value="organization">Organization</SelectItem>
+                                <SelectItem value="restaurant">Restaurant</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 </div>
@@ -264,7 +338,12 @@ export default function ProfileEditPage() {
                       ACCOUNT INFORMATION
                     </h3>
                     
-                    <div className="mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <ReadOnlyField 
+                        label="Email Address" 
+                        value={userInfo?.email} 
+                      />
+
                       <FormItem>
                         <FormLabel className={`text-sm font-medium ${
                           resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
@@ -278,19 +357,32 @@ export default function ProfileEditPage() {
                             {userInfo?.role || "Not specified"}
                           </span>
                         </div>
-                        <p className={`text-sm mt-2 ${
-                          resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
-                          Your role cannot be changed. Contact support if you need to update your role.
-                        </p>
                       </FormItem>
+
+                      <ReadOnlyField 
+                        label="Profile Status" 
+                        value={userInfo?.isProfileComplete ? "Complete" : "Incomplete"} 
+                      />
+
+                      {userInfo?.selectedLocationId && (
+                        <ReadOnlyField 
+                          label="Selected Location ID" 
+                          value={userInfo?.selectedLocationId} 
+                        />
+                      )}
                     </div>
+
+                    <p className={`text-sm mt-4 ${
+                      resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Your email and role cannot be changed. Contact support if you need to update these fields.
+                    </p>
                   </div>
                 </div>
 
                 {(userInfo?.role === "student" || userInfo?.role === "employee" || userInfo?.role === "contractor" || userInfo?.role === "visitor" || userInfo?.role === "guest" || userInfo?.role === "staff") && (
                   <div className="space-y-4">
-                    <div className={`pb-4 border-b ${
+                    <div className={`pb-4 ${
                       resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
                     }`}>
                       <h3 className={`text-sm font-medium mb-4 ${
@@ -317,10 +409,31 @@ export default function ProfileEditPage() {
                               value={departmentsByCollege?.departments?.find(dept => dept.code === userInfo?.department)?.name} 
                             />
 
-                            <ReadOnlyField 
-                              label="Passing Out Year" 
-                              value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined} 
-                            />
+                            {userInfo?.role === "student" && (
+                              <>
+                                <ReadOnlyField 
+                                  label="Joining Year" 
+                                  value={userInfo?.joiningYear ? String(userInfo.joiningYear) : undefined} 
+                                />
+
+                                <ReadOnlyField 
+                                  label="Passing Out Year" 
+                                  value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined} 
+                                />
+
+                                <ReadOnlyField 
+                                  label="Graduation Status" 
+                                  value={userInfo?.isPassed ? "Graduated" : "Currently Studying"} 
+                                />
+                              </>
+                            )}
+
+                            {userInfo?.role !== "student" && (
+                              <ReadOnlyField 
+                                label="Passing Out Year" 
+                                value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined} 
+                              />
+                            )}
                           </>
                         )}
 
@@ -336,6 +449,13 @@ export default function ProfileEditPage() {
                               value={collegesData?.colleges?.find(college => college.id === userInfo?.college)?.name} 
                             />
                           </>
+                        )}
+
+                        {userInfo?.organizationId && (
+                          <ReadOnlyField 
+                            label="Organization ID" 
+                            value={userInfo?.organizationId} 
+                          />
                         )}
                       </div>
                     </div>
