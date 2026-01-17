@@ -578,7 +578,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                 >
                   <CardContent className="p-0">
                     {/* Image Section */}
-                    <div className="relative h-[170px]">
+                    <div className="relative h-[130px]">
                       {item.imageUrl ? (
                         <img 
                           src={item.imageUrl} 
@@ -623,7 +623,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                     </div>
                     
                     {/* Content Section */}
-                    <div className="px-4 pt-5 pb-4">
+                    <div className="px-4 pt-3 pb-2">
                       {/* Name and Rating Row */}
                       <div className="flex items-start justify-between gap-2">
                         <h3 className={`text-[16px] font-semibold leading-tight ${
@@ -647,7 +647,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                       </div>
                       
                       {/* Dashed Divider */}
-                      <div className={`border-t border-dashed my-2 ${
+                      <div className={`border-t border-dashed my-1.5 ${
                         resolvedTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'
                       }`}></div>
                       
@@ -671,7 +671,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                     {/* Add Button - Bottom Right Corner */}
                     {getCartQuantity(item.id || (item as any)._id || '') > 0 ? (
                       <div
-                        className={`absolute bottom-0 right-0 w-32 h-12 flex items-center justify-between px-2 transition-all ${
+                        className={`absolute bottom-0 right-0 w-28 h-10 flex items-center justify-between px-1.5 transition-all ${
                           resolvedTheme === 'dark'
                             ? 'bg-primary'
                             : 'bg-primary'
@@ -686,7 +686,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                             e.stopPropagation();
                             decreaseQuantity(item.id || (item as any)._id || '');
                           }}
-                          className="w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30"
+                          className="w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30"
                         >
                           <Minus className="w-4 h-4 text-white" />
                         </button>
@@ -700,7 +700,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                             handleAddToCart(item);
                           }}
                           disabled={!item.available || item.stock === 0}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30 ${
+                          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30 ${
                             !item.available || item.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                         >
@@ -715,7 +715,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                           handleAddToCart(item);
                         }}
                         disabled={!item.available || item.stock === 0}
-                        className={`absolute bottom-0 right-0 w-12 h-12 flex items-center justify-center transition-all touch-manipulation ${
+                        className={`absolute bottom-0 right-0 w-10 h-10 flex items-center justify-center transition-all touch-manipulation ${
                           resolvedTheme === 'dark'
                             ? 'bg-primary hover:bg-primary/90'
                             : 'bg-primary hover:bg-primary/90'
@@ -727,7 +727,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                           borderBottomRightRadius: '18px'
                         }}
                       >
-                        <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+                        <Plus className="w-4.5 h-4.5 text-white" strokeWidth={2.5} />
                       </button>
                     )}
                   </CardContent>
@@ -736,7 +736,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                 {/* Merged Bump Pill - Outside card with left notch */}
                 <div 
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-[85px] right-[-0px] z-20"
+                  className="absolute bottom-[65px] right-[-0px] z-20"
                 >
                   <div 
                     className={`rounded-l-full w-40 h-8 flex items-center justify-center gap-1.5 ${
@@ -757,7 +757,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
                 </div>
 
 
-                <div className="absolute bottom-[84px] right-[142px] z-20">
+                <div className="absolute bottom-[64px] right-[142px] z-20">
                 <svg width="30" height="30" viewBox="0 0 90 90" className="rotate-[160deg]">
                   <path
                     d="M20,70 Q100,10 240,70"
