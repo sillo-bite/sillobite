@@ -86,8 +86,12 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
   // Update status bar to match header color
   useEffect(() => {
-    updateStatusBarColor('#724491'); // purple primary color
-  }, []);
+    if (resolvedTheme === 'dark') {
+      updateStatusBarColor('hsl(270, 40%, 8%)'); // Exact dark mode background
+    } else {
+      updateStatusBarColor('hsl(280, 30%, 98%)'); // Exact light mode background
+    }
+  }, [resolvedTheme]);
 
   // Debounce search query
   useEffect(() => {
