@@ -701,7 +701,12 @@ export default function AppPage() {
   }, [currentView]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background overflow-y-auto overflow-x-hidden"
+      style={{
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
       {/* Conditionally render HomeScreen, CartPage, FavoritesPage, MenuListingPage, ProfilePage, or OrdersPage */}
       {currentView === "home" && (
         <HomeScreen

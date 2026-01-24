@@ -4,27 +4,26 @@ export default function HomeScreenSkeleton() {
   const { resolvedTheme } = useTheme();
 
   const getSkeletonClassName = () => {
-    return resolvedTheme === 'dark' 
-      ? 'bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 animate-premium-shimmer' 
+    return resolvedTheme === 'dark'
+      ? 'bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 animate-premium-shimmer'
       : 'bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-premium-shimmer';
   };
 
   const getCardClassName = () => {
     const baseClasses = "rounded-3xl shadow-premium border-0 overflow-hidden";
-    const themeClasses = resolvedTheme === 'dark' 
-      ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90' 
+    const themeClasses = resolvedTheme === 'dark'
+      ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90'
       : 'bg-white';
-    
+
     return `${baseClasses} ${themeClasses}`;
   };
 
   return (
-    <div 
-      className={`min-h-screen overflow-x-hidden overflow-y-auto scrollbar-hide ${
-        'bg-background'
-      }`} 
-      style={{ 
-        touchAction: 'pan-y', 
+    <div
+      className={`min-h-screen overflow-x-hidden overflow-y-auto scrollbar-hide ${'bg-background'
+        }`}
+      style={{
+        touchAction: 'pan-y',
         maxWidth: '100vw',
         scrollbarWidth: 'none',
         msOverflowStyle: 'none',
@@ -45,7 +44,7 @@ export default function HomeScreenSkeleton() {
             </div>
           </div>
         </div>
-        
+
         {/* Search bar skeleton */}
         <div className="px-4 pb-6">
           <div className={`w-full h-12 rounded-2xl ${getSkeletonClassName()}`} />
@@ -54,13 +53,13 @@ export default function HomeScreenSkeleton() {
 
       {/* Categories Carousel Skeleton */}
       <div className="mt-2">
-        <div 
+        <div
           className="flex gap-3 overflow-x-auto scrollbar-hide pb-4 px-4"
-          style={{ 
+          style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
             WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-x'
+            touchAction: 'auto'
           }}
         >
           {Array.from({ length: 5 }).map((_, index) => (
@@ -94,19 +93,19 @@ export default function HomeScreenSkeleton() {
               <div className={`h-3 w-24 rounded-full ${getSkeletonClassName()}`} />
             </div>
           </div>
-          
+
           {/* Trending items cards skeleton - Grid Layout */}
           <div className="grid grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`${getCardClassName()} animate-card-entrance`}
                 style={{ animationDelay: `${300 + index * 80}ms` }}
               >
                 <div className="p-0">
                   {/* Image placeholder */}
                   <div className={`w-full aspect-[4/3] ${getSkeletonClassName()}`} />
-                  
+
                   {/* Content */}
                   <div className="px-4 py-3">
                     <div className={`h-4 w-3/4 rounded-full mb-2 ${getSkeletonClassName()}`} />
@@ -131,19 +130,19 @@ export default function HomeScreenSkeleton() {
               <div className={`h-3 w-20 rounded-full ${getSkeletonClassName()}`} />
             </div>
           </div>
-          
+
           {/* Quick picks cards skeleton - Grid Layout */}
           <div className="grid grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 className={`${getCardClassName()} animate-card-entrance`}
                 style={{ animationDelay: `${500 + index * 80}ms` }}
               >
                 <div className="p-0">
                   {/* Image placeholder */}
                   <div className={`w-full aspect-[4/3] ${getSkeletonClassName()}`} />
-                  
+
                   {/* Content */}
                   <div className="px-4 py-3">
                     <div className={`h-4 w-3/4 rounded-full mb-2 ${getSkeletonClassName()}`} />
@@ -158,7 +157,7 @@ export default function HomeScreenSkeleton() {
           </div>
         </div>
       </div>
-      
+
       {/* Bottom spacing for bottom sheet */}
       <div className="pb-[calc(10rem+env(safe-area-inset-bottom))]"></div>
     </div>

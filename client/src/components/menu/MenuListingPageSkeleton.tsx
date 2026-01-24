@@ -61,7 +61,7 @@ export default function MenuListingPageSkeleton() {
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x'
+              touchAction: 'auto'
             }}
           >
             {/* All button skeleton */}
