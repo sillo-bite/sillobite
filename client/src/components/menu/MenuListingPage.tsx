@@ -98,6 +98,15 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     window.dispatchEvent(new CustomEvent('appNavigateHomeWithSearch', {}));
   }, []);
 
+  // Update status bar to match header color
+  useEffect(() => {
+    if (resolvedTheme === 'dark') {
+      updateStatusBarColor('hsl(270, 40%, 8%)'); // Exact dark mode background
+    } else {
+      updateStatusBarColor('hsl(280, 30%, 98%)'); // Exact light mode background
+    }
+  }, [resolvedTheme]);
+
   // Update veg mode preference in localStorage
   const handleVegModeToggle = useCallback((checked: boolean) => {
     setVegOnly(checked);
