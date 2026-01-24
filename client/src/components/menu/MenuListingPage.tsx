@@ -308,7 +308,12 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background overflow-y-auto overflow-x-hidden"
+      style={{
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
       <div
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${resolvedTheme === 'dark' ? 'bg-background/80' : 'bg-background/90'
           }`}
@@ -383,7 +388,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
               WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x'
+              touchAction: 'auto'
             }}
             onScroll={handleCategoriesScroll}
           >
