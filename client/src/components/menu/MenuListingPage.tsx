@@ -2,13 +2,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useLocation, useRoute } from "wouter";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useCategoriesLazyLoad } from "@/hooks/useCategoriesLazyLoad";
+import { useDynamicCategoryPageSize } from "@/hooks/useDynamicCategoryPageSize";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Plus, Loader2, Leaf, Heart, Search, X, Minus, Star } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Leaf, Heart, Search, Minus, Star } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useFavorites } from "@/contexts/FavoritesContext";
 import CategoryIcon from "@/components/ui/CategoryIcon";
@@ -30,7 +30,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
   const [, params] = useRoute("/menu/:category");
   const category = params?.category;
 
-  // Helper function to create URL-safe category names (same as HomeScreen)
+  // Helper function to create URL-safe category names
   const createCategoryUrl = useCallback((categoryName: string | undefined | null) => {
     if (!categoryName) return '';
     try {
@@ -41,8 +41,6 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     }
   }, []);
   const [vegOnly, setVegOnly] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery);
   const { addToCart, getCartQuantity, decreaseQuantity } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { selectedCanteen } = useCanteenContext();
@@ -51,7 +49,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
   const observerTarget = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const categoriesScrollRef = useRef<HTMLDivElement>(null);
-  
+
   // Scroll threshold for horizontal scroll detection
   const SCROLL_THRESHOLD = 100;
 
@@ -71,14 +69,14 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
       notifications: true,
       language: 'English'
     };
-  }, []); // Only parse once on mount
+  }, []);
 
-  // Load veg mode preference from memoized preferences
+  // Load veg mode preference
   useEffect(() => {
     setVegOnly(userPreferences.vegMode || false);
   }, [userPreferences]);
 
-  // Listen for changes in localStorage to sync with other pages
+  // Listen for changes in localStorage
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'userPreferences' && e.newValue) {
@@ -95,19 +93,23 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Debounce search query
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery.trim());
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  // Handler to navigate to home with search activated
+  const handleSearchClick = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('appNavigateHomeWithSearch', {}));
+  }, []);
 
-  // Update veg mode preference in localStorage (memoized)
+  // Update status bar to match header color
+  useEffect(() => {
+    if (resolvedTheme === 'dark') {
+      updateStatusBarColor('hsl(270, 40%, 8%)'); // Exact dark mode background
+    } else {
+      updateStatusBarColor('hsl(280, 30%, 98%)'); // Exact light mode background
+    }
+  }, [resolvedTheme]);
+
+  // Update veg mode preference in localStorage
   const handleVegModeToggle = useCallback((checked: boolean) => {
     setVegOnly(checked);
-    
-    // Update localStorage with minimal parsing
     try {
       const savedPreferences = localStorage.getItem('userPreferences');
       const preferences = savedPreferences ? JSON.parse(savedPreferences) : {
@@ -116,22 +118,19 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
         notifications: true,
         language: 'English'
       };
-      
       const updatedPreferences = {
         ...preferences,
         vegMode: checked
       };
-      
       localStorage.setItem('userPreferences', JSON.stringify(updatedPreferences));
     } catch (error) {
       console.error('Error updating veg mode preference:', error);
     }
   }, []);
 
+  // Dynamic category page size
+  const { initialPageSize, subsequentPageSize } = useDynamicCategoryPageSize(2);
 
-
-
-  // Fetch categories with lazy loading (5 per page, DB-level pagination)
   const {
     data: categoriesData,
     isLoading: categoriesLoading,
@@ -140,11 +139,11 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     isFetchingNextPage: isFetchingNextCategoriesPage
   } = useCategoriesLazyLoad(
     selectedCanteen?.id || null,
-    5, // Load 5 categories per page
-    !!selectedCanteen
+    initialPageSize,
+    !!selectedCanteen,
+    subsequentPageSize
   );
 
-  // Flatten all category pages into a single array
   const categories = useMemo(() => {
     return categoriesData?.pages.flatMap(page => page.items) || [];
   }, [categoriesData]);
@@ -162,21 +161,16 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     }
   };
 
-  // Helper function to get category ID/name for API
   const getCategoryForAPI = useCallback(() => {
     if (!category || category === "all") return "all";
-    if (categories.length === 0) return category; // Use the URL slug if categories aren't loaded yet
-    
+    if (categories.length === 0) return category;
     const decodedCategory = safeDecodeCategory(category);
-    const foundCategory = categories.find(cat => 
+    const foundCategory = categories.find(cat =>
       cat && cat.name && cat.name.toLowerCase().trim() === decodedCategory
     );
-    
-    // Return the ID if found, otherwise return the original category slug
-    return foundCategory?.id || foundCategory?._id || category;
+    return foundCategory?.id || category;
   }, [category, categories]);
 
-  // Infinite query for menu items with server-side filtering
   const {
     data: menuData,
     fetchNextPage,
@@ -200,24 +194,19 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
       '/api/menu',
       selectedCanteen?.id,
       getCategoryForAPI(),
-      debouncedSearchQuery,
       vegOnly
     ],
-    // Keep previous data while fetching new search results (prevents UI flickering)
     placeholderData: (previousData) => previousData,
-    queryFn: async ({ pageParam = 1, signal }) => {
+    queryFn: async ({ pageParam, signal }: { pageParam: number; signal: AbortSignal }) => {
       const categoryIdOrName = getCategoryForAPI();
-      
       const params = new URLSearchParams({
         page: pageParam.toString(),
         limit: '10',
         availableOnly: 'true',
         ...(selectedCanteen?.id && { canteenId: selectedCanteen.id }),
-        ...(!debouncedSearchQuery && categoryIdOrName !== 'all' && { category: categoryIdOrName }),
-        ...(debouncedSearchQuery && { search: debouncedSearchQuery }),
+        ...(categoryIdOrName !== 'all' && { category: categoryIdOrName }),
         ...(vegOnly && { vegOnly: 'true' })
       });
-      
       const response = await fetch(`/api/menu?${params.toString()}`, { signal });
       if (!response.ok) {
         throw new Error(`Failed to fetch menu items: ${response.status}`);
@@ -226,47 +215,22 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      return lastPage.pagination.hasNextPage 
-        ? lastPage.pagination.currentPage + 1 
+      return lastPage.pagination.hasNextPage
+        ? lastPage.pagination.currentPage + 1
         : undefined;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes for menu items
-    gcTime: 1000 * 60 * 10, // 10 minutes - cache search results longer
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
     enabled: !!selectedCanteen,
-    // Retry configuration for failed requests
     retry: (failureCount, error: any) => {
-      // Don't retry if request was aborted (user typed more)
       if (error?.name === 'AbortError') return false;
-      // Retry other errors up to 2 times
       return failureCount < 2;
     },
   });
 
-  // Flatten all pages into a single array
   const menuItems = menuData?.pages.flatMap(page => page.items) || [];
-
   const isLoading = categoriesLoading || menuItemsLoading;
-  const isSearching = menuItemsFetching && debouncedSearchQuery.length > 0;
 
-  // Utility function to get default category name
-  const getDefaultCategoryName = (itemName: string): string => {
-    const name = itemName.toLowerCase();
-    if (name.includes('tea') || name.includes('coffee') || name.includes('juice') || name.includes('drink')) {
-      return 'Beverages';
-    } else if (name.includes('rice') || name.includes('biryani') || name.includes('curry')) {
-      return 'Main Course';
-    } else if (name.includes('snack') || name.includes('samosa') || name.includes('pakora')) {
-      return 'Snacks';
-    } else if (name.includes('sweet') || name.includes('dessert') || name.includes('cake')) {
-      return 'Desserts';
-    } else if (name.includes('bread') || name.includes('roti') || name.includes('naan')) {
-      return 'Bread';
-    } else {
-      return 'Main Course';
-    }
-  };
-
-  // Intersection Observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -276,12 +240,10 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
       },
       { threshold: 0.1 }
     );
-
     const currentTarget = observerTarget.current;
     if (currentTarget) {
       observer.observe(currentTarget);
     }
-
     return () => {
       if (currentTarget) {
         observer.unobserve(currentTarget);
@@ -289,496 +251,402 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // All filtering is now done server-side, so menuItems is already filtered
-  // Memoize to prevent unnecessary renders
   const filteredItems = useMemo(() => menuItems, [menuItems]);
 
-  // Reset scroll position when category or search changes
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [category, debouncedSearchQuery, vegOnly]);
+  }, [category, vegOnly]);
 
-  // Memoized handlers to prevent re-renders
   const handleBackClick = useCallback(() => {
-    // Check if we're on /app page - if so, use custom event to navigate within AppPage
     if (location === '/app' || window.location.pathname === '/app') {
-      // Dispatch event to AppPage to switch to home view
       window.dispatchEvent(new CustomEvent('appNavigateHome', {}));
     } else {
-      // If not on /app, use normal navigation
       goToHome();
     }
-    // Dispatch custom event to navigate back using history
     window.dispatchEvent(new CustomEvent('appNavigateBack', {}));
     setLocation("/app");
   }, [location, goToHome, setLocation]);
 
   const handleAddToCart = useCallback((item: MenuItem) => {
-    // Check if canteen is selected before adding to cart
-    if (!selectedCanteen?.id) {
-      return;
-    }
-    
-    // Validate counter IDs are present (REQUIRED)
+    if (!selectedCanteen?.id) return;
     if (!item.storeCounterId || !item.paymentCounterId) {
-      console.error('❌ Menu item missing counter IDs:', {
-        itemId: item.id || (item as any)._id,
-        itemName: item.name,
-        storeCounterId: item.storeCounterId,
-        paymentCounterId: item.paymentCounterId,
-        fullItem: item
-      });
+      console.error('❌ Menu item missing counter IDs:', { item });
       alert(`Error: Counter IDs are missing for "${item.name}". Please refresh the page and try again.`);
       return;
     }
-    
     addToCart({
       id: item.id || (item as any)._id || '',
       name: item.name,
       price: item.price,
       isVegetarian: item.isVegetarian,
       canteenId: selectedCanteen.id,
-      category: item.category || (item as any).categoryName,
+      category: item.categoryId || (item as any).categoryName,
       description: item.description,
       storeCounterId: item.storeCounterId,
       paymentCounterId: item.paymentCounterId
     });
   }, [selectedCanteen?.id, addToCart]);
-  
+
   const handleCategoryClick = useCallback((categoryName: string) => {
     setLocation(`/menu/${createCategoryUrl(categoryName)}`);
   }, [setLocation, createCategoryUrl]);
-  
+
   const handleAllCategoryClick = useCallback(() => {
     setLocation("/menu/all");
   }, [setLocation]);
-  
+
   const handleDishClick = useCallback((itemId: string, from: string) => {
     setLocation(`/dish/${itemId}`, { state: { from } });
   }, [setLocation]);
-  
+
   const handleCategoriesScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollLeft, scrollWidth, clientWidth } = e.currentTarget;
     const isNearEnd = scrollLeft + clientWidth >= scrollWidth - SCROLL_THRESHOLD;
-    
+
     if (isNearEnd && hasNextCategoriesPage && !isFetchingNextCategoriesPage) {
       fetchNextCategoriesPage();
     }
   }, [hasNextCategoriesPage, isFetchingNextCategoriesPage, fetchNextCategoriesPage]);
 
-  // Memoize category display name to prevent re-computation
-  const categoryDisplayName = useMemo(() => {
-    if (category === "all") return "All";
-    const decodedCategory = safeDecodeCategory(category);
-    const foundCategory = categories.find(cat => cat && cat.name && cat.name.toLowerCase().trim() === decodedCategory);
-    if (foundCategory && foundCategory.name) return foundCategory.name;
-    // Fallback: try to decode and display category name
-    try {
-      return category ? decodeURIComponent(category).replace(/%20/g, ' ') : 'Menu';
-    } catch {
-      return category || 'Menu';
-    }
-  }, [category, categories]);
-
-  // Update status bar to match header color
   useEffect(() => {
-    updateStatusBarColor('#724491'); // purple primary color
-  }, []);
+    updateStatusBarColor(resolvedTheme === 'dark' ? '#0f0a18' : '#ffffff');
+  }, [resolvedTheme]);
 
-  // Show skeleton while loading
   if (isLoading) {
-    return (
-      <>
-        <MenuListingPageSkeleton />
-      </>
-    );
+    return <MenuListingPageSkeleton />;
   }
 
   return (
-    <>
-      <div className="min-h-screen bg-background">
-        {/* Header Container */}
-        <div className="bg-[#724491] rounded-b-2xl shadow-xl overflow-hidden">
-          {/* Top section - Back button, title, and veg toggle */}
-          <div className="px-4 pt-12 pb-2">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-4">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleBackClick} 
-                  className="text-white hover:bg-white/20"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-                <h1 className="text-xl font-bold capitalize text-white">
-                  {categoryDisplayName}
-                </h1>
+    <div
+      className="min-h-screen bg-background overflow-y-auto overflow-x-hidden"
+      style={{
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
+      <div
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${resolvedTheme === 'dark' ? 'bg-background/80' : 'bg-background/90'
+          }`}
+        style={{
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+          borderBottom: resolvedTheme === 'dark'
+            ? '1px solid rgba(255, 255, 255, 0.06)'
+            : '1px solid rgba(0, 0, 0, 0.04)',
+        }}
+      >
+        <div className="pt-12">
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBackClick}
+                className={`flex-shrink-0 rounded-xl transition-all duration-200 hover-scale-subtle ${resolvedTheme === 'dark'
+                  ? 'text-gray-100 hover:bg-white/10'
+                  : 'text-gray-900 hover:bg-gray-100/80'
+                  }`}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <button onClick={handleSearchClick} className="flex-1 text-left group">
+                <div className="relative">
+                  <div className={`absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-lg pointer-events-none ${resolvedTheme === 'dark' ? 'bg-primary/20' : 'bg-primary/10'
+                    }`} />
+                  <div className={`relative pl-11 pr-4 h-11 rounded-2xl flex items-center transition-all duration-200 shadow-xl ${resolvedTheme === 'dark'
+                    ? 'bg-white/5 border border-white/10 hover:bg-white/8 hover:border-white/15'
+                    : 'bg-white border-gray-200/60 hover:bg-gray-50 hover:border-gray-300/80'
+                    }`}>
+                    <Search className={`absolute left-3.5 w-4.5 h-4.5 transition-colors ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`} />
+                    <span className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                      }`}>Search dishes...</span>
+                  </div>
+                </div>
+              </button>
+              <div
+                onClick={() => handleVegModeToggle(!vegOnly)}
+                className={`flex-shrink-0 cursor-pointer flex items-center gap-2 px-3 pr-4 py-2 rounded-2xl border transition-all duration-300 group shadow-xl ${vegOnly
+                  ? resolvedTheme === 'dark'
+                    ? 'bg-green-900/20 border-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.15)]'
+                    : 'bg-green-50 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
+                  : resolvedTheme === 'dark'
+                    ? 'bg-white/5 border-white/10 hover:bg-white/10'
+                    : 'bg-gray-100/80 border-gray-200/60 hover:bg-gray-100'
+                  }`}
+              >
+                <div className={`relative w-9 h-5 rounded-full transition-colors duration-300 flex items-center px-0.5 ${vegOnly ? 'bg-green-500' : 'bg-gray-400/50'
+                  }`}>
+                  <div className={`w-4 h-4 rounded-full bg-white shadow-sm transform transition-transform duration-300 ${vegOnly ? 'translate-x-[16px]' : 'translate-x-0'
+                    }`} />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Leaf className={`w-3.5 h-3.5 transition-colors duration-300 ${vegOnly ? 'text-green-500 fill-green-500' : 'text-gray-500'
+                    }`} />
+                  <span className={`text-xs font-bold uppercase tracking-wider transition-colors duration-300 ${vegOnly
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-gray-500 dark:text-gray-400'
+                    }`}>Veg</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="veg-toggle"
-                  variant="green"
-                  checked={vegOnly}
-                  onCheckedChange={handleVegModeToggle}
-                  className="shadow-lg shadow-black/20"
-                />
-                <Label htmlFor="veg-toggle" className="flex items-center space-x-1 cursor-pointer hidden sm:flex text-white">
-                  <Leaf className="w-4 h-4 text-green-400" />
-                  <span>Veg Only</span>
-                </Label>
-              </div>
-            </div>
-            
-            {/* Search Bar */}
-            <div className="relative pb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/60" />
-              <Input
-                placeholder="Search food..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/60 pl-10 pr-10 h-10 rounded-full focus:bg-white/20 transition-all border-none focus:ring-1 focus:ring-white/30"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
             </div>
           </div>
-        </div>
-
-      {/* Categories - Native Horizontal Scrollable with Lazy Loading */}
-      <div>
-        <div 
-          ref={categoriesScrollRef}
-          className="flex space-x-4 overflow-x-auto scrollbar-hide pb-4 px-4 py-4"
-          style={{ 
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch', 
-            touchAction: 'pan-x' 
-          }}
-          onScroll={handleCategoriesScroll}
-        >
-          <button
-            key="all"
-            onClick={handleAllCategoryClick}
-            className={`flex-shrink-0 px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 ${
-              category === "all" 
-                ? "bg-[#724491] text-white shadow-lg" 
-                : resolvedTheme === 'dark' 
-                  ? "bg-black text-gray-200 hover:bg-gray-900 border border-gray-800" 
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
-            }`}
+          <div
+            ref={categoriesScrollRef}
+            className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-4 px-4"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'auto'
+            }}
+            onScroll={handleCategoriesScroll}
           >
-            All
-          </button>
-          {categories.map((cat, index) => {
-            // Normalize category names for comparison
-            const decodedCategory = safeDecodeCategory(category);
-            const catNameNormalized = cat?.name?.toLowerCase().trim() || '';
-            const isActive = decodedCategory === catNameNormalized;
-            
-            if (!cat || !cat.name) return null;
-            
-            return (
-              <button
-                key={cat.id || (cat as any)._id || `category-${cat.name}`}
-                onClick={() => handleCategoryClick(cat.name)}
-                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all duration-200 dropdown-item ${
-                  isActive
-                    ? "bg-[#724491] text-white shadow-lg" 
-                    : resolvedTheme === 'dark' 
-                      ? "bg-black text-gray-200 hover:bg-gray-900 border border-gray-800" 
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
-                } ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'}`}
-                style={{
-                  animationDelay: prefersReducedMotion ? '0ms' : `${index * 30}ms`
-                }}
-              >
-                <CategoryIcon category={cat} size="md" />
-                {cat.name}
-              </button>
-            );
-          })}
-          
-          {/* Loading indicator for next page of categories */}
-          {isFetchingNextCategoriesPage && (
-            <div className="flex-shrink-0 flex items-center justify-center w-[100px]">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-            </div>
-          )}
+            <button
+              key="all"
+              onClick={handleAllCategoryClick}
+              className={`flex-shrink-0 px-5 py-2.5 rounded-2xl font-semibold text-sm transition-all duration-300 ${prefersReducedMotion ? '' : 'animate-stagger-fade'
+                } ${category === "all"
+                  ? "bg-primary text-white shadow-xl shadow-primary/30"
+                  : resolvedTheme === 'dark'
+                    ? "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-white/10 shadow-lg"
+                    : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200/80 shadow-lg"
+                }`}
+              style={{ animationDelay: '0ms' }}
+            >
+              All
+            </button>
+            {categories.map((cat, index) => {
+              const decodedCategory = safeDecodeCategory(category);
+              const catNameNormalized = cat?.name?.toLowerCase().trim() || '';
+              const isActive = decodedCategory === catNameNormalized;
+              if (!cat || !cat.name) return null;
+              return (
+                <button
+                  key={cat.id || (cat as any)._id || `category-${cat.name}`}
+                  onClick={() => handleCategoryClick(cat.name)}
+                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-2xl font-semibold text-sm transition-all duration-300 ${prefersReducedMotion ? '' : 'animate-stagger-fade'
+                    } ${isActive
+                      ? "bg-primary text-white shadow-xl shadow-primary/30"
+                      : resolvedTheme === 'dark'
+                        ? "bg-[#251F35] text-gray-300 hover:bg-[#2d2640] border border-white/10 shadow-lg"
+                        : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-200/80 shadow-lg"
+                    }`}
+                  style={{ animationDelay: prefersReducedMotion ? '0ms' : `${(index + 1) * 40}ms` }}
+                >
+                  <CategoryIcon category={cat} size="md" />
+                  {cat.name}
+                </button>
+              );
+            })}
+            {isFetchingNextCategoriesPage && (
+              <div className="flex-shrink-0 flex items-center justify-center w-[100px]">
+                <Loader2 className="w-5 h-5 animate-spin text-primary/60" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Menu Items */}
-      <div className="p-4 space-y-4">
-          {/* Show skeleton when searching */}
-          {isSearching ? (
-            <>
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Card 
-                  key={`skeleton-${index}`}
-                  className={`${
-                    resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
-                  } rounded-2xl shadow-lg border-0 overflow-hidden animate-pulse`}
-                >
-                  <CardContent className="p-0">
-                    <div className="w-full relative aspect-[21/9] overflow-hidden">
-                      <div className={`absolute inset-0 overflow-hidden rounded-t-2xl ${
-                        resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                      }`}>
-                        <div className={`w-full h-full flex items-center justify-center ${
-                          resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                        }`}>
-                          <span className="text-5xl opacity-50">🔍</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className={`${
-                      resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
-                    } relative`} style={{ 
-                      marginTop: '-12px', 
-                      borderRadius: '0 0 0.75rem 0.75rem'
-                    }}>
-                      <div className="px-3 pt-3 pb-3">
-                        <div className={`h-5 w-32 rounded mb-3 ${
-                          resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                        }`} />
-                        <div className="flex items-center justify-between">
-                          <div className={`h-5 w-16 rounded ${
-                            resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                          }`} />
-                          <div className={`w-10 h-10 rounded-full ${
-                            resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                          }`} />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </>
-          ) : filteredItems.length === 0 && !isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>
-                {debouncedSearchQuery 
-                  ? `No items found for "${debouncedSearchQuery}"`
-                  : category === "all" 
-                    ? "No items available" 
-                    : "No items found in this category"
-                }
-              </p>
+      <div className="h-[200px]"></div>
+      <div className="px-4 pb-4">
+        {filteredItems.length === 0 && !isLoading ? (
+          <div className={`text-center py-12 px-6 rounded-3xl border-2 border-dashed animate-slide-up-fade ${resolvedTheme === 'dark'
+            ? 'bg-gradient-to-br from-gray-800/30 to-gray-900/30 border-gray-700/50'
+            : 'bg-gradient-to-br from-gray-50 to-white border-gray-200'
+            }`}>
+            <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${resolvedTheme === 'dark'
+              ? 'bg-gradient-to-br from-primary/20 to-primary-light/10'
+              : 'bg-gradient-to-br from-primary/10 to-primary-light/5'
+              }`}>
+              <Search className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-primary-light' : 'text-primary'}`} />
             </div>
-          ) : (
-            <>
-            {filteredItems.map((item, index) => (
-              <Card 
-                key={item.id || (item as any)._id || `item-${index}`} 
-                className={`${
-                  resolvedTheme === 'dark' 
-                    ? 'bg-card hover:bg-gray-950' 
-                    : 'bg-card hover:bg-gray-50'
-                } rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border-0 overflow-hidden`}
-                onClick={() => handleDishClick(item.id || (item as any)._id || '', `/menu/${category}`)}
-              >
-                <CardContent className="p-0">
-                  {/* Top Section - Image with rounded corners */}
-                  <div className="w-full relative aspect-[21/9] overflow-hidden">
-                    <div className={`absolute inset-0 overflow-hidden rounded-t-2xl ${
-                      resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
-                    }`}>
-                      {item.imageUrl ? (
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
+            <h3 className={`text-lg font-bold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+              {category === "all" ? "No items available" : "No items found"}
+            </h3>
+            <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              {category === "all" ? "Check back soon for new items" : "Try selecting a different category"}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
+              {filteredItems.map((item, index) => (
+                <div
+                  key={item.id || (item as any)._id || `item-${index}`}
+                  className={`relative w-full max-w-[400px] mb-3 ${prefersReducedMotion ? '' : 'animate-card-entrance hover-lift'}`}
+                  style={{ animationDelay: prefersReducedMotion ? '0ms' : `${index * 60}ms` }}
+                  onClick={() => handleDishClick(item.id || (item as any)._id || '', `/menu/${category}`)}
+                >
+                  <Card
+                    className={`${resolvedTheme === 'dark'
+                      ? 'bg-[#251F35] border-white/15'
+                      : 'bg-white border-gray-100'
+                      } rounded-3xl shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] transition-all duration-300 cursor-pointer overflow-hidden`}
+                  >
+                    <CardContent className="p-0">
+                      <div className="relative h-[140px] overflow-hidden">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div className={`w-full h-full ${resolvedTheme === 'dark'
+                            ? 'bg-gradient-to-br from-gray-700 to-gray-800'
+                            : 'bg-gradient-to-br from-gray-100 to-gray-200'
+                            } flex items-center justify-center`}>
+                            <span className="text-5xl opacity-40">🍽️</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite({
+                              id: item.id || (item as any)._id || '',
+                              name: item.name,
+                              price: item.price,
+                              isVegetarian: item.isVegetarian,
+                              imageUrl: item.imageUrl,
+                              canteenId: selectedCanteen?.id || '',
+                              description: item.description
+                            });
                           }}
-                        />
-                      ) : (
-                        <div className={`w-full h-full ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-700' 
-                            : 'bg-gray-200'
-                        } flex items-center justify-center`}>
-                          <span className="text-5xl opacity-50">🍽️</span>
-                        </div>
-                      )}
-                      
-                      {/* Heart button - Top right corner */}
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite({
-                            id: item.id || (item as any)._id || '',
-                            name: item.name,
-                            price: item.price,
-                            isVegetarian: item.isVegetarian,
-                            imageUrl: item.imageUrl,
-                            canteenId: selectedCanteen?.id || '',
-                            description: item.description
-                          });
-                        }}
-                        className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all touch-manipulation z-10 backdrop-blur-sm ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-800/90 hover:bg-gray-700/90' 
-                            : 'bg-white/95 hover:bg-white'
-                        }`}
-                      >
-                        <Heart className={`w-4 h-4 transition-all ${
-                          isFavorite(item.id || (item as any)._id || '') 
-                            ? 'fill-red-500 text-red-500 scale-110' 
-                            : resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                        }`} />
-                      </button>
-                      
-                      {/* Rating badge - Bottom right on image */}
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className={`absolute bottom-3 right-3 px-2.5 py-1 rounded-lg flex items-center space-x-1 shadow-sm z-10 touch-manipulation ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-800 border border-gray-700' 
-                            : 'bg-white/95 border border-gray-200 backdrop-blur-sm'
-                        }`}
-                      >
-                        <span className={`text-sm font-bold ${
-                          resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
-                          4.8
-                        </span>
-                        <Star className={`w-3.5 h-3.5 ${
-                          resolvedTheme === 'dark' ? 'text-yellow-400' : 'text-yellow-500'
-                        } fill-current`} />
+                          className={`absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 touch-manipulation z-10 hover:scale-110 ${resolvedTheme === 'dark' ? 'bg-gray-900/80 backdrop-blur-sm' : 'bg-white/90 backdrop-blur-sm'
+                            }`}
+                        >
+                          <Heart className={`w-4.5 h-4.5 transition-all ${isFavorite(item.id || (item as any)._id || '')
+                            ? 'fill-red-500 text-red-500'
+                            : resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                            }`} />
+                        </button>
                       </div>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom Section - Content */}
-                  <div className={`${
-                    resolvedTheme === 'dark' ? 'bg-card' : 'bg-card'
-                  } relative`} style={{ 
-                    marginTop: '-12px', 
-                    borderRadius: '0 0 0.75rem 0.75rem',
-                    borderTopLeftRadius: '0',
-                    borderTopRightRadius: '0.5rem'
-                  }}>
-                    <div className="px-3 pt-3 pb-3">
-                      {/* Restaurant Name */}
-                      <h3 className={`font-bold text-lg mb-3 ${
-                        resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                      }`}>
-                        {item.name}
-                      </h3>
-                      
-                      {/* Quantity Selector and Add to Cart */}
-                      <div className="flex items-center justify-between">
-                        <div className={`text-lg font-bold ${
-                          resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                        }`}>
-                          ₹{item.price}
+                      <div className="px-4 pt-3.5 pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className={`text-[15px] font-bold leading-tight line-clamp-2 ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {item.name}
+                          </h3>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className={`w-5 h-5 rounded-md flex items-center justify-center ${item.isVegetarian
+                              ? 'bg-green-500/20 border border-green-500/40'
+                              : 'bg-red-500/20 border border-red-500/40'
+                              }`}>
+                              <div className={`w-2.5 h-2.5 rounded-sm ${item.isVegetarian ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            </div>
+                            <span className={`text-sm font-bold ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>4.8</span>
+                            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                          </div>
                         </div>
-                        
-                        {/* Right: Add button */}
-                        <div className="ml-3">
+                        <div className={`border-t border-dashed my-2.5 ${resolvedTheme === 'dark' ? 'border-gray-700/60' : 'border-gray-200'}`}></div>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${resolvedTheme === 'dark' ? 'bg-orange-500/15' : 'bg-orange-100'}`}>
+                            <span className="text-xs">🔥</span>
+                          </div>
+                          <span className={`text-xs font-medium ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {item.calories ? `${item.calories} kcal` : '0 kcal'}
+                          </span>
+                        </div>
+                      </div>
                       {getCartQuantity(item.id || (item as any)._id || '') > 0 ? (
-                        <div className={`flex items-center rounded-full px-1 py-1 ${
-                          resolvedTheme === 'dark' 
-                            ? 'bg-gray-700' 
-                            : 'bg-gray-200'
-                        }`}>
+                        <div
+                          className="absolute bottom-0 right-0 w-28 h-11 flex items-center justify-between px-2 bg-primary transition-all duration-300"
+                          style={{ borderTopLeftRadius: '24px', borderBottomRightRadius: '24px' }}
+                        >
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               decreaseQuantity(item.id || (item as any)._id || '');
                             }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                              resolvedTheme === 'dark' 
-                                ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                            }`}
+                            className="w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30"
                           >
-                            <Minus className="w-4 h-4" />
+                            <Minus className="w-4 h-4 text-white" />
                           </button>
-                          <span className={`text-base font-bold min-w-[32px] text-center px-2 ${
-                              resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                            }`}>
+                          <span className="text-sm font-bold text-white min-w-[32px] text-center">
                             {String(getCartQuantity(item.id || (item as any)._id || '')).padStart(2, '0')}
                           </span>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!item.available || item.stock === 0) return;
                               handleAddToCart(item);
                             }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                              resolvedTheme === 'dark' 
-                                ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                                : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                            }`}
+                            disabled={!item.available || item.stock === 0}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-white/20 hover:bg-white/30 ${!item.available || item.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4 text-white" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={(e) => {
-                            if (!item.available || item.stock === 0) return;
                             e.stopPropagation();
+                            if (!item.available || item.stock === 0) return;
                             handleAddToCart(item);
                           }}
-                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 shadow-sm ${
-                            resolvedTheme === 'dark' 
-                              ? 'bg-gray-700 hover:bg-gray-600 text-green-400' 
-                              : 'bg-gray-200 hover:bg-gray-300 text-green-600'
-                          } ${
-                            !item.available || item.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
                           disabled={!item.available || item.stock === 0}
+                          className={`absolute bottom-0 right-0 w-11 h-11 flex items-center justify-center transition-all duration-200 touch-manipulation active:scale-95 bg-primary hover:shadow-lg ${!item.available || item.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          style={{ borderTopLeftRadius: '50%', borderBottomRightRadius: '24px' }}
                         >
-                          <Plus className="w-5 h-5" />
+                          <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
                         </button>
                       )}
-                        </div>
-                      </div>
+                    </CardContent>
+                  </Card>
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute bottom-[90px] right-[-0px] z-20"
+                  >
+                    <div
+                      className={`rounded-l-full w-36 h-4 flex items-center justify-center gap-2  ${resolvedTheme === 'dark'
+                        ? 'bg-[#251F35]'
+                        : 'bg-white'
+                        }`}
+                    >
+                      <svg className={`w-3 h-3 ${resolvedTheme === 'dark' ? 'text-primary-light' : 'text-primary'
+                        }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                        <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
+                      </svg>
+                      <span className={`text-[10px] font-semibold whitespace-nowrap ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                        }`}>
+                        {item.cookingTime ? `${item.cookingTime} mins` : '0 mins'}
+                      </span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-            
-            {/* Infinite scroll trigger */}
+                  <div className="absolute bottom-[75px] right-[130px] z-20">
+                    <svg width="28" height="28" viewBox="0 0 90 90" className="rotate-[160deg]">
+                      <path
+                        d="M20,70 Q100,10 240,70"
+                        stroke={resolvedTheme === "dark" ? "#251F35" : "#ffffff"}
+                        strokeWidth="30"
+                        strokeLinecap="round"
+                        fill="none"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              ))}
+            </div>
             {hasNextPage && (
-              <div ref={observerTarget} className="flex justify-center py-4">
+              <div ref={observerTarget} className="flex justify-center py-6">
                 {isFetchingNextPage ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    <span className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>Loading more...</span>
+                  </div>
                 ) : (
-                  <div className="h-4" /> // Spacer for intersection observer
+                  <div className="h-4" />
                 )}
               </div>
             )}
-            
-            {/* Loading more indicator */}
-            {isFetchingNextPage && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </div>
-            )}
-            </>
-          )}
-        </div>
-
+          </>
+        )}
       </div>
-      
-      {/* Bottom spacing */}
-      <div className="pb-[calc(1rem+env(safe-area-inset-bottom))]"></div>
-    </>
+      <div className="pb-[calc(6rem+env(safe-area-inset-bottom))]"></div>
+    </div>
   );
 }

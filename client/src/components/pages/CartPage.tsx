@@ -25,6 +25,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useReducedMotion } from "@/utils/dropdownAnimations";
 import { getUserFromStorage } from "@/utils/userStorage";
 import { apiRequest } from "@/lib/queryClient";
+import { updateStatusBarColor } from "@/utils/statusBar";
 
 export default function CartPage() {
   const [, setLocation] = useLocation();
@@ -33,22 +34,31 @@ export default function CartPage() {
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
-  
+
+  // Update status bar to match header color
+  useEffect(() => {
+    if (resolvedTheme === 'dark') {
+      updateStatusBarColor('hsl(270, 40%, 8%)'); // Exact dark mode background
+    } else {
+      updateStatusBarColor('hsl(280, 30%, 98%)'); // Exact light mode background
+    }
+  }, [resolvedTheme]);
+
   // State for stock validation dialog
   const [showStockDialog, setShowStockDialog] = React.useState(false);
   const [checkoutValidationResult, setCheckoutValidationResult] = React.useState<typeof validationResult | null>(null);
   const [isValidatingForCheckout, setIsValidatingForCheckout] = React.useState(false);
-  
+
   // State for showing all cart items
   const [showAllItems, setShowAllItems] = React.useState(false);
-  
+
   // Initialize stock validation
   const { validationResult, isLoading: isStockLoading, refetch: refetchStock } = useStockValidation(cart);
-  
+
   // Get canteen ID for WebSocket connection
   const cartCanteenId = getCartCanteenId();
   const currentCanteenId = selectedCanteen?.id;
-  
+
   // Debounce refetch to prevent multiple rapid calls
   const debouncedRefetchStock = React.useRef<NodeJS.Timeout | null>(null);
   const handleRefetchStock = React.useCallback(() => {
@@ -88,7 +98,7 @@ export default function CartPage() {
       console.error("❌ Cart WebSocket error:", error);
     }
   });
-  
+
   // Validate cart canteen on mount and when canteen changes
   useEffect(() => {
     if (currentCanteenId && cart.length > 0) {
@@ -103,22 +113,22 @@ export default function CartPage() {
 
   // Debounce quantity updates to prevent rapid successive calls
   const quantityUpdateTimeoutRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
-  
+
   const handleUpdateQuantity = React.useCallback((itemId: string | number, newQuantity: number) => {
     const id = String(itemId);
-    
+
     // Clear existing timeout for this item
     const existingTimeout = quantityUpdateTimeoutRef.current.get(id);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
-    
+
     // Set new timeout
     const timeout = setTimeout(() => {
       updateQuantity(id, newQuantity);
       quantityUpdateTimeoutRef.current.delete(id);
     }, 200); // Debounce by 200ms
-    
+
     quantityUpdateTimeoutRef.current.set(id, timeout);
   }, [updateQuantity]);
 
@@ -138,14 +148,14 @@ export default function CartPage() {
     if (cart.length === 0) {
       return;
     }
-    
+
     // Check canteen validation before proceeding
     if (currentCanteenId && !validateCartCanteen(currentCanteenId)) {
       // Show alert to user
       alert('Your cart contains items from a different canteen. Please clear your cart or switch back to the original canteen.');
       return;
     }
-    
+
     // Validate stock before proceeding to checkout
     setIsValidatingForCheckout(true);
     try {
@@ -154,7 +164,7 @@ export default function CartPage() {
       if (itemIds.length > 0) {
         const { apiRequest } = await import('@/lib/queryClient');
         const stockData = await apiRequest(`/api/stock/status?${itemIds.map(id => `itemIds=${id}`).join('&')}`);
-        
+
         // Validate stock against cart items
         const errors: Array<{
           itemId: string;
@@ -163,10 +173,10 @@ export default function CartPage() {
           available: number;
           message: string;
         }> = [];
-        
+
         cart.forEach(cartItem => {
           const stockItem = stockData.find((item: any) => item.id === cartItem.id);
-          
+
           if (!stockItem) {
             errors.push({
               itemId: cartItem.id,
@@ -193,7 +203,7 @@ export default function CartPage() {
             });
           }
         });
-        
+
         if (errors.length > 0) {
           // Stock validation failed - show dialog
           setCheckoutValidationResult({
@@ -206,12 +216,12 @@ export default function CartPage() {
           return;
         }
       }
-      
+
       // Stock is valid, now create checkout session and reserve stock
       try {
         const userData = getUserFromStorage();
         const canteenId = cartCanteenId || currentCanteenId;
-        
+
         // Create checkout session
         const sessionResponse = await apiRequest('/api/checkout-sessions/create', {
           method: 'POST',
@@ -220,39 +230,39 @@ export default function CartPage() {
             canteenId: canteenId
           })
         });
-        
+
         if (!sessionResponse.success || !sessionResponse.sessionId) {
           throw new Error('Failed to create checkout session');
         }
-        
+
         const sessionId = sessionResponse.sessionId;
         localStorage.setItem('currentCheckoutSessionId', sessionId);
-        
+
         // Reserve stock for this checkout session
         const cartItems = cart.map(item => ({
           id: item.id,
           quantity: item.quantity,
           name: item.name
         }));
-        
+
         await apiRequest(`/api/checkout-sessions/${sessionId}/reserve-stock`, {
           method: 'POST',
           body: JSON.stringify({ cartItems })
         });
-        
+
         console.log('✅ Stock reserved for checkout session:', sessionId);
-        
+
         // Stock reserved successfully, proceed to checkout
         setIsValidatingForCheckout(false);
         setLocation("/checkout");
       } catch (error: any) {
         console.error('Error creating checkout session or reserving stock:', error);
         setIsValidatingForCheckout(false);
-        
+
         // Show error to user
         const errorMessage = error.message || 'Failed to proceed to checkout. Please try again.';
         alert(errorMessage);
-        
+
         // Show error dialog
         setCheckoutValidationResult({
           isValid: false,
@@ -289,7 +299,7 @@ export default function CartPage() {
   const handleRemoveItemFromValidation = (itemId: string) => {
     console.log('🗑️ CartPage: Removing item with ID:', itemId);
     removeFromCart(itemId); // Pass string directly, don't convert to int
-    };
+  };
 
   const handleRetryStockCheck = () => {
     // Trigger a refetch of the stock data
@@ -299,399 +309,373 @@ export default function CartPage() {
   return (
     <>
       <div
-        className={`w-full h-auto min-h-fit flex flex-col ${
-        resolvedTheme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-background'
-      }`}
+        className={`w-full h-auto min-h-fit flex flex-col bg-background`}
       >
-      {/* Header */}
-      <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl shadow-xl flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => {
-                // Dispatch custom event to navigate back using history
-                window.dispatchEvent(new CustomEvent('appNavigateBack', {}));
-                setLocation("/app");
-              }}
-              className="text-white hover:bg-white/20"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-white">My Cart</h1>
-              <p className="text-white/80 text-sm">
-                {cart.length > 0 ? `${getTotalItems()} items` : "Your cart is empty"}
-              </p>
-            </div>
-          </div>
-          {cart.length > 0 && (
-            <Badge variant="secondary" className="bg-white/20 text-white">
-              ₹{getTotalPrice()}
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Scrollable Content Area */}
-      <div 
-        className="flex flex-col px-4 space-y-4 mt-4"
-        style={{
-          paddingBottom: cart.length > 0 
-            ? 'calc(100px + env(safe-area-inset-bottom, 0px))' 
-            : 'calc(40px + env(safe-area-inset-bottom, 0px))'
-        }}
-      >
-        {/* Canteen Mismatch Warning */}
-        {currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId) && (
-          <Card className="border-destructive bg-destructive/10">
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-destructive/20">
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-destructive">Canteen Mismatch</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Your cart contains items from a different canteen. Please clear your cart or switch back to the original canteen.
-                  </p>
-                </div>
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={() => {
-                    clearCart();
-                  }}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                >
-                  Clear Cart
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Stock Validation Warning */}
-        <StockValidationWarning
-          validationResult={validationResult}
-          onRetry={handleRetryStockCheck}
-          onRemoveItem={handleRemoveItemFromValidation}
-          isLoading={isStockLoading}
-        />
-
-        {cart.length === 0 ? (
-          // Empty Cart State
-          <div className="p-12 text-center">
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
-              resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-100'
-            }`}>
-              <ShoppingCart className={`w-8 h-8 ${
-                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-              }`} />
-            </div>
-            <h3 className={`text-lg font-semibold mb-2 ${
-              resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-            }`}>
-              Your cart is empty
-            </h3>
-            <p className={`mb-4 ${
-              resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              Your cart is empty. Add some items to get started!
-            </p>
-            <Button 
-              onClick={() => {
-                // Navigate to menu view using the app's internal navigation system
-                // This ensures proper navigation when CartPage is rendered within AppPage
-                window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                  detail: { category: 'all' }
-                }));
-              }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            >
-              Browse Menu
-            </Button>
-          </div>
-        ) : (
-          <>
-            {/* Cart Items */}
-            <div className="space-y-4">
-              <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
-              {(showAllItems ? cart : cart.slice(0, 5)).map((item, index) => (
-                <Card 
-                  key={item.id}
-                  className={`dropdown-item ${
-                    prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                  } rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-0 overflow-hidden ${
-                    resolvedTheme === 'dark' 
-                      ? 'bg-card hover:bg-gray-950' 
-                      : 'bg-white hover:bg-gray-50'
+        {/* Header */}
+        <div className={`px-4 pt-12 pb-6 rounded-b-2xl flex-shrink-0 ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'
+          }`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  // Dispatch custom event to navigate back using history
+                  window.dispatchEvent(new CustomEvent('appNavigateBack', {}));
+                  setLocation("/app");
+                }}
+                className={`${resolvedTheme === 'dark' ? 'text-gray-100 hover:bg-gray-800' : 'text-gray-900 hover:bg-gray-100'
                   }`}
-                  style={{
-                    animationDelay: prefersReducedMotion ? '0ms' : `${index * 100}ms`
-                  }}
-                >
-                  <CardContent className="p-0">
-                    {/* Compact Section - Image, info, and quantity modifier with integrated delete */}
-                    <div className="flex items-center p-4 gap-4">
-                      {/* Left: Product image */}
-                      <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                        <div className={`w-full h-full flex items-center justify-center ${
-                          resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-200'
-                        }`}>
-                          <span className="text-lg">🍽️</span>
-                        </div>
-                      </div>
-                      
-                      {/* Center: Veg indicator, name, and price */}
-                      <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                        <div className="flex items-center gap-2">
-                          {/* Vegetarian indicator */}
-                          <div className={`w-3 h-3 rounded-sm flex items-center justify-center flex-shrink-0 ${
-                            item.isVegetarian ? 'bg-green-500' : 'bg-red-500'
-                          }`}>
-                            <div className="w-1 h-1 bg-white rounded-full"></div>
-                          </div>
-                          
-                          {/* Item name */}
-                          <h3 className={`font-bold text-sm truncate leading-tight ${
-                            resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                          }`}>
-                            {item.name}
-                          </h3>
-                        </div>
-                        
-                        {/* Price */}
-                        <div className={`text-sm font-medium ml-5 ${
-                          resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
-                          ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
-                        </div>
-                      </div>
-                      
-                      {/* Right: Quantity selector with integrated delete button */}
-                      <div className="flex items-center flex-shrink-0">
-                        {/* Quantity selector */}
-                        <div className={`rounded-lg flex items-center gap-2 px-2.5 py-1.5 min-w-[70px] justify-center ${
-                          resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-200'
-                        }`}>
-                          {item.quantity === 1 ? (
-                            /* Delete button when quantity is 1 */
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveItem(item.id);
-                              }}
-                              className="text-destructive hover:opacity-70 min-w-[24px] flex items-center justify-center transition-colors"
-                              title="Remove item"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            /* Minus button when quantity is 2 or more */
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUpdateQuantity(item.id, item.quantity - 1);
-                              }}
-                              className={`font-bold text-sm hover:opacity-70 min-w-[24px] flex items-center justify-center ${
-                                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                              }`}
-                            >
-                              -
-                            </button>
-                          )}
-                          <span className={`font-bold text-sm min-w-[24px] text-center ${
-                            resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                          }`}>
-                            {item.quantity}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleUpdateQuantity(item.id, item.quantity + 1);
-                            }}
-                            className={`font-bold text-sm hover:opacity-70 min-w-[24px] flex items-center justify-center ${
-                              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                            }`}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <div>
+                <h1 className={`text-xl font-bold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                  }`}>My Cart</h1>
+                <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                  {cart.length > 0 ? `${getTotalItems()} items` : "Your cart is empty"}
+                </p>
               </div>
             </div>
-
-            {/* Show More/Show Less Button */}
-            {cart.length > 5 && (
-              <div className="flex justify-center pb-4 mb-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAllItems(!showAllItems)}
-                  className={`w-full ${
-                    resolvedTheme === 'dark' 
-                      ? 'border-gray-700 hover:bg-gray-800 hover:text-gray-100' 
-                      : 'border-gray-300 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  {showAllItems ? 'Show Less' : `Show More (${cart.length - 5} more items)`}
-                </Button>
-              </div>
+            {cart.length > 0 && (
+              <Badge variant="secondary" className={`${resolvedTheme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'
+                }`}>
+                ₹{getTotalPrice()}
+              </Badge>
             )}
-          </>
-        )}
-      </div>
-      
-      {/* Fixed Checkout Summary - Above Bottom Navigation */}
-      {cart.length > 0 && (
-        <div 
-          className={`fixed left-0 right-0 z-[9998] ${
-            resolvedTheme === 'dark' 
-              ? 'bg-[#1a1a1a] border-t border-gray-800' 
-              : 'bg-white border-t border-gray-200'
-          }`}
+          </div>
+        </div>
+
+        {/* Scrollable Content Area */}
+        <div
+          className="flex flex-col px-4 space-y-4 mt-4"
           style={{
-            bottom: 'env(safe-area-inset-bottom, 0px)',
-            paddingTop: '16px',
-            paddingBottom: '16px',
-            paddingLeft: '16px',
-            paddingRight: '16px',
-            boxShadow: resolvedTheme === 'dark' 
-              ? '0 -4px 6px -1px rgba(0, 0, 0, 0.3)' 
-              : '0 -4px 6px -1px rgba(0, 0, 0, 0.1)'
+            paddingBottom: cart.length > 0
+              ? 'calc(100px + env(safe-area-inset-bottom, 0px))'
+              : 'calc(40px + env(safe-area-inset-bottom, 0px))'
           }}
         >
-          <div className="flex items-center justify-between gap-4 max-w-full">
-            {/* Left: Total Text and Price */}
-            <div className="flex flex-col justify-center flex-shrink-0">
-              <span className={`text-xs leading-tight ${
-                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-              }`}>
-                Total shopping cart
-              </span>
-              <span className={`text-xl font-bold leading-tight mt-0.5 ${
-                resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-              }`}>
-                ₹{getTotalPrice()}
-              </span>
+          {/* Canteen Mismatch Warning */}
+          {currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId) && (
+            <Card className="border-destructive bg-destructive/10">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-destructive/20">
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-destructive">Canteen Mismatch</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Your cart contains items from a different canteen. Please clear your cart or switch back to the original canteen.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      clearCart();
+                    }}
+                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  >
+                    Clear Cart
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Stock Validation Warning */}
+          <StockValidationWarning
+            validationResult={validationResult}
+            onRetry={handleRetryStockCheck}
+            onRemoveItem={handleRemoveItemFromValidation}
+            isLoading={isStockLoading}
+          />
+
+          {cart.length === 0 ? (
+            // Empty Cart State
+            <div className="p-12 text-center">
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-100'
+                }`}>
+                <ShoppingCart className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  }`} />
+              </div>
+              <h3 className={`text-lg font-semibold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                }`}>
+                Your cart is empty
+              </h3>
+              <p className={`mb-4 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                Your cart is empty. Add some items to get started!
+              </p>
+              <Button
+                onClick={() => {
+                  // Navigate to menu view using the app's internal navigation system
+                  // This ensures proper navigation when CartPage is rendered within AppPage
+                  window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
+                    detail: { category: 'all' }
+                  }));
+                }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                Browse Menu
+              </Button>
             </div>
-            
-            {/* Right: Continue to Checkout Button */}
-            <Button
-              onClick={proceedToCheckout}
-              disabled={
-                isStockLoading || 
-                isValidatingForCheckout ||
-                !!(currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId))
-              }
-              className="flex-1 min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-4 rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-              size="lg"
-            >
-              {isStockLoading || isValidatingForCheckout ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isValidatingForCheckout ? 'Validating...' : 'Checking...'}
-                </>
-              ) : !validationResult.isValid ? (
-                "Stock Issues"
-              ) : (
-                "Continue to checkout"
+          ) : (
+            <>
+              {/* Cart Items */}
+              <div className="space-y-4">
+                <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
+                  {(showAllItems ? cart : cart.slice(0, 5)).map((item, index) => (
+                    <Card
+                      key={item.id}
+                      className={`dropdown-item ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
+                        } rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-0 overflow-hidden ${resolvedTheme === 'dark'
+                          ? 'bg-card hover:bg-gray-950'
+                          : 'bg-white hover:bg-gray-50'
+                        }`}
+                      style={{
+                        animationDelay: prefersReducedMotion ? '0ms' : `${index * 100}ms`
+                      }}
+                    >
+                      <CardContent className="p-0">
+                        {/* Compact Section - Image, info, and quantity modifier with integrated delete */}
+                        <div className="flex items-center p-4 gap-4">
+                          {/* Left: Product image */}
+                          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                            <div className={`w-full h-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-200'
+                              }`}>
+                              <span className="text-lg">🍽️</span>
+                            </div>
+                          </div>
+
+                          {/* Center: Veg indicator, name, and price */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+                            <div className="flex items-center gap-2">
+                              {/* Vegetarian indicator */}
+                              <div className={`w-3 h-3 rounded-sm flex items-center justify-center flex-shrink-0 ${item.isVegetarian ? 'bg-green-500' : 'bg-red-500'
+                                }`}>
+                                <div className="w-1 h-1 bg-white rounded-full"></div>
+                              </div>
+
+                              {/* Item name */}
+                              <h3 className={`font-bold text-sm truncate leading-tight ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                                }`}>
+                                {item.name}
+                              </h3>
+                            </div>
+
+                            {/* Price */}
+                            <div className={`text-sm font-medium ml-5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                              }`}>
+                              ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
+                            </div>
+                          </div>
+
+                          {/* Right: Quantity selector with integrated delete button */}
+                          <div className="flex items-center flex-shrink-0">
+                            {/* Quantity selector */}
+                            <div className={`rounded-lg flex items-center gap-2 px-2.5 py-1.5 min-w-[70px] justify-center ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-200'
+                              }`}>
+                              {item.quantity === 1 ? (
+                                /* Delete button when quantity is 1 */
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveItem(item.id);
+                                  }}
+                                  className="text-destructive hover:opacity-70 min-w-[24px] flex items-center justify-center transition-colors"
+                                  title="Remove item"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              ) : (
+                                /* Minus button when quantity is 2 or more */
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateQuantity(item.id, item.quantity - 1);
+                                  }}
+                                  className={`font-bold text-sm hover:opacity-70 min-w-[24px] flex items-center justify-center ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                    }`}
+                                >
+                                  -
+                                </button>
+                              )}
+                              <span className={`font-bold text-sm min-w-[24px] text-center ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                                }`}>
+                                {item.quantity}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateQuantity(item.id, item.quantity + 1);
+                                }}
+                                className={`font-bold text-sm hover:opacity-70 min-w-[24px] flex items-center justify-center ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                                  }`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              {/* Show More/Show Less Button */}
+              {cart.length > 5 && (
+                <div className="flex justify-center pb-4 mb-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAllItems(!showAllItems)}
+                    className={`w-full ${resolvedTheme === 'dark'
+                      ? 'border-gray-700 hover:bg-gray-800 hover:text-gray-100'
+                      : 'border-gray-300 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                  >
+                    {showAllItems ? 'Show Less' : `Show More (${cart.length - 5} more items)`}
+                  </Button>
+                </div>
               )}
-            </Button>
-          </div>
+            </>
+          )}
         </div>
-      )}
-      
+
+        {/* Fixed Checkout Summary - Above Bottom Navigation */}
+        {cart.length > 0 && (
+          <div
+            className={`fixed left-0 right-0 z-[9998] ${resolvedTheme === 'dark'
+              ? 'bg-[#1a1a1a] border-t border-gray-800'
+              : 'bg-white border-t border-gray-200'
+              }`}
+            style={{
+              bottom: 'env(safe-area-inset-bottom, 0px)',
+              paddingTop: '16px',
+              paddingBottom: '16px',
+              paddingLeft: '16px',
+              paddingRight: '16px',
+              boxShadow: resolvedTheme === 'dark'
+                ? '0 -4px 6px -1px rgba(0, 0, 0, 0.3)'
+                : '0 -4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <div className="flex items-center justify-between gap-4 max-w-full">
+              {/* Left: Total Text and Price */}
+              <div className="flex flex-col justify-center flex-shrink-0">
+                <span className={`text-xs leading-tight ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                  Total shopping cart
+                </span>
+                <span className={`text-xl font-bold leading-tight mt-0.5 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                  }`}>
+                  ₹{getTotalPrice()}
+                </span>
+              </div>
+
+              {/* Right: Continue to Checkout Button */}
+              <Button
+                onClick={proceedToCheckout}
+                disabled={
+                  isStockLoading ||
+                  isValidatingForCheckout ||
+                  !!(currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId))
+                }
+                className="flex-1 min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-4 rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                size="lg"
+              >
+                {isStockLoading || isValidatingForCheckout ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isValidatingForCheckout ? 'Validating...' : 'Checking...'}
+                  </>
+                ) : !validationResult.isValid ? (
+                  "Stock Issues"
+                ) : (
+                  "Continue to checkout"
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* Stock Validation Dialog */}
       <AlertDialog open={showStockDialog} onOpenChange={setShowStockDialog}>
-        <AlertDialogContent className={`max-w-md max-h-[80vh] overflow-y-auto ${
-          resolvedTheme === 'dark' 
-            ? 'bg-[#1a1a1a] border-gray-800' 
-            : 'bg-white border-gray-200'
-        }`}>
+        <AlertDialogContent className={`max-w-md max-h-[80vh] overflow-y-auto ${resolvedTheme === 'dark'
+          ? 'bg-[#1a1a1a] border-gray-800'
+          : 'bg-white border-gray-200'
+          }`}>
           <AlertDialogHeader>
             <div className="flex items-center space-x-3">
-              <div className={`w-10 h-10 ${
-                resolvedTheme === 'dark' 
-                  ? 'bg-red-900/50 border border-red-800/50' 
-                  : 'bg-red-100'
-              } rounded-full flex items-center justify-center`}>
-                <Package className={`w-5 h-5 ${
-                  resolvedTheme === 'dark' ? 'text-red-400' : 'text-red-600'
-                }`} />
+              <div className={`w-10 h-10 ${resolvedTheme === 'dark'
+                ? 'bg-red-900/50 border border-red-800/50'
+                : 'bg-red-100'
+                } rounded-full flex items-center justify-center`}>
+                <Package className={`w-5 h-5 ${resolvedTheme === 'dark' ? 'text-red-400' : 'text-red-600'
+                  }`} />
               </div>
-              <AlertDialogTitle className={`${
-                resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-              }`}>
+              <AlertDialogTitle className={`${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                }`}>
                 Stock Issues Detected
               </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className={`pt-2 ${
-              resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-            }`}>
+            <AlertDialogDescription className={`pt-2 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+              }`}>
               Some items in your cart are no longer available or have insufficient stock. Please review and update your cart.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           {checkoutValidationResult && !checkoutValidationResult.isValid && (
             <div className="space-y-3 py-4">
               {checkoutValidationResult.errors.map((error, index) => {
                 const isOutOfStock = error.available === 0;
                 const isInsufficient = error.available > 0 && error.available < error.requested;
-                
+
                 return (
                   <div
                     key={index}
-                    className={`p-3 rounded-lg border ${
-                      resolvedTheme === 'dark'
-                        ? isOutOfStock
-                          ? 'bg-red-950/30 border-red-800/50'
-                          : 'bg-orange-950/30 border-orange-800/50'
-                        : isOutOfStock
-                          ? 'bg-red-50 border-red-200'
-                          : 'bg-orange-50 border-orange-200'
-                    }`}
+                    className={`p-3 rounded-lg border ${resolvedTheme === 'dark'
+                      ? isOutOfStock
+                        ? 'bg-red-950/30 border-red-800/50'
+                        : 'bg-orange-950/30 border-orange-800/50'
+                      : isOutOfStock
+                        ? 'bg-red-50 border-red-200'
+                        : 'bg-orange-50 border-orange-200'
+                      }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-1">
-                          <div className={`w-2 h-2 rounded-full ${
-                            isOutOfStock ? 'bg-red-500' : 'bg-orange-500'
-                          }`}></div>
-                          <span className={`font-semibold ${
-                            resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                          }`}>
+                          <div className={`w-2 h-2 rounded-full ${isOutOfStock ? 'bg-red-500' : 'bg-orange-500'
+                            }`}></div>
+                          <span className={`font-semibold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                            }`}>
                             {error.itemName}
                           </span>
                           <Badge
                             variant={isOutOfStock ? "destructive" : "outline"}
-                            className={`text-xs ${
-                              resolvedTheme === 'dark'
-                                ? isOutOfStock
-                                  ? 'bg-red-900/50 border-red-800 text-red-300'
-                                  : 'border-orange-800/50 text-orange-400 bg-orange-950/30'
-                                : ''
-                            }`}
+                            className={`text-xs ${resolvedTheme === 'dark'
+                              ? isOutOfStock
+                                ? 'bg-red-900/50 border-red-800 text-red-300'
+                                : 'border-orange-800/50 text-orange-400 bg-orange-950/30'
+                              : ''
+                              }`}
                           >
                             {isOutOfStock ? 'Out of Stock' : `Only ${error.available} available`}
                           </Badge>
                         </div>
-                        <p className={`text-sm ml-4 ${
-                          resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                        }`}>
+                        <p className={`text-sm ml-4 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                          }`}>
                           {error.message}
                         </p>
                         {isInsufficient && (
-                          <p className={`text-xs mt-1 ml-4 ${
-                            resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                          }`}>
+                          <p className={`text-xs mt-1 ml-4 ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            }`}>
                             You requested: {error.requested} | Available: {error.available}
                           </p>
                         )}
@@ -715,15 +699,14 @@ export default function CartPage() {
                             });
                           }
                         }}
-                        className={`${
-                          resolvedTheme === 'dark'
-                            ? isOutOfStock
-                              ? 'text-red-400 hover:bg-red-900/30 hover:text-red-300'
-                              : 'text-orange-400 hover:bg-orange-900/30 hover:text-orange-300'
-                            : isOutOfStock
-                              ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
-                              : 'text-orange-600 hover:bg-orange-50 hover:text-orange-700'
-                        } transition-colors`}
+                        className={`${resolvedTheme === 'dark'
+                          ? isOutOfStock
+                            ? 'text-red-400 hover:bg-red-900/30 hover:text-red-300'
+                            : 'text-orange-400 hover:bg-orange-900/30 hover:text-orange-300'
+                          : isOutOfStock
+                            ? 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                            : 'text-orange-600 hover:bg-orange-50 hover:text-orange-700'
+                          } transition-colors`}
                         title="Remove item from cart"
                       >
                         <X className="h-4 w-4" />
@@ -734,11 +717,11 @@ export default function CartPage() {
               })}
             </div>
           )}
-          
+
           <AlertDialogFooter>
             <AlertDialogCancel className={
-              resolvedTheme === 'dark' 
-                ? 'border-gray-700 hover:bg-gray-800' 
+              resolvedTheme === 'dark'
+                ? 'border-gray-700 hover:bg-gray-800'
                 : 'border-gray-300 hover:bg-gray-100'
             }>
               Update Cart

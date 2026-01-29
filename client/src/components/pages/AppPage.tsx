@@ -7,6 +7,7 @@ import MenuListingPage from "@/components/menu/MenuListingPage";
 import ProfilePage from "@/components/profile/ProfilePage";
 import OrdersPage from "@/components/orders/OrdersPage";
 import CodingChallengesPage from "./CodingChallengesPage";
+import FloatingCart from "@/components/cart/FloatingCart";
 import { useNavigationHistory, type NavigationView } from "@/hooks/useNavigationHistory";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -23,12 +24,12 @@ function MenuWrapper({ category, children }: { category: string; children: React
   // Create a custom location hook that provides /menu/:category route
   const useCustomLocation = () => {
     const [location, setLocation] = useState(`/menu/${encodeURIComponent(category)}`);
-    
+
     // Update location when category changes
     useEffect(() => {
       setLocation(`/menu/${encodeURIComponent(category)}`);
     }, [category]);
-    
+
     // Intercept setLocation to update parent category state via custom event
     const customSetLocation = (newLocation: string) => {
       // If navigating to /home, dispatch event to switch to home view in AppPage
@@ -36,7 +37,7 @@ function MenuWrapper({ category, children }: { category: string; children: React
         window.dispatchEvent(new CustomEvent('appNavigateHome', {}));
         return; // Don't update location in nested router
       }
-      
+
       if (newLocation.startsWith("/menu/")) {
         const categoryFromUrl = newLocation.split("/menu/")[1];
         if (categoryFromUrl) {
@@ -48,10 +49,10 @@ function MenuWrapper({ category, children }: { category: string; children: React
       }
       setLocation(newLocation);
     };
-    
+
     return [location, customSetLocation] as const;
   };
-  
+
   return (
     <Router hook={useCustomLocation}>
       {children}
@@ -62,14 +63,15 @@ export default function AppPage() {
   const [currentView, setCurrentView] = useState<ViewType>("home");
   const [menuCategory, setMenuCategory] = useState<string>("all");
   const [menuSearchQuery, setMenuSearchQuery] = useState<string>("");
+  const [activateHomeSearch, setActivateHomeSearch] = useState<boolean>(false);
   const [, setLocation] = useLocation();
   const { navigateTo, navigateBack, getPreviousView, history, navigateToWithCurrent } = useNavigationHistory();
   const [showExitToast, setShowExitToast] = useState(false);
   const { user } = useAuth();
-  
+
   // Ref to track current view for event handlers (prevents closure issues)
   const currentViewRef = useRef<ViewType>(currentView);
-  
+
   // Redirect delivery persons to their portal (immediate check)
   useEffect(() => {
     if (user && user.role === 'delivery_person') {
@@ -79,7 +81,7 @@ export default function AppPage() {
       return;
     }
   }, [user, setLocation]);
-  
+
   // Also check on mount in case user is already loaded
   useEffect(() => {
     const checkUser = () => {
@@ -98,12 +100,12 @@ export default function AppPage() {
     };
     checkUser();
   }, [setLocation]);
-  
+
   // Update ref when currentView changes
   useEffect(() => {
     currentViewRef.current = currentView;
   }, [currentView]);
-  
+
   // Check if we're returning from a separate route (like Notifications, Help & Support, etc.) and need to restore Profile
   useEffect(() => {
     const currentPath = window.location.pathname;
@@ -127,24 +129,24 @@ export default function AppPage() {
     // Track this navigation in history (not a back navigation)
     navigateTo(view);
     setCurrentView(view);
-    
+
     // Keep URL at /app with proper state marking
     // Important: Mark state differently based on view for iOS/Android back handling
     if (view === "home") {
       // Mark as home view for back navigation handling
-      window.history.replaceState({ 
-        homeView: true, 
+      window.history.replaceState({
+        homeView: true,
         isHome: true,
-        timestamp: Date.now() 
+        timestamp: Date.now()
       }, "", "/app");
     } else {
       // For other views, use neutral state
-      window.history.replaceState({ 
+      window.history.replaceState({
         view: view,
-        timestamp: Date.now() 
+        timestamp: Date.now()
       }, "", "/app");
     }
-    
+
     // Scroll to top when switching views
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -161,7 +163,7 @@ export default function AppPage() {
         window.history.replaceState({}, "", "/app");
       }
     };
-    
+
     // Listen for back navigation - uses history to go to previous view
     const handleNavigateBack = () => {
       const previousView = navigateBack();
@@ -169,40 +171,40 @@ export default function AppPage() {
       window.history.replaceState({}, "", "/app");
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
-    
+
     // Listen for navigation to cart view
     const handleNavigateToCart = () => {
       navigateTo("cart");
       setCurrentView("cart");
       window.history.replaceState({}, "", "/app");
     };
-    
+
     // Listen for navigation to orders view
     const handleNavigateToOrders = () => {
       // Ensure we're not already on orders
       if (currentView === "orders") {
         return; // Already on orders, don't navigate
       }
-      
+
       // Use navigateToWithCurrent to ensure current view is in history before navigating to orders
       // This ensures proper back navigation: Profile -> Orders -> Back -> Profile -> Back -> Home
       navigateToWithCurrent("orders", currentView as NavigationView);
       setCurrentView("orders");
       window.history.replaceState({}, "", "/app");
     };
-    
+
     // Listen for navigation to favorites view
     const handleNavigateToFavorites = () => {
       // Ensure we're not already on favorites
       if (currentView === "favorites") {
         return;
       }
-      
+
       navigateToWithCurrent("favorites", currentView as NavigationView);
       setCurrentView("favorites");
       window.history.replaceState({}, "", "/app");
     };
-    
+
     // Listen for navigation to menu view from category clicks
     const handleNavigateToMenu = (e: CustomEvent) => {
       const category = e.detail?.category || "all";
@@ -216,7 +218,7 @@ export default function AppPage() {
       // Scroll to top when switching views
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
-    
+
     // Listen for ensuring Profile is in history (before navigating away)
     const handleEnsureProfileInHistory = () => {
       // Ensure Profile is in history before navigating to a separate route
@@ -225,19 +227,19 @@ export default function AppPage() {
         navigateTo("profile");
       }
     };
-    
+
     // Listen for navigation to profile view
     const handleNavigateToProfile = () => {
       // Check if we're coming back from a separate route (like Notifications)
       const fromNotifications = sessionStorage.getItem('navigationFrom') === 'profile';
-      
+
       if (fromNotifications) {
         // Coming back from Notifications - restore Profile view
         sessionStorage.removeItem('navigationFrom');
-        
+
         // Check if Profile is already in history
         const lastHistoryView = history.length > 0 ? history[history.length - 1].view : null;
-        
+
         if (lastHistoryView !== 'profile') {
           // Profile is not in history, add it
           navigateTo("profile");
@@ -253,7 +255,7 @@ export default function AppPage() {
         window.history.replaceState({}, "", "/app");
       }
     };
-    
+
     // Listen for navigation to challenges view
     const handleNavigateToChallenges = () => {
       navigateToWithCurrent("challenges", currentView as NavigationView);
@@ -261,14 +263,23 @@ export default function AppPage() {
       window.history.replaceState({}, "", "/app");
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
-    
+
     // Listen for navigation to home view (for direct navigation, not back)
     const handleNavigateHome = () => {
+      setActivateHomeSearch(false); // Reset search activation
       navigateTo("home");
       setCurrentView("home");
       window.history.replaceState({}, "", "/app");
     };
-    
+
+    // Listen for navigation to home with search activated
+    const handleNavigateHomeWithSearch = () => {
+      navigateTo("home");
+      setCurrentView("home");
+      setActivateHomeSearch(true); // Activate search on home
+      window.history.replaceState({}, "", "/app");
+    };
+
     window.addEventListener('appMenuCategoryChange' as any, handleCategoryChange);
     window.addEventListener('appNavigateToMenu' as any, handleNavigateToMenu);
     window.addEventListener('appNavigateBack' as any, handleNavigateBack);
@@ -279,7 +290,8 @@ export default function AppPage() {
     window.addEventListener('appNavigateToProfile' as any, handleNavigateToProfile);
     window.addEventListener('appNavigateToChallenges' as any, handleNavigateToChallenges);
     window.addEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
-    
+    window.addEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
+
     return () => {
       window.removeEventListener('appMenuCategoryChange' as any, handleCategoryChange);
       window.removeEventListener('appNavigateToMenu' as any, handleNavigateToMenu);
@@ -291,6 +303,7 @@ export default function AppPage() {
       window.removeEventListener('appNavigateToProfile' as any, handleNavigateToProfile);
       window.removeEventListener('appNavigateToChallenges' as any, handleNavigateToChallenges);
       window.removeEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
+      window.removeEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
     };
   }, [navigateTo, navigateBack, history, currentView]); // Include history and currentView for handleNavigateToOrders
 
@@ -306,9 +319,9 @@ export default function AppPage() {
           window.history.replaceState({}, "", "/app");
         }
       };
-      
+
       const urlCheckInterval = setInterval(checkUrl, 50); // Check more frequently
-      
+
       // Listen for popstate events (browser back button)
       const handlePopState = (event: PopStateEvent) => {
         // When back button is pressed, use navigation history
@@ -317,18 +330,18 @@ export default function AppPage() {
         setCurrentView(previousView);
         window.history.replaceState({}, "", "/app");
       };
-      
+
       // Also intercept history.back() calls
       const originalBack = window.history.back;
-      window.history.back = function() {
+      window.history.back = function () {
         const previousView = navigateBack();
         setCurrentView(previousView);
         window.history.replaceState({}, "", "/app");
         return;
       };
-      
+
       window.addEventListener('popstate', handlePopState);
-      
+
       return () => {
         clearInterval(urlCheckInterval);
         window.removeEventListener('popstate', handlePopState);
@@ -343,9 +356,9 @@ export default function AppPage() {
       // Detect device type
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const isAndroid = /Android/.test(navigator.userAgent);
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                    (window.navigator as any).standalone === true;
-      
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+
       // For iOS PWA: Block left-to-right swipe gesture on home page
       if (isIOS && isPWA) {
         // Clear any history entries from splash/OAuth/login pages
@@ -356,23 +369,23 @@ export default function AppPage() {
             window.history.pushState({ home: true, isHome: true, view: 'home', barrier: true }, '', '/app');
           }
         };
-        
+
         clearAuthHistory();
-        
+
         // Touch tracking for swipe prevention - more aggressive
         let touchStartX = 0;
         let touchStartY = 0;
         let isSwipeBlocked = false;
         let hasMoved = false;
         const EDGE_THRESHOLD = 30; // Increased edge zone to 30px
-        
+
         // Block left-to-right swipe gesture
         const handleTouchStart = (e: TouchEvent) => {
           if (e.touches.length > 0) {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             hasMoved = false;
-            
+
             // Block if touch starts from left edge (increased threshold)
             if (touchStartX < EDGE_THRESHOLD) {
               isSwipeBlocked = true;
@@ -382,20 +395,20 @@ export default function AppPage() {
             }
           }
         };
-        
+
         const handleTouchMove = (e: TouchEvent) => {
           if (e.touches.length === 0) return;
-          
+
           const currentX = e.touches[0].clientX;
           const currentY = e.touches[0].clientY;
           const deltaX = currentX - touchStartX;
           const deltaY = Math.abs(currentY - touchStartY);
-          
+
           // Track if any movement occurred
           if (Math.abs(deltaX) > 0 || deltaY > 0) {
             hasMoved = true;
           }
-          
+
           // More aggressive blocking: catch even tiny movements from edge
           if (touchStartX < EDGE_THRESHOLD) {
             // Block ANY rightward movement from edge, even tiny ones
@@ -406,7 +419,7 @@ export default function AppPage() {
               isSwipeBlocked = true;
               return;
             }
-            
+
             // Also block if movement is primarily horizontal (even small)
             if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 3) {
               e.preventDefault();
@@ -416,7 +429,7 @@ export default function AppPage() {
               return;
             }
           }
-          
+
           // Also check if current position is in edge zone and moving right
           if (currentX < EDGE_THRESHOLD && deltaX > 0) {
             e.preventDefault();
@@ -425,7 +438,7 @@ export default function AppPage() {
             isSwipeBlocked = true;
           }
         };
-        
+
         const handleTouchEnd = (e: TouchEvent) => {
           // If we blocked a swipe, prevent any default behavior
           if (isSwipeBlocked && hasMoved) {
@@ -435,21 +448,21 @@ export default function AppPage() {
           isSwipeBlocked = false;
           hasMoved = false;
         };
-        
+
         const handleTouchCancel = () => {
           isSwipeBlocked = false;
           hasMoved = false;
         };
-        
+
         // Handle back navigation - immediately push forward to re-render home
         const handlePopState = () => {
           const latestView = currentViewRef.current;
           const currentPath = window.location.pathname;
-          
+
           // Block navigation to splash, OAuth, login, onboarding pages
           const blockedPaths = ['/', '/oauth-callback', '/login', '/onboarding', '/profile-setup'];
           const isBlockedPath = blockedPaths.includes(currentPath);
-          
+
           // If we're on home view OR trying to navigate to a blocked path, restore home
           if (latestView === 'home' || isBlockedPath) {
             window.history.replaceState({ home: true, isHome: true, view: 'home' }, '', '/app');
@@ -457,23 +470,23 @@ export default function AppPage() {
             setCurrentView('home');
           }
         };
-        
+
         // Add touch event listeners to block swipe gesture
         // Use non-passive for all to ensure we can preventDefault
         document.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
         document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
         document.addEventListener('touchend', handleTouchEnd, { capture: true, passive: false });
         document.addEventListener('touchcancel', handleTouchCancel, { capture: true, passive: false });
-        
+
         // Also add to window for maximum coverage
         window.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
         window.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
         window.addEventListener('touchend', handleTouchEnd, { capture: true, passive: false });
         window.addEventListener('touchcancel', handleTouchCancel, { capture: true, passive: false });
-        
+
         // Add popstate listener for fallback
         window.addEventListener('popstate', handlePopState, { capture: true, passive: true });
-        
+
         return () => {
           document.removeEventListener('touchstart', handleTouchStart, { capture: true });
           document.removeEventListener('touchmove', handleTouchMove, { capture: true });
@@ -486,25 +499,25 @@ export default function AppPage() {
           window.removeEventListener('popstate', handlePopState, { capture: true });
         };
       }
-      
+
       // For Android PWA: Close/minimize app when back button is pressed on home view
       if (isAndroid && isPWA) {
         // Clear history stack and set up for app exit on back press
         // Replace all history with single root entry
-        window.history.replaceState({ 
-          homeView: true, 
+        window.history.replaceState({
+          homeView: true,
           isRootEntry: true,
           allowExit: true,
-          timestamp: Date.now() 
+          timestamp: Date.now()
         }, '', '/app');
-        
+
         // Track back press count for double-tap to exit pattern
         let backPressCount = 0;
         let backPressTimer: NodeJS.Timeout | null = null;
-        
+
         const handlePopState = (event: PopStateEvent) => {
           const currentState = window.history.state;
-          
+
           // If we're at root entry, allow the app to close
           if (currentState?.isRootEntry || currentState?.allowExit) {
             // Don't prevent default - let Android system close the app
@@ -512,32 +525,32 @@ export default function AppPage() {
             console.log('📱 Android PWA: Back pressed on home - allowing app to close');
             return;
           }
-          
+
           // If somehow not at root, navigate to root and mark as exit-ready
           event.preventDefault();
           event.stopPropagation();
-          
-          window.history.replaceState({ 
-            homeView: true, 
+
+          window.history.replaceState({
+            homeView: true,
             isRootEntry: true,
             allowExit: true,
-            timestamp: Date.now() 
+            timestamp: Date.now()
           }, '', '/app');
         };
-        
+
         // Override history.back to handle double-tap to exit
         const originalBack = window.history.back;
-        window.history.back = function() {
+        window.history.back = function () {
           console.log('📱 Android PWA: Back button pressed on home view');
-          
+
           // Increment back press count
           backPressCount++;
-          
+
           // Clear existing timer
           if (backPressTimer) {
             clearTimeout(backPressTimer);
           }
-          
+
           // If double tap within 2 seconds, close app
           if (backPressCount >= 2) {
             console.log('📱 Android PWA: Double back press detected - closing app');
@@ -549,33 +562,33 @@ export default function AppPage() {
             backPressCount = 0;
             return;
           }
-          
+
           // Show toast message for single tap
           console.log('📱 Android PWA: Press back again to exit');
-          
+
           // Show visual toast notification
           setShowExitToast(true);
-          
+
           // Reset counter and hide toast after 2 seconds
           backPressTimer = setTimeout(() => {
             backPressCount = 0;
             setShowExitToast(false);
           }, 2000);
         };
-        
+
         // Override history.go
         const originalGo = window.history.go;
-        window.history.go = function(delta?: number) {
+        window.history.go = function (delta?: number) {
           if (delta && delta < 0) {
             // Treat as back button press
             return originalBack.call(window.history);
           }
           return originalGo.call(window.history, delta);
         };
-        
+
         // Add popstate listener
         window.addEventListener('popstate', handlePopState, { capture: true });
-        
+
         return () => {
           if (backPressTimer) {
             clearTimeout(backPressTimer);
@@ -597,17 +610,17 @@ export default function AppPage() {
         if (currentView === "orders") {
           event.preventDefault();
           event.stopPropagation();
-          
+
           // Use history-based back navigation
           const previousView = navigateBack();
           setCurrentView(previousView);
           window.history.replaceState({}, "", "/app");
         }
       };
-      
+
       // Also intercept history.back() calls
       const originalBack = window.history.back;
-      window.history.back = function() {
+      window.history.back = function () {
         if (currentView === "orders") {
           const previousView = navigateBack();
           setCurrentView(previousView);
@@ -616,10 +629,10 @@ export default function AppPage() {
         }
         return originalBack.call(window.history);
       };
-      
+
       // Use capture phase to handle event before other handlers
       window.addEventListener('popstate', handlePopState, { capture: true });
-      
+
       return () => {
         window.removeEventListener('popstate', handlePopState, { capture: true });
         window.history.back = originalBack;
@@ -636,17 +649,17 @@ export default function AppPage() {
         if (currentView === "challenges") {
           event.preventDefault();
           event.stopPropagation();
-          
+
           // Use history-based back navigation
           const previousView = navigateBack();
           setCurrentView(previousView);
           window.history.replaceState({}, "", "/app");
         }
       };
-      
+
       // Also intercept history.back() calls
       const originalBack = window.history.back;
-      window.history.back = function() {
+      window.history.back = function () {
         if (currentView === "challenges") {
           const previousView = navigateBack();
           setCurrentView(previousView);
@@ -655,10 +668,10 @@ export default function AppPage() {
         }
         return originalBack.call(window.history);
       };
-      
+
       // Use capture phase to handle event before other handlers
       window.addEventListener('popstate', handlePopState, { capture: true });
-      
+
       return () => {
         window.removeEventListener('popstate', handlePopState, { capture: true });
         window.history.back = originalBack;
@@ -673,14 +686,14 @@ export default function AppPage() {
       if (window.location.pathname !== "/app" && !window.location.pathname.startsWith("/dish/")) {
         window.history.replaceState({}, "", "/app");
       }
-      
+
       // Continuously ensure URL stays at /app (except for dish pages)
       const urlCheckInterval = setInterval(() => {
         if (window.location.pathname !== "/app" && !window.location.pathname.startsWith("/dish/")) {
           window.history.replaceState({}, "", "/app");
         }
       }, 100);
-      
+
       return () => {
         clearInterval(urlCheckInterval);
       };
@@ -688,12 +701,20 @@ export default function AppPage() {
   }, [currentView]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background overflow-y-auto overflow-x-hidden"
+      style={{
+        WebkitOverflowScrolling: 'touch'
+      }}
+    >
       {/* Conditionally render HomeScreen, CartPage, FavoritesPage, MenuListingPage, ProfilePage, or OrdersPage */}
       {currentView === "home" && (
-        <HomeScreen />
+        <HomeScreen
+          activateSearch={activateHomeSearch}
+          onSearchDeactivated={() => setActivateHomeSearch(false)}
+        />
       )}
-      
+
       {currentView === "cart" && (
         <div style={{ display: "block" }}>
           <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="text-center">Loading cart...</div></div>}>
@@ -730,6 +751,11 @@ export default function AppPage() {
         <div style={{ display: "block" }}>
           <CodingChallengesPage />
         </div>
+      )}
+
+      {/* Floating Cart - shown on home and menu views */}
+      {currentView === "menu" && (
+        <FloatingCart />
       )}
 
       {/* Exit app toast notification (Android) */}

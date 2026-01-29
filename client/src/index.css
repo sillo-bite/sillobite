@@ -16,6 +16,7 @@
   * {
     -webkit-tap-highlight-color: transparent;
   }
+
   button,
   [role="button"],
   a,
@@ -24,7 +25,7 @@
   select {
     touch-action: manipulation;
   }
-  
+
   /* Ensure safe area insets work */
   @supports (padding: max(0px)) {
     body {
@@ -33,11 +34,236 @@
   }
 }
 
+/* ========================================
+   PREMIUM UI ANIMATIONS & EFFECTS
+   ======================================== */
+
+/* Staggered fade-in animation for list items */
+@keyframes stagger-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Smooth scale animation for cards */
+@keyframes card-entrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+
+  60% {
+    transform: scale(1.02) translateY(-2px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Floating animation for decorative elements */
+@keyframes float-gentle {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-8px) rotate(2deg);
+  }
+}
+
+/* Glow pulse for premium elements */
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(114, 68, 145, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(114, 68, 145, 0.4);
+  }
+}
+
+/* Shimmer effect for loading states */
+@keyframes premium-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Gradient shift animation */
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Subtle bounce for interactive elements */
+@keyframes micro-bounce {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* Slide up with fade */
+@keyframes slide-up-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Premium utility classes */
+.animate-stagger-fade {
+  animation: stagger-fade-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+.animate-card-entrance {
+  animation: card-entrance 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+}
+
+.animate-float-gentle {
+  animation: float-gentle 6s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-premium-shimmer {
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%);
+  background-size: 200% 100%;
+  animation: premium-shimmer 2s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.animate-micro-bounce {
+  animation: micro-bounce 0.3s ease-in-out;
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+
+/* Glassmorphism utilities */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-effect-dark {
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Premium shadow utilities */
+.shadow-premium {
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 10px 15px -3px rgba(0, 0, 0, 0.08),
+    0 20px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+.shadow-premium-lg {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.08),
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 40px 50px -12px rgba(0, 0, 0, 0.08);
+}
+
+.shadow-premium-purple {
+  box-shadow:
+    0 4px 14px rgba(114, 68, 145, 0.15),
+    0 10px 30px rgba(114, 68, 145, 0.1);
+}
+
+/* Hover effects */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.hover-scale-subtle {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale-subtle:hover {
+  transform: scale(1.02);
+}
+
+/* Premium gradient backgrounds */
+.gradient-premium-light {
+  background: linear-gradient(135deg, #faf8fc 0%, #f5f0f9 50%, #f0e8f5 100%);
+}
+
+.gradient-premium-dark {
+  background: linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 50%, #1a0a2e 100%);
+}
+
+.gradient-purple-glow {
+  background: linear-gradient(135deg, rgba(114, 68, 145, 0.1) 0%, rgba(179, 126, 215, 0.05) 100%);
+}
+
+/* Section divider with gradient */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(114, 68, 145, 0.2) 50%, transparent 100%);
+}
+
 /* Custom animations for skeleton loading */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
@@ -50,11 +276,13 @@
     transform: translateY(-8px) scale(0.96);
     filter: blur(2px);
   }
+
   50% {
     opacity: 0.8;
     transform: translateY(-2px) scale(0.98);
     filter: blur(1px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -68,11 +296,13 @@
     transform: translateY(0) scale(1);
     filter: blur(0px);
   }
+
   50% {
     opacity: 0.3;
     transform: translateY(-4px) scale(0.98);
     filter: blur(1px);
   }
+
   100% {
     opacity: 0;
     transform: translateY(-8px) scale(0.96);
@@ -85,6 +315,7 @@
     opacity: 0;
     transform: translateY(-20px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -96,6 +327,7 @@
     opacity: 0;
     transform: scale(0.8);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -107,10 +339,12 @@
     opacity: 0;
     transform: translateY(-10px) scale(0.9);
   }
+
   50% {
     opacity: 0.8;
     transform: translateY(2px) scale(1.02);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -122,6 +356,7 @@
     opacity: 0;
     backdrop-filter: blur(0px);
   }
+
   100% {
     opacity: 1;
     backdrop-filter: blur(4px);
@@ -133,164 +368,217 @@
     opacity: 0;
     transform: translateY(6px) scale(0.98);
   }
+
   50% {
     opacity: 0.7;
     transform: translateY(2px) scale(0.99);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
 
-/* Digital Canteen Design System - Modern UI Inspired */
+/* ========================================
+   PREMIUM DESIGN SYSTEM - SILLOBYTE
+   Modern, Elegant, Premium Food App UI
+   ======================================== */
 
 @layer base {
   :root {
-    /* Core Brand Colors - Purple Theme */
-    --background: 283 55% 96%; /* Light purple background */
-    --foreground: 283 81% 16%; /* Very dark purple text */
-    
-    /* Primary Colors - Purple Theme */
-    --primary: 283 36% 42%; /* #724491 - Medium purple */
-    --primary-light: 283 52% 68%; /* #B37ED7 - Light purple */
-    --primary-dark: 282 44% 30%; /* #562A6E - Dark purple */
+    /* ===== PREMIUM LIGHT MODE COLOR PALETTE ===== */
+
+    /* Core Background - Warm cream with subtle purple tint */
+    --background: 280 30% 98%;
+    /* Soft off-white with warmth */
+    --foreground: 280 45% 15%;
+    /* Deep purple-black for text */
+
+    /* Primary Colors - Rich Purple Gradient */
+    --primary: 275 50% 45%;
+    /* Vibrant purple #7C4DBC */
+    --primary-light: 280 55% 65%;
+    /* Soft lavender #B88DD9 */
+    --primary-dark: 275 55% 32%;
+    /* Deep purple #5A2D8A */
     --primary-foreground: 0 0% 100%;
-    
-    /* Secondary Color - Purple Theme */
-    --secondary: 283 55% 74%; /* #C397E1 - Lighter purple */
-    --secondary-foreground: 283 81% 16%;
 
-    
-    /* UI Components */
-    --card: 0 0% 100%; /* #FFFFFF - Surface */
-    --card-foreground: 283 81% 16%; /* Very dark purple text */
-    
-    --popover: 0 0% 100%; /* #FFFFFF - Surface */
-    --popover-foreground: 283 81% 16%; /* Very dark purple text */
-    
-    --muted: 283 55% 90%; /* Light purple muted */
-    --muted-foreground: 282 44% 30%; /* Dark purple secondary text */
-    
-    --accent: 283 52% 68%; /* #B37ED7 - Light purple accent */
-    --accent-foreground: 283 81% 16%;
-    
-    /* Food App Specific */
-    --success: 120 93% 34%; /* Green for veg */
-    --success-foreground: 0 0% 98%;
-    
-    --warning: 38 92% 50%; /* Orange for offers */
-    --warning-foreground: 0 0% 98%;
-    
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    
+    /* Secondary - Warm Rose Accent */
+    --secondary: 340 45% 92%;
+    /* Soft rose tint */
+    --secondary-foreground: 280 45% 20%;
+
+    /* UI Components - Premium Surfaces */
+    --card: 0 0% 100%;
+    /* Pure white cards */
+    --card-foreground: 280 45% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 280 45% 15%;
+
+    /* Muted - Sophisticated grays with purple undertone */
+    --muted: 280 20% 95%;
+    /* Light lavender gray */
+    --muted-foreground: 280 15% 45%;
+    /* Medium gray with purple */
+
+    /* Accent - Warm gold for highlights */
+    --accent: 45 90% 55%;
+    /* Golden amber #F5B82E */
+    --accent-foreground: 280 45% 15%;
+
+    /* Semantic Colors */
+    --success: 155 70% 40%;
+    /* Teal green */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 95% 55%;
+    /* Warm amber */
+    --warning-foreground: 38 95% 15%;
+
+    --destructive: 0 75% 55%;
+    /* Soft red */
+    --destructive-foreground: 0 0% 100%;
+
     /* Form Elements */
-    --border: 283 55% 85%; /* Light purple border */
-    --input: 283 55% 90%;
-    --ring: 283 36% 42%; /* Match primary */
-    
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(283 55% 96%));
-    
-    /* Shadows */
-    --shadow-card: 0 2px 8px hsl(283 36% 42% / 0.08);
-    --shadow-button: 0 4px 12px hsl(var(--primary) / 0.3);
+    --border: 280 20% 90%;
+    /* Subtle purple-gray border */
+    --input: 280 15% 96%;
+    --ring: 275 50% 45%;
 
-    --radius: 0.5rem;
+    /* Premium Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(275 50% 45%), hsl(280 55% 65%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(280 30% 98%));
+    --gradient-hero: linear-gradient(135deg, hsl(275 50% 45%) 0%, hsl(280 55% 65%) 50%, hsl(45 90% 55%) 100%);
 
-    /* Purple theme brand palette */
-    --text-primary: 283 81% 16%; /* #31084A */
-    --text-secondary: 282 44% 30%; /* #562A6E */
-    --surface: 0 0% 100%; /* #FFFFFF */
-    --gradient-start: 283 36% 42%; /* #724491 */
-    --gradient-end: 283 52% 68%; /* #B37ED7 */
+    /* Premium Shadows */
+    --shadow-card: 0 4px 20px hsl(275 50% 45% / 0.06), 0 1px 3px hsl(275 50% 45% / 0.04);
+    --shadow-button: 0 4px 14px hsl(275 50% 45% / 0.25);
+    --shadow-elevated: 0 12px 40px hsl(275 50% 45% / 0.12), 0 4px 12px hsl(275 50% 45% / 0.08);
 
-    --sidebar-background: 283 55% 96%;
+    --radius: 0.75rem;
 
-    --sidebar-foreground: 283 81% 16%;
+    /* Brand Palette */
+    --text-primary: 280 45% 15%;
+    --text-secondary: 280 15% 45%;
+    --surface: 0 0% 100%;
+    --gradient-start: 275 50% 45%;
+    --gradient-end: 280 55% 65%;
 
-    --sidebar-primary: 283 36% 42%;
+    /* Sidebar */
+    --sidebar-background: 280 30% 98%;
+    --sidebar-foreground: 280 45% 15%;
+    --sidebar-primary: 275 50% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 280 20% 95%;
+    --sidebar-accent-foreground: 280 45% 15%;
+    --sidebar-border: 280 20% 90%;
+    --sidebar-ring: 275 50% 45%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Chart Colors - Harmonious palette */
+    --chart-1: 275 50% 45%;
+    /* Primary purple */
+    --chart-2: 280 55% 65%;
+    /* Light purple */
+    --chart-3: 45 90% 55%;
+    /* Golden accent */
+    --chart-4: 155 70% 40%;
+    /* Teal */
+    --chart-5: 340 45% 60%;
+    /* Rose */
+  }
 
-    --sidebar-accent: 283 55% 90%;
+  /* Barcode Scanner Styles */
+  .scanner-active {
+    visibility: hidden;
+  }
 
-    --sidebar-accent-foreground: 283 81% 16%;
+  .scanner-active .cameraView {
+    visibility: visible;
+  }
 
-    --sidebar-border: 283 55% 85%;
-
-    --sidebar-ring: 283 36% 42%;
-    
-    /* Chart colors - Purple theme palette */
-    --chart-1: 283 36% 42%; /* #724491 - Medium purple */
-    --chart-2: 283 52% 68%; /* #B37ED7 - Light purple */
-    --chart-3: 282 44% 30%; /* #562A6E - Dark purple */
-    --chart-4: 283 55% 74%; /* #C397E1 - Lighter purple */
-    --chart-5: 283 81% 16%; /* #31084A - Very dark purple */
-}
-
-/* Barcode Scanner Styles */
-.scanner-active {
-  visibility: hidden;
-}
-
-.scanner-active .cameraView {
-  visibility: visible;
-}
-
+  /* ===== PREMIUM DARK MODE COLOR PALETTE ===== */
   .dark {
-    --background: 283 81% 10%; /* Very dark purple base */
-    --foreground: 283 55% 90%; /* Light purple text */
+    /* Core Background - Deep rich purple-black */
+    --background: 270 40% 8%;
+    /* Rich dark purple #0F0A18 */
+    --foreground: 280 20% 92%;
+    /* Soft white with warmth */
 
-    --card: 283 81% 16%; /* #31084A - Very dark purple cards */
-    --card-foreground: 283 55% 90%; /* Light purple text */
+    /* Cards - Elevated dark surfaces */
+    --card: 270 35% 12%;
+    /* Slightly lighter dark #1A1225 */
+    --card-foreground: 280 20% 92%;
 
-    --popover: 282 44% 30%; /* #562A6E - Dark purple popover */
-    --popover-foreground: 283 55% 90%; /* Light purple text */
+    --popover: 270 35% 14%;
+    --popover-foreground: 280 20% 92%;
 
-    --primary: 283 36% 42%; /* #724491 - Medium purple */
-    --primary-light: 283 52% 68%; /* #B37ED7 - Light purple */
-    --primary-dark: 282 44% 30%; /* #562A6E - Dark purple */
-    --primary-foreground: 0 0% 100%; /* White text */
+    /* Primary - Brighter purple for dark mode */
+    --primary: 275 60% 55%;
+    /* Vibrant purple #9B5DE5 */
+    --primary-light: 280 65% 70%;
+    /* Bright lavender #C490F0 */
+    --primary-dark: 275 50% 40%;
+    /* Medium purple #6B3FA0 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 282 44% 30%; /* #562A6E - Dark purple */
-    --secondary-foreground: 283 55% 90%; /* Light purple text */
+    /* Secondary - Muted purple surface */
+    --secondary: 270 30% 18%;
+    /* Dark purple surface */
+    --secondary-foreground: 280 20% 88%;
 
-    --muted: 282 44% 25%; /* Darker purple muted */
-    --muted-foreground: 283 52% 68%; /* Light purple secondary text */
+    /* Muted - Sophisticated dark grays */
+    --muted: 270 25% 16%;
+    /* Dark muted surface */
+    --muted-foreground: 280 15% 60%;
+    /* Medium gray text */
 
-    --accent: 283 52% 68%; /* #B37ED7 - Light purple accent */
-    --accent-foreground: 283 81% 16%; /* Very dark purple text */
+    /* Accent - Warm gold for dark mode */
+    --accent: 45 85% 60%;
+    /* Bright gold #F7C948 */
+    --accent-foreground: 270 40% 10%;
 
-    --success: 120 85% 30%; /* Desaturated green */
-    --success-foreground: 0 0% 100%; /* White text */
+    /* Semantic Colors - Adjusted for dark mode */
+    --success: 155 65% 45%;
+    /* Bright teal */
+    --success-foreground: 0 0% 100%;
 
-    --warning: 38 85% 45%; /* Desaturated orange */
-    --warning-foreground: 0 0% 100%; /* White text */
+    --warning: 38 90% 55%;
+    /* Warm amber */
+    --warning-foreground: 38 90% 10%;
 
-    --destructive: 0 80% 35%; /* Desaturated red */
-    --destructive-foreground: 0 0% 100%; /* White text */
+    --destructive: 0 70% 50%;
+    /* Soft red */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 282 44% 35%; /* Dark purple border */
-    --input: 282 44% 30%; /* Dark purple input */
-    --ring: 283 36% 42%; /* Medium purple focus rings */
-    --sidebar-background: 283 81% 16%; /* Very dark purple sidebar */
-    --sidebar-foreground: 283 55% 90%; /* Light purple text */
-    --sidebar-primary: 283 36% 42%; /* Medium purple */
-    --sidebar-primary-foreground: 0 0% 100%; /* White text */
-    --sidebar-accent: 282 44% 30%; /* Dark purple accent */
-    --sidebar-accent-foreground: 283 52% 68%; /* Light purple text */
-    --sidebar-border: 282 44% 35%; /* Dark purple border */
-    --sidebar-ring: 283 36% 42%; /* Medium purple ring */
-    
-    /* Chart colors - Purple theme palette (dark mode) */
-    --chart-1: 283 52% 68%; /* #B37ED7 - Light purple */
-    --chart-2: 283 36% 42%; /* #724491 - Medium purple */
-    --chart-3: 283 55% 74%; /* #C397E1 - Lighter purple */
-    --chart-4: 282 44% 30%; /* #562A6E - Dark purple */
-    --chart-5: 283 52% 60%; /* Adjusted purple for visibility */
+    /* Form Elements */
+    --border: 270 25% 22%;
+    /* Subtle border */
+    --input: 270 30% 14%;
+    --ring: 275 60% 55%;
+
+    /* Sidebar - Dark mode */
+    --sidebar-background: 270 40% 8%;
+    --sidebar-foreground: 280 20% 92%;
+    --sidebar-primary: 275 60% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 30% 18%;
+    --sidebar-accent-foreground: 280 20% 88%;
+    --sidebar-border: 270 25% 22%;
+    --sidebar-ring: 275 60% 55%;
+
+    /* Chart Colors - Dark mode optimized */
+    --chart-1: 275 60% 55%;
+    /* Vibrant purple */
+    --chart-2: 280 65% 70%;
+    /* Bright lavender */
+    --chart-3: 45 85% 60%;
+    /* Bright gold */
+    --chart-4: 155 65% 45%;
+    /* Bright teal */
+    --chart-5: 340 50% 65%;
+    /* Soft rose */
   }
 }
 
@@ -302,21 +590,22 @@
   html {
     /* Prevent horizontal scrolling on the entire page */
     overflow-x: hidden;
-    /* Allow only vertical scrolling on touch devices */
-    touch-action: pan-y;
-    /* Prevent overscroll bounce effect */
-    overscroll-behavior-y: none;
+    /* Allow touch gestures including scrolling, pinch-zoom */
+    touch-action: manipulation;
     /* Set background color to prevent white flash during overscroll */
     background-color: hsl(var(--background));
     /* Hide scrollbar */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
     /* Smooth scroll for landing page */
     scroll-behavior: smooth;
   }
-  
+
   html::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
   }
 
   body {
@@ -325,63 +614,67 @@
     background-color: hsl(var(--background));
     /* Prevent horizontal scrolling */
     overflow-x: hidden;
-    /* Allow only vertical scrolling on touch devices */
-    touch-action: pan-y;
-    /* Prevent overscroll bounce effect */
-    overscroll-behavior-y: none;
+    /* Allow touch gestures including scrolling, pinch-zoom */
+    touch-action: manipulation;
     /* Ensure body doesn't cause layout shifts */
     position: relative;
     width: 100%;
     max-width: 100vw;
     /* Ensure body covers full viewport */
     min-height: 100vh;
-    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    min-height: 100dvh;
+    /* Dynamic viewport height for mobile */
     /* Hide scrollbar */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
   }
-  
+
   body::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
   }
-  
+
   /* Ensure body background matches page backgrounds */
   html.dark body {
     background-color: hsl(var(--background));
   }
-  
+
   html:not(.dark) body {
     background-color: hsl(var(--background));
   }
-  
+
   /* Ensure html background matches for overscroll */
   html.dark {
     background-color: hsl(var(--background));
   }
-  
+
   html:not(.dark) {
     background-color: hsl(var(--background));
   }
-  
+
   /* Fix overscroll on root elements */
   #root {
     background-color: hsl(var(--background));
     min-height: 100vh;
     min-height: 100dvh;
-    overscroll-behavior-y: none;
     /* Hide scrollbar */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
   }
-  
+
   #root::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
+    /* Chrome, Safari, Opera */
   }
-  
+
   html.dark #root {
     background-color: hsl(var(--background));
   }
-  
+
   html:not(.dark) #root {
     background-color: hsl(var(--background));
   }
@@ -392,7 +685,12 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Manrope', system-ui, sans-serif;
   }
 }
@@ -439,64 +737,70 @@
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out;
   }
-  
+
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
   }
-  
+
   .animate-bounce-in {
     animation: bounceIn 0.5s ease-out;
   }
-  
+
   .animate-pulse-glow {
     animation: pulseGlow 2s ease-in-out infinite;
   }
-  
+
   .gradient-primary {
     background: var(--gradient-primary);
   }
-  
+
   .gradient-hero {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-light)) 50%, hsl(var(--warning)) 100%);
   }
-  
+
   .gradient-card-hover {
     background: linear-gradient(145deg, hsl(var(--card)), hsl(var(--accent)));
   }
-  
+
   .shadow-card {
     box-shadow: var(--shadow-card);
   }
-  
+
   .shadow-button {
     box-shadow: var(--shadow-button);
   }
-  
+
   .shadow-hero {
     box-shadow: 0 20px 40px hsl(var(--primary) / 0.3);
   }
-  
+
   .hover-scale {
     transition: transform 0.2s ease-out;
   }
-  
+
   .hover-scale:hover {
     transform: scale(1.02);
   }
-  
+
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(20px);
   }
-  to { 
+
+  to {
     opacity: 1;
     transform: translateY(0);
   }
@@ -507,13 +811,16 @@
     opacity: 0;
     transform: scale(0.3);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.05);
   }
+
   70% {
     transform: scale(0.9);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -521,9 +828,12 @@
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
   }
+
   50% {
     box-shadow: 0 0 30px hsl(var(--primary) / 0.8);
   }
@@ -545,47 +855,71 @@
 }
 
 @keyframes pullGlow {
-  0%, 100% { 
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
   }
-  50% { 
+
+  50% {
     box-shadow: 0 0 30px rgba(34, 197, 94, 0.5);
   }
 }
 
 @keyframes pullPulse {
-  0%, 100% { 
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.7;
   }
-  50% { 
+
+  50% {
     transform: scale(1.05);
     opacity: 1;
   }
 }
 
 @keyframes pullBounce {
-  0% { transform: scale(1); }
-  25% { transform: scale(1.1); }
-  50% { transform: scale(0.95); }
-  75% { transform: scale(1.05); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  25% {
+    transform: scale(1.1);
+  }
+
+  50% {
+    transform: scale(0.95);
+  }
+
+  75% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Shimmer effect for refresh indicator */
 .pull-shimmer {
-  background: linear-gradient(90deg, 
-    transparent, 
-    rgba(255, 255, 255, 0.4), 
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 /* Hide scrollbar utility class */
@@ -854,6 +1188,7 @@ html:not(.dark) *::-webkit-scrollbar-corner {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+
   .animate-dropdown-enter,
   .animate-dropdown-exit,
   .animate-dropdown-slide-top,
@@ -883,11 +1218,11 @@ html:not(.dark) *::-webkit-scrollbar-corner {
   .animate-dropdown-enter {
     animation: dropdown-enter 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
-  
+
   .animate-dropdown-exit {
     animation: dropdown-exit 100ms cubic-bezier(0.4, 0, 1, 1) forwards;
   }
-  
+
   .animate-dropdown-stagger {
     animation: dropdown-stagger 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
@@ -898,7 +1233,7 @@ html:not(.dark) *::-webkit-scrollbar-corner {
   .dropdown-item:hover {
     transform: none;
   }
-  
+
   .dropdown-item:active {
     transform: scale(0.98);
     transition: transform 100ms ease-out;
@@ -910,11 +1245,11 @@ html:not(.dark) *::-webkit-scrollbar-corner {
   .dropdown-container {
     border: 2px solid;
   }
-  
+
   .dropdown-item {
     border: 1px solid transparent;
   }
-  
+
   .dropdown-item:hover,
   .dropdown-item:focus {
     border-color: currentColor;
@@ -949,6 +1284,7 @@ html:not(.dark) *::-webkit-scrollbar-corner {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -960,14 +1296,17 @@ html:not(.dark) *::-webkit-scrollbar-corner {
 
 /* Native scroll optimization for iOS */
 @supports (-webkit-overflow-scrolling: touch) {
-  html, body {
+
+  html,
+  body {
     -webkit-overflow-scrolling: touch;
   }
 }
 
 /* POS Billing Tab Panel - Consistent vertical alignment */
 .pos-billing-tab-panel {
-  margin-top: 16px; /* 1rem - matches mt-4 */
+  margin-top: 16px;
+  /* 1rem - matches mt-4 */
   flex: 1;
   min-height: 0;
   display: flex;

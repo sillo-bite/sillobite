@@ -81,6 +81,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
       canteenId: canteenId,
       category: category,
       description: item.description,
+      imageUrl: item.imageUrl,
       storeCounterId: item.storeCounterId,
       paymentCounterId: item.paymentCounterId
     });
@@ -106,10 +107,10 @@ const MenuItemCard = React.memo(function MenuItemCard({
   }, [item.id, item.name, item.price, item.isVegetarian, item.imageUrl, item.description, selectedCanteen?.id, availableCanteens, toggleFavorite]);
 
   const cardClassName = useMemo(() => {
-    const baseClasses = 'rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border-0 overflow-hidden transform relative';
+    const baseClasses = 'rounded-3xl transition-all duration-300 cursor-pointer border-0 overflow-hidden transform relative';
     const themeClasses = resolvedTheme === 'dark' 
-      ? 'bg-card hover:bg-gray-950' 
-      : 'bg-white hover:bg-gray-50';
+      ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90 hover:from-gray-800 hover:to-gray-850 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
+      : 'bg-white hover:bg-gray-50/80 shadow-[0_4px_20px_rgba(0,0,0,0.06)]';
     
     return `${baseClasses} ${themeClasses}`;
   }, [resolvedTheme]);
@@ -168,7 +169,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
       case 'quickpick':
         return 'aspect-[4/3]';
       case 'trending':
-        return 'aspect-[16/10]';
+        return 'aspect-[4/3]';
       default:
         return 'aspect-[5/3]';
     }
@@ -176,9 +177,9 @@ const MenuItemCard = React.memo(function MenuItemCard({
 
   const contentPaddingClassName = useMemo(() => {
     if (variant === 'quickpick' || variant === 'trending') {
-      return 'px-3 py-3';
+      return 'px-3 py-2';
     }
-    return 'px-3 py-3';
+    return 'px-3 py-2';
   }, [variant]);
 
 
@@ -186,133 +187,160 @@ const MenuItemCard = React.memo(function MenuItemCard({
   return (
     <Card className={cardClassName} onClick={() => setLocation(`/dish/${item.id}`)}>
       <CardContent className="p-0">
-        {/* Top Section - Image (separate and clean) */}
-        <div className={`w-full ${imageAspectClassName} overflow-hidden relative`}>
-          {item.imageUrl ? (
-            <LazyImage
-              src={item.imageUrl}
-              alt={item.name}
-              className="w-full h-full object-cover"
-              placeholder={
-                <div className={imageContainerClassName}>
-                  <span className="text-lg">🍽️</span>
-                </div>
-              }
-            />
-          ) : (
-            <div className={imageContainerClassName}>
-              <span className="text-lg">🍽️</span>
-            </div>
-          )}
+        {/* Top Section - Outer container with soft background */}
+        <div className={`w-full p-2 relative`}>
+          {/* Soft colored background for outer container */}
+          <div className={`absolute inset-0 rounded-t-3xl ${
+            resolvedTheme === 'dark' 
+              ? 'bg-gradient-to-br from-gray-700/30 to-gray-800/30' 
+              : 'bg-gradient-to-br from-emerald-50/80 to-teal-50/60'
+          }`} />
           
-          {/* Heart button - Top right corner on image */}
+          {/* Inner image container - reduced from square */}
+          <div className={`relative aspect-[4/3] w-full rounded-xl overflow-hidden ${
+            resolvedTheme === 'dark' 
+              ? 'bg-gray-700/50' 
+              : 'bg-white/60'
+          }`}>
+            {item.imageUrl ? (
+              <LazyImage
+                src={item.imageUrl}
+                alt={item.name}
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                placeholder={
+                  <div className={`${imageContainerClassName} bg-transparent`}>
+                    <span className="text-3xl">🍽️</span>
+                  </div>
+                }
+              />
+            ) : (
+              <div className={`w-full h-full flex items-center justify-center ${
+                resolvedTheme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-100'
+              }`}>
+                <span className="text-3xl">🍽️</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Heart button - Top right corner of outer container */}
           <button 
             onClick={handleToggleFavorite}
-            className={`absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-sm hover:shadow-md transition-all touch-manipulation z-10 ${
+            className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 touch-manipulation z-10 ${
               resolvedTheme === 'dark' 
-                ? 'bg-gray-700 hover:bg-gray-600' 
-                : 'bg-white hover:bg-gray-50'
-            }`}
+                ? 'bg-gray-800/60 hover:bg-gray-800/80 backdrop-blur-sm' 
+                : 'bg-white/90 hover:bg-white shadow-md'
+            } ${isFavorite(item.id) ? 'scale-110' : 'hover:scale-110'}`}
           >
-            <Heart className={`w-3 h-3 ${
+            <Heart className={`w-4 h-4 transition-all duration-300 ${
               isFavorite(item.id) 
                 ? 'fill-red-500 text-red-500' 
-                : resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-400'
-            }`} />
+                : resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+            }`} strokeWidth={1.5} />
           </button>
         </div>
 
         {/* Bottom Section - Content */}
         <div className={contentPaddingClassName}>
-          {/* Content Section */}
-          <div className={`flex flex-col ${variant === 'quickpick' || variant === 'trending' ? 'gap-1 mb-2' : 'gap-1.5 mb-2'}`}>
-            {/* Item name and rating */}
-            <div className="flex items-center justify-between gap-2">
-              <h3 className={`${textClassName('title')} flex-1`}>
-                {item.name}
-              </h3>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                <span className={`text-xs font-semibold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
-                  {(4.0 + Math.random() * 0.9).toFixed(1)}
-                </span>
-              </div>
+          {/* Item name and rating row */}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className={`${textClassName('title')} flex-1 text-sm`}>
+              {item.name}
+            </h3>
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+              <span className={`text-xs font-bold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'}`}>
+                {(4.0 + Math.random() * 0.9).toFixed(1)}
+              </span>
             </div>
-            
-            {/* Time and Calories */}
-            <div className="flex items-center gap-3 text-xs text-gray-500">
-              {(item.cookingTime && item.cookingTime > 0) && (
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>{item.cookingTime} min</span>
-                </div>
-              )}
-              {(item.calories && item.calories > 0) && (
-                <div className="flex items-center gap-1">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>{item.calories} kcal</span>
-                </div>
-              )}
-            </div>
-            
-            {/* Description */}
-            {!hideDescription && (
-              <div className={textClassName('description')}>
-                {item.description || 'Delicious food item'}
-              </div>
+          </div>
+          
+          {/* Time and Calories - Pill style */}
+          <div className="flex items-center gap-2 mb-2">
+            {(item.cookingTime && item.cookingTime > 0) ? (
+              <span className={`text-[11px] font-medium ${
+                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                <Clock className="w-3 h-3 inline mr-0.5" />
+                {item.cookingTime} min
+              </span>
+            ) : (
+              <span className={`text-[11px] font-medium ${
+                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                <Clock className="w-3 h-3 inline mr-0.5" />
+                00
+              </span>
+            )}
+            {(item.calories && item.calories > 0) ? (
+              <span className={`text-[11px] font-medium ${
+                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                <Flame className="w-3 h-3 inline mr-0.5" />
+                {item.calories} kcal
+              </span>
+            ) : (
+              <span className={`text-xs font-medium ${
+                resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+              }`}>
+                <Flame className="w-3 h-3 inline mr-0.5" />
+                00
+              </span>
             )}
           </div>
           
-          {/* Price and Add to cart button */}
-          <div className="flex justify-between items-center">
+          {/* Price row */}
+          <div className="flex justify-between items-center pb-1">
             {/* Price */}
-            <div className={textClassName('price')}>
+            <div className={`${textClassName('price')} text-base`}>
               ₹{item.price}
             </div>
-            
-            {/* Add to cart button */}
-            {item.id && getCartQuantity(item.id) > 0 ? (
-              <div className={quantitySelectorClassName}>
-                <button
-                  onClick={handleRemoveFromCart}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 ${
-                    resolvedTheme === 'dark' 
-                      ? 'bg-gray-700 text-white hover:bg-gray-600' 
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  }`}
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className={`text-sm font-bold min-w-[28px] text-center px-2 ${
-                    resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                  }`}>
-                  {String(item.id ? getCartQuantity(item.id) : 0).padStart(2, '0')}
-                </span>
-                <button
-                  onClick={handleAddToCart}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-orange-500 text-white hover:bg-orange-600 ${
-                    !isItemAvailable 
-                      ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                  disabled={!isItemAvailable}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleAddToCart}
-                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all touch-manipulation active:scale-95 shadow-md bg-orange-500 text-white hover:bg-orange-600 ${
-                  !isItemAvailable 
-                    ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-                disabled={!isItemAvailable}
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
+        
+        {/* Add to cart button - Positioned at bottom-right edge */}
+        {item.id && getCartQuantity(item.id) > 0 ? (
+          <div className={`absolute bottom-0 right-0 rounded-tl-xl flex items-center px-1.5 py-1.5 touch-manipulation transition-all duration-300 ${
+            resolvedTheme === 'dark' 
+              ? 'bg-primary' 
+              : 'bg-primary'
+          }`} style={{
+            boxShadow: 'inset 0 0 20px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(114, 68, 145, 0.4)'
+          }}>
+            <button
+              onClick={handleRemoveFromCart}
+              className="w-7 h-7 rounded-md flex items-center justify-center transition-all touch-manipulation active:scale-90 bg-white/20 text-white hover:bg-white/30"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-xs font-bold min-w-[28px] text-center px-0.5 text-white">
+              {String(item.id ? getCartQuantity(item.id) : 0).padStart(2, '0')}
+            </span>
+            <button
+              onClick={handleAddToCart}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-all touch-manipulation active:scale-90 bg-white/20 text-white hover:bg-white/30 ${
+                !isItemAvailable 
+                  ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={!isItemAvailable}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleAddToCart}
+            className={`absolute bottom-0 right-0 w-11 h-11 rounded-tl-2xl flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-primary text-white hover:shadow-xl ${
+              !isItemAvailable 
+                ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''
+            }`}
+            disabled={!isItemAvailable}
+            style={{
+              boxShadow: 'inset 0 0 20px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(114, 68, 145, 0.4)'
+            }}
+          >
+            <Plus className="w-5 h-5" strokeWidth={2.5} />
+          </button>
+        )}
       </CardContent>
     </Card>
   );
