@@ -527,9 +527,9 @@ class WebSocketManager {
   }
 
   // Broadcast to multiple counter rooms
-  public broadcastToCounters(counterIds: string[], message: any): void {
+  public broadcastToCounters(counterIds: string[], eventType: string, data: any): void {
     counterIds.forEach(counterId => {
-      this.broadcastToCounter(counterId, message);
+      this.broadcastToCounter(counterId, eventType, data);
     });
   }
 
