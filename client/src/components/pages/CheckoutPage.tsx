@@ -1223,32 +1223,6 @@ export default function CheckoutPage() {
               </RadioGroup>
             </CardContent>
           </Card>
-
-          {/* Important Information - Low Priority */}
-          <Card className="bg-card border border-border shadow-lg">
-            <CardContent className="p-4">
-              <div className="rounded-lg p-4">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Important Information
-                </h4>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Orders are prepared fresh - slight delays may occur during peak hours</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>For offline payments, complete payment at the counter before collecting your order</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Review your order details carefully before confirming</span>
-                  </li>
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 

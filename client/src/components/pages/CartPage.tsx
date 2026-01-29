@@ -17,7 +17,7 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Loader2, AlertTriangle, Package, X, ArrowRight, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Loader2, AlertTriangle, Package, X, ArrowRight, ShoppingBag, ChevronDown, ChevronUp } from "lucide-react";
 import { useStockValidation } from "@/hooks/useStockValidation";
 import StockValidationWarning from "@/components/canteen/StockValidationWarning";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -433,8 +433,8 @@ export default function CartPage() {
                     : 'bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-black/5'
                     }`}>
                     <CardContent className="p-0">
-                      <div>
-                        {(showAllItems ? cart : cart.slice(0, 5)).map((item, index, array) => (
+                      <div className={`relative transition-all duration-500 ease-in-out ${!showAllItems && cart.length > 5 ? 'max-h-[500px] overflow-hidden' : ''}`}>
+                        {cart.map((item, index, array) => (
                           <div key={item.id} className={`${index !== array.length - 1 ? 'border-b border-dashed border-gray-100 dark:border-gray-800' : ''
                             } transition-colors hover:bg-gray-50/50 dark:hover:bg-white/5`}>
                             <div className="flex items-center p-3 gap-3">
@@ -536,24 +536,34 @@ export default function CartPage() {
                             </div>
                           </div>
                         ))}
+                        {/* Gradient Fade Overlay */}
+                        {!showAllItems && cart.length > 5 && (
+                          <div className={`absolute bottom-0 left-0 right-0 h-32 pointer-events-none bg-gradient-to-t ${resolvedTheme === 'dark'
+                              ? 'from-gray-900 via-gray-900/60 to-transparent'
+                              : 'from-white via-white/80 to-transparent'
+                            }`} style={{ zIndex: 10 }} />
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 </div>
               </div>
 
-              {/* Show More/Show Less Button */}
               {cart.length > 5 && (
-                <div className="flex justify-center pb-4 mb-4">
+                <div className="flex justify-center pb-8 pt-2">
                   <Button
                     variant="outline"
                     onClick={() => setShowAllItems(!showAllItems)}
-                    className={`w-full ${resolvedTheme === 'dark'
-                      ? 'border-gray-700 hover:bg-gray-800 hover:text-gray-100'
-                      : 'border-gray-300 hover:bg-gray-100 hover:text-gray-900'
+                    className={`rounded-full w-12 h-12 p-0 border transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 ${resolvedTheme === 'dark'
+                      ? 'border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-gray-100'
+                      : 'border-gray-200 bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900'
                       }`}
                   >
-                    {showAllItems ? 'Show Less' : `Show More (${cart.length - 5} more items)`}
+                    {showAllItems ? (
+                      <ChevronUp className="w-6 h-6" />
+                    ) : (
+                      <ChevronDown className="w-6 h-6" />
+                    )}
                   </Button>
                 </div>
               )}
