@@ -17,7 +17,7 @@ import {
 import { useCart } from "@/contexts/CartContext";
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Loader2, AlertTriangle, Package, X } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingCart, Loader2, AlertTriangle, Package, X, ArrowRight, ShoppingBag } from "lucide-react";
 import { useStockValidation } from "@/hooks/useStockValidation";
 import StockValidationWarning from "@/components/canteen/StockValidationWarning";
 import { usePWANavigation } from "@/hooks/usePWANavigation";
@@ -63,7 +63,7 @@ export default function CartPage() {
   const debouncedRefetchStock = React.useRef<NodeJS.Timeout | null>(null);
   const handleRefetchStock = React.useCallback(() => {
     if (debouncedRefetchStock.current) {
-      clearTimeout(debouncedRefetchStock.current);
+      clearTimeout(debouncedRefetchStock.current); a
     }
     debouncedRefetchStock.current = setTimeout(() => {
       console.log("🔄 Cart received order update, refreshing stock validation...");
@@ -337,6 +337,7 @@ export default function CartPage() {
                   {cart.length > 0 ? `${getTotalItems()} items` : "Your cart is empty"}
                 </p>
               </div>
+
             </div>
             {cart.length > 0 && (
               <Badge variant="secondary" className={`${resolvedTheme === 'dark' ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'
@@ -426,103 +427,118 @@ export default function CartPage() {
             <>
               {/* Cart Items */}
               <div className="space-y-4">
-                <div className="space-y-4 max-h-[480px] overflow-y-auto pr-1">
-                  {(showAllItems ? cart : cart.slice(0, 5)).map((item, index) => (
-                    <Card
-                      key={item.id}
-                      className={`dropdown-item ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                        } rounded-xl shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer border-0 overflow-hidden ${resolvedTheme === 'dark'
-                          ? 'bg-card hover:bg-gray-950'
-                          : 'bg-white hover:bg-gray-50'
-                        }`}
-                      style={{
-                        animationDelay: prefersReducedMotion ? '0ms' : `${index * 100}ms`
-                      }}
-                    >
-                      <CardContent className="p-0">
-                        {/* Compact Section - Image, info, and quantity modifier with integrated delete */}
-                        <div className="flex items-center p-4 gap-4">
-                          {/* Left: Product image */}
-                          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
-                            <div className={`w-full h-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-200'
-                              }`}>
-                              <span className="text-lg">🍽️</span>
-                            </div>
-                          </div>
-
-                          {/* Center: Veg indicator, name, and price */}
-                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                            <div className="flex items-center gap-2">
-                              {/* Vegetarian indicator */}
-                              <div className={`w-3 h-3 rounded-sm flex items-center justify-center flex-shrink-0 ${item.isVegetarian ? 'bg-green-500' : 'bg-red-500'
-                                }`}>
-                                <div className="w-1 h-1 bg-white rounded-full"></div>
+                <div className="space-y-4">
+                  <Card className={`rounded-3xl border-0 overflow-hidden transition-all duration-300 ${resolvedTheme === 'dark'
+                    ? 'bg-gradient-to-b from-gray-800 to-gray-900 shadow-[0_8px_30px_rgba(0,0,0,0.5)] ring-1 ring-white/10'
+                    : 'bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-black/5'
+                    }`}>
+                    <CardContent className="p-0">
+                      <div>
+                        {(showAllItems ? cart : cart.slice(0, 5)).map((item, index, array) => (
+                          <div key={item.id} className={`${index !== array.length - 1 ? 'border-b border-dashed border-gray-100 dark:border-gray-800' : ''
+                            } transition-colors hover:bg-gray-50/50 dark:hover:bg-white/5`}>
+                            <div className="flex items-center p-3 gap-3">
+                              {/* Left: Product image - compacted */}
+                              <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 shadow-sm border border-gray-100 dark:border-gray-800">
+                                {item.imageUrl ? (
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className={`w-full h-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-100'
+                                    }`}>
+                                    <ShoppingBag className="w-6 h-6 text-gray-400" />
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Item name */}
-                              <h3 className={`font-bold text-sm truncate leading-tight ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                                }`}>
-                                {item.name}
-                              </h3>
-                            </div>
+                              {/* Center: Info */}
+                              <div className="flex-1 min-w-0 pr-2">
+                                <div className="flex items-start justify-start gap-1.5 mb-1">
+                                  <h3 className={`font-bold text-[15px] leading-tight line-clamp-1 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                                    }`}>
+                                    {item.name}
+                                  </h3>
+                                  {/* Veg/Non-veg Indicator */}
+                                  <div className={`w-3 h-3 rounded-sm flex items-center justify-center flex-shrink-0 mt-0.5 border ${item.isVegetarian
+                                    ? 'border-green-600'
+                                    : 'border-red-600'
+                                    }`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full ${item.isVegetarian ? 'bg-green-600' : 'bg-red-600'
+                                      }`}></div>
+                                  </div>
+                                </div>
 
-                            {/* Price */}
-                            <div className={`text-sm font-medium ml-5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                              }`}>
-                              ₹{item.price} × {item.quantity} = ₹{item.price * item.quantity}
+                                <div className="flex items-baseline gap-2">
+                                  <p className={`text-sm font-semibold ${resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`}>
+                                    ₹{item.price}
+                                  </p>
+                                  {item.quantity > 1 && (
+                                    <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+                                      Total: <span className={resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>₹{item.price * item.quantity}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Right: Quantity Controls - Compact Pill */}
+                              <div className="flex flex-col items-end gap-1">
+                                <div className={`flex items-center rounded-full p-0.5 h-8 border ${resolvedTheme === 'dark'
+                                  ? 'bg-gray-900 border-gray-800'
+                                  : 'bg-white border-gray-200 shadow-sm'
+                                  }`}>
+                                  {item.quantity === 1 ? (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveItem(item.id);
+                                      }}
+                                      className="w-7 h-7 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUpdateQuantity(item.id, item.quantity - 1);
+                                      }}
+                                      className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${resolvedTheme === 'dark'
+                                        ? 'hover:bg-gray-800 text-gray-300'
+                                        : 'hover:bg-gray-100 text-gray-600'
+                                        }`}
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+
+                                  <span className={`w-6 text-center font-bold text-sm ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    }`}>
+                                    {item.quantity}
+                                  </span>
+
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateQuantity(item.id, item.quantity + 1);
+                                    }}
+                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${resolvedTheme === 'dark'
+                                      ? 'bg-gray-800 hover:bg-gray-700 text-white'
+                                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+                                      }`}
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
-
-                          {/* Right: Quantity selector with integrated delete button */}
-                          <div className="flex items-center flex-shrink-0">
-                            {/* Quantity selector */}
-                            <div className={`rounded-lg flex items-center gap-2 px-2.5 py-1.5 min-w-[70px] justify-center ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-200'
-                              }`}>
-                              {item.quantity === 1 ? (
-                                /* Delete button when quantity is 1 */
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleRemoveItem(item.id);
-                                  }}
-                                  className="text-destructive hover:opacity-70 min-w-[24px] flex items-center justify-center transition-colors"
-                                  title="Remove item"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              ) : (
-                                /* Minus button when quantity is 2 or more */
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleUpdateQuantity(item.id, item.quantity - 1);
-                                  }}
-                                  className={`font-bold text-sm hover:opacity-70 min-w-[24px] flex items-center justify-center ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                                    }`}
-                                >
-                                  -
-                                </button>
-                              )}
-                              <span className={`font-bold text-sm min-w-[24px] text-center ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                                }`}>
-                                {item.quantity}
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleUpdateQuantity(item.id, item.quantity + 1);
-                                }}
-                                className={`font-bold text-sm hover:opacity-70 min-w-[24px] flex items-center justify-center ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                                  }`}
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
 
@@ -545,60 +561,149 @@ export default function CartPage() {
           )}
         </div>
 
-        {/* Fixed Checkout Summary - Above Bottom Navigation */}
+        {/* Premium Floating Checkout Card */}
         {cart.length > 0 && (
           <div
-            className={`fixed left-0 right-0 z-[9998] ${resolvedTheme === 'dark'
-              ? 'bg-[#1a1a1a] border-t border-gray-800'
-              : 'bg-white border-t border-gray-200'
-              }`}
+            className="fixed left-4 right-4 z-[9998]"
             style={{
-              bottom: 'env(safe-area-inset-bottom, 0px)',
-              paddingTop: '16px',
-              paddingBottom: '16px',
-              paddingLeft: '16px',
-              paddingRight: '16px',
-              boxShadow: resolvedTheme === 'dark'
-                ? '0 -4px 6px -1px rgba(0, 0, 0, 0.3)'
-                : '0 -4px 6px -1px rgba(0, 0, 0, 0.1)'
+              bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
             }}
           >
-            <div className="flex items-center justify-between gap-4 max-w-full">
-              {/* Left: Total Text and Price */}
-              <div className="flex flex-col justify-center flex-shrink-0">
-                <span className={`text-xs leading-tight ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                  }`}>
-                  Total shopping cart
-                </span>
-                <span className={`text-xl font-bold leading-tight mt-0.5 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                  }`}>
-                  ₹{getTotalPrice()}
-                </span>
-              </div>
+            {/* Ambient glow effect */}
+            <div
+              className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(168, 85, 247, 0.4), rgba(192, 132, 252, 0.3))',
+                opacity: 0.6,
+              }}
+            />
 
-              {/* Right: Continue to Checkout Button */}
-              <Button
-                onClick={proceedToCheckout}
-                disabled={
-                  isStockLoading ||
-                  isValidatingForCheckout ||
-                  !!(currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId))
-                }
-                className="flex-1 min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-4 rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                size="lg"
-              >
-                {isStockLoading || isValidatingForCheckout ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isValidatingForCheckout ? 'Validating...' : 'Checking...'}
-                  </>
-                ) : !validationResult.isValid ? (
-                  "Stock Issues"
-                ) : (
-                  "Continue to checkout"
-                )}
-              </Button>
-            </div>
+            <button
+              onClick={proceedToCheckout}
+              disabled={
+                isStockLoading ||
+                isValidatingForCheckout ||
+                !!(currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId))
+              }
+              className="relative w-full overflow-hidden rounded-[20px] transition-all duration-300 active:scale-[0.98] hover:scale-[1.005] group disabled:opacity-80 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.95) 0%, rgba(168, 85, 247, 0.95) 50%, rgba(147, 51, 234, 0.95) 100%)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                boxShadow: `
+                  0 20px 60px -15px rgba(139, 92, 246, 0.5),
+                  0 10px 30px -10px rgba(0, 0, 0, 0.3),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                  inset 0 -1px 0 rgba(0, 0, 0, 0.1)
+                `,
+              }}
+            >
+              {/* Animated gradient overlay */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(255, 255, 255, 0.05) 100%)',
+                }}
+              />
+
+              {/* Shimmer effect on hover - Only if not loading/disabled */}
+              {!(isStockLoading || isValidatingForCheckout) && (
+                <div
+                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
+                  }}
+                />
+              )}
+
+              {/* Content */}
+              <div className="relative flex items-center justify-between px-5 py-4">
+                {/* Left side - Image and Total info */}
+                <div className="flex items-center gap-4">
+                  {/* Icon/Image container with glass effect */}
+                  <div className="relative">
+                    {cart.length > 0 && cart[0].imageUrl ? (
+                      <div
+                        className="w-12 h-12 rounded-2xl overflow-hidden transition-transform duration-300 group-hover:scale-105"
+                        style={{
+                          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1)',
+                        }}
+                      >
+                        <img
+                          src={cart[0].imageUrl}
+                          alt={cart[0].name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1))',
+                          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1)',
+                        }}
+                      >
+                        <ShoppingBag className="w-5 h-5 text-white" strokeWidth={2.5} />
+                      </div>
+                    )}
+                    {/* Item count badge */}
+                    <div
+                      className="absolute -top-1.5 -right-1.5 h-6 min-w-6 px-1.5 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #ffffff, #f0f0f0)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
+                      }}
+                    >
+                      <span className="text-[11px] font-bold text-violet-600">
+                        {getTotalItems() > 99 ? '99+' : getTotalItems()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-white/80 text-xs font-medium uppercase tracking-wider">
+                      Total to pay
+                    </span>
+                    <span className="text-white font-bold text-2xl tracking-tight">
+                      ₹{getTotalPrice()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right side - Action Button Look */}
+                <div
+                  className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-300 ${isStockLoading || isValidatingForCheckout
+                    ? 'bg-white/10'
+                    : 'bg-white/20 group-hover:bg-white/25 shadow-sm'
+                    }`}
+                >
+                  {isStockLoading || isValidatingForCheckout ? (
+                    <>
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                      <span className="text-white font-semibold text-base">
+                        {isValidatingForCheckout ? 'Validating...' : 'Checking...'}
+                      </span>
+                    </>
+                  ) : !validationResult.isValid ? (
+                    <>
+                      <AlertTriangle className="w-5 h-5 text-red-200" />
+                      <span className="text-white font-semibold text-base">
+                        Stock Issues
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-white font-bold text-lg tracking-tight">
+                        Checkout
+                      </span>
+                      <div className="w-6 h-6 rounded-full bg-white text-violet-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                        <ArrowRight className="w-4 h-4" strokeWidth={3} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </button>
           </div>
         )}
 

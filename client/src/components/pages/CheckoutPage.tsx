@@ -107,7 +107,7 @@ export default function CheckoutPage() {
       // Only process if it's for our session
       if (sessionId === checkoutSessionId) {
         setSessionTimeLeft(timeRemaining);
-        
+
         // If session expired, trigger timeout
         if (timeRemaining <= 0 && !showTimeoutDialog) {
           setShowTimeoutDialog(true);
@@ -194,7 +194,7 @@ export default function CheckoutPage() {
       const errorMessage = `Counter IDs are required for all items. Missing counter IDs for: ${missingItems}.\n\n` +
         `These items were likely added before counter IDs were required. ` +
         `Please remove these items from your cart and add them again from the menu page.`;
-      
+
       console.error('❌ Cart items missing counter IDs:', {
         missingItems: itemsWithoutCounterIds.map(item => ({
           id: item.id,
@@ -203,7 +203,7 @@ export default function CheckoutPage() {
           paymentCounterId: item.paymentCounterId
         }))
       });
-      
+
       throw new Error(errorMessage);
     }
 
@@ -349,7 +349,7 @@ export default function CheckoutPage() {
       try {
         // Check if session already exists (created in CartPage)
         const existingSessionId = localStorage.getItem('currentCheckoutSessionId');
-        
+
         if (existingSessionId) {
           // Use existing session
           try {
@@ -365,7 +365,7 @@ export default function CheckoutPage() {
             localStorage.removeItem('currentCheckoutSessionId');
           }
         }
-        
+
         // Create new session if none exists
         const response = await apiRequest('/api/checkout-sessions/create', {
           method: 'POST',
@@ -472,7 +472,7 @@ export default function CheckoutPage() {
         if (response.success) {
           const serverTimeRemaining = response.timeRemaining || 0;
           setSessionTimeLeft(serverTimeRemaining);
-          
+
           // If server says session is expired, trigger timeout
           if (serverTimeRemaining <= 0 && !showTimeoutDialog) {
             setShowTimeoutDialog(true);
@@ -597,7 +597,7 @@ export default function CheckoutPage() {
     // - Online paid orders: status will be determined by server based on markable items after payment
     let orderStatus: string;
     let orderPaymentStatus: string;
-    
+
     if (isFreeOrder) {
       // Free orders: server will determine status based on markable items
       // Status will be 'pending' if has markable items, 'ready' if not
@@ -789,9 +789,9 @@ export default function CheckoutPage() {
           try {
             await apiRequest(`/api/checkout-sessions/${checkoutSessionId}/update-status`, {
               method: 'POST',
-              body: JSON.stringify({ 
+              body: JSON.stringify({
                 status: 'payment_initiated',
-                metadata: { 
+                metadata: {
                   merchantTransactionId: paymentResponse.merchantTransactionId,
                   razorpayOrderId: paymentResponse.razorpayOrderId
                 }
@@ -812,7 +812,7 @@ export default function CheckoutPage() {
         }
 
         localStorage.setItem('currentPaymentTxnId', paymentResponse.merchantTransactionId);
-        
+
         // Function to initialize Razorpay checkout
         const initRazorpay = () => {
           try {
@@ -847,11 +847,11 @@ export default function CheckoutPage() {
                 color: '#6366f1'
               },
               modal: {
-                ondismiss: async function() {
+                ondismiss: async function () {
                   // User closed the modal - restore stock and navigate back to cart
                   setPaymentInProgress(false);
                   paymentValidRef.current = false;
-                  
+
                   // Restore stock by abandoning the session
                   if (checkoutSessionId) {
                     try {
@@ -863,12 +863,12 @@ export default function CheckoutPage() {
                       console.error('Error restoring stock:', error);
                     }
                   }
-                  
+
                   // Clean up local storage
                   localStorage.removeItem('pendingOrderData');
                   localStorage.removeItem('currentPaymentTxnId');
                   localStorage.removeItem('currentCheckoutSessionId');
-                  
+
                   // Navigate back to cart page
                   window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
                   setLocation('/app');
@@ -879,7 +879,7 @@ export default function CheckoutPage() {
             const razorpay = new (window as any).Razorpay(options);
             razorpay.on('payment.failed', async function (response: any) {
               console.error('Payment failed:', response);
-              
+
               // Restore stock and update checkout session status to payment_failed
               if (checkoutSessionId) {
                 try {
@@ -897,7 +897,7 @@ export default function CheckoutPage() {
                   console.error('Error restoring stock or updating checkout session status:', error);
                 }
               }
-              
+
               setPaymentInProgress(false);
               paymentValidRef.current = false;
               localStorage.removeItem('pendingOrderData');
@@ -969,15 +969,31 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-[#562A6E] border-b border-[#724491] px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" onClick={() => {
-            window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-            setLocation('/app');
-          }} className="text-white hover:bg-[#724491]">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold text-white">Checkout</h1>
+      <div className="bg-background px-4 py-4 pt-8 sticky top-0 z-10">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="icon" onClick={() => {
+              window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+              setLocation('/app');
+            }} className="text-foreground hover:bg-accent">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-xl font-bold text-foreground">Checkout</h1>
+          </div>
+          {/* Checkout Session Timer - Always visible when session is active */}
+          <div className="pr-4">
+            {checkoutSessionId && sessionTimeLeft > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Clock className="w-4 h-4 mr-2 text-primary" />
+                </div>
+                <div className="text-lg font-bold text-foreground">
+                  {formatTime(sessionTimeLeft)}
+                </div>
+              </div>
+
+            )}
+          </div>
         </div>
       </div>
 
@@ -991,35 +1007,14 @@ export default function CheckoutPage() {
             onRemoveItem={handleRemoveItem}
             isLoading={isStockLoading}
           />
-
-          {/* Checkout Session Timer - Always visible when session is active */}
-          {checkoutSessionId && sessionTimeLeft > 0 && (
-            <Card className="bg-[#562A6E] border border-[#B37ED7] shadow-lg">
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2 text-[#B37ED7]" />
-                    <span className="text-sm font-medium text-[#B37ED7]">Checkout Session</span>
-                  </div>
-                  <div className="text-lg font-bold text-white">
-                    {formatTime(sessionTimeLeft)}
-                  </div>
-                </div>
-                <p className="text-xs text-[#a0a0a0] mt-1">
-                  Your checkout session expires in {formatTime(sessionTimeLeft)}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
         </div>
 
         {/* Priority 2: Order Details & Payment */}
-        <div className="px-4 pt-4 space-y-4">
+        <div className="px-4 space-y-4">
           {/* Order Summary - High Priority */}
-          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
+          <Card className="bg-card border border-border shadow-lg">
             <CardContent className="p-4">
-              <h3 className="font-semibold mb-3 text-white">Order Summary</h3>
+              <h3 className="font-semibold mb-3 text-foreground">Order Summary</h3>
 
               {/* Order Items */}
               <div className="space-y-2 mb-3">
@@ -1029,12 +1024,12 @@ export default function CheckoutPage() {
                   return (
                     <div key={index} className="flex justify-between items-center">
                       <div className="flex-1 min-w-0 pr-4">
-                        <div className="font-medium text-white">{item.name}</div>
-                        <div className="text-sm text-[#a0a0a0]">
+                        <div className="font-medium text-foreground">{item.name}</div>
+                        <div className="text-sm text-muted-foreground">
                           {formatCurrency(itemPrice)} × {item.quantity}
                         </div>
                       </div>
-                      <div className="font-semibold text-white whitespace-nowrap">
+                      <div className="font-semibold text-foreground whitespace-nowrap">
                         {formatCurrency(itemTotal)}
                       </div>
                     </div>
@@ -1043,10 +1038,10 @@ export default function CheckoutPage() {
               </div>
 
               {/* Price Breakdown */}
-              <div className="space-y-2 pt-3 border-t border-[#724491]">
+              <div className="space-y-2 pt-3 border-t border-border">
                 <div className="flex justify-between items-center">
-                  <span className="text-white">Subtotal ({getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'})</span>
-                  <span className="text-white font-medium">{formatCurrency(subtotal)}</span>
+                  <span className="text-foreground">Subtotal ({getTotalItems()} {getTotalItems() === 1 ? 'item' : 'items'})</span>
+                  <span className="text-foreground font-medium">{formatCurrency(subtotal)}</span>
                 </div>
 
                 {appliedCoupon && (
@@ -1057,21 +1052,21 @@ export default function CheckoutPage() {
                 )}
 
                 {chargesApplied.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-[#724491]">
+                  <div className="space-y-1 pt-2 border-t border-border">
                     {chargesApplied.map((charge) => (
                       <div key={charge.name} className="flex justify-between items-center">
-                        <span className="text-white text-sm">
+                        <span className="text-foreground text-sm">
                           {charge.name} ({charge.type === 'percent' ? `${charge.value}%` : `₹${charge.value}`})
                         </span>
-                        <span className="text-white font-medium">+{formatCurrency(charge.amount)}</span>
+                        <span className="text-foreground font-medium">+{formatCurrency(charge.amount)}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div className="flex justify-between items-center pt-2 border-t border-[#724491]">
-                  <span className="text-white font-bold text-lg">Total</span>
-                  <span className={appliedCoupon && appliedCoupon.discountAmount > 0 ? "text-[#22c55e] font-bold text-lg" : "text-white font-bold text-lg"}>
+                <div className="flex justify-between items-center pt-2 border-t border-border">
+                  <span className="text-foreground font-bold text-lg">Total</span>
+                  <span className={appliedCoupon && appliedCoupon.discountAmount > 0 ? "text-[#22c55e] font-bold text-lg" : "text-foreground font-bold text-lg"}>
                     {formatCurrency(total)}
                   </span>
                 </div>
@@ -1088,10 +1083,10 @@ export default function CheckoutPage() {
           />
 
           {/* Order Type - High Priority */}
-          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
+          <Card className="bg-card border border-border shadow-lg">
             <CardContent className="p-4">
-              <h3 className="font-semibold mb-4 flex items-center text-white">
-                <ShoppingBag className="w-5 h-5 mr-2 text-[#B37ED7]" />
+              <h3 className="font-semibold mb-4 flex items-center text-foreground">
+                <ShoppingBag className="w-5 h-5 mr-2 text-primary" />
                 Order Type
               </h3>
               <RadioGroup value={orderType} onValueChange={(value) => {
@@ -1106,46 +1101,46 @@ export default function CheckoutPage() {
                 }
               }}>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
-                    <RadioGroupItem value="takeaway" id="takeaway" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
+                  <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
+                    <RadioGroupItem value="takeaway" id="takeaway" className="border-primary text-primary data-[state=checked]:bg-primary" />
                     <Label htmlFor="takeaway" className="flex-1 cursor-pointer">
                       <div className="flex items-center">
-                        <ShoppingBag className="w-5 h-5 mr-3 text-[#B37ED7]" />
+                        <ShoppingBag className="w-5 h-5 mr-3 text-primary" />
                         <div>
-                          <p className="font-medium text-white">Takeaway</p>
-                          <p className="text-sm text-[#a0a0a0]">Collect your order from the counter</p>
+                          <p className="font-medium text-foreground">Takeaway</p>
+                          <p className="text-sm text-muted-foreground">Collect your order from the counter</p>
                         </div>
                       </div>
                     </Label>
                   </div>
                   {allowDelivery && (
-                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
-                    <RadioGroupItem value="delivery" id="delivery" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
-                    <Label htmlFor="delivery" className="flex-1 cursor-pointer">
-                      <div className="flex items-center">
-                        <Truck className="w-5 h-5 mr-3 text-[#3b82f6]" />
-                        <div>
-                          <p className="font-medium text-white">Delivery</p>
-                          <p className="text-sm text-[#a0a0a0]">Get your order delivered to your location</p>
+                    <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
+                      <RadioGroupItem value="delivery" id="delivery" className="border-primary text-primary data-[state=checked]:bg-primary" />
+                      <Label htmlFor="delivery" className="flex-1 cursor-pointer">
+                        <div className="flex items-center">
+                          <Truck className="w-5 h-5 mr-3 text-[#3b82f6]" />
+                          <div>
+                            <p className="font-medium text-foreground">Delivery</p>
+                            <p className="text-sm text-muted-foreground">Get your order delivered to your location</p>
+                          </div>
                         </div>
-                      </div>
-                    </Label>
-                  </div>
+                      </Label>
+                    </div>
                   )}
                 </div>
               </RadioGroup>
 
               {/* Display Selected Address for Delivery */}
               {orderType === "delivery" && selectedAddress && (
-                <div className="mt-4 p-3 border border-[#724491] rounded-lg bg-[#31084A]">
+                <div className="mt-4 p-3 border border-border rounded-lg bg-muted">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <MapPin className="w-4 h-4 text-[#3b82f6]" />
-                        <h4 className="font-semibold text-white text-sm">Delivery Address</h4>
+                        <h4 className="font-semibold text-foreground text-sm">Delivery Address</h4>
                       </div>
-                      <div className="text-sm text-[#a0a0a0] space-y-1">
-                        <p className="font-medium text-white">{selectedAddress.label}</p>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        <p className="font-medium text-foreground">{selectedAddress.label}</p>
                         <p>{selectedAddress.fullName} • {selectedAddress.phoneNumber}</p>
                         <p>
                           {selectedAddress.addressLine1}
@@ -1183,22 +1178,22 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Payment Method - High Priority */}
-          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
+          <Card className="bg-card border border-border shadow-lg">
             <CardContent className="p-4">
-              <h3 className="font-semibold mb-4 flex items-center text-white">
-                <CreditCard className="w-5 h-5 mr-2 text-[#B37ED7]" />
+              <h3 className="font-semibold mb-4 flex items-center text-foreground">
+                <CreditCard className="w-5 h-5 mr-2 text-primary" />
                 Payment Method
               </h3>
               <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
-                    <RadioGroupItem value="upi" id="upi" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
+                  <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
+                    <RadioGroupItem value="upi" id="upi" className="border-primary text-primary data-[state=checked]:bg-primary" />
                     <Label htmlFor="upi" className="flex-1 cursor-pointer">
                       <div className="flex items-center">
-                        <CreditCard className="w-5 h-5 mr-3 text-[#B37ED7]" />
+                        <CreditCard className="w-5 h-5 mr-3 text-primary" />
                         <div>
-                          <p className="font-medium text-white">UPI Payment</p>
-                          <p className="text-sm text-[#a0a0a0]">Google Pay, Razorpay, UPI, Cards</p>
+                          <p className="font-medium text-foreground">UPI Payment</p>
+                          <p className="text-sm text-muted-foreground">Google Pay, Razorpay, UPI, Cards</p>
                         </div>
                       </div>
                     </Label>
@@ -1208,21 +1203,21 @@ export default function CheckoutPage() {
                   </div>
 
                   {allowPayAtCounter && (
-                  <div className="flex items-center space-x-3 p-3 border border-[#724491] rounded-lg bg-[#562A6E] hover:bg-[#724491] transition-colors">
-                    <RadioGroupItem value="offline" id="offline" className="border-[#B37ED7] text-[#B37ED7] data-[state=checked]:bg-[#B37ED7]" />
-                    <Label htmlFor="offline" className="flex-1 cursor-pointer">
-                      <div className="flex items-center">
-                        <HandCoins className="w-5 h-5 mr-3 text-[#f97316]" />
-                        <div>
-                          <p className="font-medium text-white">Pay at Counter</p>
-                          <p className="text-sm text-[#a0a0a0]">Pay cash/card at the canteen counter</p>
+                    <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
+                      <RadioGroupItem value="offline" id="offline" className="border-primary text-primary data-[state=checked]:bg-primary" />
+                      <Label htmlFor="offline" className="flex-1 cursor-pointer">
+                        <div className="flex items-center">
+                          <HandCoins className="w-5 h-5 mr-3 text-[#f97316]" />
+                          <div>
+                            <p className="font-medium text-foreground">Pay at Counter</p>
+                            <p className="text-sm text-muted-foreground">Pay cash/card at the canteen counter</p>
+                          </div>
                         </div>
-                      </div>
-                    </Label>
-                    <span className="bg-[#f97316] text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
-                      Offline
-                    </span>
-                  </div>
+                      </Label>
+                      <span className="bg-[#f97316] text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
+                        Offline
+                      </span>
+                    </div>
                   )}
                 </div>
               </RadioGroup>
@@ -1230,14 +1225,14 @@ export default function CheckoutPage() {
           </Card>
 
           {/* Important Information - Low Priority */}
-          <Card className="bg-[#562A6E] border border-[#724491] shadow-lg">
+          <Card className="bg-card border border-border shadow-lg">
             <CardContent className="p-4">
               <div className="rounded-lg p-4">
-                <h4 className="font-semibold text-white mb-3 flex items-center">
+                <h4 className="font-semibold text-foreground mb-3 flex items-center">
                   <Clock className="w-4 h-4 mr-2" />
                   Important Information
                 </h4>
-                <ul className="text-sm text-white space-y-2">
+                <ul className="text-sm text-muted-foreground space-y-2">
                   <li className="flex items-start">
                     <span className="mr-2">•</span>
                     <span>Orders are prepared fresh - slight delays may occur during peak hours</span>
@@ -1258,7 +1253,7 @@ export default function CheckoutPage() {
       </div>
 
       {/* Place Order Button - Highest Priority */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#562A6E] border-t border-[#724491] p-4 space-y-2 shadow-2xl z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 space-y-2 shadow-2xl z-50">
         <Button
           variant="food"
           size="mobile"
@@ -1280,7 +1275,7 @@ export default function CheckoutPage() {
         </Button>
 
         {cart.length === 0 && (
-          <p className="text-center text-sm text-[#a0a0a0]">
+          <p className="text-center text-sm text-muted-foreground">
             Your cart is empty. Add items to continue.
           </p>
         )}

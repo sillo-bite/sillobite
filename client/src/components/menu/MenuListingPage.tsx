@@ -282,6 +282,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
       canteenId: selectedCanteen.id,
       category: item.categoryId || (item as any).categoryName,
       description: item.description,
+      imageUrl: item.imageUrl,
       storeCounterId: item.storeCounterId,
       paymentCounterId: item.paymentCounterId
     });
