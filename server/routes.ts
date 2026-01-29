@@ -2894,7 +2894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }))
           });
           
-          wsManager.broadcastToCounters(uniqueCounterIds, orderMessage);
+          wsManager.broadcastToCounters(uniqueCounterIds, orderMessage.type, orderMessage.data);
           console.log(`📢 Order ${order.orderNumber} broadcasted to counter rooms: ${uniqueCounterIds.join(', ')}`);
         } else {
           // Fallback: broadcast to canteen room if no specific counters assigned
@@ -5785,7 +5785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           targetCounterIds: uniqueCounterIds
         });
         
-        wsManager.broadcastToCounters(uniqueCounterIds, orderMessage);
+        wsManager.broadcastToCounters(uniqueCounterIds, orderMessage.type, orderMessage.data);
         console.log(`📢 Payment callback: Order ${newOrder.orderNumber} also broadcasted to counter rooms: ${uniqueCounterIds.join(', ')}`);
       } else {
         console.log(`📢 Payment callback: Order ${newOrder.orderNumber} - no specific counters assigned, only canteen room notified`);
@@ -6760,18 +6760,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         wsManager.broadcastNewOrder(order.canteenId, updatedOrder);
         
         // Broadcast payment confirmation event
-        wsManager.broadcastToCanteen(order.canteenId, {
-          type: 'payment_confirmed',
-          data: { order: updatedOrder, orderId }
-        });
+        wsManager.broadcastToCanteen(order.canteenId, 'payment_confirmed', { order: updatedOrder, orderId });
         
         // Also broadcast order update to ensure all clients get the status change
-        wsManager.broadcastToCanteen(order.canteenId, {
-          type: 'order_updated',
-          data: updatedOrder,
-          oldStatus: 'pending_payment',
-          newStatus: newStatus
-        });
+        wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
         
         console.log(`📢 Payment confirmed for offline order ${order.orderNumber} in canteen ${order.canteenId}`);
         console.log(`📢 Order status changed from pending_payment to ${newStatus}`);
@@ -7894,13 +7886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting process-payment update to counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'order_status_changed',
-            data: result,
-            oldStatus: oldOrder.status,
-            newStatus: result.status,
-            orderNumber: result.orderNumber
-          });
+          wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
         console.log('📡 WebSocket manager not available for process-payment broadcast');
@@ -7966,13 +7952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
             console.log(`📢 Broadcasting offline order confirmation to store counter room: ${storeCounterId}`);
-            wsManager.broadcastToCounter(storeCounterId, {
-              type: 'new_order',
-              data: result,
-              counterId: storeCounterId,
-              orderNumber: result.orderNumber,
-              message: 'Offline order payment confirmed - start preparation'
-            });
+            wsManager.broadcastToCounter(storeCounterId, 'new_order', result);
           });
         }
         
@@ -7980,28 +7960,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.allPaymentCounterIds && result.allPaymentCounterIds.length > 0) {
           result.allPaymentCounterIds.forEach((paymentCounterId: string) => {
             console.log(`📢 Broadcasting payment confirmation to payment counter room: ${paymentCounterId}`);
-            wsManager.broadcastToCounter(paymentCounterId, {
-              type: 'payment_confirmed',
-              data: result,
-              oldStatus: oldOrder.status,
-              newStatus: result.status,
-              orderNumber: result.orderNumber,
-              confirmedByCounter: counterId,
-              message: 'Payment confirmed - remove from payment counter UI'
-            });
+            wsManager.broadcastToCounter(paymentCounterId, 'payment_confirmed', result);
           });
         }
         
         // Also broadcast to the specific payment counter that confirmed the payment
         if (counterId) {
           console.log(`📢 Broadcasting confirm-payment update to confirming payment counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'order_status_changed',
-            data: result,
-            oldStatus: oldOrder.status,
-            newStatus: result.status,
-            orderNumber: result.orderNumber
-          });
+          wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
         console.log('📡 WebSocket manager not available for confirm-payment broadcast');
@@ -8080,7 +8046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               message: 'Order rejected - remove from payment counter UI'
             };
             console.log(`📢 Rejection message for counter ${paymentCounterId}:`, rejectionMessage);
-            wsManager.broadcastToCounter(paymentCounterId, rejectionMessage);
+            wsManager.broadcastToCounter(paymentCounterId, 'order_rejected', result);
           });
         } else {
           console.log(`📢 No payment counter IDs found for order ${result.orderNumber}, cannot broadcast rejection`);
@@ -8235,26 +8201,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
             console.log(`📢 Broadcasting item-level out-for-delivery to counter room: ${storeCounterId}`);
-            wsManager.broadcastToCounter(storeCounterId, {
-              type: 'item_status_changed',
-              data: result,
-              counterId: storeCounterId,
-              orderNumber: result.orderNumber,
-              itemStatusByCounter: result.itemStatusByCounter
-            });
+            wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', result);
           });
         }
         
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting item-level out-for-delivery to specific counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'item_status_changed',
-            data: result,
-            counterId: counterId,
-            orderNumber: result.orderNumber,
-            itemStatusByCounter: result.itemStatusByCounter
-          });
+          wsManager.broadcastToCounter(counterId, 'item_status_changed', result);
         }
         
         // If overall order status changed to out_for_delivery, also broadcast order status change
@@ -8354,29 +8308,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Also broadcast order_updated to ensure user side receives item-level status changes
           // This is important when items are marked ready from KOT counter (status might not change)
-          const orderUpdatedMessage = {
-            type: 'order_updated',
-            data: orderDataForUser,
-            orderNumber: orderDataForUser.orderNumber,
-            itemStatusByCounter: orderDataForUser.itemStatusByCounter
-          };
-          wsManager.broadcastToCanteen(orderDataForUser.canteenId, orderUpdatedMessage);
+          wsManager.broadcastToCanteen(orderDataForUser.canteenId, 'order_updated', orderDataForUser);
           console.log(`📢 ✅ Broadcasted order_updated to canteen room ${orderDataForUser.canteenId}:`, {
-            orderNumber: orderUpdatedMessage.orderNumber,
-            hasItemStatusByCounter: !!orderUpdatedMessage.itemStatusByCounter
+            orderNumber: orderDataForUser.orderNumber,
+            hasItemStatusByCounter: !!orderDataForUser.itemStatusByCounter
           });
           
           // Also broadcast item_status_changed for user side to handle item-level updates
-          const itemStatusChangedMessage = {
-            type: 'item_status_changed',
-            data: orderDataForUser,
-            orderNumber: orderDataForUser.orderNumber,
-            itemStatusByCounter: orderDataForUser.itemStatusByCounter
-          };
-          wsManager.broadcastToCanteen(orderDataForUser.canteenId, itemStatusChangedMessage);
+          wsManager.broadcastToCanteen(orderDataForUser.canteenId, 'item_status_changed', orderDataForUser);
           console.log(`📢 ✅ Broadcasted item_status_changed to canteen room ${orderDataForUser.canteenId}:`, {
-            orderNumber: itemStatusChangedMessage.orderNumber,
-            hasItemStatusByCounter: !!itemStatusChangedMessage.itemStatusByCounter
+            orderNumber: orderDataForUser.orderNumber,
+            hasItemStatusByCounter: !!orderDataForUser.itemStatusByCounter
           });
         }
         
@@ -8400,13 +8342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               };
               
               kotStoreCounters.forEach((storeCounterId: string) => {
-                wsManager.broadcastToCounter(storeCounterId, {
-                  type: 'item_status_changed',
-                  data: fallbackOrder,
-                  counterId: storeCounterId,
-                  orderNumber: fallbackOrder.orderNumber,
-                  itemStatusByCounter: fallbackOrder.itemStatusByCounter
-                });
+                wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', fallbackOrder);
                 console.log(`📢 ✅ Broadcasted item_status_changed (fallback) for order ${fallbackOrder.orderNumber} to store counter ${storeCounterId}`);
               });
             }
@@ -8443,13 +8379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             kotStoreCounters.forEach((storeCounterId: string) => {
               // Use item_status_changed instead of new_order to properly update existing orders
-              wsManager.broadcastToCounter(storeCounterId, {
-                type: 'item_status_changed', // Changed from 'new_order' to properly update existing orders
-                data: orderDataForBroadcast,
-                counterId: storeCounterId,
-                orderNumber: orderDataForBroadcast.orderNumber,
-                itemStatusByCounter: orderDataForBroadcast.itemStatusByCounter
-              });
+              wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
               console.log(`📢 ✅ Broadcasted item_status_changed for order ${orderDataForBroadcast.orderNumber} to store counter ${storeCounterId} (from KOT counter ${counterId})`);
             });
           }
@@ -8461,13 +8391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Skip if we already broadcasted from KOT counter
             if (!(isKotCounter && kotStoreCounters.includes(storeCounterId))) {
               console.log(`📢 Broadcasting item-level status update to counter room: ${storeCounterId}`);
-              wsManager.broadcastToCounter(storeCounterId, {
-                type: 'item_status_changed',
-                data: result,
-                counterId: storeCounterId,
-                orderNumber: result.orderNumber,
-                itemStatusByCounter: result.itemStatusByCounter
-              });
+              wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', result);
             }
           });
         }
@@ -8475,14 +8399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting mark-ready update to specific counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'order_status_changed',
-            data: result,
-            oldStatus: oldOrder.status,
-            newStatus: result.status,
-            orderNumber: result.orderNumber,
-            itemStatusByCounter: result.itemStatusByCounter
-          });
+          wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
         console.log('📡 WebSocket manager not available for mark-ready broadcast');
@@ -8529,13 +8446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting update-status to counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'order_status_changed',
-            data: result,
-            oldStatus: oldOrder.status,
-            newStatus: result.status,
-            orderNumber: result.orderNumber
-          });
+          wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
         console.log('📡 WebSocket manager not available for update-status broadcast');
@@ -8582,13 +8493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting complete order to counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'order_status_changed',
-            data: result,
-            oldStatus: oldOrder.status,
-            newStatus: result.status,
-            orderNumber: result.orderNumber
-          });
+          wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
         console.log('📡 WebSocket manager not available for complete order broadcast');
@@ -8697,27 +8602,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
             console.log(`📢 Broadcasting item-level delivery update to counter room: ${storeCounterId}`);
-            wsManager.broadcastToCounter(storeCounterId, {
-              type: 'item_status_changed',
-              data: orderDataForBroadcast,
-              counterId: storeCounterId,
-              orderNumber: result.orderNumber,
-              itemStatusByCounter: result.itemStatusByCounter
-            });
+            wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
           });
         }
         
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting deliver order to counter room: ${counterId}`);
-          wsManager.broadcastToCounter(counterId, {
-            type: 'order_status_changed',
-            data: orderDataForBroadcast,
-            oldStatus: oldOrder.status,
-            newStatus: result.status,
-            orderNumber: result.orderNumber,
-            itemStatusByCounter: result.itemStatusByCounter
-          });
+          wsManager.broadcastToCounter(counterId, 'order_status_changed', orderDataForBroadcast);
         }
         
         // Broadcast to delivery person if this was a delivery person delivery

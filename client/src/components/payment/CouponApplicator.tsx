@@ -62,15 +62,15 @@ export default function CouponApplicator({
           finalAmount,
           description: result.coupon.description
         });
-        } else if (!result.valid) {
-        }
+      } else if (!result.valid) {
+      }
     },
     onError: () => {
       setValidationResult({
         valid: false,
         message: "Failed to validate coupon. Please try again."
       });
-      }
+    }
   });
 
   const handleApplyCoupon = () => {
@@ -91,7 +91,7 @@ export default function CouponApplicator({
     if (onCouponRemoved) {
       onCouponRemoved();
     }
-    };
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -101,18 +101,19 @@ export default function CouponApplicator({
 
   if (appliedCoupon) {
     return (
-      <Card className="bg-[#166534] border border-[#22c55e] shadow-lg">
+
+      <Card className="bg-muted/50 border border-green-500/50 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Check className="w-5 h-5 text-white" />
-              <CardTitle className="text-sm font-medium text-white">Coupon Applied</CardTitle>
+              <Check className="w-5 h-5 text-green-500" />
+              <CardTitle className="text-sm font-medium text-foreground">Coupon Applied</CardTitle>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRemoveCoupon}
-              className="text-white hover:bg-[#22c55e]/20 hover:text-white"
+              className="text-muted-foreground hover:text-foreground hover:bg-transparent"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -121,37 +122,38 @@ export default function CouponApplicator({
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm font-bold text-[#86efac] mb-1">
+              <div className="text-sm font-bold text-green-500 mb-1">
                 {appliedCoupon.code}
               </div>
-              <div className="text-xs text-white line-clamp-2">
+              <div className="text-xs text-muted-foreground line-clamp-2">
                 {appliedCoupon.description}
               </div>
             </div>
-            <span className="bg-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ml-2">
+            <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ml-2">
               -₹{appliedCoupon.discountAmount}
             </span>
           </div>
-          
-          <Separator className="bg-[#a0a0a0]" />
-          
+
+          <Separator className="bg-border" />
+
           <div className="flex items-center justify-between text-sm">
-            <span className="text-white">Savings</span>
-            <span className="font-semibold text-white">
+            <span className="text-muted-foreground">Savings</span>
+            <span className="font-semibold text-green-500">
               ₹{appliedCoupon.discountAmount}
             </span>
           </div>
         </CardContent>
       </Card>
     );
+
   }
 
   return (
-    <Card className="bg-[#2a2a2a] border border-[#3a3a3a] shadow-lg">
+    <Card className="bg-card border border-border shadow-lg">
       <CardHeader className="pb-3">
         <div className="flex items-center space-x-2">
-          <Ticket className="w-5 h-5 text-[#22c55e]" />
-          <CardTitle className="text-sm font-medium text-white">Apply Coupon</CardTitle>
+          <Ticket className="w-5 h-5 text-primary" />
+          <CardTitle className="text-sm font-medium text-foreground">Apply Coupon</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -162,7 +164,7 @@ export default function CouponApplicator({
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               onKeyPress={handleKeyPress}
-              className="uppercase bg-background border-[#3a3a3a] text-white placeholder:text-[#a0a0a0]"
+              className="uppercase bg-background border-input text-foreground placeholder:text-muted-foreground"
               disabled={validateCouponMutation.isPending}
             />
           </div>
@@ -170,22 +172,22 @@ export default function CouponApplicator({
             onClick={handleApplyCoupon}
             disabled={validateCouponMutation.isPending || !couponCode.trim()}
             size="sm"
-            className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {validateCouponMutation.isPending ? "Checking..." : "Apply"}
           </Button>
         </div>
 
         {validationResult && !validationResult.valid && (
-          <div className="flex items-start space-x-2 p-3 bg-red-950 rounded-lg border border-red-800">
-            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-red-300">
+          <div className="flex items-start space-x-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+            <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+            <div className="text-sm text-destructive">
               {validationResult.message}
             </div>
           </div>
         )}
 
-        <div className="text-xs text-[#a0a0a0]">
+        <div className="text-xs text-muted-foreground">
           <div className="flex items-center space-x-1">
             <Percent className="w-3 h-3" />
             <span>Have a discount code? Apply it here to save on your order</span>

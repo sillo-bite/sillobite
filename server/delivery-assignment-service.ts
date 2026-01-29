@@ -326,13 +326,7 @@ class DeliveryAssignmentService {
         // Also broadcast item-level status changes to all counter rooms
         if (updatedOrder.allStoreCounterIds && updatedOrder.allStoreCounterIds.length > 0) {
           updatedOrder.allStoreCounterIds.forEach((storeCounterId: string) => {
-            wsManager.broadcastToCounter(storeCounterId, {
-              type: 'item_status_changed',
-              data: updatedOrder,
-              counterId: storeCounterId,
-              orderNumber: updatedOrder.orderNumber,
-              itemStatusByCounter: updatedOrder.itemStatusByCounter
-            });
+            wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', updatedOrder);
           });
         }
       }
