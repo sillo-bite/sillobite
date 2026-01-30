@@ -12,12 +12,12 @@ import OrderDetailsModal from '@/components/orders/OrderDetailsModal';
 import BarcodeScanModal from '@/components/modals/BarcodeScanModal';
 import OrderFoundModal from '@/components/orders/OrderFoundModal';
 import OrderNotFoundModal from '@/components/orders/OrderNotFoundModal';
-import { 
-  CreditCard, 
-  Search, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  CreditCard,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
   ArrowLeft,
   Filter,
   RefreshCw,
@@ -46,15 +46,15 @@ interface Order {
 // Helper function to filter items in an order for a specific counter
 function filterOrderItems(order: any, counterId: string): any | null {
   if (!order || !order.items) return order;
-  
+
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-  
+
   // For offline orders, ALL payment counters should receive the order regardless of item assignment
   if (order.isOffline === true) {
     console.log(`💳 Order ${order.orderNumber} is offline - showing ALL items for payment counter ${counterId}`);
     return order; // Return the full order for offline orders
   }
-  
+
   // For regular orders, filter items that belong to this counter
   const relevantItems = items.filter((item: any) => {
     // Check if item belongs to this payment counter
@@ -67,7 +67,7 @@ function filterOrderItems(order: any, counterId: string): any | null {
     });
     return isRelevant;
   });
-  
+
   if (relevantItems.length > 0) {
     console.log(`💳 Order ${order.orderNumber} has ${relevantItems.length} items for payment counter ${counterId}`);
     // Return a filtered order with only the relevant items
@@ -76,7 +76,7 @@ function filterOrderItems(order: any, counterId: string): any | null {
       items: JSON.stringify(relevantItems)
     };
   }
-  
+
   console.log(`💳 Order ${order.orderNumber} has no items for payment counter ${counterId}`);
   return null;
 }
@@ -84,7 +84,7 @@ function filterOrderItems(order: any, counterId: string): any | null {
 // Helper function to filter orders for specific counter
 function filterOrderForCounter(order: any, counterId: string): any | null {
   if (!order) return null;
-  
+
   console.log(`💳 Filtering order ${order.orderNumber} for counter ${counterId}:`, {
     orderPaymentCounterId: order.paymentCounterId,
     orderAllPaymentCounterIds: order.allPaymentCounterIds,
@@ -92,39 +92,39 @@ function filterOrderForCounter(order: any, counterId: string): any | null {
     targetCounterId: counterId,
     isOffline: order.isOffline
   });
-  
+
   // For offline orders, ALL payment counters should receive the order
   if (order.isOffline === true) {
     console.log(`💳 Order ${order.orderNumber} is offline - relevant for ALL payment counters including ${counterId}`);
     return filterOrderItems(order, counterId);
   }
-  
+
   // Check if the order belongs to this payment counter (direct assignment)
   if (order.paymentCounterId === counterId) {
     console.log(`💳 Order ${order.orderNumber} directly assigned to counter ${counterId}`);
     // Still need to filter items for this counter
     return filterOrderItems(order, counterId);
   }
-  
+
   // Check if the counter is in the allPaymentCounterIds array
   if (order.allPaymentCounterIds && order.allPaymentCounterIds.includes(counterId)) {
     console.log(`💳 Order ${order.orderNumber} has counter ${counterId} in allPaymentCounterIds`);
     // Filter items for this counter
     return filterOrderItems(order, counterId);
   }
-  
+
   // Check if the counter is in the allCounterIds array
   if (order.allCounterIds && order.allCounterIds.includes(counterId)) {
     console.log(`💳 Order ${order.orderNumber} has counter ${counterId} in allCounterIds`);
     // Filter items for this counter
     return filterOrderItems(order, counterId);
   }
-  
+
   // Fallback: Check if any items in the order belong to this counter
   if (order.items && Array.isArray(order.items)) {
     return filterOrderItems(order, counterId);
   }
-  
+
   console.log(`💳 Order ${order.orderNumber} does not belong to counter ${counterId}`);
   return null;
 }
@@ -136,6 +136,30 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+
+  // Handle deep linking/highlighting of orders
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightOrderNumber = params.get('highlight');
+    if (highlightOrderNumber && orders.length > 0) {
+      // Small timeout to ensure DOM is rendered
+      setTimeout(() => {
+        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
+        if (element) {
+          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add visual highlight
+          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          }, 5000);
+        } else {
+          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
+        }
+      }, 1000);
+    }
+  }, [orders, window.location.search]);
 
   // Set page title
   useEffect(() => {
@@ -230,13 +254,13 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
       canteenId,
       shouldJoin: isConnected && counterId && canteenId
     });
-    
+
     console.log('💳 PaymentCounter - Attempting to join counter room:', {
       counterId,
       canteenId,
       isConnected
     });
-    
+
     if (isConnected && counterId && canteenId) {
       // Add a small delay to ensure WebSocket is fully connected
       const timeoutId = setTimeout(() => {
@@ -244,7 +268,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
         joinCounterRoom(counterId, canteenId);
         console.log('💳 PaymentCounter joinCounterRoom called for:', counterId);
       }, 100);
-      
+
       return () => {
         clearTimeout(timeoutId);
         if (counterId) {
@@ -262,7 +286,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
         console.log('💳 PaymentCounter retry: attempting to join counter room again:', counterId);
         joinCounterRoom(counterId, canteenId);
       }, 1000);
-      
+
       return () => clearTimeout(retryTimeout);
     }
   }, [isConnected, counterId, canteenId, joinCounterRoom]);
@@ -276,14 +300,14 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
       // Fetch all orders for the canteen and filter by paymentCounterId
       const result = await apiRequest(`/api/orders?canteenId=${canteenId}`);
       console.log('💳 PaymentCounter orders API response (all orders):', result);
-      
+
       // Filter ALL offline orders with pending_payment status (regardless of payment counter assignment)
       const filteredOrders = result.filter((order: any) => {
         // Check if it's an offline order with pending payment
-        const isOfflinePendingPayment = order.isOffline === true && 
-                                       order.status === 'pending_payment' && 
-                                       order.paymentStatus === 'pending';
-        
+        const isOfflinePendingPayment = order.isOffline === true &&
+          order.status === 'pending_payment' &&
+          order.paymentStatus === 'pending';
+
         console.log(`💳 Order ${order.orderNumber} filtering check:`, {
           isOffline: order.isOffline,
           status: order.status,
@@ -292,18 +316,18 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
           canteenId: order.canteenId,
           targetCanteenId: canteenId
         });
-        
+
         // Show ALL offline orders for this canteen (regardless of payment counter assignment)
         if (isOfflinePendingPayment && order.canteenId === canteenId) {
           console.log(`💳 Order ${order.orderNumber} included - offline order for this canteen`);
           return true;
         }
-        
+
         console.log(`💳 Order ${order.orderNumber} filtered out - not offline pending payment for this canteen`);
         return false;
       });
       console.log('💳 PaymentCounter filtered offline orders for payment counter:', filteredOrders);
-      
+
       return filteredOrders;
     },
     enabled: !!counterId && !!canteenId,
@@ -322,10 +346,10 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
   // Extract menu items from API response
   const menuItems = menuItemsData?.items || [];
 
-  console.log('💳 PaymentCounter useQuery state:', { 
-    isLoading, 
-    error, 
-    ordersCount: orders.length, 
+  console.log('💳 PaymentCounter useQuery state:', {
+    isLoading,
+    error,
+    ordersCount: orders.length,
     enabled: !!counterId && !!canteenId,
     counterId,
     canteenId
@@ -334,7 +358,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
 
   // Process payment mutation - confirms offline order and broadcasts to store counters
   const processPaymentMutation = useMutation({
-    mutationFn: (orderId: string) => 
+    mutationFn: (orderId: string) =>
       apiRequest(`/api/orders/${orderId}/confirm-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -360,7 +384,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
 
   // Reject order mutation - rejects offline order and prevents it from going to store counters
   const rejectOrderMutation = useMutation({
-    mutationFn: (orderId: string) => 
+    mutationFn: (orderId: string) =>
       apiRequest(`/api/orders/${orderId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -391,24 +415,24 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
   // Helper function to check if scanned barcode matches order (full barcode or first 4 digits)
   const matchesBarcode = (scannedBarcode: string, orderBarcode: string): boolean => {
     if (!orderBarcode) return false;
-    
+
     // Exact match
     if (scannedBarcode === orderBarcode || scannedBarcode === String(orderBarcode) || String(orderBarcode) === scannedBarcode) {
       return true;
     }
-    
+
     // Check if scanned is first 4 digits of order barcode
     if (scannedBarcode.length === 4 && orderBarcode.length >= 4) {
       const first4Digits = String(orderBarcode).slice(0, 4);
       return scannedBarcode === first4Digits;
     }
-    
+
     // Check if order barcode starts with scanned barcode (for partial matches)
     const orderBarcodeStr = String(orderBarcode);
     if (scannedBarcode.length < orderBarcodeStr.length) {
       return orderBarcodeStr.startsWith(scannedBarcode);
     }
-    
+
     return false;
   };
 
@@ -422,23 +446,23 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
       isOffline: o.isOffline,
       paymentStatus: o.paymentStatus
     })));
-    
+
     // Find the order by barcode (full barcode or first 4 digits OTP)
     // Try both string and number comparison to handle different formats
     const order = orders.find((o: any) => {
       // Check full barcode match
       if (matchesBarcode(barcode, o.barcode)) return true;
-      
+
       // Also try orderNumber as fallback
       if (matchesBarcode(barcode, o.orderNumber)) return true;
-      
+
       // Legacy exact matches
       if (o.barcode === barcode || o.barcode === String(barcode) || String(o.barcode) === barcode) return true;
       if (o.orderNumber === barcode || o.orderNumber === String(barcode) || String(o.orderNumber) === barcode) return true;
-      
+
       return false;
     });
-    
+
     console.log('💳 Order search result:', {
       scannedBarcode: barcode,
       foundOrder: order ? {
@@ -449,7 +473,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
         paymentStatus: order.paymentStatus
       } : null
     });
-    
+
     if (order && order.status === 'pending_payment' && order.isOffline) {
       console.log('💳 Found offline order for barcode/OTP:', order.orderNumber);
       // Show order found modal with payment confirmation
@@ -471,7 +495,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
 
   // Mark order as ready mutation
   const markReadyMutation = useMutation({
-    mutationFn: (orderId: string) => 
+    mutationFn: (orderId: string) =>
       apiRequest(`/api/orders/${orderId}/mark-ready`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -494,7 +518,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
         console.log('🔍 menuItems is not an array:', menuItems);
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       return items.some((item: any) => {
         // Try both id and _id fields to find the menu item
@@ -511,7 +535,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
   // Filter orders based on search and status (all orders are offline pending_payment)
   const filteredOrders = orders.filter((order: Order) => {
     const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+      order.customerName.toLowerCase().includes(searchTerm.toLowerCase());
     // Since all orders are pending_payment, we can filter by payment status or keep all
     const matchesStatus = statusFilter === 'all' || order.paymentStatus === statusFilter;
     return matchesSearch && matchesStatus;
@@ -569,13 +593,13 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
     try {
       console.log('🔍 Barcode scanned:', barcode, 'for order:', currentOrderForBarcode?.id);
       console.log('🔍 Order barcode:', currentOrderForBarcode?.barcode);
-      
+
       // Store the order data before closing the barcode modal
       const orderForVerification = currentOrderForBarcode;
-      
+
       // Close the barcode scan modal first
       setIsBarcodeModalOpen(false);
-      
+
       // Verify if the scanned barcode matches the order's barcode
       if (orderForVerification && barcode === orderForVerification.barcode) {
         console.log('✅ Barcode matches! Showing order found modal');
@@ -608,18 +632,18 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
       if (currentOrderForBarcode) {
         setIsDelivering(true);
         console.log('📦 Marking order as delivered:', currentOrderForBarcode.id);
-        
+
         // Call the deliver API endpoint
         await apiRequest(`/api/orders/${currentOrderForBarcode.id}/deliver`, {
           method: 'POST',
           body: JSON.stringify({ counterId })
         });
-        
+
         console.log('✅ Order marked as delivered successfully');
-        
+
         // Refresh orders after marking as delivered
         queryClient.invalidateQueries({ queryKey: ['/api/orders', canteenId, counterId] });
-        
+
         handleCloseOrderFoundModal();
       }
     } catch (error) {
@@ -678,7 +702,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
             variant="outline"
             size="sm"
             onClick={() => {
-              const countersRoute = isOwnerRoute 
+              const countersRoute = isOwnerRoute
                 ? `/canteen-owner-dashboard/${canteenId}/counters`
                 : `/admin/canteen/${canteenId}/counters`;
               setLocation(countersRoute);
@@ -694,35 +718,33 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
                 <CreditCard className="h-6 w-6" />
                 <span>Offline Payment Counter</span>
               </h1>
-        <div className="flex items-center space-x-1" title={
-          isConnected
-            ? `WebSocket connected to counter room: ${counterId}`
-            : 'WebSocket disconnected - orders will not update in real-time'
-        }>
-          <div className={`w-2 h-2 rounded-full ${
-            isConnected ? 'bg-success' : 'bg-destructive'
-          }`}></div>
-          <span className={`text-xs ${
-            isConnected ? 'text-success' : 'text-destructive'
-          }`}>
-            {isConnected ? 'Live' : 'Offline'}
-          </span>
-        </div>
-        <button
-          onClick={() => {
-            console.log('💳 Manual join counter room test:', counterId);
-            joinCounterRoom(counterId, canteenId);
-          }}
-          className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
-        >
-          Test Join Room
-        </button>
+              <div className="flex items-center space-x-1" title={
+                isConnected
+                  ? `WebSocket connected to counter room: ${counterId}`
+                  : 'WebSocket disconnected - orders will not update in real-time'
+              }>
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-destructive'
+                  }`}></div>
+                <span className={`text-xs ${isConnected ? 'text-success' : 'text-destructive'
+                  }`}>
+                  {isConnected ? 'Live' : 'Offline'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  console.log('💳 Manual join counter room test:', counterId);
+                  joinCounterRoom(counterId, canteenId);
+                }}
+                className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
+              >
+                Test Join Room
+              </button>
             </div>
             <p className="text-muted-foreground">Confirm offline payments and broadcast to store counters</p>
           </div>
         </div>
-        <Button 
-          onClick={() => refetch()} 
+        <Button
+          onClick={() => refetch()}
           variant="outline"
           disabled={isFetching}
         >
@@ -769,15 +791,15 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
               <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Orders Found</h3>
               <p className="text-muted-foreground text-center">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'No offline orders match your current filters.' 
+                {searchTerm || statusFilter !== 'all'
+                  ? 'No offline orders match your current filters.'
                   : 'No offline orders are currently pending payment confirmation.'}
               </p>
             </CardContent>
           </Card>
         ) : (
           filteredOrders.map((order: Order) => (
-            <Card key={order.id} onClick={() => handleOrderClick(order)} className="hover:shadow-md transition-shadow cursor-pointer">
+            <Card key={order.id} id={`order-card-${order.orderNumber}`} onClick={() => handleOrderClick(order)} className="hover:shadow-md transition-shadow cursor-pointer">
               <CardHeader>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div className="flex items-center space-x-3">
@@ -805,7 +827,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
                       ₹{order.amount}
                     </div>
                   </div>
-                  
+
                   {/* Small Action Buttons in Bottom Right */}
                   <div className="flex flex-wrap gap-2">
                     {order.status === 'pending_payment' ? (

@@ -1,4 +1,4 @@
-# Robots.txt for Sillobyte Canteen - https://sillobyte.onrender.com
+# Robots.txt for SilloBite Canteen - https://sillobite.onrender.com
 
 # Allow all search engines to crawl the site
 User-agent: *
@@ -51,7 +51,7 @@ Allow: /api/icon.png
 Allow: /api/icon.svg
 
 # Sitemap location
-Sitemap: https://sillobyte.onrender.com/sitemap.xml
+Sitemap: https://sillobite.onrender.com/sitemap.xml
 
 # Host declaration
-Host: https://sillobyte.onrender.com
+Host: https://sillobite.onrender.com

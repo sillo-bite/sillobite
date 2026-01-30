@@ -40,12 +40,12 @@ export function useAuth() {
         console.log("Already validating, skipping...");
         return;
       }
-      
+
       setIsValidating(true);
       const authState = getPWAAuthState();
-      
+
       console.log("useAuth loadUserFromStorage - PWA State:", authState);
-      
+
       // Check for server-managed temp user session first
       const serverTempUser = getServerTempUserSession();
       if (serverTempUser && serverTempUser.sessionId) {
@@ -70,10 +70,10 @@ export function useAuth() {
           return;
         }
       }
-      
+
       if (authState.isAuthenticated && authState.user) {
         console.log("Valid PWA session found, checking validation cache:", authState.user);
-        
+
         // Skip database validation for temporary/guest users
         // IMPORTANT: Preserve all fields from localStorage including organization
         if (authState.user.isTemporary || authState.user.role === 'guest') {
@@ -86,12 +86,12 @@ export function useAuth() {
           setIsValidating(false);
           return;
         }
-        
+
         // Check cache first for regular users
         const cacheKey = authState.user.id.toString();
         const cached = validationCache.get(cacheKey);
         const now = Date.now();
-        
+
         if (cached && (now - cached.timestamp) < VALIDATION_CACHE_DURATION) {
           console.log("✅ Using cached validation result");
           setUser(cached.user);
@@ -99,7 +99,7 @@ export function useAuth() {
           setIsValidating(false);
           return;
         }
-        
+
         // Check if there's already a validation in progress for this user
         const existingValidation = validationLocks.get(cacheKey);
         if (existingValidation) {
@@ -115,7 +115,7 @@ export function useAuth() {
             // Fall through to start new validation
           }
         }
-        
+
         // Validate user still exists in database and is not blocked
         const validationPromise = (async () => {
           try {
@@ -126,7 +126,7 @@ export function useAuth() {
                 'Cache-Control': 'max-age=60' // Cache for 60 seconds
               }
             });
-          
+
             if (response.ok) {
               const data = await response.json();
               if (data.userExists) {
@@ -173,10 +173,10 @@ export function useAuth() {
             return authState.user;
           }
         })();
-        
+
         // Store the promise so other components can wait for it
         validationLocks.set(cacheKey, validationPromise);
-        
+
         try {
           const validatedUser = await validationPromise;
           setUser(validatedUser);
@@ -215,6 +215,10 @@ export function useAuth() {
 
   const login = (userData: User) => {
     console.log("useAuth login called with:", userData);
+
+    // Clear any temporary user session to prevent conflicts
+    localStorage.removeItem('temp_user_session');
+
     setUser(userData);
     setPWAAuth(userData);
     // Mark onboarding as completed when user successfully logs in
@@ -225,13 +229,13 @@ export function useAuth() {
 
   const logout = async () => {
     console.log("🚀 Complete logout initiated...");
-    
+
     // Check if this is a temporary user
     const isTemporary = isTempUser(user);
-    
+
     if (isTemporary) {
       console.log("🍽️ Logging out temporary user...");
-      
+
       // Check if this is a server-managed temp user
       const serverTempUser = getServerTempUserSession();
       if (serverTempUser && serverTempUser.sessionId) {
@@ -256,7 +260,7 @@ export function useAuth() {
       } catch (error) {
         console.warn("⚠️ Google OAuth signOut failed:", error);
       }
-      
+
       // Complete cache clearing for logout
       try {
         await CacheManager.clearLogoutCaches();
@@ -265,13 +269,13 @@ export function useAuth() {
         console.warn("⚠️ Cache clearing failed:", error);
       }
     }
-    
+
     // Clear local app session
     setUser(null);
     clearPWAAuth();
     // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('userAuthChange'));
-    
+
     // Force reload to ensure clean state
     setTimeout(() => {
       window.location.href = isTemporary ? '/' : '/login';

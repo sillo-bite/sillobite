@@ -14,48 +14,73 @@ class WebPushNotificationManager {
   private isInitialized = false;
   private userId: string | null = null;
   private userRole: string = 'student';
+  private canteenId: string | null = null;
+
+  private initializationPromise: Promise<boolean> | null = null;
 
   /**
    * Initialize the Web Push service
    */
-  async initialize(userId?: string, userRole?: string): Promise<boolean> {
-    try {
-      // Check if browser supports service workers and push notifications
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('Push notifications are not supported by this browser');
-        return false;
-      }
-
-      // Set user info
-      if (userId) {
-        this.userId = userId;
-      }
-      if (userRole) {
-        this.userRole = userRole;
-      }
-
-      // Get VAPID public key from server
-      await this.fetchVAPIDKey();
-      
-      if (!this.vapidPublicKey) {
-        console.warn('Failed to get VAPID public key from server');
-        return false;
-      }
-
-      // Register service worker
-      await this.registerServiceWorker();
-
-      // Check existing subscription
-      await this.checkExistingSubscription();
-
-      this.isInitialized = true;
-      console.log('✅ Web Push notification manager initialized');
-      console.log('🔑 VAPID public key received:', this.vapidPublicKey?.substring(0, 20) + '...');
+  async initialize(userId?: string, userRole?: string, canteenId?: string): Promise<boolean> {
+    // If already initialized, just update user info if provided
+    if (this.isInitialized) {
+      if (userId) this.userId = userId;
+      if (userRole) this.userRole = userRole;
+      if (canteenId) this.canteenId = canteenId;
       return true;
-    } catch (error) {
-      console.error('❌ Failed to initialize Web Push notifications:', error);
-      return false;
     }
+
+    // If initialization is in progress, return the existing promise
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = (async () => {
+      try {
+        // Check if browser supports service workers and push notifications
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          console.warn('Push notifications are not supported by this browser');
+          return false;
+        }
+
+        // Set user info
+        if (userId) {
+          this.userId = userId;
+        }
+        if (userRole) {
+          this.userRole = userRole;
+        }
+        if (canteenId) {
+          this.canteenId = canteenId;
+        }
+
+        // Get VAPID public key from server
+        await this.fetchVAPIDKey();
+
+        if (!this.vapidPublicKey) {
+          console.warn('Failed to get VAPID public key from server');
+          return false;
+        }
+
+        // Register service worker
+        await this.registerServiceWorker();
+
+        // Check existing subscription
+        await this.checkExistingSubscription();
+
+        this.isInitialized = true;
+        console.log('✅ Web Push notification manager initialized');
+        console.log('🔑 VAPID public key received:', this.vapidPublicKey?.substring(0, 20) + '...');
+        return true;
+      } catch (error) {
+        console.error('❌ Failed to initialize Web Push notifications:', error);
+        return false;
+      } finally {
+        this.initializationPromise = null;
+      }
+    })();
+
+    return this.initializationPromise;
   }
 
   /**
@@ -83,13 +108,13 @@ class WebPushNotificationManager {
     try {
       // Register the service worker
       const registration = await navigator.serviceWorker.register('/sw.js');
-      
+
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready;
-      
+
       // Setup Android notification channels for better heads-up notification support
       await this.setupAndroidNotificationChannels();
-      
+
       console.log('✅ Service worker registered successfully');
       return registration;
     } catch (error) {
@@ -107,16 +132,16 @@ class WebPushNotificationManager {
       const userAgent = navigator.userAgent.toLowerCase();
       if ('Notification' in window && userAgent.includes('android')) {
         console.log('🔔 Setting up Android notification channels for heads-up notifications');
-        
+
         // Test if the browser supports notification options that help with Android heads-up display
         const testNotification = new Notification('Setup Complete', {
           silent: true,
           tag: 'setup-test',
         } as NotificationOptions);
-        
+
         // Close the test notification immediately
         setTimeout(() => testNotification.close(), 100);
-        
+
         console.log('✅ Android notification configuration optimized');
       }
     } catch (error) {
@@ -131,11 +156,11 @@ class WebPushNotificationManager {
     try {
       const registration = await navigator.serviceWorker.ready;
       const existingSubscription = await registration.pushManager.getSubscription();
-      
+
       if (existingSubscription) {
         this.subscription = existingSubscription;
         console.log('✅ Found existing push subscription');
-        
+
         // If we have a subscription but no subscription ID, register it with the server
         if (!this.subscriptionId && this.userId) {
           try {
@@ -168,7 +193,7 @@ class WebPushNotificationManager {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey!),
+        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey!) as any,
       });
 
       this.subscription = subscription;
@@ -195,12 +220,12 @@ class WebPushNotificationManager {
 
       // Request notification permission
       const permission = await Notification.requestPermission();
-      
+
       if (permission === 'denied') {
         console.warn('Notification permission denied by user');
         throw new Error('Notifications are blocked. Please enable them in your browser settings.');
       }
-      
+
       if (permission !== 'granted') {
         console.warn('Notification permission not granted:', permission);
         throw new Error('Notification permission was not granted. Please try again.');
@@ -210,7 +235,7 @@ class WebPushNotificationManager {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey),
+        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey) as any,
       });
 
       this.subscription = subscription;
@@ -242,6 +267,7 @@ class WebPushNotificationManager {
           subscription,
           userId: this.userId,
           userRole: this.userRole,
+          canteenId: this.canteenId,
           deviceInfo: this.getDeviceInfo(),
         }),
       });
@@ -270,7 +296,7 @@ class WebPushNotificationManager {
 
       // Unsubscribe from push manager
       await this.subscription.unsubscribe();
-      
+
       // Remove subscription from server
       if (this.subscriptionId) {
         await this.removeSubscriptionFromServer(this.subscriptionId);
@@ -371,7 +397,7 @@ class WebPushNotificationManager {
       return true;
     } catch (error) {
       console.error('❌ Failed to show Android-optimized notification:', error);
-      
+
       // Fallback to direct notification API
       try {
         const notification = new Notification('🔔 Android Fallback Test', {
@@ -451,9 +477,12 @@ class WebPushNotificationManager {
   /**
    * Update user information
    */
-  updateUserInfo(userId: string, userRole: string): void {
+  updateUserInfo(userId: string, userRole: string, canteenId?: string): void {
     this.userId = userId;
     this.userRole = userRole;
+    if (canteenId) {
+      this.canteenId = canteenId;
+    }
   }
 }
 
@@ -463,8 +492,8 @@ export default WebPushNotificationManager;
 export const webPushManager = new WebPushNotificationManager();
 
 // Export utility functions
-export const initializeWebPushNotifications = async (userId: string, userRole: string = 'student'): Promise<boolean> => {
-  return await webPushManager.initialize(userId, userRole);
+export const initializeWebPushNotifications = async (userId: string, userRole: string = 'student', canteenId?: string): Promise<boolean> => {
+  return await webPushManager.initialize(userId, userRole, canteenId);
 };
 
 export const requestNotificationPermission = async (): Promise<boolean> => {

@@ -36,9 +36,8 @@ export const WhoWeServeSection = () => {
       <div ref={ref} className="max-w-7xl mx-auto container-padding">
         {/* Premium Header */}
         <div
-          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-6">
             <Sparkles className="w-4 h-4" />
@@ -51,7 +50,7 @@ export const WhoWeServeSection = () => {
             </span>
           </h2>
           <p className="text-xl text-muted-foreground leading-relaxed font-light">
-            Sillobyte empowers dining operations across academic campuses, healthcare facilities, and corporate environments with tailored solutions for each unique institutional context.
+            SilloBite empowers dining operations across academic campuses, healthcare facilities, and corporate environments with tailored solutions for each unique institutional context.
           </p>
         </div>
 
@@ -60,9 +59,8 @@ export const WhoWeServeSection = () => {
           {/* Featured Large Card */}
           {featuredSegment && (
             <div
-              className={`lg:col-span-7 bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 rounded-3xl p-10 md:p-12 border border-primary/20 shadow-2xl hover:shadow-3xl transition-all duration-700 ease-out hover:scale-[1.01] ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
+              className={`lg:col-span-7 bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 rounded-3xl p-10 md:p-12 border border-primary/20 shadow-2xl hover:shadow-3xl transition-all duration-700 ease-out hover:scale-[1.01] ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
               style={{ transitionDelay: "150ms" }}
             >
               <div className="flex items-start gap-6 mb-6">
@@ -89,9 +87,8 @@ export const WhoWeServeSection = () => {
             {otherSegments.map((segment, index) => (
               <div
                 key={segment.title}
-                className={`bg-gradient-to-br from-card via-card to-card/95 rounded-2xl p-8 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-500 ease-out hover:scale-[1.02] hover:border-primary/30 ${
-                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                }`}
+                className={`bg-gradient-to-br from-card via-card to-card/95 rounded-2xl p-8 border border-border/50 shadow-lg hover:shadow-xl transition-all duration-500 ease-out hover:scale-[1.02] hover:border-primary/30 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                  }`}
                 style={{ transitionDelay: `${250 + index * 100}ms` }}
               >
                 <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/10 flex items-center justify-center mb-5 border border-secondary/20 shadow-sm">

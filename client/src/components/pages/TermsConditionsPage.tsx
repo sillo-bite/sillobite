@@ -60,8 +60,8 @@ export default function TermsConditionsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader 
-        title="Terms & Conditions" 
+      <PageHeader
+        title="Terms & Conditions"
         onBack={handleBackClick}
       />
 
@@ -71,7 +71,7 @@ export default function TermsConditionsPage() {
           <CardContent className="p-6">
             <h2 className="text-xl font-bold mb-4">Terms of Service</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              Welcome to our Digital Canteen System! By using our mobile application and services, you agree to be bound by these Terms and Conditions. 
+              Welcome to our Digital Canteen System! By using our mobile application and services, you agree to be bound by these Terms and Conditions.
               Please read them carefully before using our service.
             </p>
             <div className="p-3 bg-accent/50 rounded-lg">
@@ -131,7 +131,7 @@ export default function TermsConditionsPage() {
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4">Intellectual Property</h3>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-              The Digital Canteen app, including its design, functionality, and content, is owned by the institution. 
+              The Digital Canteen app, including its design, functionality, and content, is owned by the institution.
               You may not copy, modify, distribute, or reverse engineer any part of the application.
             </p>
             <p className="text-muted-foreground text-sm leading-relaxed">
@@ -145,7 +145,7 @@ export default function TermsConditionsPage() {
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold mb-4">Modifications to Terms</h3>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-              We reserve the right to modify these terms at any time. We will notify users of significant changes 
+              We reserve the right to modify these terms at any time. We will notify users of significant changes
               through the app or email notifications.
             </p>
             <p className="text-muted-foreground text-sm leading-relaxed">
@@ -162,7 +162,7 @@ export default function TermsConditionsPage() {
               For questions about these Terms and Conditions, please contact us:
             </p>
             <div className="space-y-2 text-sm">
-              <p><span className="font-medium">Email:</span> sillobyte.production@gmail.com</p>
+              <p><span className="font-medium">Email:</span> sillobite.production@gmail.com</p>
               <p><span className="font-medium">Phone:</span> +91 8220963071</p>
               <p><span className="font-medium">Office:</span> Administration Building, Main Campus</p>
               <p><span className="font-medium">Hours:</span> Monday to Friday, 9:00 AM - 5:00 PM</p>
@@ -175,7 +175,7 @@ export default function TermsConditionsPage() {
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-success mb-2">Acceptance of Terms</h3>
             <p className="text-sm text-muted-foreground">
-              By using the Digital Canteen application, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions. 
+              By using the Digital Canteen application, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.
               If you do not agree with any part of these terms, please discontinue use of the service.
             </p>
           </CardContent>

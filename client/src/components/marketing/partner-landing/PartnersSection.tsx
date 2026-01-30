@@ -19,9 +19,8 @@ const PartnerCard = ({ name, subtitle, logoPlaceholder, logoUrl, accentColor, de
 
   return (
     <div
-      className={`bg-gradient-to-br from-card via-card to-card/95 rounded-3xl p-10 border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-700 ease-out hover:scale-[1.02] hover:border-primary/30 w-full ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-      }`}
+      className={`bg-gradient-to-br from-card via-card to-card/95 rounded-3xl p-10 border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-700 ease-out hover:scale-[1.02] hover:border-primary/30 w-full ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        }`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {/* Logo Section */}
@@ -61,9 +60,8 @@ const PartnerCard = ({ name, subtitle, logoPlaceholder, logoUrl, accentColor, de
 
 const ComingSoonCard = ({ delay, isVisible }: { delay: number; isVisible: boolean }) => (
   <div
-    className={`bg-gradient-to-br from-muted/20 via-muted/10 to-muted/20 rounded-3xl p-10 border-2 border-dashed border-border/50 w-full transition-all duration-700 ease-out hover:border-primary/30 ${
-      isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-    }`}
+    className={`bg-gradient-to-br from-muted/20 via-muted/10 to-muted/20 rounded-3xl p-10 border-2 border-dashed border-border/50 w-full transition-all duration-700 ease-out hover:border-primary/30 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+      }`}
     style={{ transitionDelay: `${delay}ms` }}
   >
     <div className="w-28 h-28 mx-auto mb-6 rounded-2xl bg-muted/30 flex items-center justify-center flex-shrink-0 border-2 border-dashed border-border/50">
@@ -74,7 +72,7 @@ const ComingSoonCard = ({ delay, isVisible }: { delay: number; isVisible: boolea
         Your Institution Here
       </h3>
       <p className="text-sm text-muted-foreground/70 leading-relaxed">
-        Partner with Sillobyte to transform your campus or corporate cafeteria operations.
+        Partner with SilloBite to transform your campus or corporate cafeteria operations.
       </p>
     </div>
   </div>
@@ -88,9 +86,8 @@ export const PartnersSection = () => {
       <div ref={ref} className="max-w-7xl mx-auto container-padding">
         {/* Premium Header */}
         <div
-          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm font-semibold mb-6">
             <Building2 className="w-4 h-4" />
@@ -116,7 +113,7 @@ export const PartnersSection = () => {
             accentColor="primary"
             delay={150}
             isVisible={isVisible}
-            testimonial="Sillobyte has revolutionized our campus dining experience. Students love the seamless ordering, and our kitchen staff can focus on what they do best."
+            testimonial="SilloBite has revolutionized our campus dining experience. Students love the seamless ordering, and our kitchen staff can focus on what they do best."
           />
 
           <PartnerCard
@@ -134,9 +131,8 @@ export const PartnersSection = () => {
 
         {/* Trust Badge */}
         <div
-          className={`mt-16 text-center transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`mt-16 text-center transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
           style={{ transitionDelay: "450ms" }}
         >
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-muted/50 via-muted/30 to-muted/50 backdrop-blur-sm border border-border/50 shadow-lg">

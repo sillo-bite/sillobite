@@ -9,7 +9,7 @@ export default function AboutPage() {
   const handleBack = () => {
     // Check if we came from Profile
     const fromProfile = sessionStorage.getItem('navigationFrom') === 'profile';
-    
+
     if (fromProfile) {
       // Navigate back to Profile view
       setLocation("/app");
@@ -50,8 +50,8 @@ export default function AboutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader 
-        title="About Us" 
+      <PageHeader
+        title="About Us"
         icon={Info}
         onBack={handleBack}
       />
@@ -63,7 +63,7 @@ export default function AboutPage() {
             <div className="w-20 h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
               <Utensils className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">Sillobyte - Digital Canteen Management System</h2>
+            <h2 className="text-2xl font-bold mb-2">SilloBite - Digital Canteen Management System</h2>
             <p className="text-muted-foreground">
               Modern digital canteen solution for educational institutions
             </p>
@@ -80,8 +80,8 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              To revolutionize the canteen experience in educational institutions through digital innovation. 
-              Our mission is to provide a seamless, efficient, and user-friendly platform that connects 
+              To revolutionize the canteen experience in educational institutions through digital innovation.
+              Our mission is to provide a seamless, efficient, and user-friendly platform that connects
               students with quality food services while streamlining operations for canteen management.
             </p>
           </CardContent>

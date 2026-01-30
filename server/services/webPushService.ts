@@ -1,6 +1,6 @@
 import webPush from 'web-push';
 import crypto from 'crypto';
-import { NotificationTemplate, INotificationTemplate, CustomNotificationTemplate, ICustomNotificationTemplate } from '../models/mongodb-models.js';
+import { NotificationTemplate, INotificationTemplate, CustomNotificationTemplate, ICustomNotificationTemplate, WebPushSubscription } from '../models/mongodb-models.js';
 import { db } from '../db.js';
 
 interface PushSubscription {
@@ -40,6 +40,7 @@ interface StoredSubscription {
   subscription: PushSubscription;
   userId: string;
   userRole: string;
+  canteenId?: string;
   deviceInfo?: string;
   subscribedAt: number;
 }
@@ -79,16 +80,19 @@ export class WebPushService {
 
   constructor() {
     this.initializeVAPID();
-    // Initialize templates asynchronously
-    this.initializeDefaultTemplates().catch(error => {
-      console.error('Failed to initialize templates:', error);
+    // Initialize templates and subscriptions asynchronously
+    Promise.all([
+      this.initializeDefaultTemplates(),
+      this.loadSubscriptions()
+    ]).catch(error => {
+      console.error('Failed to initialize WebPushService:', error);
     });
   }
 
   private initializeVAPID() {
     const publicKey = process.env.VAPID_PUBLIC_KEY;
     const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const emailContact = process.env.VAPID_EMAIL || 'sillobyte.production@gmail.com';
+    const emailContact = process.env.VAPID_EMAIL || 'sillobite.production@gmail.com';
 
     if (!publicKey || !privateKey) {
       console.warn('VAPID keys not found. Generating new keys...');
@@ -98,13 +102,13 @@ export class WebPushService {
 
     try {
       this.vapidKeys = { publicKey, privateKey };
-      
+
       webPush.setVapidDetails(
         `mailto:${emailContact}`,
         publicKey,
         privateKey
       );
-      
+
       console.log('✅ Web Push service initialized with VAPID keys');
     } catch (error) {
       console.error('❌ Failed to initialize VAPID keys:', error);
@@ -121,12 +125,12 @@ export class WebPushService {
       console.log('Add these to your .env file:');
       console.log(`VAPID_PUBLIC_KEY=${vapidKeys.publicKey}`);
       console.log(`VAPID_PRIVATE_KEY=${vapidKeys.privateKey}`);
-      console.log('VAPID_EMAIL=sillobyte.production@gmail.com');
+      console.log('VAPID_EMAIL=sillobite.production@gmail.com');
       console.log('');
 
       // Set temporary VAPID details for this session
       webPush.setVapidDetails(
-        'mailto:sillobyte.production@gmail.com',
+        'mailto:sillobite.production@gmail.com',
         vapidKeys.publicKey,
         vapidKeys.privateKey
       );
@@ -145,11 +149,33 @@ export class WebPushService {
     return !!this.vapidKeys?.publicKey && !!this.vapidKeys?.privateKey;
   }
 
+  private async loadSubscriptions() {
+    try {
+      const storedSubs = await WebPushSubscription.find();
+      storedSubs.forEach(sub => {
+        this.subscriptions.set(sub.subscriptionId, {
+          subscription: {
+            endpoint: sub.endpoint,
+            keys: sub.keys
+          },
+          userId: sub.userId,
+          userRole: sub.userRole,
+          canteenId: sub.canteenId,
+          deviceInfo: sub.deviceInfo,
+          subscribedAt: sub.createdAt.getTime()
+        });
+      });
+      console.log(`✅ Loaded ${this.subscriptions.size} push subscriptions from database`);
+    } catch (error) {
+      console.error('❌ Failed to load subscriptions from DB:', error);
+    }
+  }
+
   private async initializeDefaultTemplates() {
     try {
       // Check if templates already exist in database
       const existingTemplates = await NotificationTemplate.find();
-      
+
       if (existingTemplates.length > 0) {
         // Load existing templates from database
         existingTemplates.forEach(template => {
@@ -167,7 +193,7 @@ export class WebPushService {
         console.log(`✅ Loaded ${existingTemplates.length} notification templates from database`);
         return;
       }
-      
+
       // Create default templates if none exist - matching your 4 application statuses
       const defaultTemplates: OrderStatusTemplate[] = [
         {
@@ -221,14 +247,14 @@ export class WebPushService {
           enabled: true
         }
       ];
-      
+
       // Save default templates to database and memory
       for (const template of defaultTemplates) {
         const dbTemplate = new NotificationTemplate(template);
         await dbTemplate.save();
         this.notificationTemplates.set(template.status, template);
       }
-      
+
       console.log('✅ Created and saved default notification templates to database');
     } catch (error) {
       console.error('❌ Failed to initialize notification templates:', error);
@@ -295,34 +321,67 @@ export class WebPushService {
   /**
    * Subscribe a user to push notifications
    */
-  addSubscription(
-    subscription: PushSubscription, 
-    userId: string, 
+  async addSubscription(
+    subscription: PushSubscription,
+    userId: string,
     userRole: string = 'student',
+    canteenId?: string,
     deviceInfo?: string
-  ): string {
+  ): Promise<string> {
     const subscriptionId = this.generateSubscriptionId(subscription);
-    
-    this.subscriptions.set(subscriptionId, {
+
+    const subscriptionData: StoredSubscription = {
       subscription,
       userId,
       userRole,
+      canteenId,
       deviceInfo,
       subscribedAt: Date.now(),
-    });
+    };
 
-    console.log(`📱 User ${userId} subscribed to push notifications (${subscriptionId.slice(0, 8)}...)`);
+    // Save to memory
+    this.subscriptions.set(subscriptionId, subscriptionData);
+
+    // Save to DB
+    try {
+      await WebPushSubscription.findOneAndUpdate(
+        { subscriptionId },
+        {
+          endpoint: subscription.endpoint,
+          keys: subscription.keys,
+          userId,
+          userRole,
+          canteenId,
+          deviceInfo,
+          subscriptionId
+        },
+        { upsert: true, new: true }
+      );
+      console.log(`📱 User ${userId} subscribed to push notifications (${subscriptionId.slice(0, 8)}...) ${canteenId ? `for Canteen: ${canteenId}` : ''}`);
+      console.log(`🔔 Debug: Subscription added. Total memory size: ${this.subscriptions.size}`);
+      console.log('🔔 Debug: Current subscriptions map keys:', Array.from(this.subscriptions.keys()));
+    } catch (error) {
+      console.error('❌ Failed to save subscription to DB:', error);
+    }
+
     return subscriptionId;
   }
 
   /**
    * Remove a subscription
    */
-  removeSubscription(subscriptionId: string): boolean {
+  async removeSubscription(subscriptionId: string): Promise<boolean> {
     const removed = this.subscriptions.delete(subscriptionId);
-    if (removed) {
-      console.log(`📱 Subscription removed: ${subscriptionId.slice(0, 8)}...`);
+
+    try {
+      if (removed) {
+        await WebPushSubscription.deleteOne({ subscriptionId });
+        console.log(`📱 Subscription removed: ${subscriptionId.slice(0, 8)}...`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to remove subscription from DB:', error);
     }
+
     return removed;
   }
 
@@ -392,6 +451,57 @@ export class WebPushService {
       console.log(`✅ Sent notification to role ${role} (${roleSubscriptions.length} devices)`);
     } catch (error) {
       console.error(`❌ Failed to send notification to role ${role}:`, error);
+    }
+  }
+
+
+
+  /**
+   * Send notification to all users in a specific canteen (owners/staff)
+   */
+  async sendToCanteen(canteenId: string, payload: NotificationPayload): Promise<void> {
+    if (!this.isConfigured()) {
+      console.warn('Web Push not configured, skipping notification');
+      return;
+    }
+
+    // Filter subscriptions for this canteen ID with appropriate roles
+    // We target 'canteen_owner' role specifically for this canteen
+    // We also include 'admin' role regardless of canteen ID for oversight if needed (optional)
+    const canteenSubscriptions = Array.from(this.subscriptions.values())
+      .filter(sub => {
+        const isMatch = sub.canteenId === canteenId && (sub.userRole === 'canteen_owner' || sub.userRole === 'admin');
+        console.log(`🔍 Checking sub: User=${sub.userId}, Role=${sub.userRole}, Canteen=${sub.canteenId} vs Target=${canteenId} -> Match? ${isMatch}`);
+        return isMatch;
+      });
+
+    console.log(`🔔 Debug: sendToCanteen - Target Canteen: ${canteenId}`);
+    console.log(`🔔 Debug: Total Subscriptions: ${this.subscriptions.size}`);
+    console.log(`🔔 Debug: Matching Subscriptions: ${canteenSubscriptions.length}`);
+
+    if (canteenSubscriptions.length === 0) {
+      console.log(`ℹ️ No matching subscriptions found for canteen: ${canteenId}`);
+      // Log all subscription canteenIds for debugging
+      const allCanteenIds = Array.from(this.subscriptions.values()).map(s => `${s.canteenId} (${s.userRole})`);
+      console.log('🔔 Debug: Available subscription info:', Array.from(this.subscriptions.values()).map(s => ({
+        canteenId: s.canteenId,
+        userRole: s.userRole,
+        userId: s.userId
+      })));
+      return;
+    }
+
+    console.log(`🔔 Sending notification to canteen ${canteenId} (${canteenSubscriptions.length} devices)`);
+
+    const notifications = canteenSubscriptions.map(({ subscription }) =>
+      this.sendNotification(subscription, payload)
+    );
+
+    try {
+      await Promise.allSettled(notifications);
+      console.log(`✅ Sent notification to canteen ${canteenId}`);
+    } catch (error) {
+      console.error(`❌ Failed to send notification to canteen ${canteenId}:`, error);
     }
   }
 
@@ -466,7 +576,7 @@ export class WebPushService {
         statusCode: error?.statusCode,
         endpoint: subscription.endpoint.substring(0, 50) + '...'
       });
-      
+
       // Remove invalid subscriptions (410 = Gone)
       if (error?.statusCode === 410) {
         const subscriptionId = this.generateSubscriptionId(subscription);
@@ -487,7 +597,7 @@ export class WebPushService {
     message?: string
   ): Promise<void> {
     const template = this.notificationTemplates.get(status);
-    
+
     if (!template || !template.enabled) {
       console.warn(`No enabled template found for status: ${status}`);
       return;
@@ -558,9 +668,49 @@ export class WebPushService {
   async sendNewOrderNotification(
     orderNumber: string,
     customerName: string,
-    totalAmount: number
+    totalAmount: number,
+    canteenId: string,
+    involvedCounters?: { id: string, name: string }[]
   ): Promise<void> {
-    await this.sendToRole('admin', {
+
+    // If we have specific counters, send a separate notification for each
+    if (involvedCounters && involvedCounters.length > 0) {
+      console.log(`🔔 Sending ${involvedCounters.length} separate notifications for order #${orderNumber} to involved counters`);
+
+      const notifications = involvedCounters.map(counter =>
+        this.sendToCanteen(canteenId, {
+          title: `New Order #${orderNumber} (${counter.name})`,
+          body: `New order #${orderNumber} from ${customerName} - ₹${totalAmount}`,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          data: {
+            type: 'new_order',
+            orderNumber,
+            customerName,
+            totalAmount,
+            counterId: counter.id,
+            counterName: counter.name,
+            url: `/canteen-owner-dashboard/${canteenId}/counter/${counter.id}?highlight=${orderNumber}`
+          },
+          // Deep link to the specific counter page with highlight param
+          url: `/canteen-owner-dashboard/${canteenId}/counter/${counter.id}?highlight=${orderNumber}`,
+          tag: `new_order_${orderNumber}_${counter.id}`,
+          requireInteraction: true,
+          // Android-specific settings for heads-up notifications
+          priority: 'high',
+          urgency: 'high',
+          vibrate: [300, 150, 300],
+          renotify: true,
+          sticky: true,
+        })
+      );
+
+      await Promise.allSettled(notifications);
+      return;
+    }
+
+    // Fallback: Generic notification if no counters specified
+    await this.sendToCanteen(canteenId, {
       title: 'New Order Received',
       body: `New order #${orderNumber} from ${customerName} - ₹${totalAmount}`,
       icon: '/icon-192.png',
@@ -570,8 +720,9 @@ export class WebPushService {
         orderNumber,
         customerName,
         totalAmount,
+        url: `/canteen-order-detail/${orderNumber}`
       },
-      url: `/admin/orders/${orderNumber}`,
+      url: `/canteen-order-detail/${orderNumber}`,
       tag: `new_order_${orderNumber}`,
       requireInteraction: true,
       // Android-specific settings for heads-up notifications
@@ -628,7 +779,7 @@ export class WebPushService {
           template,
           { upsert: true, new: true }
         );
-        
+
         // Update in memory
         this.notificationTemplates.set(template.status, template);
         console.log(`📝 Updated notification template for status: ${template.status}`);
@@ -647,7 +798,7 @@ export class WebPushService {
         // Save to database
         const dbTemplate = new NotificationTemplate(template);
         await dbTemplate.save();
-        
+
         // Add to memory
         this.notificationTemplates.set(template.status, template);
         console.log(`➕ Added notification template for status: ${template.status}`);
@@ -664,10 +815,10 @@ export class WebPushService {
     try {
       // Delete from database
       const result = await NotificationTemplate.deleteOne({ status });
-      
+
       // Delete from memory
       const deleted = this.notificationTemplates.delete(status);
-      
+
       if (deleted && result.deletedCount > 0) {
         console.log(`🗑️ Deleted notification template for status: ${status}`);
         return true;
@@ -773,7 +924,7 @@ export class WebPushService {
 
     try {
       const targetUserIds = await this.getUsersForTargeting(criteria);
-      
+
       if (targetUserIds.length === 0) {
         console.warn('No users found matching targeting criteria');
         return { success: true, sentCount: 0, targetCount: 0 };
@@ -794,12 +945,12 @@ export class WebPushService {
       );
 
       await Promise.allSettled(notifications);
-      
+
       console.log(`✅ Sent targeted notification (${targetSubscriptions.length}/${targetUserIds.length} users reached)`);
-      return { 
-        success: true, 
-        sentCount: targetSubscriptions.length, 
-        targetCount: targetUserIds.length 
+      return {
+        success: true,
+        sentCount: targetSubscriptions.length,
+        targetCount: targetUserIds.length
       };
     } catch (error) {
       console.error('❌ Failed to send targeted notification:', error);
@@ -861,11 +1012,11 @@ export class WebPushService {
       });
 
       await newTemplate.save();
-      
+
       console.log(`➕ Created custom notification template: ${template.name}`);
-      return { 
-        success: true, 
-        template: { ...template, id } 
+      return {
+        success: true,
+        template: { ...template, id }
       };
     } catch (error) {
       console.error('❌ Failed to create custom template:', error);
@@ -895,7 +1046,7 @@ export class WebPushService {
   async deleteCustomTemplate(id: string): Promise<boolean> {
     try {
       const result = await CustomNotificationTemplate.deleteOne({ id });
-      
+
       if (result.deletedCount > 0) {
         console.log(`🗑️ Deleted custom notification template: ${id}`);
         return true;

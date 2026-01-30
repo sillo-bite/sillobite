@@ -10,9 +10,9 @@ import { ProfileSetupScreen } from "@/components/auth/ProfileSetupScreen";
 import ForgotEmailScreen from "@/components/auth/ForgotEmailScreen";
 import LoginIssuesScreen from "@/components/auth/LoginIssuesScreen";
 import BlockedUserScreen from "@/components/auth/BlockedUserScreen";
-import { 
-  resolveUserSessionConflict, 
-  securelyUpdateUserData 
+import {
+  resolveUserSessionConflict,
+  securelyUpdateUserData
 } from '@/utils/sessionConflictResolver';
 import { useUserFromCache } from '@/hooks/useUserFromCache';
 import { Mail, Lock, Eye, EyeOff, XCircle, User } from "lucide-react";
@@ -101,12 +101,12 @@ export default function LoginScreen() {
       const skipOnboarding = urlParams.get('skipOnboarding') === 'true';
       const pendingQRData = sessionStorage.getItem('pendingQRTableData');
       const fromOnboarding = sessionStorage.getItem('fromOnboarding') === 'true';
-      
+
       // Clear the onboarding flag after checking
       if (fromOnboarding) {
         sessionStorage.removeItem('fromOnboarding');
       }
-      
+
       // If user directly accessed login without onboarding and no QR data, redirect to onboarding
       if (!fromQR && !skipOnboarding && !pendingQRData && !fromOnboarding) {
         // This ensures users go through the proper flow: Splash → Onboarding → Login
@@ -180,7 +180,7 @@ export default function LoginScreen() {
       // If QR data exists, check for cached authenticated user FIRST
       if (qrData && existingUser && !authLoading) {
         console.log('🔍 Organization QR detected with cached user, validating...');
-        
+
         try {
           // Validate QR code first
           const validateResponse = await fetch(
@@ -207,7 +207,7 @@ export default function LoginScreen() {
                 console.error('Error updating user with organizationId:', e);
               }
             }
-            
+
             sessionStorage.setItem('orgContext', JSON.stringify({
               organizationId: organization.id,
               organizationName: organization.name,
@@ -216,7 +216,7 @@ export default function LoginScreen() {
 
             // User is fully authenticated and profile is complete, log them in directly
             console.log('✅ Cached user is complete, logging in directly');
-            
+
             const userDisplayData = {
               id: existingUser.id,
               name: existingUser.name,
@@ -230,10 +230,10 @@ export default function LoginScreen() {
             };
 
             login(userDisplayData as any);
-            
+
             // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
-            
+
             // Redirect to app
             setTimeout(() => {
               setLocation('/app');
@@ -261,7 +261,7 @@ export default function LoginScreen() {
       // Check if this is from organization QR code
       const pendingOrgQRData = sessionStorage.getItem('pendingOrgQRData');
       let orgQRData: OrganizationQRData | null = null;
-      
+
       if (pendingOrgQRData) {
         try {
           orgQRData = JSON.parse(pendingOrgQRData) as OrganizationQRData;
@@ -269,7 +269,7 @@ export default function LoginScreen() {
           console.error('Error parsing org QR data:', error);
         }
       }
-      
+
       // Check if user exists in database
       // Use cache to prevent duplicate calls
       const userResponse = await fetch(`/api/users/by-email/${user.email}`, {
@@ -278,11 +278,11 @@ export default function LoginScreen() {
           'Cache-Control': 'max-age=60' // Cache for 60 seconds
         }
       });
-      
+
       if (userResponse.ok) {
         // User exists, check if they are blocked
         const userData = await userResponse.json();
-        
+
         // Check if user is blocked (role starts with 'blocked_')
         if (userData.role && userData.role.startsWith('blocked_')) {
           setBlockedUser({
@@ -293,7 +293,7 @@ export default function LoginScreen() {
           });
           return;
         }
-        
+
         // Check if user came from organization QR and needs profile completion
         if (orgQRData && (userData.role === 'guest' || !userData.phoneNumber || !userData.organizationId)) {
           // Validate QR code first
@@ -316,12 +316,12 @@ export default function LoginScreen() {
             sessionStorage.removeItem('pendingOrgQRData');
           }
         }
-        
+
         // Get organizationId from database (now stored in user record)
         // For guest users, organizationId is stored in the database
         const organizationId = userData.organizationId || null;
         console.log('🔧 Organization ID from database:', organizationId);
-        
+
         // Login user directly without profile completion check
         const userDisplayData = {
           id: userData.id,
@@ -344,11 +344,11 @@ export default function LoginScreen() {
             staffId: userData.staffId || '',
           }),
         };
-        
+
         // Log role for debugging
         console.log('🔐 Login - User role:', userData.role, 'User data:', userDisplayData);
         console.log('🔧 Organization ID from database:', userDisplayData.organization);
-        
+
         // Check for pending QR table data and apply restaurant context if available
         const pendingQRData = sessionStorage.getItem('pendingQRTableData');
         if (pendingQRData) {
@@ -359,23 +359,23 @@ export default function LoginScreen() {
               restaurantName: qrData.restaurantName,
               tableNumber: qrData.tableNumber
             };
-            
+
             // Apply restaurant context to user data
             const updatedUserData = resolveUserSessionConflict(userDisplayData, restaurantContext);
-            
+
             // Store updated user data with restaurant context
             if (updatedUserData) {
               securelyUpdateUserData(updatedUserData, false);
-              
+
               // Also call login to ensure auth context is updated
               login(updatedUserData as any);
             } else {
               login(userDisplayData as any);
             }
-            
+
             // Remove pending QR data
             sessionStorage.removeItem('pendingQRTableData');
-            
+
             console.log('✅ Restaurant context applied to authenticated user from QR code');
           } catch (error) {
             console.error('Error applying QR context:', error);
@@ -386,7 +386,7 @@ export default function LoginScreen() {
           // Use the proper login function to maintain authentication state
           login(userDisplayData as any);
         }
-        
+
         // Add a small delay to ensure login state is persisted before redirect
         setTimeout(async () => {
           // Redirect based on role (handle both naming conventions)
@@ -423,13 +423,13 @@ export default function LoginScreen() {
             role: 'super_admin',
             isProfileComplete: true,
           };
-          
+
           const createResponse = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(adminUser)
           });
-          
+
           if (createResponse.ok) {
             const newUser = await createResponse.json();
             login({
@@ -449,13 +449,13 @@ export default function LoginScreen() {
             role: 'canteen_owner',
             isProfileComplete: true,
           };
-          
+
           const createResponse = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ownerUser)
           });
-          
+
           if (createResponse.ok) {
             const newUser = await createResponse.json();
             login({
@@ -512,17 +512,17 @@ export default function LoginScreen() {
 
             if (createResponse.ok) {
               const newUser = await createResponse.json();
-              
+
               // Store organization context (including full address)
               sessionStorage.setItem('orgContext', JSON.stringify({
                 organizationId: organization.id,
                 organizationName: organization.name,
                 fullAddress: fullAddress,
               }));
-              
+
               // Remove pending QR data
               sessionStorage.removeItem('pendingOrgQRData');
-              
+
               // Login directly with minimal user data
               const userDisplayData = {
                 id: newUser.id,
@@ -544,17 +544,17 @@ export default function LoginScreen() {
               const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
               if (existingUserResponse.ok) {
                 const existingUser = await existingUserResponse.json();
-                
+
                 // Store organization context (including full address)
                 sessionStorage.setItem('orgContext', JSON.stringify({
                   organizationId: organization.id,
                   organizationName: organization.name,
                   fullAddress: fullAddress, // Store full address to auto-add to user addresses
                 }));
-                
+
                 // Remove pending QR data
                 sessionStorage.removeItem('pendingOrgQRData');
-                
+
                 // If missing organizationId, update it; phone number is optional
                 if (!existingUser.organizationId) {
                   try {
@@ -569,7 +569,7 @@ export default function LoginScreen() {
                     console.error('Error updating user with organizationId:', e);
                   }
                 }
-                
+
                 // Log in regardless of phone number
                 const organizationId = existingUser.organizationId || organization.id;
                 const userDisplayData = {
@@ -658,7 +658,7 @@ export default function LoginScreen() {
       // First, check if dev user exists in database
       const devEmail = 'dev.test@canteen.local';
       let userResponse = await fetch(`/api/users/by-email/${devEmail}`);
-      
+
       let devUserData;
       if (userResponse.ok) {
         // Dev user exists, use existing data
@@ -679,13 +679,13 @@ export default function LoginScreen() {
           isPassed: false,
           isProfileComplete: true
         };
-        
+
         const createResponse = await fetch('/api/users', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(createDevUser)
         });
-        
+
         if (createResponse.ok) {
           devUserData = await createResponse.json();
         } else {
@@ -710,7 +710,7 @@ export default function LoginScreen() {
           }
         }
       }
-      
+
       // Create the user object for login
       const devUser = {
         id: devUserData.id,
@@ -723,7 +723,7 @@ export default function LoginScreen() {
         currentStudyYear: devUserData.currentStudyYear?.toString() || '3',
         isPassed: devUserData.isPassed || false
       };
-      
+
       // Log in the dev user
       login(devUser);
       setLocation("/home");
@@ -815,7 +815,7 @@ export default function LoginScreen() {
               restaurantName: qrData.restaurantName,
               tableNumber: qrData.tableNumber
             };
-            
+
             const updatedUserData = resolveUserSessionConflict(userDisplayData, restaurantContext);
             if (updatedUserData) {
               securelyUpdateUserData(updatedUserData, false);
@@ -1031,8 +1031,8 @@ export default function LoginScreen() {
   // Show blocked user screen
   if (blockedUser) {
     return (
-      <BlockedUserScreen 
-        user={blockedUser} 
+      <BlockedUserScreen
+        user={blockedUser}
         onRetryLogin={() => {
           setBlockedUser(null);
           // Allow user to try logging in again
@@ -1044,7 +1044,7 @@ export default function LoginScreen() {
   // Show forgot email screen if requested
   if (showForgotEmail) {
     return (
-      <ForgotEmailScreen 
+      <ForgotEmailScreen
         onBackToLogin={() => setShowForgotEmail(false)}
       />
     );
@@ -1053,7 +1053,7 @@ export default function LoginScreen() {
   // Show login issues screen if requested
   if (showLoginIssues) {
     return (
-      <LoginIssuesScreen 
+      <LoginIssuesScreen
         onBackToLogin={() => setShowLoginIssues(false)}
       />
     );
@@ -1079,10 +1079,10 @@ export default function LoginScreen() {
       <div className="w-full max-w-[380px] space-y-4">
         {/* Logo Section - Compact */}
         <div className="text-center">
-          <img src="/splash_logo.svg" alt="Sillobyte Logo" className="w-48 h-48 object-contain mx-auto mb-0" />
+          <img src="/splash_logo.svg" alt="SilloBite Logo" className="w-48 h-48 object-contain mx-auto mb-0" />
           <div className="space-y-0.5 -mt-12">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              {isLogin ? "Welcome to Sillobyte" : "Join Sillobyte"}
+              {isLogin ? "Welcome to SilloBite" : "Join SilloBite"}
             </h1>
             <p className="text-muted-foreground text-xs">
               {isLogin ? "Log in to continue your food journey" : "Create your account to get started"}
@@ -1100,10 +1100,10 @@ export default function LoginScreen() {
               disabled={isGoogleSignInLoading || isEmailPasswordLoading}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               {isGoogleSignInLoading ? (
                 <>
@@ -1133,137 +1133,137 @@ export default function LoginScreen() {
 
                 {/* Email/Password Form - Compact */}
                 <form onSubmit={handleEmailPasswordSubmit} className="space-y-3">
-              {/* Name field - Only shown for registration */}
-              {!isLogin && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs font-medium text-foreground">Full Name</Label>
-                  <div className="relative group">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={emailPasswordForm.name}
-                      onChange={(e) => setEmailPasswordForm(prev => ({ ...prev, name: e.target.value }))}
-                      className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
-                      disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
-                      required={!isLogin}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs font-medium text-foreground">
-                  Email or mobile number
-                </Label>
-                <div className="relative group">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
-                  <Input
-                    id="email"
-                    type="text"
-                    placeholder="you@example.com or 9876543210"
-                    value={emailPasswordForm.identifier}
-                    onChange={(e) => setEmailPasswordForm(prev => ({ ...prev, identifier: e.target.value }))}
-                    className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
-                    disabled={isEmailPasswordLoading || isGoogleSignInLoading}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-medium text-foreground">Password</Label>
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder={isLogin ? "Enter your password" : "Create a password (min. 6 characters)"}
-                    value={emailPasswordForm.password}
-                    onChange={(e) => setEmailPasswordForm(prev => ({ ...prev, password: e.target.value }))}
-                    className="pl-10 pr-10 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
-                    disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none rounded p-1"
-                    disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {!isLogin && (
-                  <p className="text-[10px] text-muted-foreground px-1">
-                    Password must be at least 6 characters long
-                  </p>
-                )}
-              </div>
-
-              {emailPasswordError && (
-                <div className="text-xs text-red-400 bg-red-950/30 border border-red-800/40 p-3 rounded-lg flex items-start space-x-2">
-                  <XCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                  <p>{emailPasswordError}</p>
-                </div>
-              )}
-
-              <div className="space-y-3 pt-1">
-                <Button
-                  type="submit"
-                  className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
-                  disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
-                >
-                  {isEmailPasswordLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Processing...
-                    </>
-                  ) : (
-                    isLogin ? "Log in" : "Create Account"
-                  )}
-                </Button>
-
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setIsLogin(!isLogin);
-                      setEmailPasswordError(null);
-                      // Clear form when switching modes
-                      setEmailPasswordForm({
-                        identifier: "",
-                        password: "",
-                        name: "",
-                      });
-                    }}
-                    className="text-xs text-muted-foreground hover:text-primary h-auto py-1 px-2"
-                    disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
-                  >
-                    {isLogin ? (
-                      <>
-                        Don't have an account? <span className="text-primary font-semibold">Sign up</span>
-                      </>
-                    ) : (
-                      <>
-                        Already have an account? <span className="text-primary font-semibold">Log in</span>
-                      </>
-                    )}
-                  </Button>
+                  {/* Name field - Only shown for registration */}
                   {!isLogin && (
-                    <p className="text-[10px] text-muted-foreground text-center mt-1 px-2">
-                      After registration, you'll complete your profile setup
-                    </p>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="name" className="text-xs font-medium text-foreground">Full Name</Label>
+                      <div className="relative group">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
+                        <Input
+                          id="name"
+                          type="text"
+                          placeholder="Enter your full name"
+                          value={emailPasswordForm.name}
+                          onChange={(e) => setEmailPasswordForm(prev => ({ ...prev, name: e.target.value }))}
+                          className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
+                          disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
+                          required={!isLogin}
+                        />
+                      </div>
+                    </div>
                   )}
-                </div>
-              </div>
-            </form>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs font-medium text-foreground">
+                      Email or mobile number
+                    </Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
+                      <Input
+                        id="email"
+                        type="text"
+                        placeholder="you@example.com or 9876543210"
+                        value={emailPasswordForm.identifier}
+                        onChange={(e) => setEmailPasswordForm(prev => ({ ...prev, identifier: e.target.value }))}
+                        className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
+                        disabled={isEmailPasswordLoading || isGoogleSignInLoading}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="password" className="text-xs font-medium text-foreground">Password</Label>
+                    <div className="relative group">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder={isLogin ? "Enter your password" : "Create a password (min. 6 characters)"}
+                        value={emailPasswordForm.password}
+                        onChange={(e) => setEmailPasswordForm(prev => ({ ...prev, password: e.target.value }))}
+                        className="pl-10 pr-10 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
+                        disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none rounded p-1"
+                        disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {!isLogin && (
+                      <p className="text-[10px] text-muted-foreground px-1">
+                        Password must be at least 6 characters long
+                      </p>
+                    )}
+                  </div>
+
+                  {emailPasswordError && (
+                    <div className="text-xs text-red-400 bg-red-950/30 border border-red-800/40 p-3 rounded-lg flex items-start space-x-2">
+                      <XCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                      <p>{emailPasswordError}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 pt-1">
+                    <Button
+                      type="submit"
+                      className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+                      disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
+                    >
+                      {isEmailPasswordLoading ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Processing...
+                        </>
+                      ) : (
+                        isLogin ? "Log in" : "Create Account"
+                      )}
+                    </Button>
+
+                    <div className="text-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setIsLogin(!isLogin);
+                          setEmailPasswordError(null);
+                          // Clear form when switching modes
+                          setEmailPasswordForm({
+                            identifier: "",
+                            password: "",
+                            name: "",
+                          });
+                        }}
+                        className="text-xs text-muted-foreground hover:text-primary h-auto py-1 px-2"
+                        disabled={isEmailPasswordLoading || isGoogleSignInLoading || !!orgQRData}
+                      >
+                        {isLogin ? (
+                          <>
+                            Don't have an account? <span className="text-primary font-semibold">Sign up</span>
+                          </>
+                        ) : (
+                          <>
+                            Already have an account? <span className="text-primary font-semibold">Log in</span>
+                          </>
+                        )}
+                      </Button>
+                      {!isLogin && (
+                        <p className="text-[10px] text-muted-foreground text-center mt-1 px-2">
+                          After registration, you'll complete your profile setup
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </form>
               </>
             )}
 
@@ -1315,7 +1315,7 @@ export default function LoginScreen() {
                 </Button>
               </>
             )}
-            
+
             {/* Development Mode Skip Login */}
             {import.meta.env.DEV && (
               <>
@@ -1344,16 +1344,16 @@ export default function LoginScreen() {
         {/* Help Links & Footer - Compact single row */}
         <div className="space-y-2">
           <div className="flex flex-wrap justify-center items-center gap-3 text-xs">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setShowForgotEmail(true)}
               className="text-muted-foreground hover:text-primary h-auto px-2 py-1 text-xs"
             >
               Forgot email?
             </Button>
             <span className="text-muted-foreground/50">•</span>
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setShowLoginIssues(true)}
               className="text-muted-foreground hover:text-primary h-auto px-2 py-1 text-xs"
             >
@@ -1362,7 +1362,7 @@ export default function LoginScreen() {
           </div>
           <p className="text-[10px] text-muted-foreground text-center leading-tight">
             By continuing, you agree to our{" "}
-            <span 
+            <span
               className="text-primary underline cursor-pointer hover:no-underline"
               onClick={() => {
                 sessionStorage.setItem('termsPrivacyReferrer', '/login');
@@ -1381,7 +1381,7 @@ export default function LoginScreen() {
               Terms
             </span>{" "}
             and{" "}
-            <span 
+            <span
               className="text-primary underline cursor-pointer hover:no-underline"
               onClick={() => {
                 sessionStorage.setItem('termsPrivacyReferrer', '/login');

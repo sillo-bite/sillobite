@@ -13,12 +13,12 @@ import OrderDetailsModal from '@/components/orders/OrderDetailsModal';
 
 // DeliveryPersonSelectModal removed - not needed for KOT counters
 // Removed PanelGroup import - using custom layout instead
-import { 
+import {
   ChefHat, // Changed from Store to ChefHat for KOT counter
-  Search, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
   ArrowLeft,
   RefreshCw,
   ShoppingCart,
@@ -64,14 +64,14 @@ interface CanteenInfo {
 // Helper function to filter items in an order for a specific KOT counter
 function filterOrderItems(order: any, counterId: string): any | null {
   if (!order || !order.items) return null;
-  
+
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-  
+
   // Filter items that belong to this KOT counter by checking item.kotCounterId
   const relevantItems = items.filter((item: any) => {
     // Check if item has kotCounterId and it matches this counter
     const belongsToCounter = item.kotCounterId === counterId;
-    
+
     if (belongsToCounter) {
       console.log(`✅ Item ${item.name} belongs to KOT counter ${counterId}`, {
         itemName: item.name,
@@ -79,10 +79,10 @@ function filterOrderItems(order: any, counterId: string): any | null {
         targetCounterId: counterId
       });
     }
-    
+
     return belongsToCounter;
   });
-  
+
   if (relevantItems.length > 0) {
     console.log(`✅ Order ${order.orderNumber} has ${relevantItems.length} relevant items (out of ${items.length} total) for KOT counter ${counterId}`);
     // Return a filtered order with only the relevant items
@@ -91,7 +91,7 @@ function filterOrderItems(order: any, counterId: string): any | null {
       items: JSON.stringify(relevantItems)
     };
   }
-  
+
   console.log(`❌ Order ${order.orderNumber} has no items for KOT counter ${counterId} (checked ${items.length} items)`);
   return null;
 }
@@ -99,10 +99,10 @@ function filterOrderItems(order: any, counterId: string): any | null {
 // Helper function to filter orders for specific KOT counter
 function filterOrderForCounter(order: any, counterId: string): any | null {
   if (!order) return null;
-  
+
   // Check if the counter is in the allKotCounterIds array (order should be broadcasted to this counter)
   const shouldShowOrder = order.allKotCounterIds && order.allKotCounterIds.includes(counterId);
-  
+
   if (!shouldShowOrder) {
     console.log(`❌ Order ${order.orderNumber} not broadcasted to KOT counter ${counterId}`, {
       allKotCounterIds: order.allKotCounterIds,
@@ -110,7 +110,7 @@ function filterOrderForCounter(order: any, counterId: string): any | null {
     });
     return null;
   }
-  
+
   // Filter items for this KOT counter
   return filterOrderItems(order, counterId);
 }
@@ -121,15 +121,15 @@ function hasCounterDeliveredItems(order: any, counterId: string): boolean {
     if (!order.itemStatusByCounter || !order.itemStatusByCounter[counterId]) {
       return false;
     }
-    
+
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     const counterItemStatus = order.itemStatusByCounter[counterId];
-    
+
     // Check if all items belonging to this KOT counter are ready
     // Use item.kotCounterId directly (no menu item lookup needed)
     const counterItems = items.filter((item: any) => item.kotCounterId === counterId);
-    
-    return counterItems.length > 0 && counterItems.every((item: any) => 
+
+    return counterItems.length > 0 && counterItems.every((item: any) =>
       counterItemStatus[item.id] === 'ready' || counterItemStatus[item.id] === 'completed'
     );
   } catch (error) {
@@ -143,6 +143,30 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+
+  // Handle deep linking/highlighting of orders
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightOrderNumber = params.get('highlight');
+    if (highlightOrderNumber && orders.length > 0) {
+      // Small timeout to ensure DOM is rendered
+      setTimeout(() => {
+        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
+        if (element) {
+          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add visual highlight
+          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          }, 5000);
+        } else {
+          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
+        }
+      }, 1000);
+    }
+  }, [orders, window.location.search]);
 
   // Set page title
   useEffect(() => {
@@ -176,10 +200,10 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
   });
 
   // Extract counters from API response
-  const counters = Array.isArray(countersData) 
-    ? countersData 
+  const counters = Array.isArray(countersData)
+    ? countersData
     : (countersData as any)?.items || (countersData as any)?.counters || [];
-  
+
   // Create a map of counter ID to counter name for quick lookup
   const counterMap = new Map<string, { name: string; type: string }>();
   counters.forEach((counter: any) => {
@@ -202,12 +226,12 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         canteenId,
         fullOrder: order
       });
-      
+
       // Check if this order is relevant to this KOT counter
-      const isRelevantToCounter = order.allKotCounterIds?.includes(counterId) || 
-                                  order.allCounterIds?.includes(counterId) || 
-                                  order.kotCounterId === counterId;
-      
+      const isRelevantToCounter = order.allKotCounterIds?.includes(counterId) ||
+        order.allCounterIds?.includes(counterId) ||
+        order.kotCounterId === counterId;
+
       console.log('🍳 KotMode order relevance check:', {
         orderNumber: order.orderNumber,
         counterId,
@@ -217,7 +241,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         kotCounterId: order.kotCounterId,
         menuItemsLength: menuItems.length
       });
-      
+
       if (isRelevantToCounter) {
         // Check if menu items are available for filtering
         if (menuItems.length === 0) {
@@ -225,35 +249,35 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
           queryClient.invalidateQueries({ queryKey: ['/api/orders', canteenId, counterId, menuItems.length] });
           return;
         }
-        
+
         // Check if this counter has already delivered their items in this order
         const counterHasDelivered = hasCounterDeliveredItems(order, counterId);
         if (counterHasDelivered) {
           // Remove order from cache if counter has delivered
           queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
             if (!oldData) return oldData;
-            return oldData.filter((o: any) => 
+            return oldData.filter((o: any) =>
               o.id !== order.id && o.orderNumber !== order.orderNumber
             );
           });
           return;
         }
-        
+
         // Filter orders to show only items belonging to this counter
         const relevantOrder = filterOrderForCounter(order, counterId);
         if (relevantOrder) {
           // Add new order to cache directly - use exact query key including menuItems.length
           queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
             if (!oldData) return [relevantOrder];
-            
+
             // Check if order already exists
-            const exists = oldData.some((o: any) => 
+            const exists = oldData.some((o: any) =>
               o.id === relevantOrder.id || o.orderNumber === relevantOrder.orderNumber
             );
-            
+
             if (exists) {
               // Update existing order
-              return oldData.map((o: any) => 
+              return oldData.map((o: any) =>
                 o.id === relevantOrder.id || o.orderNumber === relevantOrder.orderNumber
                   ? relevantOrder
                   : o
@@ -268,24 +292,24 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     },
     onOrderUpdate: (order) => {
       // Check if this order is relevant to this KOT counter
-      const isRelevantToCounter = order?.allKotCounterIds?.includes(counterId) || 
-                                  order?.allCounterIds?.includes(counterId) || 
-                                  order?.kotCounterId === counterId;
-      
+      const isRelevantToCounter = order?.allKotCounterIds?.includes(counterId) ||
+        order?.allCounterIds?.includes(counterId) ||
+        order?.kotCounterId === counterId;
+
       if (!isRelevantToCounter) return;
-      
+
       // Filter the order for this counter before updating cache
       const filteredOrder = filterOrderForCounter(order, counterId);
       if (!filteredOrder) return;
-      
+
       // Update cache directly - use exact query key including menuItems.length
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return [filteredOrder];
-        
-        const existingIndex = oldData.findIndex((o: any) => 
+
+        const existingIndex = oldData.findIndex((o: any) =>
           o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
         );
-        
+
         if (existingIndex >= 0) {
           // Update existing order - preserve full itemStatusByCounter
           const updated = [...oldData];
@@ -308,33 +332,33 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     },
     onOrderStatusChange: (order, oldStatus, newStatus) => {
       // Check if this order is relevant to this KOT counter
-      const isRelevantToCounter = order?.allKotCounterIds?.includes(counterId) || 
-                                  order?.allCounterIds?.includes(counterId) || 
-                                  order?.kotCounterId === counterId;
-      
+      const isRelevantToCounter = order?.allKotCounterIds?.includes(counterId) ||
+        order?.allCounterIds?.includes(counterId) ||
+        order?.kotCounterId === counterId;
+
       if (!isRelevantToCounter) return;
-      
+
       // Filter the order for this counter before updating cache
       const filteredOrder = filterOrderForCounter(order, counterId);
       if (!filteredOrder) {
         // Order no longer relevant to this counter, remove it
         queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
           if (!oldData) return oldData;
-          return oldData.filter((o: any) => 
+          return oldData.filter((o: any) =>
             o.id !== order.id && o.orderNumber !== order.orderNumber
           );
         });
         return;
       }
-      
+
       // Update cache directly - use exact query key including menuItems.length
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return [filteredOrder];
-        
-        const existingIndex = oldData.findIndex((o: any) => 
+
+        const existingIndex = oldData.findIndex((o: any) =>
           o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
         );
-        
+
         if (existingIndex >= 0) {
           // Update existing order - preserve full itemStatusByCounter
           const updated = [...oldData];
@@ -357,24 +381,24 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     },
     onItemStatusChange: (order) => {
       // Handle item-level status changes (from mark-ready)
-      const isRelevantToCounter = order?.allKotCounterIds?.includes(counterId) || 
-                                  order?.allCounterIds?.includes(counterId) || 
-                                  order?.kotCounterId === counterId;
-      
+      const isRelevantToCounter = order?.allKotCounterIds?.includes(counterId) ||
+        order?.allCounterIds?.includes(counterId) ||
+        order?.kotCounterId === counterId;
+
       if (!isRelevantToCounter) return;
-      
+
       // Filter the order for this counter before updating cache
       const filteredOrder = filterOrderForCounter(order, counterId);
       if (!filteredOrder) return;
-      
+
       // Update cache directly - use exact query key including menuItems.length
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return [filteredOrder];
-        
-        const existingIndex = oldData.findIndex((o: any) => 
+
+        const existingIndex = oldData.findIndex((o: any) =>
           o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
         );
-        
+
         if (existingIndex >= 0) {
           // Update existing order - preserve full itemStatusByCounter from the order update
           const updated = [...oldData];
@@ -415,14 +439,14 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
       menuItemsLength: menuItems.length,
       shouldJoin: isConnected && counterId && canteenId && menuItems.length > 0
     });
-    
+
     console.log('🍳 KotMode - Attempting to join counter room:', {
       counterId,
       canteenId,
       isConnected,
       menuItemsLoaded: menuItems.length > 0
     });
-    
+
     if (isConnected && counterId && canteenId && menuItems.length > 0) {
       // Add a small delay to ensure WebSocket is fully connected
       const timeoutId = setTimeout(() => {
@@ -430,7 +454,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         joinCounterRoom(counterId, canteenId);
         console.log('🍳 KotMode joinCounterRoom called for:', counterId);
       }, 100);
-      
+
       return () => {
         clearTimeout(timeoutId);
         if (counterId) {
@@ -449,7 +473,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         console.log('🍳 KotMode retry: attempting to join counter room again:', counterId);
         joinCounterRoom(counterId, canteenId);
       }, 2000); // Increased delay to avoid duplicate calls
-      
+
       return () => clearTimeout(retryTimeout);
     }
   }, [isConnected, counterId, canteenId, menuItems.length, joinCounterRoom]);
@@ -476,7 +500,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         allCounterIds: order.allCounterIds,
         itemsCount: order.items ? (typeof order.items === 'string' ? JSON.parse(order.items).length : order.items.length) : 0
       })));
-      
+
       // Filter orders that belong to this KOT counter and filter items within each order
       // IMPORTANT: Always check items first, as allKotCounterIds might be incomplete
       const filteredOrders = result.map((order: any) => {
@@ -488,13 +512,13 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
           hasAllKotCounterIds: !!order.allKotCounterIds,
           hasAllCounterIds: !!order.allCounterIds
         });
-        
+
         // Use simplified filtering - check if counter is in allKotCounterIds and filter items by item.kotCounterId
         return filterOrderForCounter(order, counterId);
       }).filter((order: any) => order !== null); // Remove null orders
-      
+
       console.log('🍳 KotMode filtered orders for KOT counter:', filteredOrders);
-      
+
       return filteredOrders;
     },
     enabled: !!counterId && !!canteenId && menuItems.length > 0,
@@ -508,10 +532,10 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     isArray: Array.isArray(menuItems)
   });
 
-  console.log('🍳 KotMode useQuery state:', { 
-    isLoading, 
-    error, 
-    ordersCount: orders.length, 
+  console.log('🍳 KotMode useQuery state:', {
+    isLoading,
+    error,
+    ordersCount: orders.length,
     enabled: !!counterId && !!canteenId,
     counterId,
     canteenId
@@ -537,11 +561,11 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         // Use exact query key including menuItems.length
         queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
           if (!oldData) return [filteredOrder];
-          
-          const existingIndex = oldData.findIndex((o: any) => 
+
+          const existingIndex = oldData.findIndex((o: any) =>
             o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
           );
-          
+
           if (existingIndex >= 0) {
             // Update existing order - merge itemStatusByCounter to ensure all updates are reflected
             const updated = [...oldData];
@@ -558,10 +582,10 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
           }
         });
       }
-      
+
       // Also invalidate to ensure we get the latest data from server
       // This ensures subsequent updates work correctly
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['/api/orders', canteenId, counterId, menuItems.length],
         refetchType: 'active' // Only refetch active queries
       });
@@ -584,7 +608,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         console.log('🔍 menuItems is not an array:', menuItems);
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       console.log('🔍 Checking order for markable items:', {
         orderId: order.id,
@@ -593,12 +617,12 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         itemsLength: items?.length,
         menuItemsLength: menuItems.length
       });
-      
+
       // Use item.isMarkable directly (included in order items during creation)
       const hasMarkable = items.some((item: any) => {
         // Check isMarkable from item itself (added during order creation)
         const isMarkable = item.isMarkable === true;
-        
+
         console.log('🔍 Checking item:', {
           itemName: item.name,
           itemId: item.id,
@@ -606,10 +630,10 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
           itemHasIsMarkable: 'isMarkable' in item,
           itemData: { isMarkable: item.isMarkable, storeCounterId: item.storeCounterId }
         });
-        
+
         return isMarkable;
       });
-      
+
       console.log('🔍 Order has markable items:', hasMarkable);
       return hasMarkable;
     } catch (error) {
@@ -626,19 +650,19 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         console.log('🔍 menuItems is not an array:', menuItems);
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-      
+
       // Get item status for this counter
       const counterItemStatus = order.itemStatusByCounter?.[counterId] || {};
-      
+
       // Filter items that belong to this KOT counter AND are markable AND not yet ready
       // Use item.kotCounterId and item.isMarkable directly (included in order items during creation)
       const counterItems = items.filter((item: any) => {
         // Check if item belongs to this KOT counter using item.kotCounterId
         const belongsToCounter = item.kotCounterId === counterId;
         if (!belongsToCounter) return false;
-        
+
         // Check if item is markable using item.isMarkable (added during order creation)
         const isMarkable = item.isMarkable === true;
         if (!isMarkable) {
@@ -648,22 +672,22 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
           });
           return false;
         }
-        
+
         // Check if item is NOT already ready, out_for_delivery, or completed
         const itemStatus = counterItemStatus[item.id] || 'pending';
         const isNotReady = itemStatus !== 'ready' && itemStatus !== 'completed' && itemStatus !== 'out_for_delivery';
-        
+
         if (isNotReady) {
           console.log(`✅ Item ${item.name} (${item.id}) is markable and NOT ready - status: ${itemStatus}`);
         } else {
           console.log(`⏭️ Item ${item.name} (${item.id}) skipped - already ready/out_for_delivery/completed`);
         }
-        
+
         return isNotReady;
       });
-      
+
       const hasMarkable = counterItems.length > 0;
-      
+
       console.log('🔍 Counter has markable items (not ready):', {
         orderId: order.id,
         orderNumber: order.orderNumber,
@@ -676,7 +700,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
           status: counterItemStatus[item.id] || 'pending'
         }))
       });
-      
+
       return hasMarkable;
     } catch (error) {
       console.error('Error checking counter markable items:', error);
@@ -690,13 +714,13 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
       if (!Array.isArray(menuItems)) {
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-      
+
       // Check if any items belong to this KOT counter
       // Use item.kotCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.kotCounterId === counterId);
-      
+
       return counterItems.length > 0;
     } catch (error) {
       console.error('Error checking counter items:', error);
@@ -709,13 +733,13 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     try {
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       const counterItemStatus = order.itemStatusByCounter?.[counterId] || {};
-      
+
       // Check if all items belonging to this KOT counter are ready
       // Use item.kotCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.kotCounterId === counterId);
-      
+
       if (counterItems.length === 0) return false;
-      
+
       // For each item, check if it's ready
       return counterItems.every((item: any) => {
         // For auto-ready items (not markable), check order status
@@ -740,14 +764,14 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
       if (!order.itemStatusByCounter || !order.itemStatusByCounter[counterId]) {
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       const counterItemStatus = order.itemStatusByCounter[counterId];
-      
+
       // Check if all items belonging to this KOT counter are ready
       // Use item.kotCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.kotCounterId === counterId);
-      
+
       return counterItems.every((item: any) => counterItemStatus[item.id] === 'completed');
     } catch (error) {
       console.error('Error checking counter items completed status:', error);
@@ -766,7 +790,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
         }
         return 'pending';
       }
-      
+
       // For markable items, check itemStatusByCounter
       if (!order.itemStatusByCounter || !order.itemStatusByCounter[counterId]) {
         return 'pending';
@@ -787,9 +811,9 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
       const orderStatus = order.status;
       // Include active statuses for KOT counter
       const isActiveStatus = ['pending', 'preparing', 'ready', 'pending_kot'].includes(orderStatus);
-      
+
       if (!isActiveStatus) return false;
-      
+
       // Check if this counter has already delivered their items
       const counterItemsCompleted = areCounterItemsCompleted(order);
       return !counterItemsCompleted;
@@ -801,23 +825,23 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     return orders.filter((order: Order) => {
       const isPending = order.status === 'pending';
       if (!isPending) return false;
-      
+
       // Check if THIS counter has markable items that are NOT ready
       // This is counter-specific - only check items belonging to this counter
       try {
         const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
         const itemStatusByCounter = order.itemStatusByCounter || {};
-        
+
         // Filter markable items that belong to THIS KOT counter
         const counterMarkableItems = items.filter((item: any) => {
           return item.kotCounterId === counterId && item.isMarkable === true;
         });
-        
+
         // If this counter has no markable items, exclude from prep required
         if (counterMarkableItems.length === 0) {
           return false;
         }
-        
+
         // Check if all markable items for THIS counter are ready
         let allCounterMarkableItemsReady = true;
         for (const item of counterMarkableItems) {
@@ -827,9 +851,9 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
             break;
           }
         }
-        
+
         const counterItemsCompleted = areCounterItemsCompleted(order);
-        
+
         // Show in prep required if:
         // 1. Order is pending
         // 2. This counter has markable items that are NOT all ready
@@ -842,12 +866,12 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
   }, [orders, counterId]);
 
   // Filter orders based on search
-  const filteredActiveOrders = activeOrders.filter((order: Order) => 
+  const filteredActiveOrders = activeOrders.filter((order: Order) =>
     order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredPrepOrders = prepRequiredOrders.filter((order: Order) => 
+  const filteredPrepOrders = prepRequiredOrders.filter((order: Order) =>
     order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -878,7 +902,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
   const getPrepBadge = (order: Order) => {
     // Check if there are still markable items that need prep for this counter
     const hasMarkableForCounter = hasMarkableItemsForCounter(order);
-    
+
     if (hasMarkableForCounter) {
       return <div className="bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 text-xs font-medium px-2 py-1 rounded-full shadow-sm">Prep Required</div>;
     } else {
@@ -897,11 +921,11 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
   };
 
   const formatOrderTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 
@@ -954,16 +978,14 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                     {canteenInfo?.canteen?.name || 'CANTEEN'} - KOT Counter
                   </h1>
                   <div className="flex items-center space-x-1" title={
-                    isConnected 
-                      ? `WebSocket connected to counter room: ${counterId}` 
+                    isConnected
+                      ? `WebSocket connected to counter room: ${counterId}`
                       : 'WebSocket disconnected - orders will not update in real-time'
                   }>
-                    <div className={`w-2 h-2 rounded-full ${
-                      isConnected ? 'bg-green-500' : 'bg-red-500'
-                    }`}></div>
-                    <span className={`text-xs ${
-                      isConnected ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                    <span className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'
+                      }`}>
                       {isConnected ? 'Live' : 'Offline'}
                     </span>
                   </div>
@@ -973,25 +995,24 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-        <div className="flex items-center space-x-2 px-3 py-2 bg-muted rounded-md">
-          <Radio className="h-4 w-4" />
-          <span>Live Orders</span>
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`}
-            title={isConnected ? 'Real-time updates active' : 'Real-time updates unavailable'}
-          ></div>
-        </div>
-        <button
-          onClick={() => {
-            console.log('🏪 Manual join counter room test:', counterId);
-            joinCounterRoom(counterId, canteenId);
-          }}
-          className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Test Join Room
-        </button>
+            <div className="flex items-center space-x-2 px-3 py-2 bg-muted rounded-md">
+              <Radio className="h-4 w-4" />
+              <span>Live Orders</span>
+              <div
+                className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                title={isConnected ? 'Real-time updates active' : 'Real-time updates unavailable'}
+              ></div>
+            </div>
+            <button
+              onClick={() => {
+                console.log('🏪 Manual join counter room test:', counterId);
+                joinCounterRoom(counterId, canteenId);
+              }}
+              className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Test Join Room
+            </button>
             <Button
               variant="outline"
               size="sm"
@@ -1030,7 +1051,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                 </Badge>
               </div>
             </div>
-            
+
             <div className="mb-3 md:mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -1047,9 +1068,9 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
               {filteredActiveOrders.map((order: Order) => {
                 const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
                 const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                
+
                 return (
-                  <Card key={order.id} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-green-50/30 dark:to-green-950/30 border border-green-200/50 dark:border-green-800/50 hover:border-green-300 dark:hover:border-green-700 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
+                  <Card key={order.id} id={`order-card-${order.orderNumber}`} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-green-50/30 dark:to-green-950/30 border border-green-200/50 dark:border-green-800/50 hover:border-green-300 dark:hover:border-green-700 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
                     <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <CardContent className="relative p-4">
                       {/* Compact Header with Order ID and Status */}
@@ -1072,7 +1093,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                           {getPrepBadge(order)}
                         </div>
                       </div>
-                      
+
                       {/* Compact Customer and Items Section */}
                       <div className="mb-3 space-y-1">
                         <div className="flex items-center space-x-2">
@@ -1089,14 +1110,12 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                               return (
                                 <div key={index} className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                      isCompleted ? 'bg-green-600' :
-                                      isReady ? 'bg-green-500' : 'bg-yellow-500'
-                                    }`}></div>
-                                    <span className={`font-medium ${
-                                      isCompleted ? 'text-green-800' :
-                                      isReady ? 'text-green-700' : 'text-foreground'
-                                    }`}>
+                                    <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-600' :
+                                        isReady ? 'bg-green-500' : 'bg-yellow-500'
+                                      }`}></div>
+                                    <span className={`font-medium ${isCompleted ? 'text-green-800' :
+                                        isReady ? 'text-green-700' : 'text-foreground'
+                                      }`}>
                                       {item.quantity}x {item.name}
                                     </span>
                                     {isCompleted && (
@@ -1117,7 +1136,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Compact Bottom Section with Action Button */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -1129,14 +1148,14 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                             <span>{formatOrderTime(order.createdAt)}</span>
                           </div>
                         </div>
-                        
+
                         {/* Small Action Button in Bottom Right */}
                         {(() => {
                           const counterItemsCompleted = areCounterItemsCompleted(order);
                           const hasMarkableForCounter = hasMarkableItemsForCounter(order);
                           const hasItemsForCounter = hasCounterItems(order);
                           const counterItemsReady = areCounterItemsReady(order);
-                          
+
                           console.log('🔍 Button logic check:', {
                             orderNumber: order.orderNumber,
                             counterId,
@@ -1146,7 +1165,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                             counterItemsReady,
                             orderStatus: order.status,
                           });
-                          
+
                           if (counterItemsCompleted) {
                             // Items for this counter are completed - Show completed indicator
                             return (
@@ -1224,7 +1243,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                 <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               </div>
             </div>
-            
+
             <p className="text-sm text-muted-foreground mb-4">
               Orders requiring manual preparation (unseen orders prioritized)
             </p>
@@ -1233,9 +1252,9 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
               {filteredPrepOrders.map((order: Order) => {
                 const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
                 const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                
+
                 return (
-                  <Card key={order.id} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-orange-50/30 dark:to-orange-950/30 border border-orange-200/50 dark:border-orange-800/50 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
+                  <Card key={order.id} id={`order-card-${order.orderNumber}`} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-orange-50/30 dark:to-orange-950/30 border border-orange-200/50 dark:border-orange-800/50 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
                     <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-red-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <CardContent className="relative p-4">
                       {/* Compact Header with Order ID and Status */}
@@ -1259,7 +1278,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                           {getPriorityBadge(order)}
                         </div>
                       </div>
-                      
+
                       {/* Compact Customer and Items Section */}
                       <div className="mb-3 space-y-1">
                         <div className="flex items-center space-x-2">
@@ -1276,14 +1295,12 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                               return (
                                 <div key={index} className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
-                                    <div className={`w-2 h-2 rounded-full ${
-                                      isCompleted ? 'bg-green-600' :
-                                      isReady ? 'bg-green-500' : 'bg-yellow-500'
-                                    }`}></div>
-                                    <span className={`font-medium ${
-                                      isCompleted ? 'text-green-800' :
-                                      isReady ? 'text-green-700' : 'text-foreground'
-                                    }`}>
+                                    <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-600' :
+                                        isReady ? 'bg-green-500' : 'bg-yellow-500'
+                                      }`}></div>
+                                    <span className={`font-medium ${isCompleted ? 'text-green-800' :
+                                        isReady ? 'text-green-700' : 'text-foreground'
+                                      }`}>
                                       {item.quantity}x {item.name}
                                     </span>
                                     {isCompleted && (
@@ -1304,7 +1321,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Compact Bottom Section with Action Button */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -1316,14 +1333,14 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                             <span>{formatOrderTime(order.createdAt)}</span>
                           </div>
                         </div>
-                        
+
                         {/* Small Action Button in Bottom Right */}
                         {(() => {
                           const counterItemsCompleted = areCounterItemsCompleted(order);
                           const hasMarkableForCounter = hasMarkableItemsForCounter(order);
                           const hasItemsForCounter = hasCounterItems(order);
                           const counterItemsReady = areCounterItemsReady(order);
-                          
+
                           console.log('🔍 Button logic check:', {
                             orderNumber: order.orderNumber,
                             counterId,
@@ -1333,7 +1350,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                             counterItemsReady,
                             orderStatus: order.status,
                           });
-                          
+
                           if (counterItemsCompleted) {
                             // Items for this counter are completed - Show completed indicator
                             return (

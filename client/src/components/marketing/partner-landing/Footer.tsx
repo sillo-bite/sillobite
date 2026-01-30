@@ -8,16 +8,15 @@ export const Footer = () => {
     <footer ref={ref} className="bg-gradient-to-b from-card to-background border-t border-border/50 py-16">
       <div className="max-w-7xl mx-auto container-padding">
         <div
-          className={`grid md:grid-cols-4 gap-12 mb-12 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`grid md:grid-cols-4 gap-12 mb-12 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
           {/* Brand Section */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-3 mb-6">
-              <img 
-                src="/logo.png" 
-                alt="SilloBite Logo" 
+              <img
+                src="/logo.png"
+                alt="SilloBite Logo"
                 className="h-20 w-auto object-contain"
               />
               <div>
@@ -35,7 +34,7 @@ export const Footer = () => {
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4 text-primary" />
-                <span>contact@sillobyte.com</span>
+                <span>contact@sillobite.com</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary" />
@@ -101,9 +100,8 @@ export const Footer = () => {
 
         {/* Bottom Bar */}
         <div
-          className={`pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
           style={{ transitionDelay: "100ms" }}
         >
           <p className="text-sm text-muted-foreground text-center md:text-left">

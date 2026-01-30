@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { X, Smartphone, AlertCircle, PlusSquare } from 'lucide-react';
-import { 
-  isPWAAlreadyInstalled, 
-  markPWAAsInstalled, 
+import {
+  isPWAAlreadyInstalled,
+  markPWAAsInstalled,
   shouldPreventInstallation,
-  isMobileDevice 
+  isMobileDevice
 } from '@/utils/pwaInstallTracker';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -45,10 +45,10 @@ export function InstallPWA() {
 
     const setupInstallPrompts = async () => {
       setIsChecking(true);
-      
+
       // Check if app is already installed using comprehensive detection
       const alreadyInstalled = await isPWAAlreadyInstalled();
-      
+
       if (alreadyInstalled) {
         if (isMounted) {
           setIsInstalled(true);
@@ -81,15 +81,15 @@ export function InstallPWA() {
       const iosDetected = /iPad|iPhone|iPod/.test(navigator.userAgent);
       const androidDetected = /Android/.test(navigator.userAgent);
       const isSafariBrowser = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-      
+
       if (isMounted) {
         setIsIOS(iosDetected);
         setIsAndroid(androidDetected);
         setIsSafari(isSafariBrowser);
       }
-      
+
       const isInStandaloneMode = (window.navigator as any).standalone;
-      
+
       // For iOS: Only show install banner if we're sure it's not already installed
       // Double-check installation status before showing banner
       if (iosDetected) {
@@ -102,7 +102,7 @@ export function InstallPWA() {
           }
           return;
         }
-        
+
         // Only show banner if not in standalone mode and not already installed
         if (!isInStandaloneMode && isSafariBrowser) {
           iosTimer = setTimeout(() => {
@@ -131,7 +131,7 @@ export function InstallPWA() {
           }
           return;
         }
-        
+
         e.preventDefault();
         if (isMounted) {
           setDeferredPrompt(e);
@@ -169,7 +169,7 @@ export function InstallPWA() {
     };
 
     setupInstallPrompts();
-    
+
     return () => {
       isMounted = false;
       if (iosTimer) clearTimeout(iosTimer);
@@ -199,7 +199,7 @@ export function InstallPWA() {
       try {
         await deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        
+
         if (outcome === 'accepted') {
           // Mark as installed immediately (appinstalled event will also fire)
           markPWAAsInstalled();
@@ -270,7 +270,7 @@ export function InstallPWA() {
             <X className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
           {isIOS ? (
             isSafari ? (
@@ -336,14 +336,14 @@ export function InstallPWA() {
       <div className="mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-border/80 bg-card/95 px-3 py-3 shadow-[0_10px_30px_-14px_rgba(0,0,0,0.4)] backdrop-blur supports-[backdrop-filter]:backdrop-blur-md ring-1 ring-white/5 dark:border-white/8 dark:bg-[#1a0a2e]/95 dark:ring-white/10 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.03),transparent_42%),radial-gradient(circle_at_80%_0%,rgba(114,68,145,0.06),transparent_55%)]">
         <img
           src="/logo.png"
-          alt="Sillobyte logo"
+          alt="SilloBite logo"
           className="h-12 w-12 rounded-xl object-contain shadow bg-white p-1"
           loading="lazy"
         />
 
         <div className="flex-1">
           <p className="text-sm font-semibold leading-tight text-foreground">
-            Add Sillobyte to your home screen
+            Add SilloBite to your home screen
           </p>
         </div>
 
@@ -353,8 +353,8 @@ export function InstallPWA() {
             size="sm"
             className="h-9 rounded-full px-4 text-xs font-semibold shadow-lg hover:shadow-xl"
             data-testid="button-install-pwa"
-            title="Adds Sillobyte to your home screen for quick access."
-            aria-label="Add Sillobyte shortcut to home screen"
+            title="Adds SilloBite to your home screen for quick access."
+            aria-label="Add SilloBite shortcut to home screen"
           >
             <PlusSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Add shortcut</span>

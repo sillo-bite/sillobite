@@ -13,8 +13,8 @@ export interface SEOConfig {
 
 // Default SEO configuration
 export const defaultSEO: SEOConfig = {
-  title: "Sillobyte - Order Food Online from College Canteens | Fast & Convenient",
-  description: "Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students. Browse menus, place orders, and enjoy quick delivery.",
+  title: "SilloBite - Order Food Online from College Canteens | Fast & Convenient",
+  description: "Order delicious food from your college canteen with SilloBite. Fast, convenient, and secure online food ordering platform for students. Browse menus, place orders, and enjoy quick delivery.",
   keywords: [
     "college canteen",
     "food ordering",
@@ -27,65 +27,65 @@ export const defaultSEO: SEOConfig = {
     "student dining",
     "food ordering app"
   ],
-  canonicalUrl: "https://sillobyte.onrender.com",
-  ogImage: "https://sillobyte.onrender.com/api/icon.png?size=512",
+  canonicalUrl: "https://sillobite.onrender.com",
+  ogImage: "https://sillobite.onrender.com/api/icon.png?size=512",
   ogType: "website"
 };
 
 // Page-specific SEO configurations
 export const pageSEOConfigs: Record<string, Partial<SEOConfig>> = {
   home: {
-    title: "Sillobyte - Order Food Online from College Canteens | Fast & Convenient",
-    description: "Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students.",
+    title: "SilloBite - Order Food Online from College Canteens | Fast & Convenient",
+    description: "Order delicious food from your college canteen with SilloBite. Fast, convenient, and secure online food ordering platform for students.",
     keywords: ["college canteen", "food ordering", "online food delivery", "student meals", "campus dining"]
   },
   menu: {
-    title: "Browse Menu - Sillobyte | College Food Ordering",
-    description: "Browse our extensive menu of delicious food items available at your college canteen. Order online with Sillobyte for quick and convenient delivery.",
+    title: "Browse Menu - SilloBite | College Food Ordering",
+    description: "Browse our extensive menu of delicious food items available at your college canteen. Order online with SilloBite for quick and convenient delivery.",
     keywords: ["college menu", "canteen food", "food items", "college dining", "student meals"]
   },
   cart: {
-    title: "Shopping Cart - Sillobyte | Review Your Order",
-    description: "Review your food order before checkout. Add or remove items from your cart and proceed to secure payment with Sillobyte.",
+    title: "Shopping Cart - SilloBite | Review Your Order",
+    description: "Review your food order before checkout. Add or remove items from your cart and proceed to secure payment with SilloBite.",
     keywords: ["shopping cart", "food order", "checkout", "college canteen", "online ordering"]
   },
   checkout: {
-    title: "Checkout - Sillobyte | Secure Payment",
+    title: "Checkout - SilloBite | Secure Payment",
     description: "Complete your food order with secure payment options. Fast and reliable checkout process for college canteen orders.",
     keywords: ["checkout", "payment", "food order", "secure payment", "college canteen"]
   },
   orders: {
-    title: "Order History - Sillobyte | Track Your Orders",
-    description: "View your order history and track current orders. Manage your college canteen food orders with Sillobyte.",
+    title: "Order History - SilloBite | Track Your Orders",
+    description: "View your order history and track current orders. Manage your college canteen food orders with SilloBite.",
     keywords: ["order history", "track orders", "college canteen", "food delivery", "order management"]
   },
   profile: {
-    title: "Profile - Sillobyte | Manage Your Account",
+    title: "Profile - SilloBite | Manage Your Account",
     description: "Manage your account, update preferences, and view your college canteen ordering history.",
     keywords: ["user profile", "account management", "college canteen", "user preferences"]
   },
   search: {
-    title: "Search Food - Sillobyte | Find Your Favorite Meals",
-    description: "Search for your favorite food items in your college canteen. Find meals, snacks, and beverages quickly with Sillobyte.",
+    title: "Search Food - SilloBite | Find Your Favorite Meals",
+    description: "Search for your favorite food items in your college canteen. Find meals, snacks, and beverages quickly with SilloBite.",
     keywords: ["food search", "college canteen", "find food", "meal search", "canteen menu"]
   },
   about: {
-    title: "About Sillobyte | College Food Ordering Platform",
-    description: "Learn about Sillobyte, the leading college canteen food ordering platform. Discover how we're revolutionizing campus dining.",
-    keywords: ["about sillobyte", "college canteen platform", "campus dining", "food ordering app"]
+    title: "About SilloBite | College Food Ordering Platform",
+    description: "Learn about SilloBite, the leading college canteen food ordering platform. Discover how we're revolutionizing campus dining.",
+    keywords: ["about sillobite", "college canteen platform", "campus dining", "food ordering app"]
   },
   help: {
-    title: "Help & Support - Sillobyte | Get Assistance",
+    title: "Help & Support - SilloBite | Get Assistance",
     description: "Get help with your account, orders, and college canteen food delivery. Find answers to common questions.",
     keywords: ["help", "support", "college canteen", "food ordering help", "customer service"]
   },
   privacy: {
-    title: "Privacy Policy - Sillobyte | Data Protection",
+    title: "Privacy Policy - SilloBite | Data Protection",
     description: "Read our privacy policy to understand how we protect your personal information and data.",
     keywords: ["privacy policy", "data protection", "college canteen", "user privacy"]
   },
   terms: {
-    title: "Terms & Conditions - Sillobyte | Service Agreement",
+    title: "Terms & Conditions - SilloBite | Service Agreement",
     description: "Review our terms and conditions for using our college food ordering platform.",
     keywords: ["terms conditions", "service agreement", "college canteen", "user agreement"]
   }
@@ -101,14 +101,14 @@ export const generateStructuredData = (pageType: string, additionalData?: any) =
     "url": defaultSEO.canonicalUrl,
     "isPartOf": {
       "@type": "WebSite",
-      "name": "Sillobyte",
-      "url": "https://sillobyte.onrender.com"
+      "name": "SilloBite",
+      "url": "https://sillobite.onrender.com"
     },
     "publisher": {
       "@type": "Organization",
-      "name": "Sillobyte",
-      "url": "https://sillobyte.onrender.com",
-      "logo": "https://sillobyte.onrender.com/api/icon.png?size=512"
+      "name": "SilloBite",
+      "url": "https://sillobite.onrender.com",
+      "logo": "https://sillobite.onrender.com/api/icon.png?size=512"
     }
   };
 
@@ -126,28 +126,28 @@ export const generateStructuredData = (pageType: string, additionalData?: any) =
           "priceCurrency": "INR"
         }
       };
-    
+
     case 'menu':
       return {
         ...baseData,
         "@type": "Menu",
         "hasMenuSection": additionalData?.categories || []
       };
-    
+
     case 'cart':
       return {
         ...baseData,
         "@type": "ShoppingCart",
         "numberOfItems": additionalData?.itemCount || 0
       };
-    
+
     default:
       return baseData;
   }
 };
 
 // Generate breadcrumb structured data
-export const generateBreadcrumbStructuredData = (breadcrumbs: Array<{name: string, url: string}>) => {
+export const generateBreadcrumbStructuredData = (breadcrumbs: Array<{ name: string, url: string }>) => {
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -161,7 +161,7 @@ export const generateBreadcrumbStructuredData = (breadcrumbs: Array<{name: strin
 };
 
 // Generate FAQ structured data
-export const generateFAQStructuredData = (faqs: Array<{question: string, answer: string}>) => {
+export const generateFAQStructuredData = (faqs: Array<{ question: string, answer: string }>) => {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -179,7 +179,7 @@ export const generateFAQStructuredData = (faqs: Array<{question: string, answer:
 // Utility function to get SEO config for a page
 export const getSEOConfig = (pageType: string, customData?: Partial<SEOConfig>): SEOConfig => {
   const pageConfig = pageSEOConfigs[pageType] || {};
-  
+
   return {
     ...defaultSEO,
     ...pageConfig,

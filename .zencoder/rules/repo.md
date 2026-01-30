@@ -3,11 +3,11 @@ description: Repository Information Overview
 alwaysApply: true
 ---
 
-# Sillobyte Canteen - Repository Information
+# SilloBite Canteen - Repository Information
 
 ## Repository Summary
 
-**Sillobyte Canteen** is a full-stack college canteen food ordering platform with a monorepo architecture. It consists of a React web frontend, Express.js backend, Android mobile app wrapper (via Capacitor), and shared utilities. The system supports real-time order tracking, payment processing (Razorpay), role-based access control (students, staff, employees, guests), and multi-canteen management.
+**SilloBite Canteen** is a full-stack college canteen food ordering platform with a monorepo architecture. It consists of a React web frontend, Express.js backend, Android mobile app wrapper (via Capacitor), and shared utilities. The system supports real-time order tracking, payment processing (Razorpay), role-based access control (students, staff, employees, guests), and multi-canteen management.
 
 ## Repository Structure
 
@@ -187,8 +187,8 @@ npm run cap:run:android    # Build and open in Android
 - `android/gradle.properties` - Gradle properties (JVM args: -Xmx1536m)
 - `android/variables.gradle` - Version variables
 
-**Application ID**: `com.sillobyte.canteen`  
-**Namespace**: `com.sillobyte.canteen`
+**Application ID**: `com.sillobite.canteen`  
+**Namespace**: `com.sillobite.canteen`
 
 #### Key Dependencies
 
@@ -219,8 +219,8 @@ npm run cap:run:android    # Build and deploy to emulator/device
 #### Capacitor Configuration
 
 **WebDir**: `dist/public`  
-**AppID**: `com.sillobyte.canteen`  
-**AppName**: Sillobyte Canteen  
+**AppID**: `com.sillobite.canteen`  
+**AppName**: SilloBite Canteen  
 
 **Splash Screen**: 2000ms display, purple theme (#6d47ff), centered crop  
 **Status Bar**: Light style with purple background (#6d47ff)  
@@ -297,7 +297,7 @@ npm run cap:run:android    # Build and deploy to emulator/device
 
 ## Deployment & Operations
 
-**Hosting**: Render.com (production URL: https://sillobyte.onrender.com)  
+**Hosting**: Render.com (production URL: https://sillobite.onrender.com)  
 **Port**: 5000 (single unified port for API + frontend)  
 **Session Management**: Express session with automated cleanup service  
 **Health Checks**: Startup verification for database connectivity and schema validation
