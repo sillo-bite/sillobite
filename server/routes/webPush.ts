@@ -9,15 +9,15 @@ const router = express.Router();
 router.get('/vapid-public-key', (req, res) => {
   try {
     const publicKey = webPushService.getVAPIDPublicKey();
-    
+
     if (!publicKey) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Push notifications not configured',
         message: 'VAPID keys not available'
       });
     }
 
-    res.json({ 
+    res.json({
       publicKey,
       configured: webPushService.isConfigured()
     });
@@ -32,33 +32,34 @@ router.get('/vapid-public-key', (req, res) => {
  */
 router.post('/subscribe', async (req, res) => {
   try {
-    const { subscription, userId, userRole, deviceInfo } = req.body;
+    const { subscription, userId, userRole, canteenId, deviceInfo } = req.body;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid subscription object',
         message: 'Missing endpoint or keys'
       });
     }
 
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing userId',
         message: 'User ID is required for subscription'
       });
     }
 
-    const subscriptionId = webPushService.addSubscription(
+    const subscriptionId = await webPushService.addSubscription(
       subscription,
       userId.toString(),
       userRole || 'student',
+      canteenId,
       deviceInfo
     );
 
     console.log(`📱 User ${userId} subscribed to push notifications`);
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       subscriptionId,
       message: 'Successfully subscribed to push notifications'
     });
@@ -76,22 +77,22 @@ router.post('/unsubscribe', async (req, res) => {
     const { subscriptionId } = req.body;
 
     if (!subscriptionId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing subscriptionId',
         message: 'Subscription ID is required'
       });
     }
 
-    const removed = webPushService.removeSubscription(subscriptionId);
+    const removed = await webPushService.removeSubscription(subscriptionId);
 
     if (!removed) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Subscription not found',
         message: 'The subscription ID was not found'
       });
     }
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Successfully unsubscribed from push notifications'
     });
@@ -109,7 +110,7 @@ router.post('/send-test', async (req, res) => {
     const { userId, title, message } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing userId',
         message: 'User ID is required to send test notification'
       });
@@ -133,7 +134,7 @@ router.post('/send-test', async (req, res) => {
       renotify: true,
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Test notification sent successfully'
     });
@@ -151,7 +152,7 @@ router.post('/send-to-user', async (req, res) => {
     const { userId, title, body, data, url } = req.body;
 
     if (!userId || !title || !body) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         message: 'userId, title, and body are required'
       });
@@ -166,7 +167,7 @@ router.post('/send-to-user', async (req, res) => {
       url,
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Notification sent to user successfully'
     });
@@ -184,7 +185,7 @@ router.post('/send-to-role', async (req, res) => {
     const { role, title, body, data, url } = req.body;
 
     if (!role || !title || !body) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         message: 'role, title, and body are required'
       });
@@ -199,7 +200,7 @@ router.post('/send-to-role', async (req, res) => {
       url,
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: `Notification sent to users with role: ${role}`
     });
@@ -217,7 +218,7 @@ router.post('/send-to-all', async (req, res) => {
     const { title, body, data, url } = req.body;
 
     if (!title || !body) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         message: 'title and body are required'
       });
@@ -232,7 +233,7 @@ router.post('/send-to-all', async (req, res) => {
       url,
     });
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Broadcast notification sent to all users'
     });
@@ -253,7 +254,7 @@ router.post('/test-order-status', async (req, res) => {
     const { userId, orderNumber, status } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing userId',
         message: 'User ID is required to send test order notification'
       });
@@ -269,7 +270,7 @@ router.post('/test-order-status', async (req, res) => {
       `Test notification: Your order #${testOrderNumber} is ${testStatus}!`
     );
 
-    res.json({ 
+    res.json({
       success: true,
       message: 'Test order status notification sent successfully',
       orderNumber: testOrderNumber,
@@ -311,14 +312,14 @@ router.get('/templates/:status', (req, res) => {
   try {
     const { status } = req.params;
     const template = webPushService.getNotificationTemplate(status);
-    
+
     if (!template) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Template not found',
         message: `No template found for status: ${status}`
       });
     }
-    
+
     res.json(template);
   } catch (error) {
     console.error('Error getting notification template:', error);
@@ -333,24 +334,24 @@ router.put('/templates/:status', async (req, res) => {
   try {
     const { status } = req.params;
     const template = req.body;
-    
+
     if (!template || template.status !== status) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid template data',
         message: 'Template status must match URL parameter'
       });
     }
-    
+
     const updated = await webPushService.updateNotificationTemplate(template);
-    
+
     if (!updated) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Template not found',
         message: `No template found for status: ${status}`
       });
     }
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'Template updated successfully',
       template
@@ -367,24 +368,24 @@ router.put('/templates/:status', async (req, res) => {
 router.post('/templates', async (req, res) => {
   try {
     const template = req.body;
-    
+
     if (!template || !template.status || !template.title || !template.message) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid template data',
         message: 'status, title, and message are required'
       });
     }
-    
+
     const created = await webPushService.addNotificationTemplate(template);
-    
+
     if (!created) {
-      return res.status(409).json({ 
+      return res.status(409).json({
         error: 'Template already exists',
         message: `Template for status ${template.status} already exists`
       });
     }
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       success: true,
       message: 'Template created successfully',
       template
@@ -402,15 +403,15 @@ router.delete('/templates/:status', async (req, res) => {
   try {
     const { status } = req.params;
     const deleted = await webPushService.deleteNotificationTemplate(status);
-    
+
     if (!deleted) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Template not found',
         message: `No template found for status: ${status}`
       });
     }
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'Template deleted successfully'
     });
@@ -444,14 +445,14 @@ router.get('/custom-templates/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const template = await webPushService.getCustomTemplate(id);
-    
+
     if (!template) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Template not found',
         message: `No custom template found with id: ${id}`
       });
     }
-    
+
     res.json(template);
   } catch (error) {
     console.error('Error getting custom template:', error);
@@ -465,14 +466,14 @@ router.get('/custom-templates/:id', async (req, res) => {
 router.post('/custom-templates', async (req, res) => {
   try {
     const { name, title, message, icon, priority, requireInteraction, createdBy } = req.body;
-    
+
     if (!name || !title || !message || !createdBy) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         message: 'name, title, message, and createdBy are required'
       });
     }
-    
+
     const result = await webPushService.createCustomTemplate({
       name,
       title,
@@ -483,15 +484,15 @@ router.post('/custom-templates', async (req, res) => {
       enabled: true,
       createdBy: parseInt(createdBy)
     });
-    
+
     if (!result.success) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to create template',
         message: 'Could not create custom notification template'
       });
     }
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       success: true,
       message: 'Custom template created successfully',
       template: result.template
@@ -509,17 +510,17 @@ router.put('/custom-templates/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     const updated = await webPushService.updateCustomTemplate(id, updates);
-    
+
     if (!updated) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Template not found',
         message: `No custom template found with id: ${id}`
       });
     }
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'Custom template updated successfully'
     });
@@ -536,15 +537,15 @@ router.delete('/custom-templates/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await webPushService.deleteCustomTemplate(id);
-    
+
     if (!deleted) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Template not found',
         message: `No custom template found with id: ${id}`
       });
     }
-    
-    res.json({ 
+
+    res.json({
       success: true,
       message: 'Custom template deleted successfully'
     });
@@ -560,9 +561,9 @@ router.delete('/custom-templates/:id', async (req, res) => {
 router.post('/send-advanced', async (req, res) => {
   try {
     const { targetType, values, title, body, data, url } = req.body;
-    
+
     if (!targetType || !title || !body) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         message: 'targetType, title, and body are required'
       });
@@ -579,8 +580,8 @@ router.post('/send-advanced', async (req, res) => {
     };
 
     const result = await webPushService.sendWithAdvancedTargeting(criteria, payload);
-    
-    res.json({ 
+
+    res.json({
       success: result.success,
       message: `Notification sent successfully`,
       sentCount: result.sentCount,
@@ -598,9 +599,9 @@ router.post('/send-advanced', async (req, res) => {
 router.post('/send-custom-template', async (req, res) => {
   try {
     const { templateId, targetType, values, customData } = req.body;
-    
+
     if (!templateId || !targetType) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
         message: 'templateId and targetType are required'
       });
@@ -608,12 +609,12 @@ router.post('/send-custom-template', async (req, res) => {
 
     const criteria = { targetType, values };
     const result = await webPushService.sendCustomTemplateNotification(
-      templateId, 
-      criteria, 
+      templateId,
+      criteria,
       customData
     );
-    
-    res.json({ 
+
+    res.json({
       success: result.success,
       message: `Custom template notification sent successfully`,
       sentCount: result.sentCount,

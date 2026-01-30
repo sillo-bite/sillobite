@@ -44,20 +44,19 @@ export default function HelpSupportPage() {
   ];
 
   return (
-    <div className={`min-h-screen ${
-      'bg-background'
-    }`}>
+    <div className={`min-h-screen ${'bg-background'
+      }`}>
       {/* Header */}
       <div className="bg-purple-600 text-white px-4 pt-12 pb-6 sticky top-0 z-10 rounded-b-2xl">
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-white hover:bg-white/20 transition-all duration-200 rounded-full" 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20 transition-all duration-200 rounded-full"
             onClick={() => {
               // Check if we came from Profile
               const fromProfile = sessionStorage.getItem('navigationFrom') === 'profile';
-              
+
               if (fromProfile) {
                 // Navigate back to Profile view
                 setLocation("/app");
@@ -86,7 +85,7 @@ export default function HelpSupportPage() {
         <div>
           <h2 className="text-lg font-semibold mb-4">Get in Touch</h2>
           <div className="grid grid-cols-1 gap-4">
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => window.open('tel:+918220963071', '_self')}
             >
@@ -101,9 +100,9 @@ export default function HelpSupportPage() {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => window.open('mailto:sillobyte.production@gmail.com?subject=Support Request', '_self')}
+              onClick={() => window.open('mailto:sillobite.production@gmail.com?subject=Support Request', '_self')}
             >
               <CardContent className="p-4 flex items-center space-x-4">
                 <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
@@ -111,7 +110,7 @@ export default function HelpSupportPage() {
                 </div>
                 <div>
                   <h3 className="font-medium">Email Us</h3>
-                  <p className="text-sm text-muted-foreground">sillobyte.production@gmail.com</p>
+                  <p className="text-sm text-muted-foreground">sillobite.production@gmail.com</p>
                 </div>
               </CardContent>
             </Card>

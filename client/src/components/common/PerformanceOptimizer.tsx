@@ -2,14 +2,14 @@ import React, { useEffect, useRef } from 'react';
 
 const PerformanceOptimizer: React.FC = () => {
   const hasInitialized = useRef(false);
-  
+
   useEffect(() => {
     // Prevent multiple initializations
     if (hasInitialized.current) {
       return;
     }
     hasInitialized.current = true;
-    
+
     // splash_logo.svg is loaded naturally by components (LoginScreen/ForgotEmailScreen) when they render
     // SplashScreen uses inline SVG (no file reference needed)
     // No preload needed - browser will cache after first request, preventing esbuild conflicts
@@ -36,7 +36,7 @@ const PerformanceOptimizer: React.FC = () => {
       // Add resource hints for better performance
       const hints = [
         { rel: 'dns-prefetch', href: 'https://fonts.googleapis.com' },
-        { rel: 'dns-prefetch', href: 'https://api.sillobyte.onrender.com' },
+        { rel: 'dns-prefetch', href: 'https://api.sillobite.onrender.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' }
       ];
 
@@ -53,7 +53,7 @@ const PerformanceOptimizer: React.FC = () => {
 
     // Initialize optimizations
     addPerformanceHints();
-    
+
     // Delay image optimization to avoid blocking initial render
     setTimeout(optimizeImages, 100);
 

@@ -18,7 +18,7 @@ export default function BlockedUserScreen({ user, onRetryLogin }: BlockedUserScr
   const [isChecking, setIsChecking] = useState(false);
 
   // Get the original role (remove blocked_ prefix)
-  const originalRole = user.role?.startsWith('blocked_') 
+  const originalRole = user.role?.startsWith('blocked_')
     ? user.role.replace('blocked_', '')
     : user.role;
 
@@ -31,10 +31,10 @@ export default function BlockedUserScreen({ user, onRetryLogin }: BlockedUserScr
         if (data.userExists && data.user.role && !data.user.role.startsWith('blocked_')) {
           onRetryLogin();
         } else {
-          }
+        }
       }
     } catch (error) {
-      } finally {
+    } finally {
       setIsChecking(false);
     }
   };
@@ -52,7 +52,7 @@ export default function BlockedUserScreen({ user, onRetryLogin }: BlockedUserScr
             Account Blocked
           </CardTitle>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           <div className="bg-red-50 dark:bg-red-950 p-4 rounded-lg border border-red-200 dark:border-red-800">
             <p className="text-sm text-red-800 dark:text-red-200 text-center mb-2">
@@ -92,7 +92,7 @@ export default function BlockedUserScreen({ user, onRetryLogin }: BlockedUserScr
           </div>
 
           <div className="space-y-3">
-            <Button 
+            <Button
               onClick={checkUnblockStatus}
               disabled={isChecking}
               className="w-full"
@@ -111,8 +111,8 @@ export default function BlockedUserScreen({ user, onRetryLogin }: BlockedUserScr
               )}
             </Button>
 
-            <Button 
-              onClick={() => window.location.href = 'mailto:sillobyte.production@gmail.com?subject=Account%20Blocked%20Appeal'}
+            <Button
+              onClick={() => window.location.href = 'mailto:sillobite.production@gmail.com?subject=Account%20Blocked%20Appeal'}
               className="w-full"
               variant="default"
             >

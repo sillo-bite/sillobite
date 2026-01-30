@@ -15,7 +15,7 @@ import splashLogo from "./splash_logo.svg";
 
 export default function SplashScreen() {
   console.log('🎬 SplashScreen component mounting/rendering');
-  
+
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const { resolvedTheme } = useTheme();
@@ -45,7 +45,7 @@ export default function SplashScreen() {
   const MAX_SPLASH_TIME = 12000; // Maximum time before forcing redirect (12 seconds safety net)
   const componentMountTime = useRef<number>(Date.now());
   const hasRenderedRef = useRef(false);
-  
+
   // Mark that component has rendered
   useEffect(() => {
     hasRenderedRef.current = true;
@@ -57,10 +57,10 @@ export default function SplashScreen() {
     estimatedTime?: string;
     contactInfo?: string;
   } | null>(null);
-  
+
   // Get primary color from CSS variables (reactive to theme changes)
   const [primaryColor, setPrimaryColor] = useState('4 68% 52%');
-  
+
   useEffect(() => {
     const updatePrimaryColor = () => {
       if (typeof window !== 'undefined') {
@@ -70,9 +70,9 @@ export default function SplashScreen() {
         setPrimaryColor(color);
       }
     };
-    
+
     updatePrimaryColor();
-    
+
     // Listen for theme changes
     const observer = new MutationObserver(updatePrimaryColor);
     if (typeof window !== 'undefined') {
@@ -81,10 +81,10 @@ export default function SplashScreen() {
         attributeFilter: ['class']
       });
     }
-    
+
     return () => observer.disconnect();
   }, []);
-  
+
   // Handle SVG loading and start animation timing
   useEffect(() => {
     // Prevent multiple load attempts - this effect should only run once
@@ -92,19 +92,19 @@ export default function SplashScreen() {
       return;
     }
     imageLoadAttemptedRef.current = true;
-    
+
     // Start tracking animation time
     animationStartTime.current = Date.now();
-    
+
     // Since we're using inline SVG in the render, mark as loaded immediately
     // The inline SVG doesn't need to be preloaded
     setSvgLoaded(true);
-    
+
     // Deprecated fixed timer: we now complete animation on SVG fade-out completion
     const animationTimer = setTimeout(() => {
       // Timer completed - no action needed
     }, animationDuration);
-    
+
     return () => {
       clearTimeout(animationTimer);
       if (sequenceTimeoutRef.current) {
@@ -113,11 +113,11 @@ export default function SplashScreen() {
       }
     };
   }, []); // Empty deps - only run once on mount
-  
+
   // Function to check if both conditions are met for redirect
   // Note: The actual redirect is handled by the useEffect hook below
   const checkRedirectConditions = () => {
-if (animationComplete && apiResponseReceived) {
+    if (animationComplete && apiResponseReceived) {
       proceedWithRedirect();
     }
     console.log('Checking redirect conditions:', { animationComplete, apiResponseReceived, isLoading, hasRedirected: hasRedirectedRef.current });
@@ -133,7 +133,7 @@ if (animationComplete && apiResponseReceived) {
       console.log('⏳ Waiting for component to render first...');
       return;
     }
-    
+
     // Safety timeout: force redirect after MAX_SPLASH_TIME to prevent infinite hang
     const safetyTimeout = setTimeout(() => {
       if (!hasRedirectedRef.current) {
@@ -142,11 +142,11 @@ if (animationComplete && apiResponseReceived) {
         proceedWithRedirect();
       }
     }, MAX_SPLASH_TIME);
-    
+
     if (animationComplete && apiResponseReceived && !isLoading && !hasRedirectedRef.current) {
       const elapsed = Date.now() - componentMountTime.current;
       const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
-      
+
       if (remainingTime > 0) {
         console.log(`⏳ Minimum display time not met. Waiting ${remainingTime}ms more...`);
         setTimeout(() => {
@@ -164,16 +164,16 @@ if (animationComplete && apiResponseReceived) {
         proceedWithRedirect();
       }
     } else {
-      console.log('⏳ Waiting for redirect conditions:', { 
-        animationComplete, 
-        apiResponseReceived, 
-        isLoading, 
+      console.log('⏳ Waiting for redirect conditions:', {
+        animationComplete,
+        apiResponseReceived,
+        isLoading,
         hasRedirected: hasRedirectedRef.current,
         hasRendered: hasRenderedRef.current,
         elapsed: Date.now() - componentMountTime.current
       });
     }
-    
+
     return () => clearTimeout(safetyTimeout);
   }, [animationComplete, apiResponseReceived, isLoading]);
 
@@ -200,7 +200,7 @@ if (animationComplete && apiResponseReceived) {
       }
     }
   }, [logoAnimDone, apiResponseReceived, beginLogoFadeOut]);
-  
+
   // Helper function to ensure URL is correctly formatted
   const formatRedirectUrl = (url: string): string => {
     // Ensure URL starts with a slash
@@ -216,7 +216,7 @@ if (animationComplete && apiResponseReceived) {
     queryFn: async () => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-      
+
       try {
         const result = await apiRequest('/api/system-settings/all-settings');
         clearTimeout(timeout);
@@ -246,17 +246,17 @@ if (animationComplete && apiResponseReceived) {
   const notificationSettings = useMemo(() => systemSettings?.notifications, [systemSettings?.notifications]);
   const appVersionInfo = useMemo(() => systemSettings?.appVersion, [systemSettings?.appVersion]);
 
-  
+
   const checkNotificationPermission = () => {
     // Check if browser supports notifications
     if (!('Notification' in window) || !('serviceWorker' in navigator)) {
       return false;
     }
-    
+
     // Check current permission status
     return Notification.permission === 'granted';
   };
-  
+
   const handleNotificationDialogClose = () => {
     setShowNotificationDialog(false);
     // Mark API response as received
@@ -276,13 +276,13 @@ if (animationComplete && apiResponseReceived) {
       }, 100);
       return;
     }
-    
+
     // Implement 300ms delay for animation cleanup before redirect
     setTimeout(() => {
       try {
         const isPWALaunch = isPWAInstalled();
         const pwaAuthState = getPWAAuthState();
-        
+
         // CRITICAL: First check localStorage directly to detect old users
         // This must happen BEFORE checking useAuth to prioritize cached users
         const cachedUserStr = localStorage.getItem('user');
@@ -301,12 +301,12 @@ if (animationComplete && apiResponseReceived) {
           console.error('Error parsing cached user:', e);
           // Invalid JSON, treat as no user
         }
-        
+
         // PRIORITY 1: If cached user exists, treat as old user and go to home (skip onboarding)
         if (hasCachedUser) {
           // Use cached user for role-based redirect
           const userForRedirect = user || cachedUserData || pwaAuthState.user;
-          
+
           if (userForRedirect) {
             if (userForRedirect.role === 'super_admin') {
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/admin") : "/admin";
@@ -323,12 +323,12 @@ if (animationComplete && apiResponseReceived) {
                     setLocation(`/canteen-owner-dashboard/${canteenId}/counters`);
                     return;
                   }
-                  
+
                   // Otherwise, fetch canteen ID from API
                   console.log('Fetching canteen for owner:', userForRedirect.email);
                   const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userForRedirect.email}`);
                   console.log('Canteen response status:', canteenResponse.status);
-                  
+
                   if (canteenResponse.ok) {
                     const canteenData = await canteenResponse.json();
                     console.log('Canteen data received:', canteenData);
@@ -345,7 +345,7 @@ if (animationComplete && apiResponseReceived) {
                   setLocation('/login?error=canteen_fetch_failed');
                 }
               };
-              
+
               redirectCanteenOwner();
               return;
             } else if (userForRedirect.role === 'delivery_person') {
@@ -355,17 +355,17 @@ if (animationComplete && apiResponseReceived) {
               return;
             }
           }
-          
+
           // Default: old user goes to home
           setLocation("/app");
           return;
         }
-        
+
         // PRIORITY 2: If we reach here, there's NO cached user in localStorage
         // This means it's a NEW USER who must see onboarding first (Splash → Onboarding → Login)
         // Even if useAuth has a user, without localStorage cache, they're new to this device/session
         // The onboarding screen will redirect to login, and login will handle authentication
-        
+
         setLocation("/onboarding");
         return;
       } catch (error) {
@@ -376,7 +376,7 @@ if (animationComplete && apiResponseReceived) {
           const isPWALaunch = isPWAInstalled();
           const pwaAuthState = getPWAAuthState();
           const hasUser = user || (isPWALaunch && pwaAuthState.isAuthenticated && pwaAuthState.user);
-          
+
           if (hasUser) {
             setLocation('/login?error=redirect_failed');
           } else {
@@ -391,7 +391,7 @@ if (animationComplete && apiResponseReceived) {
             } catch (e) {
               // Invalid JSON, treat as no user
             }
-            
+
             if (hasCachedUser) {
               setLocation('/app');
             } else {
@@ -407,11 +407,11 @@ if (animationComplete && apiResponseReceived) {
     // Prevent multiple executions - only run once when settings are first loaded
     // Also proceed if settings are still loading after 10 seconds (prevent infinite hang)
     const settingsTimeout = !systemSettings && !settingsLoading && !settingsError;
-    
+
     if (hasProcessedSettingsRef.current) {
       return;
     }
-    
+
     // If settings haven't loaded after reasonable time, proceed anyway with defaults
     if (!systemSettings && !settingsLoading && !settingsError) {
       console.warn('⚠️ System settings not loaded, proceeding with defaults after timeout');
@@ -422,24 +422,24 @@ if (animationComplete && apiResponseReceived) {
         appVersion: { version: '2.0.0' }
       };
     }
-    
+
     // Wait for settings to be available (or timeout/error)
     if (!systemSettings && settingsLoading) {
       return;
     }
-    
+
     // Mark as processed to prevent re-execution
     hasProcessedSettingsRef.current = true;
-    
+
     const isPWALaunch = isPWAInstalled();
 
     const handleRedirect = async () => {
       // STEP 1: Check for app updates (server start timestamp)
       serverRestartDetector.startMonitoring();
-      
+
       // STEP 2: Check notification enable/disable status
       const isNotificationEnabled = (notificationSettings as any)?.isEnabled !== false; // Default to true if undefined
-      
+
       // Only proceed if animation is complete and we're not showing maintenance screen
       if (!isLoading && !(maintenanceStatus as any)?.isActive) {
         // Mark API response as received
@@ -447,23 +447,23 @@ if (animationComplete && apiResponseReceived) {
         // Check if we can proceed with redirect
         checkRedirectConditions();
       }
-      
+
       // Get comprehensive PWA authentication state first
       const pwaAuthState = getPWAAuthState();
-      
+
       // STEP 3: Check for maintenance notice (only for unauthenticated users with 'all' targeting)
       const isMaintenanceActive = (maintenanceStatus as any)?.isActive;
       const targetingType = (maintenanceStatus as any)?.targetingType || 'all';
-      
+
       // Only show maintenance on splash screen if:
       // 1. Maintenance is active AND
       // 2. User is not authenticated (PWA or regular) AND 
       // 3. Targeting is set to 'all' (specific targeting will be handled by MaintenanceWrapper after auth)
-      const shouldShowMaintenanceOnSplash = isMaintenanceActive && 
-        targetingType === 'all' && 
-        !user && 
+      const shouldShowMaintenanceOnSplash = isMaintenanceActive &&
+        targetingType === 'all' &&
+        !user &&
         !(isPWALaunch && pwaAuthState.isAuthenticated);
-      
+
       if (shouldShowMaintenanceOnSplash) {
         setMaintenanceData({
           title: (maintenanceStatus as any)?.title || 'System Maintenance',
@@ -477,19 +477,19 @@ if (animationComplete && apiResponseReceived) {
 
       // Check notification permissions for authenticated users (only if notifications are enabled)
       const shouldCheckNotificationPermission = isNotificationEnabled && ((isPWALaunch && pwaAuthState.isAuthenticated) || user);
-      
+
       // For PWA launches, prioritize PWA authentication state but also check regular auth as fallback
       if (isPWALaunch) {
         // Check PWA auth state first, then fallback to regular user state
         const authUser = pwaAuthState.isAuthenticated && pwaAuthState.user ? pwaAuthState.user : user;
-        
+
         if (authUser) {
           // Check notifications before redirecting (only if notifications are enabled system-wide)
           if (shouldCheckNotificationPermission && !checkNotificationPermission()) {
             setShowNotificationDialog(true);
             return; // Don't mark ready yet
           }
-          
+
           // Mark readiness; actual redirect will occur after animation in proceedWithRedirect
           setApiResponseReceived(true);
           checkRedirectConditions();
@@ -503,7 +503,7 @@ if (animationComplete && apiResponseReceived) {
           return;
         }
       }
-      
+
       // Regular web app flow - check if user is already authenticated
       if (user) {
         // Check notifications before redirecting (only if notifications are enabled system-wide)
@@ -511,7 +511,7 @@ if (animationComplete && apiResponseReceived) {
           setShowNotificationDialog(true);
           return; // Don't mark ready yet
         }
-        
+
         // Mark readiness; actual redirect will occur after animation in proceedWithRedirect
         setApiResponseReceived(true);
         checkRedirectConditions();
@@ -558,8 +558,8 @@ if (animationComplete && apiResponseReceived) {
 
   // Enhanced SVG animation variants with more sophisticated animations
   const svgVariants = {
-    hidden: { 
-      opacity: 0, 
+    hidden: {
+      opacity: 0,
       scale: 0.8,
       filter: "blur(10px)"
     },
@@ -580,7 +580,7 @@ if (animationComplete && apiResponseReceived) {
     // Prevent scrolling
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
-    
+
     return () => {
       // Restore scrolling when component unmounts
       document.body.style.overflow = '';
@@ -651,7 +651,7 @@ if (animationComplete && apiResponseReceived) {
                       }}
                     />
                   )}
-                  <motion.h1 
+                  <motion.h1
                     className="text-5xl font-bold text-primary"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -661,7 +661,7 @@ if (animationComplete && apiResponseReceived) {
                       color: `hsl(${primaryColor})`
                     }}
                   >
-                    Sillobyte
+                    SilloBite
                   </motion.h1>
                 </motion.div>
               )
@@ -700,12 +700,12 @@ if (animationComplete && apiResponseReceived) {
                       }}
                     />
                   )}
-                  
+
                   {/* SVG Container - Fixed position */}
                   <div className="relative overflow-hidden w-full" style={{ minHeight: 'auto' }}>
                     {/* Loading indicator while SVG is loading */}
                     {!svgLoaded && (
-                      <motion.div 
+                      <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.3 }}
@@ -721,15 +721,15 @@ if (animationComplete && apiResponseReceived) {
                         </div>
                       </motion.div>
                     )}
-                    
+
                     {/* Imported SVG Logo */}
                     <motion.img
                       src={splashLogo}
-                      alt="Sillobyte Logo"
+                      alt="SilloBite Logo"
                       initial="hidden"
                       animate="visible"
                       variants={svgVariants}
-                      style={{ 
+                      style={{
                         willChange: "opacity, transform",
                         visibility: "visible",
                         transformOrigin: "50% 50%",
@@ -748,7 +748,7 @@ if (animationComplete && apiResponseReceived) {
                       }}
                     />
                   </div>
-                  
+
                   {/* Tagline right below the SVG - Reserved space to prevent SVG movement */}
                   <div className="flex items-center justify-center -mt-20 h-10 w-full">
                     <AnimatePresence>
@@ -760,7 +760,7 @@ if (animationComplete && apiResponseReceived) {
                           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                           className="relative"
                         >
-                          <motion.p 
+                          <motion.p
                             className="text-muted-foreground text-lg font-semibold tracking-wide"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}

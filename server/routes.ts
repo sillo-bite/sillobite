@@ -3,11 +3,11 @@ import { createServer, type Server } from "http";
 import mongoose from "mongoose";
 import { storage } from "./storage-hybrid";
 import { MenuItem, Category, MediaBanner, CodingChallenge, CanteenCharge } from "./models/mongodb-models";
-import { 
-  insertUserSchema, 
-  insertCategorySchema, 
-  insertMenuItemSchema, 
-  insertOrderSchema, 
+import {
+  insertUserSchema,
+  insertCategorySchema,
+  insertMenuItemSchema,
+  insertOrderSchema,
   insertNotificationSchema,
   insertLoginIssueSchema,
   insertPaymentSchema,
@@ -16,7 +16,7 @@ import {
   type InsertCoupon
 } from "@shared/schema";
 import { generateOrderNumber } from "@shared/utils";
-import { 
+import {
   RAZORPAY_CONFIG,
   razorpayInstance,
   createRazorpayOrder,
@@ -34,6 +34,7 @@ import {
 import { healthCheckHandler } from "./health-check";
 import { SimpleSchemaValidator } from "./migrations/simple-schema-check";
 import { stockService } from "./stock-service";
+import { orderService } from "./services/order-service";
 import { cloudinaryService } from "./services/cloudinaryService";
 import { webPushService } from "./services/webPushService.js";
 import { CheckoutSessionService, checkDuplicatePaymentMiddleware } from "./checkout-session-service";
@@ -56,9 +57,9 @@ import { getWebSocketManager } from "./websocket";
 const SERVER_START_TIME = Date.now();
 
 // Performance optimization: Cache payment status API failures to avoid repeated slow calls
-const paymentStatusCache = new Map<string, { 
-  lastAttempt: number; 
-  consecutiveFailures: number; 
+const paymentStatusCache = new Map<string, {
+  lastAttempt: number;
+  consecutiveFailures: number;
   shouldSkipApi: boolean;
 }>();
 const API_RETRY_INTERVAL = 30000; // 30 seconds before retrying failed API calls
@@ -160,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/mongodb-diagnostics", async (req, res) => {
     try {
       const mongoose = require('mongoose');
-      
+
       // Get MongoDB version and configuration
       const admin = mongoose.connection.db?.admin();
       let mongoInfo: {
@@ -177,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           const buildInfo = await admin.buildInfo();
           mongoInfo.version = buildInfo.version;
-          
+
           const serverStatus = await admin.serverStatus();
           mongoInfo.serverStatus = {
             host: serverStatus.host,
@@ -219,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString(),
         mongodb: mongoInfo,
         transactionSupport: transactionTest,
-        recommendation: mongoInfo.version.startsWith('4.4') ? 
+        recommendation: mongoInfo.version.startsWith('4.4') ?
           'MongoDB 4.4 detected - using non-transactional mode for compatibility' :
           'Version compatible with transactions if replica set is configured'
       });
@@ -278,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      
+
       const filters = {
         search: req.query.search as string,
         role: req.query.role as string,
@@ -286,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         department: req.query.department as string,
         year: req.query.year as string
       };
-      
+
       console.log(`📋 GET /api/users/paginated - Page: ${page}, Limit: ${limit}`, filters);
       const result = await storage.getUsersPaginated(page, limit, filters);
       console.log(`✅ Successfully fetched paginated users - Total: ${result.totalCount}, Items: ${result.users.length}`);
@@ -318,25 +319,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("👤 POST /api/users - Creating new user", { email: req.body.email, role: req.body.role });
       const validatedData = insertUserSchema.parse(req.body);
-      
+
       // Check for duplicate email first
       const existingEmailUser = await storage.getUserByEmail(validatedData.email);
       if (existingEmailUser) {
         console.log(`ℹ️ Email ${validatedData.email} is already registered, returning existing user`);
         return res.status(200).json(existingEmailUser);
       }
-      
+
       // Prevent creating multiple super admins
       if (validatedData.role === 'super_admin') {
         const existingSuperAdmin = await storage.getUserByRole('super_admin');
         if (existingSuperAdmin) {
           console.log(`❌ Cannot create super admin - one already exists`);
-          return res.status(403).json({ 
-            message: "Only one super admin is allowed in the system. A super admin already exists." 
+          return res.status(403).json({
+            message: "Only one super admin is allowed in the system. A super admin already exists."
           });
         }
       }
-      
+
       // Check for duplicate register number if student, employee, contractor, visitor, or guest (case-insensitive)
       if ((validatedData.role === "student" || validatedData.role === "employee" || validatedData.role === "contractor" || validatedData.role === "visitor" || validatedData.role === "guest") && validatedData.registerNumber) {
         const normalizedRegisterNumber = validatedData.registerNumber.toUpperCase();
@@ -346,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(409).json({ message: "Register number is already registered" });
         }
       }
-      
+
       // Check for duplicate staff ID if staff (case-insensitive)
       if (validatedData.role === "staff" && validatedData.staffId) {
         const normalizedStaffId = validatedData.staffId.toUpperCase();
@@ -356,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(409).json({ message: "Staff ID is already registered" });
         }
       }
-      
+
       // Auto-set initial location based on college or organization
       if (validatedData.college && !(validatedData as any).organizationId) {
         // User registered with college
@@ -369,7 +370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (validatedData as any).selectedLocationId = (validatedData as any).organizationId;
         console.log(`📍 Auto-setting location to organization: ${(validatedData as any).organizationId}`);
       }
-      
+
       const user = await storage.createUser(validatedData);
       console.log(`✅ User created successfully - ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Role: ${user.role}`);
       res.status(201).json(user);
@@ -436,9 +437,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const { email } = req.body;
-      
+
       console.log(`🔄 PATCH /api/users/${userId} - Updating user email to: ${email}`);
-      
+
       if (!email) {
         console.log(`❌ Email is required for user ${userId}`);
         return res.status(400).json({ message: "Email is required" });
@@ -456,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ User ${userId} not found for email update`);
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       console.log(`✅ User ${userId} email updated successfully to: ${email}`);
       res.json(updatedUser);
     } catch (error) {
@@ -469,25 +470,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       console.log(`🔄 Updating user ${userId} with data:`, JSON.stringify(req.body, null, 2));
-      
+
       // Check if user exists first
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
         console.log(`❌ User ${userId} not found for update`);
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Prevent changing super admin role if it's the only super admin
       if (existingUser.role === 'super_admin' && req.body.role && req.body.role !== 'super_admin') {
         const existingSuperAdmin = await storage.getUserByRole('super_admin');
         if (existingSuperAdmin && existingSuperAdmin.id === userId) {
           console.log(`🚫 Cannot change super admin role: ${existingUser.name} is the only super admin`);
-          return res.status(403).json({ 
-            message: "Cannot change super admin role. There must always be at least one super admin in the system." 
+          return res.status(403).json({
+            message: "Cannot change super admin role. There must always be at least one super admin in the system."
           });
         }
       }
-      
+
       // Auto-set initial location based on college or organization (if not already set)
       if (!existingUser.selectedLocationType && !existingUser.selectedLocationId) {
         if (req.body.college && !req.body.organizationId) {
@@ -502,10 +503,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`📍 Auto-setting location to organization: ${req.body.organizationId}`);
         }
       }
-      
+
       const user = await storage.updateUser(userId, req.body);
       console.log(`✅ User ${userId} updated successfully:`, JSON.stringify(user, null, 2));
-      
+
       res.json(user);
     } catch (error: any) {
       console.error("❌ Error updating user:", error);
@@ -549,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const { locationType, locationId } = req.body;
-      
+
       console.log(`📍 PUT /api/users/${userId}/location - Saving location:`, { locationType, locationId });
 
       if (!locationType || !locationId) {
@@ -585,26 +586,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       console.log(`🗑️ Attempting to delete user ${userId}`);
-      
+
       // Check if user exists first
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
         console.log(`❌ User ${userId} not found for deletion`);
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Prevent deletion of super admin
       if (existingUser.role === 'super_admin') {
         console.log(`🚫 Cannot delete super admin: ${existingUser.name} (${existingUser.email})`);
-        return res.status(403).json({ 
-          message: "Super admin cannot be deleted. There must always be at least one super admin in the system." 
+        return res.status(403).json({
+          message: "Super admin cannot be deleted. There must always be at least one super admin in the system."
         });
       }
-      
+
       console.log(`📋 Deleting user: ${existingUser.name} (${existingUser.email})`);
       await storage.deleteUser(userId);
       console.log(`✅ User ${userId} deleted successfully from database`);
-      
+
       res.json({ message: "User deleted successfully" });
     } catch (error: any) {
       console.error("❌ Error deleting user:", error);
@@ -630,15 +631,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       console.log(`🔍 GET /api/users/${userId}/validate - Validating user session`);
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         // Session validation failed: User no longer exists
         console.log(`❌ User ${userId} validation failed - user not found`);
         return res.status(404).json({ message: "User not found", userExists: false });
       }
-      
+
       console.log(`✅ User ${userId} validation successful - user exists: ${user.name}`);
-      
+
       // User exists, return basic info for session validation
       const userData = {
         id: user.id,
@@ -668,11 +669,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }]
             }
           }, { timestamps: true });
-          
+
           const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
-          
+
           const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-          
+
           if (settings && settings.canteens?.list) {
             const canteen = settings.canteens.list.find(c => c.canteenOwnerEmail === user.email);
             if (canteen) {
@@ -684,9 +685,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue without canteen data - will be fetched separately if needed
         }
       }
-      
-      res.json({ 
-        userExists: true, 
+
+      res.json({
+        userExists: true,
         user: userData
       });
     } catch (error) {
@@ -700,10 +701,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/user-reviews", async (req, res) => {
     // Explicitly set JSON content type FIRST - before any other processing
     res.setHeader('Content-Type', 'application/json');
-    
+
     try {
       const { userEmail } = req.query;
-      
+
       if (!userEmail) {
         return res.status(400).json({ message: "userEmail query parameter is required" });
       }
@@ -780,11 +781,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/dashboard-stats", async (req, res) => {
     try {
       // Fetching dashboard stats
-      
+
       // Get only essential data for dashboard
       const orders = await storage.getOrders();
       const users = await storage.getAllUsers();
-      
+
       // Calculate only what's needed for dashboard
       const stats = {
         totalRevenue: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0),
@@ -803,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             createdAt: order.createdAt
           }))
       };
-      
+
       res.json(stats);
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
@@ -815,25 +816,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/canteens/:canteenId/menu-analytics", async (req, res) => {
     try {
       const canteenId = req.params.canteenId;
-      
+
       // Use optimized database query to get only canteen-specific menu items with minimal fields
       const canteenMenuItems = await MenuItem.find({ canteenId }).select('available stock');
-      
+
       // Calculate analytics directly from database results
       const totalItems = canteenMenuItems.length;
-      const activeItems = canteenMenuItems.filter(item => 
-        item.available === true && 
-        item.stock !== null && 
-        item.stock !== undefined && 
+      const activeItems = canteenMenuItems.filter(item =>
+        item.available === true &&
+        item.stock !== null &&
+        item.stock !== undefined &&
         item.stock > 0
       ).length;
-      const outOfStockItems = canteenMenuItems.filter(item => 
+      const outOfStockItems = canteenMenuItems.filter(item =>
         item.stock !== null && item.stock !== undefined && item.stock === 0
       ).length;
-      const lowStockItems = canteenMenuItems.filter(item => 
+      const lowStockItems = canteenMenuItems.filter(item =>
         item.stock !== null && item.stock !== undefined && item.stock > 0 && item.stock <= 5
       ).length;
-      
+
       res.json({
         totalItems: totalItems || 0,
         activeItems: activeItems || 0,
@@ -856,37 +857,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const search = req.query.search as string;
       const sortBy = req.query.sortBy as string || 'name';
       const sortOrder = req.query.sortOrder as string || 'asc';
-      
+
       console.log(`📋 GET /api/categories - Canteen: ${canteenId}, Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
       // Categories API called
-      
+
       // Build query with server-side filtering
       let query: any = {};
       if (canteenId) { query.canteenId = canteenId; }
-      
+
       // Search filter
       if (search && search.trim()) {
         query.name = { $regex: search, $options: 'i' };
       }
-      
+
       // Build sort object
       const sortObj: any = {};
       sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-      
+
       // Get total count for pagination
       const totalItems = await Category.countDocuments(query);
       const totalPages = Math.ceil(totalItems / limit);
-      
+
       // Use offset if provided, otherwise use page-based pagination
       const skip = offset > 0 ? offset : (page - 1) * limit;
-      
+
       // Get paginated categories with direct DB query (no filtering)
       const categories = await Category.find(query)
         .select('_id name icon imageUrl canteenId createdAt')
         .sort(sortObj)
         .skip(skip)
         .limit(limit);
-      
+
       // Convert MongoDB documents to plain objects
       const plainCategories = categories.map(cat => {
         const obj = cat.toObject ? cat.toObject() : cat;
@@ -959,10 +960,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { canteenId } = req.params;
       console.log(`🔍 Fetching settings for canteenId: ${canteenId}`);
-      
+
       const { CanteenSettings } = await import('./models/mongodb-models');
       let settings = await CanteenSettings.findOne({ canteenId });
-      
+
       // If no settings exist, create default settings
       if (!settings) {
         console.log(`📝 Creating default settings for canteenId: ${canteenId}`);
@@ -972,12 +973,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           taxName: 'GST'
         });
       }
-      
+
       const settingsObj: any = settings.toObject ? settings.toObject() : settings;
       settingsObj.id = settingsObj._id?.toString();
       delete settingsObj._id;
       delete settingsObj.__v;
-      
+
       console.log(`✅ Returning settings:`, settingsObj);
       res.json(settingsObj);
     } catch (error) {
@@ -990,35 +991,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { canteenId } = req.params;
       const { taxRate, taxName, favoriteCounterId } = req.body;
-      
+
       console.log(`🔄 Updating settings for canteenId: ${canteenId}`, { taxRate, taxName, favoriteCounterId });
-      
+
       // Validate taxRate
       if (taxRate !== undefined && (taxRate < 0 || taxRate > 100)) {
         return res.status(400).json({ message: "Tax rate must be between 0 and 100" });
       }
-      
+
       const { CanteenSettings } = await import('./models/mongodb-models');
-      
+
       const updateData: any = {
         updatedAt: new Date()
       };
-      
+
       if (taxRate !== undefined) updateData.taxRate = taxRate;
       if (taxName !== undefined) updateData.taxName = taxName;
       if (favoriteCounterId !== undefined) updateData.favoriteCounterId = favoriteCounterId;
-      
+
       let settings = await CanteenSettings.findOneAndUpdate(
         { canteenId },
         updateData,
         { new: true, upsert: true }
       );
-      
+
       const settingsObj: any = settings.toObject ? settings.toObject() : settings;
       settingsObj.id = settingsObj._id?.toString();
       delete settingsObj._id;
       delete settingsObj.__v;
-      
+
       console.log(`✅ Settings updated successfully:`, settingsObj);
       res.json(settingsObj);
     } catch (error) {
@@ -1099,9 +1100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canteenId = req.query.canteenId as string;
       const userIdParam = req.query.userId as string;
       const userId = userIdParam ? parseInt(userIdParam, 10) : null;
-      
+
       console.log('🏠 Home Data API called with:', { canteenId, userId });
-      
+
       if (!canteenId) {
         console.log(`❌ Missing canteenId for home data request`);
         return res.status(400).json({ error: 'canteenId is required' });
@@ -1116,9 +1117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(10)
           .lean()
           .exec(), // Use lean() and exec() for faster reads
-        
+
         // OPTIMIZED: Trending Items - DB query with isTrending filter
-        MenuItem.find({ 
+        MenuItem.find({
           canteenId: canteenId,
           isTrending: true,
           available: true,
@@ -1129,9 +1130,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(4)
           .lean()
           .exec(), // Use lean() for faster reads and to preserve counter IDs
-        
+
         // OPTIMIZED: Quick Picks - DB query with specific selection criteria
-        MenuItem.find({ 
+        MenuItem.find({
           canteenId: canteenId,
           available: true,
           stock: { $gt: 0 },
@@ -1159,10 +1160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const results = await Promise.all(queries);
-      
+
       // Handle different result structures based on whether userId was provided
       let mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings;
-      
+
       if (userId && !isNaN(userId)) {
         // userId provided: [mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings]
         [mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings] = results;
@@ -1171,12 +1172,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         [mediaBanners, trendingItems, quickPicks, systemSettings] = results;
         activeOrders = []; // No active orders for guest users or when userId is not provided
       }
-      
+
       // Ensure activeOrders is always an array
       if (!Array.isArray(activeOrders)) {
         activeOrders = [];
       }
-      
+
       // Get coding challenges enabled status from canteen settings
       let codingChallengesEnabled = false;
       if (systemSettings?.canteens?.list) {
@@ -1203,13 +1204,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Filter out media banners with invalid data
-      const validMediaBanners = formatItems(mediaBanners).filter(banner => 
-        banner.id && 
-        (banner.cloudinaryUrl || banner.fileId) && 
+      const validMediaBanners = formatItems(mediaBanners).filter(banner =>
+        banner.id &&
+        (banner.cloudinaryUrl || banner.fileId) &&
         banner.originalName
       );
 
-      console.log('🏠 Home Data API response:', { 
+      console.log('🏠 Home Data API response:', {
         mediaBanners: mediaBanners.length,
         validMediaBanners: validMediaBanners.length,
         trendingItems: trendingItems.length,
@@ -1238,22 +1239,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`📋 POST /api/categories - Creating category: ${req.body.name} for canteen: ${req.body.canteenId}`);
       const validatedData = insertCategorySchema.parse(req.body);
-      
+
       // Check if category already exists for this canteen (optimized query)
-      const existingCategory = await Category.findOne({ 
-        name: validatedData.name, 
-        canteenId: validatedData.canteenId 
+      const existingCategory = await Category.findOne({
+        name: validatedData.name,
+        canteenId: validatedData.canteenId
       });
-      
+
       if (existingCategory) {
         console.log(`❌ Category "${validatedData.name}" already exists in canteen ${validatedData.canteenId}`);
-        return res.status(409).json({ 
+        return res.status(409).json({
           message: `Category "${validatedData.name}" already exists in this canteen`,
           field: 'name',
           value: validatedData.name
         });
       }
-      
+
       const category = await storage.createCategory(validatedData);
       console.log(`✅ Category created successfully - ID: ${category.id}, Name: ${category.name}`);
       res.status(201).json(category);
@@ -1261,16 +1262,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.code === 11000 || error.message?.includes('E11000')) { // MongoDB duplicate key error
         // Extract category name from the error or request body
         const categoryName = error.keyValue?.name || req.body?.name || 'Unknown';
-        
+
         // Check if it's a compound key violation (name + canteenId)
         if (error.keyPattern && error.keyPattern.name && error.keyPattern.canteenId) {
-          res.status(409).json({ 
+          res.status(409).json({
             message: `Category "${categoryName}" already exists in this canteen`,
             field: 'name',
             value: categoryName
           });
         } else {
-          res.status(409).json({ 
+          res.status(409).json({
             message: "Category already exists",
             field: 'name',
             value: categoryName
@@ -1278,9 +1279,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } else if (error.name === 'ZodError') {
         res.status(400).json({ message: "Invalid data", errors: error.errors });
-        } else {
-          res.status(500).json({ message: "Internal server error", error: error.message });
-        }
+      } else {
+        res.status(500).json({ message: "Internal server error", error: error.message });
+      }
     }
   });
 
@@ -1302,12 +1303,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { name, icon, imageUrl, imagePublicId } = req.body;
       const categoryId = req.params.id;
-      
+
       const updateData: any = { name };
       if (icon !== undefined) updateData.icon = icon;
       if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
       if (imagePublicId !== undefined) updateData.imagePublicId = imagePublicId;
-      
+
       const updatedCategory = await storage.updateCategory(categoryId, updateData);
       res.json(updatedCategory);
     } catch (error) {
@@ -1320,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/categories/:id/image", upload.single('image'), async (req, res) => {
     try {
       const categoryId = req.params.id;
-      
+
       if (!req.file) {
         return res.status(400).json({ message: "No image file provided" });
       }
@@ -1332,7 +1333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         undefined,
         10 * 1024 // 10KB target
       );
-      
+
       const imageUrl = result.secure_url;
       const publicId = result.public_id;
 
@@ -1342,9 +1343,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ imageUrl, imagePublicId: publicId });
     } catch (error) {
       console.error("Error uploading category image:", error);
-      res.status(500).json({ 
-        message: "Internal server error", 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      res.status(500).json({
+        message: "Internal server error",
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -1353,19 +1354,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/categories/:id/image", async (req, res) => {
     try {
       const categoryId = req.params.id;
-      
+
       // Get current category to find image public ID
       const categories = await storage.getCategories();
       const category = categories.find((cat: any) => cat.id === categoryId);
-      
+
       if (category?.imagePublicId) {
         // Delete from Cloudinary
         await cloudinaryService.deleteImage(category.imagePublicId);
       }
-      
+
       // Update category to remove image
       await storage.updateCategory(categoryId, { imageUrl: "", imagePublicId: "" });
-      
+
       res.json({ message: "Image removed successfully" });
     } catch (error) {
       console.error("Error removing category image:", error);
@@ -1388,7 +1389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 20;
       const sortBy = req.query.sortBy as string || 'name';
       const sortOrder = req.query.sortOrder as string || 'asc';
-      
+
       // Log the request for debugging
       console.log('📋 Menu API Request:', {
         canteenId,
@@ -1402,10 +1403,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sortOrder,
         queryParams: req.query
       });
-      
+
       // Build MongoDB query with server-side filtering
       let query: any = {};
-      
+
       // OPTIMIZATION: If itemIds is provided, fetch only those specific items (batch query)
       // This is used for checkout page to fetch only items missing counter IDs
       if (itemIds && itemIds.trim()) {
@@ -1421,7 +1422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             })
             .filter(id => id !== null);
-          
+
           if (objectIds.length > 0) {
             query._id = { $in: objectIds };
             console.log(`✅ OPTIMIZED: Fetching ${objectIds.length} specific menu items by IDs`);
@@ -1457,7 +1458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         }
-        
+
         // Exclude IDs filter (for smart caching - don't fetch already loaded items)
         if (excludeIds && excludeIds.trim()) {
           const idsToExclude = excludeIds.split(',').map(id => id.trim()).filter(id => id);
@@ -1466,7 +1467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Available and stock filter - default to showing only available items with stock > 0
       // unless explicitly disabled (for admin views)
       const showAvailableOnly = availableOnly !== 'false';
@@ -1474,16 +1475,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         query.available = true;
         query.stock = { $gt: 0 };
       }
-      
+
       // Vegetarian filter
       if (vegOnly === 'true') {
         query.isVegetarian = true;
       }
-      
+
       // Search filter - use fuzzy regex for typo-tolerant matching
       if (search && search.trim()) {
         const searchTerm = search.trim().toLowerCase();
-        
+
         // Generate fuzzy regex pattern for typo tolerance
         // Key insight: biryani vs biriyani - the difference is an extra 'i' between 'r' and 'y'
         // Solution: Allow optional vowels between any two consonants
@@ -1491,17 +1492,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const vowels = 'aeiou';
           const isVowel = (c: string) => vowels.includes(c);
           const isConsonant = (c: string) => /[a-z]/.test(c) && !isVowel(c) && c !== 'y';
-          
+
           let pattern = '';
           let i = 0;
-          
+
           while (i < term.length) {
             const char = term[i];
             const nextChar = term[i + 1];
-            
+
             // Escape special regex characters
             const escapedChar = char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            
+
             if (isVowel(char)) {
               // Vowels: match one or more vowels flexibly (handles 'i' vs 'ee', 'a' vs 'o', etc.)
               pattern += '[aeiou]+';
@@ -1516,12 +1517,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else if (isConsonant(char)) {
               // Consonant
               pattern += escapedChar;
-              
+
               // Allow optional double consonant (coffee/coffe, birriyani/biriyani)
               if ('fsltnprbdgmck'.includes(char)) {
                 pattern += char + '?';
               }
-              
+
               // KEY FIX: Allow optional vowel(s) between this consonant and the next consonant
               // This handles biryani → biriyani (optional 'i' between 'r' and 'y')
               if (nextChar && (isConsonant(nextChar) || nextChar === 'y')) {
@@ -1531,36 +1532,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Non-letter characters (spaces, etc.)
               pattern += escapedChar;
             }
-            
+
             i++;
           }
-          
+
           return pattern;
         };
-        
+
         const fuzzyPattern = generateFuzzyPattern(searchTerm);
         const searchRegex = new RegExp(fuzzyPattern, 'i');
-        
+
         // Also search for categories that match the search term
         const matchingCategories = await Category.find({
           canteenId,
           name: searchRegex
         }).select('_id');
-        
+
         const matchingCategoryIds = matchingCategories.map(cat => cat._id);
-        
+
         query.$or = [
           { name: searchRegex },
           { description: searchRegex }
         ];
-        
+
         if (matchingCategoryIds.length > 0) {
           query.$or.push({ categoryId: { $in: matchingCategoryIds } });
         }
-        
+
         console.log('🔍 Fuzzy search applied:', searchTerm, '→ pattern:', fuzzyPattern, 'Matching categories:', matchingCategoryIds.length);
       }
-      
+
       // Stock filter (for admin views - overrides availableOnly filter)
       if (stockFilter && stockFilter !== 'all') {
         if (stockFilter === 'low_stock') {
@@ -1571,11 +1572,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           delete query.available; // Remove available filter when using stockFilter
         }
       }
-      
+
       // Category filter - find category ID first for better performance
       if (category && category !== 'all') {
         let categoryId = null;
-        
+
         // Check if category is a valid ObjectId (directly passed from UI)
         if (mongoose.Types.ObjectId.isValid(category)) {
           categoryId = category;
@@ -1611,18 +1612,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       // Build sort object
       let sortOptions: any = {};
       sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
-      
+
       // OPTIMIZED: Get total count for pagination
       // Note: For very large collections, consider caching or using estimatedDocumentCount()
       // but countDocuments() is accurate and uses indexes efficiently
       const totalItems = await MenuItem.countDocuments(query).exec();
       const totalPages = Math.ceil(totalItems / limit);
       const skip = (page - 1) * limit;
-      
+
       console.log('📋 Menu Query Details:', {
         query,
         totalItems,
@@ -1631,7 +1632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit,
         skip
       });
-      
+
       // OPTIMIZED: Get paginated menu items with proper query chain order
       // Order matters: find -> select -> populate -> sort -> skip -> limit -> lean
       const menuItems = await MenuItem.find(query)
@@ -1642,20 +1643,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(limit) // Limit after skip
         .lean() // Use lean() last to get plain JavaScript objects (faster, preserves all fields)
         .exec(); // Explicit exec() for better performance tracking
-      
+
       console.log('📋 Menu Items Found:', {
         count: menuItems.length,
         sampleCanteenIds: menuItems.slice(0, 5).map(item => item.canteenId),
         requestedCanteenId: canteenId
       });
-      
+
       // Check for items missing counter IDs
       const itemsWithoutCounterIds = menuItems.filter(
         item => !item.storeCounterId || !item.paymentCounterId
       );
-      
+
       if (itemsWithoutCounterIds.length > 0) {
-        console.warn(`⚠️ ${itemsWithoutCounterIds.length} menu items missing counter IDs:`, 
+        console.warn(`⚠️ ${itemsWithoutCounterIds.length} menu items missing counter IDs:`,
           itemsWithoutCounterIds.map(item => ({
             id: item._id,
             name: item.name,
@@ -1664,7 +1665,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }))
         );
       }
-      
+
       // Log sample item for debugging
       if (menuItems.length > 0) {
         const sampleItem = menuItems[0];
@@ -1677,24 +1678,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasPaymentCounterId: sampleItem.paymentCounterId !== undefined && sampleItem.paymentCounterId !== null
         });
       }
-      
+
       // Return paginated response
       res.json({
         items: menuItems.map(item => {
           // With lean(), item is already a plain object, no need for toObject()
           const plainItem = item as any;
-          
+
           // Convert _id to id
           if (plainItem._id) {
             plainItem.id = plainItem._id.toString();
             delete plainItem._id;
           }
-          
+
           // Remove __v if present
           if (plainItem.__v !== undefined) {
             delete plainItem.__v;
           }
-          
+
           // Counter IDs should already be in plainItem from lean()
           // Explicitly ensure they're preserved (they should be there if in DB)
           const result = {
@@ -1702,7 +1703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             storeCounterId: plainItem.storeCounterId, // Keep as-is (don't convert to undefined)
             paymentCounterId: plainItem.paymentCounterId // Keep as-is (don't convert to undefined)
           };
-          
+
           // Log if counter IDs are missing (for debugging)
           if (!result.storeCounterId || !result.paymentCounterId) {
             console.warn(`⚠️ Menu item missing counter IDs: ${result.name} (${result.id})`, {
@@ -1711,7 +1712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               rawItem: plainItem
             });
           }
-          
+
           return result;
         }),
         pagination: {
@@ -1747,7 +1748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ Menu item ${menuItemId} not found`);
         return res.status(404).json({ message: "Menu item not found" });
       }
-      
+
       // Log counter IDs for debugging
       console.log(`✅ Menu item found: ${menuItem.name}`, {
         storeCounterId: menuItem.storeCounterId,
@@ -1757,7 +1758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasPaymentCounterId: menuItem.paymentCounterId !== undefined && menuItem.paymentCounterId !== null,
         hasKotCounterId: menuItem.kotCounterId !== undefined && menuItem.kotCounterId !== null
       });
-      
+
       // Ensure counter IDs are explicitly included
       const result = {
         ...menuItem,
@@ -1765,11 +1766,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentCounterId: menuItem.paymentCounterId || undefined,
         kotCounterId: menuItem.kotCounterId || undefined
       };
-      
+
       if (!result.storeCounterId || !result.paymentCounterId) {
         console.warn(`⚠️ Menu item missing counter IDs: ${result.name} (${result.id})`);
       }
-      
+
       res.json(result);
     } catch (error) {
       console.error(`❌ Error fetching menu item ${req.params.id}:`, error);
@@ -1781,13 +1782,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`📋 POST /api/menu - Creating menu item: ${req.body.name} for canteen: ${req.body.canteenId}`);
       const validatedData = insertMenuItemSchema.parse(req.body);
-      
+
       // Convert categoryId to string if it exists (handle both string and object formats)
       const menuItemData = {
         ...validatedData,
-        categoryId: validatedData.categoryId ? 
-          (typeof validatedData.categoryId === 'string' 
-            ? validatedData.categoryId 
+        categoryId: validatedData.categoryId ?
+          (typeof validatedData.categoryId === 'string'
+            ? validatedData.categoryId
             : (validatedData.categoryId as any)?._id || (validatedData.categoryId as any)?.id || String(validatedData.categoryId)
           ) : undefined
       };
@@ -1810,13 +1811,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔄 PUT /api/menu/${menuItemId} - Updating menu item`);
       // Validate the request data, but allow partial updates
       const validatedData = insertMenuItemSchema.partial().parse(req.body);
-      
+
       // Convert categoryId to string if it exists (handle both string and object formats)
-      const updateData = { 
+      const updateData = {
         ...validatedData,
         categoryId: validatedData.categoryId ?
-          (typeof validatedData.categoryId === 'string' 
-            ? validatedData.categoryId 
+          (typeof validatedData.categoryId === 'string'
+            ? validatedData.categoryId
             : (validatedData.categoryId as any)?._id || (validatedData.categoryId as any)?.id || String(validatedData.categoryId)
           ) : undefined
       };
@@ -1825,7 +1826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...updateData,
         kotCounterId: updateData.kotCounterId || 'not provided'
       });
-      
+
       const menuItem = await storage.updateMenuItem(menuItemId, updateData);
       console.log(`✅ Menu item ${menuItemId} updated successfully`, {
         storeCounterId: menuItem.storeCounterId,
@@ -1871,95 +1872,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Menu item image upload endpoint
-        app.post("/api/menu/:id/image", (req, res, next) => {
-          // Handle multer errors
-          upload.single('image')(req, res, (err) => {
-            if (err) {
-              console.error('❌ Multer error:', err);
-              // Check for multer-specific error codes
-              if (err && typeof err === 'object' && 'code' in err) {
-                if (err.code === 'LIMIT_FILE_SIZE') {
-                  return res.status(400).json({ message: "File size exceeds 100KB limit" });
-                }
-                if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-                  return res.status(400).json({ message: "Unexpected file field. Please use 'image' as the field name." });
-                }
-              }
-              const errorMessage = err instanceof Error ? err.message : "File upload error";
-              return res.status(400).json({ message: errorMessage });
-            }
-            next();
-          });
-        }, async (req, res) => {
-          try {
-            if (!req.file) {
-              return res.status(400).json({ message: "No image file uploaded. Please select an image file." });
-            }
-
-            if (!req.params.id) {
-              return res.status(400).json({ message: "Menu item ID is required" });
-            }
-
-            const { originalname, mimetype, buffer } = req.file;
-            
-            // Validate file type
-            if (!mimetype.startsWith('image/')) {
-              return res.status(400).json({ message: "Only image files are allowed" });
-            }
-
-            // Validate file size (100KB limit)
-            if (buffer.length > 100 * 1024) {
-              return res.status(400).json({ message: "File size exceeds 100KB limit" });
-            }
-
-            // Get existing menu item to check if it has an image
-            const existingMenuItem = await storage.getMenuItem(req.params.id);
-            if (!existingMenuItem) {
-              return res.status(404).json({ message: "Menu item not found" });
-            }
-
-            // Delete old image if exists
-            if (existingMenuItem.imagePublicId) {
-              try {
-                await cloudinaryService.deleteImage(existingMenuItem.imagePublicId);
-                // Old image deleted from Cloudinary
-              } catch (deleteError) {
-                // Failed to delete old image (continuing anyway)
-              }
-            }
-
-            // Generate unique public ID
-            const publicId = `menu-item-${req.params.id}-${Date.now()}`;
-            
-            // Upload to Cloudinary with compression
-            const uploadResult = await cloudinaryService.uploadImage(
-              buffer,
-              'menu-items',
-              publicId,
-              20 * 1024 // 20KB limit
-            );
-
-            // Update menu item with image data
-            const updatedMenuItem = await storage.updateMenuItem(req.params.id, {
-              imageUrl: uploadResult.secure_url,
-              imagePublicId: uploadResult.public_id
-            } as any);
-
-            res.json({
-              success: true,
-              imageUrl: uploadResult.secure_url,
-              publicId: uploadResult.public_id,
-              menuItem: updatedMenuItem
-            });
-          } catch (error) {
-            console.error("Error uploading menu item image:", error);
-            const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            res.status(500).json({ 
-              message: "Failed to upload image", 
-              error: errorMessage
-            });
+  app.post("/api/menu/:id/image", (req, res, next) => {
+    // Handle multer errors
+    upload.single('image')(req, res, (err) => {
+      if (err) {
+        console.error('❌ Multer error:', err);
+        // Check for multer-specific error codes
+        if (err && typeof err === 'object' && 'code' in err) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: "File size exceeds 100KB limit" });
           }
-        });
+          if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({ message: "Unexpected file field. Please use 'image' as the field name." });
+          }
+        }
+        const errorMessage = err instanceof Error ? err.message : "File upload error";
+        return res.status(400).json({ message: errorMessage });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file uploaded. Please select an image file." });
+      }
+
+      if (!req.params.id) {
+        return res.status(400).json({ message: "Menu item ID is required" });
+      }
+
+      const { originalname, mimetype, buffer } = req.file;
+
+      // Validate file type
+      if (!mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
+      // Validate file size (100KB limit)
+      if (buffer.length > 100 * 1024) {
+        return res.status(400).json({ message: "File size exceeds 100KB limit" });
+      }
+
+      // Get existing menu item to check if it has an image
+      const existingMenuItem = await storage.getMenuItem(req.params.id);
+      if (!existingMenuItem) {
+        return res.status(404).json({ message: "Menu item not found" });
+      }
+
+      // Delete old image if exists
+      if (existingMenuItem.imagePublicId) {
+        try {
+          await cloudinaryService.deleteImage(existingMenuItem.imagePublicId);
+          // Old image deleted from Cloudinary
+        } catch (deleteError) {
+          // Failed to delete old image (continuing anyway)
+        }
+      }
+
+      // Generate unique public ID
+      const publicId = `menu-item-${req.params.id}-${Date.now()}`;
+
+      // Upload to Cloudinary with compression
+      const uploadResult = await cloudinaryService.uploadImage(
+        buffer,
+        'menu-items',
+        publicId,
+        20 * 1024 // 20KB limit
+      );
+
+      // Update menu item with image data
+      const updatedMenuItem = await storage.updateMenuItem(req.params.id, {
+        imageUrl: uploadResult.secure_url,
+        imagePublicId: uploadResult.public_id
+      } as any);
+
+      res.json({
+        success: true,
+        imageUrl: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+        menuItem: updatedMenuItem
+      });
+    } catch (error) {
+      console.error("Error uploading menu item image:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({
+        message: "Failed to upload image",
+        error: errorMessage
+      });
+    }
+  });
 
   // Delete menu item image endpoint
   app.delete("/api/menu/:id/image", async (req, res) => {
@@ -1999,9 +2000,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("❌ Error deleting menu item image:", error);
-      res.status(500).json({ 
-        message: "Failed to delete image", 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      res.status(500).json({
+        message: "Failed to delete image",
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
@@ -2013,31 +2014,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const counterId = req.query.counterId as string;
       const isOffline = req.query.isOffline as string;
       const paymentStatus = req.query.paymentStatus as string;
-      
+
       console.log(`📋 GET /api/orders - Filters: canteenId=${canteenId}, counterId=${counterId}, isOffline=${isOffline}, paymentStatus=${paymentStatus}`);
       const orders = await storage.getOrders();
-      
+
       // Filter by canteenId if provided
-      let filteredOrders = canteenId 
+      let filteredOrders = canteenId
         ? orders.filter((order: any) => order.canteenId === canteenId)
         : orders;
-      
+
       // Filter by counterId if provided
       if (counterId) {
         filteredOrders = filteredOrders.filter((order: any) => order.counterId === counterId);
       }
-      
+
       // Filter by isOffline if provided
       if (isOffline !== undefined) {
         const isOfflineBool = isOffline === 'true';
         filteredOrders = filteredOrders.filter((order: any) => order.isOffline === isOfflineBool);
       }
-      
+
       // Filter by paymentStatus if provided
       if (paymentStatus) {
         filteredOrders = filteredOrders.filter((order: any) => order.paymentStatus === paymentStatus);
       }
-      
+
       console.log(`✅ Successfully fetched ${filteredOrders.length} orders (from ${orders.length} total)`);
       res.json(filteredOrders);
     } catch (error) {
@@ -2053,14 +2054,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canteenId = req.query.canteenId as string;
       const isCounterOrder = req.query.isCounterOrder === 'true' ? true : req.query.isCounterOrder === 'false' ? false : undefined;
       const isOffline = req.query.isOffline === 'true' ? true : req.query.isOffline === 'false' ? false : undefined;
-      
+
       const result = await storage.getOrdersPaginated(page, limit, canteenId, isCounterOrder, isOffline);
-      
+
       res.json(result);
     } catch (error) {
       console.error("Error fetching paginated orders:", error);
-      res.status(500).json({ 
-        message: "Internal server error", 
+      res.status(500).json({
+        message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -2072,14 +2073,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 15;
       const canteenId = req.query.canteenId as string;
       const customerId = req.query.customerId ? parseInt(req.query.customerId as string) : undefined;
-      
+
       const result = await storage.getActiveOrdersPaginated(page, limit, canteenId, customerId);
-      
+
       res.json(result);
     } catch (error) {
       console.error("Error fetching paginated active orders:", error);
-      res.status(500).json({ 
-        message: "Internal server error", 
+      res.status(500).json({
+        message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -2089,15 +2090,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders/stats", async (req, res) => {
     try {
       const canteenId = req.query.canteenId as string;
-      
+
       const stats = await storage.getOrderStats(canteenId);
-      
+
       res.json(stats);
     } catch (error) {
       console.error("❌ Error fetching order stats:", error);
       console.error("❌ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-      res.status(500).json({ 
-        message: "Internal server error", 
+      res.status(500).json({
+        message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -2153,8 +2154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error("❌ Error fetching filtered orders:", error);
-      res.status(500).json({ 
-        message: "Internal server error", 
+      res.status(500).json({
+        message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -2166,18 +2167,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = req.query.q as string;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 15;
-      
+
       if (!query || query.trim().length === 0) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      
+
       const result = await storage.searchOrders(query.trim(), page, limit);
-      
+
       res.json(result);
     } catch (error) {
       console.error("Error searching orders:", error);
-      res.status(500).json({ 
-        message: "Internal server error", 
+      res.status(500).json({
+        message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -2187,12 +2188,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const identifier = req.params.id;
       console.log(`🔍 GET /api/orders/:id - Looking up order with identifier: ${identifier}`);
-      
+
       let order = null;
-      
+
       // Check if identifier is a valid MongoDB ObjectId (24 hex characters)
       const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-      
+
       if (isValidObjectId) {
         // Try to find by MongoDB ObjectId first
         console.log(`🔍 Identifier looks like ObjectId, trying getOrder...`);
@@ -2203,7 +2204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue to try other methods
         }
       }
-      
+
       // If not found, try finding by orderNumber
       if (!order) {
         console.log(`🔍 Trying getOrderByOrderNumber...`);
@@ -2214,7 +2215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue to try barcode
         }
       }
-      
+
       // If still not found, try finding by barcode (supports full barcode or 4-digit OTP)
       if (!order) {
         console.log(`🔍 Trying getOrderByBarcode...`);
@@ -2224,7 +2225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Error in getOrderByBarcode for ${identifier}:`, error);
         }
       }
-      
+
       // If still not found and it's a 4-digit OTP, try searching by first 4 digits of order number
       if (!order && identifier.length === 4 && /^\d{4}$/.test(identifier)) {
         console.log(`🔍 Trying to find order by 4-digit OTP (first 4 digits of order number)...`);
@@ -2240,12 +2241,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Error searching by OTP for ${identifier}:`, error);
         }
       }
-      
+
       if (!order) {
         console.log(`❌ Order not found with identifier: ${identifier}`);
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       console.log(`✅ Order found: ${order.orderNumber || order.id}`);
       console.log('  - Order chargesTotal:', order.chargesTotal);
       console.log('  - Order chargesApplied:', JSON.stringify(order.chargesApplied, null, 2));
@@ -2253,7 +2254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(order);
     } catch (error) {
       console.error("❌ Error fetching order:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -2288,17 +2289,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderIds } = req.body;
 
       if (!Array.isArray(orderIds) || orderIds.length === 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "orderIds must be a non-empty array" 
+        return res.status(400).json({
+          success: false,
+          message: "orderIds must be a non-empty array"
         });
       }
 
       // Rate limiting: Max orders per request
       if (orderIds.length > POLLING_RATE_LIMIT.maxOrdersPerRequest) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Maximum ${POLLING_RATE_LIMIT.maxOrdersPerRequest} orders per polling request` 
+        return res.status(400).json({
+          success: false,
+          message: `Maximum ${POLLING_RATE_LIMIT.maxOrdersPerRequest} orders per polling request`
         });
       }
 
@@ -2348,24 +2349,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const identifier of orderIds) {
         try {
           let order = null;
-          
+
           // Check if identifier is a valid MongoDB ObjectId
           const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
-          
+
           if (isValidObjectId) {
             order = await storage.getOrder(identifier);
           }
-          
+
           // If not found, try orderNumber
           if (!order) {
             order = await storage.getOrderByOrderNumber(identifier);
           }
-          
+
           // If still not found, try barcode
           if (!order) {
             order = await storage.getOrderByBarcode(identifier);
           }
-          
+
           if (order) {
             orders.push(order);
           }
@@ -2376,7 +2377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`✅ Polling complete: ${orders.length}/${orderIds.length} orders found`);
-      
+
       res.json({
         success: true,
         orders,
@@ -2385,7 +2386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("❌ Error in polling endpoint:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         success: false,
         message: "Internal server error",
         orders: []
@@ -2400,9 +2401,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const customerId = req.body.customerId || 0;
         const canteenId = req.body.canteenId || '';
         const amount = req.body.amount;
-        
+
         console.log(`🔍 Checking for duplicate order session: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}`);
-        
+
         const duplicateCheck = await checkDuplicatePaymentMiddleware(
           customerId,
           amount,
@@ -2422,7 +2423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Note: Checkout session should already exist from frontend
         // We'll use the checkout session ID if provided, otherwise skip session creation
         const checkoutSessionId = req.body.checkoutSessionId;
-        
+
         // If checkout session ID provided, update status
         if (checkoutSessionId) {
           try {
@@ -2436,11 +2437,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Generate unique 12-digit numeric order ID for both orderNumber and barcode
       const orderNumber = generateOrderNumber();
       const barcode = generateOrderNumber();
-      
+
       console.log('📦 POST /api/orders - Received order request:', {
         customerName: req.body.customerName,
         collegeName: req.body.collegeName,
@@ -2459,22 +2460,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemCount: req.body.items ? JSON.parse(req.body.items).length : 0,
         checkoutSessionId: req.body.checkoutSessionId
       });
-      
+
       // Debug: Check if canteenId is missing or incorrect
       if (!req.body.canteenId) {
         console.error('POST /api/orders - ERROR: canteenId is missing from request body');
       }
-      
+
       const orderData = { ...req.body, orderNumber, barcode };
       const validatedData = insertOrderSchema.parse(orderData);
-      
+
       console.log('✅ Validated order data:', {
         isCounterOrder: validatedData.isCounterOrder,
         isOffline: validatedData.isOffline,
         status: validatedData.status,
         paymentStatus: validatedData.paymentStatus
       });
-      
+
       // Parse order items
       let orderItems = [];
       try {
@@ -2487,23 +2488,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storeCounterIds = new Set<string>();
       const paymentCounterIds = new Set<string>();
       const kotCounterIds = new Set<string>();
-      
+
       // Process each item: fetch menu item, add counter IDs and other properties to item, collect counter IDs
       for (const item of orderItems) {
         const menuItem = await storage.getMenuItem(item.id);
-        
+
         if (menuItem) {
           // Add counter IDs directly to the item
           item.storeCounterId = menuItem.storeCounterId || null;
           item.paymentCounterId = menuItem.paymentCounterId || null;
           item.kotCounterId = menuItem.kotCounterId || null;
-          
+
           // Add isMarkable and other relevant menu item properties to order item
           item.isMarkable = menuItem.isMarkable || false;
           item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
           item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
           item.available = menuItem.available !== undefined ? menuItem.available : true;
-          
+
           // Collect counter IDs for broadcasting
           if (menuItem.storeCounterId) {
             storeCounterIds.add(menuItem.storeCounterId);
@@ -2514,7 +2515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (menuItem.kotCounterId) {
             kotCounterIds.add(menuItem.kotCounterId);
           }
-          
+
           console.log(`✅ Added properties to item ${item.name}:`, {
             storeCounterId: item.storeCounterId,
             paymentCounterId: item.paymentCounterId,
@@ -2534,13 +2535,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           item.available = true;
         }
       }
-      
+
       // Get arrays of all counter IDs for broadcasting
       const allStoreCounterIds = Array.from(storeCounterIds);
       const allPaymentCounterIds = Array.from(paymentCounterIds);
       const allKotCounterIds = Array.from(kotCounterIds);
       const allCounterIds = Array.from(new Set([...Array.from(storeCounterIds), ...Array.from(paymentCounterIds), ...Array.from(kotCounterIds)]));
-      
+
       console.log('📊 Counter IDs collected from items:', {
         allStoreCounterIds,
         allPaymentCounterIds,
@@ -2548,7 +2549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allCounterIds,
         totalItems: orderItems.length
       });
-      
+
       // Check markable status for order status determination
       let hasMarkableItem = false;
       let hasMarkableItemWithKot = false; // Check if markable items have KOT counters
@@ -2562,19 +2563,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       console.log('📊 Markable items analysis:', {
         hasMarkableItem,
         hasMarkableItemWithKot,
         allKotCounterIds: allKotCounterIds.length > 0 ? allKotCounterIds : 'none'
       });
-      
+
       // Determine order status based on order type and markable items
       let orderStatus;
       let paymentStatus = validatedData.paymentStatus; // Keep existing paymentStatus if provided
-      
+
       console.log('🔍 Status determination - isCounterOrder:', validatedData.isCounterOrder, 'isOffline:', validatedData.isOffline);
-      
+
       if (validatedData.isCounterOrder) {
         // For counter orders (POS): payment already collected, but order still needs preparation
         // Status determined by markable items (same as regular orders)
@@ -2598,17 +2599,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orderStatus = hasMarkableItem ? "pending" : "ready";
         paymentStatus = paymentStatus || 'paid'; // Online orders are already paid
       }
-      
+
       // Initialize itemStatusByCounter for auto-ready items (non-markable items)
       // Auto-ready items should be marked as 'ready' by default for their assigned counters
       const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
-      
+
       for (const item of orderItems) {
         // Skip markable items - they will be marked ready manually
         if (item.isMarkable === true) {
           continue;
         }
-        
+
         // Auto-ready items: mark as 'ready' for their assigned counters
         // For store counter items
         if (item.storeCounterId) {
@@ -2617,7 +2618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           itemStatusByCounter[item.storeCounterId][item.id] = 'ready';
         }
-        
+
         // For KOT counter items (if any auto-ready items are assigned to KOT counters)
         if (item.kotCounterId) {
           if (!itemStatusByCounter[item.kotCounterId]) {
@@ -2626,21 +2627,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           itemStatusByCounter[item.kotCounterId][item.id] = 'ready';
         }
       }
-      
+
       console.log(`🔍 Initialized itemStatusByCounter for auto-ready items:`, {
         autoReadyItemsCount: orderItems.filter((item: any) => item.isMarkable !== true).length,
         itemStatusByCounterKeys: Object.keys(itemStatusByCounter),
         itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : 'none'
       });
-      
+
       // Calculate chargesApplied if chargesTotal exists and payment method requires charges
       let chargesApplied: any[] = [];
       const userChargesTotal = validatedData.chargesTotal || 0;
-      
+
       if (userChargesTotal > 0 && validatedData.canteenId) {
         const paymentMethod = validatedData.paymentMethod || (validatedData.isOffline ? 'offline' : 'online');
         const shouldIncludeCharges = paymentMethod !== 'offline' && paymentMethod !== 'cash';
-        
+
         if (shouldIncludeCharges) {
           try {
             const canteenChargesDb = await CanteenCharge.find({ canteenId: validatedData.canteenId }).sort({ createdAt: -1 });
@@ -2653,7 +2654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             const activeCharges = canteenCharges.filter((charge: any) => charge.active);
             const subtotal = validatedData.itemsSubtotal || validatedData.originalAmount || validatedData.amount || 0;
-            
+
             chargesApplied = activeCharges.map((charge: any) => {
               let chargeAmount = 0;
               if (charge.type === 'percent') {
@@ -2661,7 +2662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } else {
                 chargeAmount = charge.value;
               }
-              
+
               return {
                 name: charge.name,
                 type: charge.type,
@@ -2698,7 +2699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allCounterIds, // Store all counter IDs
         itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : undefined // Initialize with auto-ready items
       };
-      
+
       // Debug: Check what fields are being passed to storage
       console.log(`🔍 Final order data being passed to storage:`, {
         isCounterOrder: finalOrderData.isCounterOrder,
@@ -2722,26 +2723,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           kotCounterId: item.kotCounterId
         }))
       });
-      
+
       // Require canteenId to be provided
       if (!finalOrderData.canteenId) {
         return res.status(400).json({ message: "canteenId is required" });
       }
-      
+
       console.log(`🔄 Order ${orderNumber}: Creating order for canteen ID: ${finalOrderData.canteenId}`);
       console.log(`🔄 Order ${orderNumber}: ${hasMarkableItem ? 'Has markable items - status: pending' : 'All non-markable items - status: ready'}`);
-      
+
       // Check if stock was already reserved at checkout
       const checkoutSessionId = req.body.checkoutSessionId;
       const skipStockReduction = !!checkoutSessionId; // Skip if checkout session exists (stock already reserved)
-      
+
       if (skipStockReduction) {
         console.log(`📦 Stock already reserved at checkout for session ${checkoutSessionId}, skipping stock reduction`);
       }
-      
+
       // Process order with atomic stock management
       const order = await stockService.processOrderWithStockManagement(finalOrderData, orderItems, skipStockReduction);
-      
+
       // Clear reserved stock from checkout session if order was successfully created
       if (checkoutSessionId && order) {
         try {
@@ -2752,7 +2753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail the order if clearing metadata fails
         }
       }
-      
+
       console.log(`✅ Order ${orderNumber} created successfully with canteenId: ${order.canteenId}`);
       console.log(`📦 Order details saved to MongoDB:`, {
         id: order.id,
@@ -2767,7 +2768,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allKotCounterIds: order.allKotCounterIds,
         allCounterIds: order.allCounterIds
       });
-      
+
+      // Send push notification to canteen owner
+      try {
+        console.log(`🔔 Triggering push notification for order ${order.orderNumber} to canteen ${order.canteenId}`);
+        await webPushService.sendNewOrderNotification(
+          order.orderNumber,
+          order.customerName || "Customer",
+          order.amount,
+          order.canteenId
+        );
+      } catch (error) {
+        console.error('❌ Failed to send new order push notification:', error);
+      }
+
       // Debug: Check if this is an offline order
       console.log(`🔍 Order type check:`, {
         isOffline: order.isOffline,
@@ -2776,7 +2790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatusCheck: order.paymentStatus === 'pending',
         condition: order.isOffline && order.paymentStatus === 'pending'
       });
-      
+
       // Broadcast new order via WebSocket to appropriate counter rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -2791,7 +2805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Collect all counter IDs that should receive this order
         // NEW LOGIC: Route based on markable items and KOT counters
         const targetCounterIds = [];
-        
+
         console.log('WebSocket Broadcasting - Counter assignments:', {
           allStoreCounterIds,
           allPaymentCounterIds,
@@ -2803,13 +2817,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasMarkableItemWithKot,
           orderNumber: order.orderNumber
         });
-        
+
         // Always add payment counter IDs (for payment processing)
         allPaymentCounterIds.forEach(counterId => {
           targetCounterIds.push(counterId);
           console.log(`🔍 Added payment counter to broadcast: ${counterId}`);
         });
-        
+
         // Routing logic for markable items:
         // 1. If markable items have KOT counters -> broadcast to BOTH KOT and store counters
         //    (Store counters will show order but disable buttons until KOT marks ready)
@@ -2844,7 +2858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           console.log(`📋 Order ${order.orderNumber}: No markable items - routing directly to store counters`);
         }
-        
+
         // Also add KOT counters for non-markable items that might have KOT assignments
         // (in case there are non-markable items with KOT counters)
         if (!hasMarkableItem) {
@@ -2855,17 +2869,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         }
-        
+
         // Remove duplicates
         const uniqueCounterIds = [...new Set(targetCounterIds)];
-        
+
         if (uniqueCounterIds.length > 0) {
           // Broadcast to specific counter rooms
           // Items already have counter IDs attached, so just parse and send them
           // Determine message type: offline orders with pending payment get special type
-          const isOfflinePendingPayment = order.isOffline === true && 
-                                         (order.paymentStatus === 'pending' || order.status === 'pending_payment');
-          
+          const isOfflinePendingPayment = order.isOffline === true &&
+            (order.paymentStatus === 'pending' || order.status === 'pending_payment');
+
           const orderMessage = {
             type: isOfflinePendingPayment ? 'new_offline_order' : 'new_order',
             data: {
@@ -2879,7 +2893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               items: orderItems
             }
           };
-          
+
           console.log(`📢 Broadcasting order ${order.orderNumber} to counter rooms:`, {
             targetCounterIds: uniqueCounterIds,
             allStoreCounterIds,
@@ -2893,7 +2907,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               kotCounterId: item.kotCounterId
             }))
           });
-          
+
           wsManager.broadcastToCounters(uniqueCounterIds, orderMessage.type, orderMessage.data);
           console.log(`📢 Order ${order.orderNumber} broadcasted to counter rooms: ${uniqueCounterIds.join(', ')}`);
         } else {
@@ -2908,17 +2922,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Delivery person assignment is now done manually from store counter
       // Removed automatic assignment logic
-      
+
       // Mark checkout session as completed if exists
       if (req.body.checkoutSessionId) {
         await CheckoutSessionService.updateStatus(req.body.checkoutSessionId, 'completed');
         console.log(`✅ Checkout session ${req.body.checkoutSessionId} marked as completed for order ${order.orderNumber}`);
       }
-      
+
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating order:", error);
-      
+
       // Cancel payment session on error if exists
       if (req.body.sessionId) {
         try {
@@ -2928,9 +2942,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error cancelling session:', cancelError);
         }
       }
-      
+
       if (error instanceof Error && error.message.includes('Stock validation failed')) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Order cannot be processed due to stock issues",
           errors: [error.message]
         });
@@ -2955,8 +2969,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if order can be cancelled
       if (order.status === 'delivered' || order.status === 'cancelled') {
         console.log(`❌ Cannot cancel order ${order.orderNumber} - status is ${order.status}`);
-        return res.status(400).json({ 
-          message: `Cannot cancel order with status: ${order.status}` 
+        return res.status(400).json({
+          message: `Cannot cancel order with status: ${order.status}`
         });
       }
 
@@ -2965,7 +2979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await stockService.restoreStockForOrder(orderId);
 
       // Update order status to cancelled
-      const updatedOrder = await storage.updateOrder(req.params.id, { 
+      const updatedOrder = await storage.updateOrder(req.params.id, {
         status: 'cancelled',
         deliveredAt: new Date() // Track cancellation time
       });
@@ -2990,9 +3004,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const wsManager = getWebSocketManager();
       if (wsManager) {
         wsManager.broadcastOrderStatusUpdate(
-          updatedOrder.canteenId, 
-          updatedOrder, 
-          'active', 
+          updatedOrder.canteenId,
+          updatedOrder,
+          'active',
           'cancelled'
         );
         console.log(`📢 Successfully broadcasted cancellation for order ${updatedOrder.orderNumber} to canteen room ${updatedOrder.canteenId}`);
@@ -3001,9 +3015,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log(`🚫 Order ${order.orderNumber} cancelled and stock restored`);
-      res.json({ 
-        message: "Order cancelled successfully", 
-        order: updatedOrder 
+      res.json({
+        message: "Order cancelled successfully",
+        order: updatedOrder
       });
     } catch (error) {
       console.error("Error cancelling order:", error);
@@ -3020,7 +3034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ itemIds query parameter is required`);
         return res.status(400).json({ message: "itemIds query parameter is required" });
       }
-      
+
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
       const stockStatus = await stockService.getStockStatus(ids as string[]);
       console.log(`✅ Stock status retrieved for ${ids.length} items`);
@@ -3035,13 +3049,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       console.log(`🔄 PUT /api/orders/${orderId} - Updating order`, { status: req.body.status, paymentStatus: req.body.paymentStatus });
-      
+
       // Get order before update to check if it has a delivery person
       const oldOrder = await storage.getOrder(orderId);
-      
+
       const order = await storage.updateOrder(orderId, req.body);
       console.log(`✅ Order ${order.orderNumber} updated successfully`);
-      
+
       // If order status changed to "delivered", mark delivery person as available again
       if (req.body.status === 'delivered' && oldOrder?.deliveryPersonId) {
         try {
@@ -3050,7 +3064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const deliveryPerson = await database.deliveryPerson.findFirst({
             where: { deliveryPersonId: oldOrder.deliveryPersonId }
           });
-          
+
           if (deliveryPerson) {
             await database.deliveryPerson.update({
               where: { id: deliveryPerson.id },
@@ -3063,7 +3077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Don't fail the order update if this fails
         }
       }
-      
+
       res.json(order);
     } catch (error) {
       console.error(`❌ Error updating order ${req.params.id}:`, error);
@@ -3081,13 +3095,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ User ID is required for marking order as seen`);
         return res.status(400).json({ message: "User ID is required" });
       }
-      
+
       const order = await storage.getOrder(orderId);
       if (!order) {
         console.log(`❌ Order ${orderId} not found`);
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Add user ID to seenBy array if not already present
       const seenBy = order.seenBy || [];
       if (!seenBy.includes(userId)) {
@@ -3111,7 +3125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`🔄 PATCH /api/orders/${orderId} - Updating order with data:`, req.body);
       const order = await storage.updateOrder(orderId, req.body);
       console.log(`✅ Order ${order.orderNumber} updated successfully`);
-      
+
       // Send push notification to customer when status changes
       if (req.body.status && order.customerId) {
         try {
@@ -3135,15 +3149,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Failed to send push notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
         }
       }
-      
+
       // Broadcast order status update via WebSocket to canteen-specific room
       if (req.body.status) {
         const wsManager = getWebSocketManager();
         if (wsManager) {
           wsManager.broadcastOrderStatusUpdate(
-            order.canteenId, 
-            order, 
-            req.body.oldStatus || 'unknown', 
+            order.canteenId,
+            order,
+            req.body.oldStatus || 'unknown',
             req.body.status
           );
           console.log(`📢 Successfully broadcasted status change for ${order.orderNumber} to canteen room ${order.canteenId}`);
@@ -3153,7 +3167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 No status change to broadcast');
       }
-      
+
       res.json(order);
     } catch (error) {
       console.error("Error updating order:", error);
@@ -3171,7 +3185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderId = req.params.id;
       console.log(`🗑️ DELETE /api/orders/${orderId} - Deleting order in development mode`);
-      
+
       const order = await storage.getOrder(orderId);
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
@@ -3245,15 +3259,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log("Scanning barcode/OTP:", barcode);
-      
+
       // Find order by barcode (supports full barcode or 4-digit OTP)
       let order = await storage.getOrderByBarcode(barcode);
-      
+
       // If not found by barcode, try to find by order number (12-digit numeric format)
       if (!order && barcode.match(/^\d{12}$/)) {
         order = await storage.getOrderByOrderNumber(barcode);
       }
-      
+
       // If still not found and it's a 4-digit OTP, try searching by first 4 digits of order number
       if (!order && barcode.length === 4 && /^\d{4}$/.test(barcode)) {
         const regex = new RegExp('^' + barcode);
@@ -3263,28 +3277,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           order = mongoToPlain(foundOrder);
         }
       }
-      
+
       if (!order) {
-        return res.status(404).json({ 
-          message: "Invalid barcode. No order found.", 
-          error: "BARCODE_NOT_FOUND" 
+        return res.status(404).json({
+          message: "Invalid barcode. No order found.",
+          error: "BARCODE_NOT_FOUND"
         });
       }
 
       // Check if barcode was already used
       if (order.barcodeUsed) {
-        return res.status(400).json({ 
-          message: "🔒 This order has already been delivered.", 
+        return res.status(400).json({
+          message: "🔒 This order has already been delivered.",
           error: "BARCODE_ALREADY_USED",
-          deliveredAt: order.deliveredAt 
+          deliveredAt: order.deliveredAt
         });
       }
 
       // Check if order is ready for pickup
       if (order.status !== "ready") {
-        return res.status(400).json({ 
-          message: `Order is not ready for pickup. Current status: ${order.status}`, 
-          error: "ORDER_NOT_READY" 
+        return res.status(400).json({
+          message: `Order is not ready for pickup. Current status: ${order.status}`,
+          error: "ORDER_NOT_READY"
         });
       }
 
@@ -3328,13 +3342,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { barcode } = req.params;
       console.log(`🔍 GET /api/delivery/verify/${barcode} - Verifying barcode`);
-      
+
       const order = await storage.getOrderByBarcode(barcode);
       if (!order) {
         console.log(`❌ Barcode ${barcode} not found`);
-        return res.status(404).json({ 
-          valid: false, 
-          message: "Invalid barcode" 
+        return res.status(404).json({
+          valid: false,
+          message: "Invalid barcode"
         });
       }
 
@@ -3363,7 +3377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 GET /api/admin/analytics - Fetching admin analytics`);
       const orders = await storage.getOrders();
       const menuItems = await storage.getMenuItems();
-      
+
       const totalOrders = orders.length;
       const totalRevenue = orders.reduce((sum, order) => sum + order.amount, 0);
       const activeMenuItems = menuItems.filter(item => item.available).length;
@@ -3388,11 +3402,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this is an admin request based on query parameter or user role
       const isAdmin = req.query.admin === 'true';
       console.log(`📋 GET /api/media-banners - Admin: ${isAdmin}`);
-      
-      const banners = isAdmin 
+
+      const banners = isAdmin
         ? await mediaService.getAllBannersForAdmin()
         : await mediaService.getAllBanners();
-      
+
       console.log(`✅ Successfully fetched ${banners.length} media banners`);
       res.json(banners);
     } catch (error) {
@@ -3448,12 +3462,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/media-banners/:fileId/file", async (req, res) => {
     try {
       const { fileId } = req.params;
-      
+
       // Validate fileId
       if (!fileId || fileId === 'undefined' || fileId === 'null') {
         return res.status(400).json({ message: "Invalid file ID" });
       }
-      
+
       // First, try to find the banner to check if it's a Cloudinary file
       const banner = await MediaBanner.findOne({
         $or: [
@@ -3491,7 +3505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const updates = req.body;
-      
+
       const updatedBanner = await mediaService.updateBanner(id, updates);
 
       // Send WebSocket notification about banner update
@@ -3516,7 +3530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/media-banners/:id/toggle", async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       const updatedBanner = await mediaService.toggleBannerStatus(id);
 
       // Send WebSocket notification about status toggle
@@ -3542,11 +3556,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { displayMode } = req.body;
-      
+
       if (!displayMode || !['fit', 'fill'].includes(displayMode)) {
         return res.status(400).json({ message: "Display mode must be 'fit' or 'fill'" });
       }
-      
+
       const updatedBanner = await mediaService.updateBanner(id, { displayMode });
 
       // Send WebSocket notification about display mode update
@@ -3571,7 +3585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/media-banners/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       await mediaService.deleteFile(id);
 
       // Send WebSocket notification about banner deletion
@@ -3596,7 +3610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/media-banners/reorder", async (req, res) => {
     try {
       const { bannerIds } = req.body;
-      
+
       if (!Array.isArray(bannerIds)) {
         return res.status(400).json({ message: "Banner IDs must be an array" });
       }
@@ -3659,7 +3673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const issueId = req.params.id;
       const { status, adminNotes, resolvedBy } = req.body;
-      
+
       const updateData: any = {};
       if (status) updateData.status = status;
       if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
@@ -3684,16 +3698,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Razorpay Payment Integration
-  
+
   // Initiate payment with Razorpay
   app.post("/api/payments/initiate", async (req, res) => {
     try {
       const { amount, customerName, orderData, idempotencyKey } = req.body;
-      
+
       if (!amount || !customerName || !orderData) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields: amount, customerName, orderData" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: amount, customerName, orderData"
         });
       }
 
@@ -3701,31 +3715,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customerId = orderData.customerId || 0;
       const canteenId = orderData.canteenId || '';
       const checkoutSessionId = req.body.checkoutSessionId;
-      
+
       console.log(`🔍 Checking for duplicate payment: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}, CheckoutSessionId: ${checkoutSessionId || 'none'}`);
-      
+
       // Validate checkout session exists and is active
       if (!checkoutSessionId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Checkout session ID is required" 
+        return res.status(400).json({
+          success: false,
+          message: "Checkout session ID is required"
         });
       }
 
       const checkoutSession = await CheckoutSessionService.getSession(checkoutSessionId);
       if (!checkoutSession) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Checkout session not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Checkout session not found"
         });
       }
 
       // Check if session is still active
       const isActive = await CheckoutSessionService.isSessionActive(checkoutSessionId);
       if (!isActive) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Checkout session has expired or is no longer active" 
+        return res.status(400).json({
+          success: false,
+          message: "Checkout session has expired or is no longer active"
         });
       }
 
@@ -3733,7 +3747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
       if (sessionDuplicateCheck.isDuplicate) {
         console.log(`⚠️ Duplicate payment request blocked for checkout session ${checkoutSessionId}`);
-        
+
         // If payment was already initiated, return the existing payment details
         if (sessionDuplicateCheck.existingPayment) {
           return res.status(409).json({ // 409 Conflict
@@ -3776,23 +3790,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique merchant order ID
       const merchantOrderId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Optimized URL generation - cache base URL to avoid repeated detection
-      const baseUrl = req.get('host') 
+      const baseUrl = req.get('host')
         ? `${req.get('x-forwarded-proto') || 'https'}://${req.get('host')}`
         : `http://localhost:${process.env.PORT || '5000'}`;
-      
+
       const redirectUrl = `${baseUrl}/payment-callback`;
-      
+
       // Minimal logging for production performance
       console.log(`💰 Payment URLs generated: ${baseUrl}`);
 
       // Validate Razorpay configuration
       if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
         console.error('🚨 Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
-        return res.status(500).json({ 
-          success: false, 
-          message: "Payment gateway configuration error. Please contact support." 
+        return res.status(500).json({
+          success: false,
+          message: "Payment gateway configuration error. Please contact support."
         });
       }
 
@@ -3805,7 +3819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use job queue (optimal for high load)
         try {
           const { queuePaymentInitiation, getPaymentQueue } = await import('./queues/paymentQueue');
-          
+
           // Add payment job to queue
           const paymentJob = await queuePaymentInitiation({
             amount,
@@ -3823,11 +3837,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Wait for job to complete (with timeout)
           const jobTimeout = 30000; // 30 seconds timeout
-          
+
           try {
             const jobResult = await Promise.race([
               paymentJob.waitUntilFinished(),
-              new Promise((_, reject) => 
+              new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Job timeout')), jobTimeout)
               )
             ]) as any;
@@ -3868,7 +3882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // FALLBACK: Direct payment processing (when Redis unavailable or queue fails)
       // Fallback to direct processing when Redis unavailable
       console.log('🔄 Processing payment directly (Redis unavailable or queue failed)');
-      
+
       // Create Razorpay order directly
       const razorpayOrder = await createRazorpayOrder(
         amount,
@@ -3923,7 +3937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Payment initiation error:', error);
-      
+
       // Update checkout session status on error
       const checkoutSessionId = req.body.checkoutSessionId;
       if (checkoutSessionId) {
@@ -3934,19 +3948,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error updating checkout session status:', updateError);
         }
       }
-      
+
       // Handle Razorpay errors
       if ((error as any).error) {
         console.error('🚨 Razorpay API error:', (error as any).error);
-        return res.status(502).json({ 
-          success: false, 
-          message: `Payment gateway error: ${(error as any).error?.description || 'Service unavailable'}` 
+        return res.status(502).json({
+          success: false,
+          message: `Payment gateway error: ${(error as any).error?.description || 'Service unavailable'}`
         });
       }
-      
-      res.status(500).json({ 
-        success: false, 
-        message: "Internal server error during payment initiation" 
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error during payment initiation"
       });
     }
   });
@@ -3955,29 +3969,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pos/payments/initiate", async (req, res) => {
     try {
       const { amount, customerName, cart, canteenId, checkoutSessionId, totals } = req.body;
-      
+
       if (!amount || !customerName || !cart || !canteenId || !checkoutSessionId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields: amount, customerName, cart, canteenId, checkoutSessionId" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: amount, customerName, cart, canteenId, checkoutSessionId"
         });
       }
 
       // Validate checkout session exists and is active
       const checkoutSession = await CheckoutSessionService.getSession(checkoutSessionId);
       if (!checkoutSession) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Checkout session not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Checkout session not found"
         });
       }
 
       // Check if session is still active
       const isActive = await CheckoutSessionService.isSessionActive(checkoutSessionId);
       if (!isActive) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Checkout session has expired or is no longer active" 
+        return res.status(400).json({
+          success: false,
+          message: "Checkout session has expired or is no longer active"
         });
       }
 
@@ -3985,7 +3999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
       if (sessionDuplicateCheck.isDuplicate) {
         console.log(`⚠️ Duplicate POS payment request blocked for checkout session ${checkoutSessionId}`);
-        
+
         if (sessionDuplicateCheck.existingPayment) {
           return res.status(409).json({
             success: false,
@@ -4004,13 +4018,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique merchant order ID
       const merchantOrderId = `POS_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Validate Razorpay configuration
       if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
         console.error('🚨 Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
-        return res.status(500).json({ 
-          success: false, 
-          message: "Payment gateway configuration error. Please contact support." 
+        return res.status(500).json({
+          success: false,
+          message: "Payment gateway configuration error. Please contact support."
         });
       }
 
@@ -4076,7 +4090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('POS Payment initiation error:', error);
-      
+
       const checkoutSessionId = req.body.checkoutSessionId;
       if (checkoutSessionId) {
         try {
@@ -4085,17 +4099,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error updating checkout session status:', updateError);
         }
       }
-      
+
       if ((error as any).error) {
-        return res.status(502).json({ 
-          success: false, 
-          message: `Payment gateway error: ${(error as any).error?.description || 'Service unavailable'}` 
+        return res.status(502).json({
+          success: false,
+          message: `Payment gateway error: ${(error as any).error?.description || 'Service unavailable'}`
         });
       }
-      
-      res.status(500).json({ 
-        success: false, 
-        message: "Internal server error during payment initiation" 
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error during payment initiation"
       });
     }
   });
@@ -4104,29 +4118,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pos/orders/create", async (req, res) => {
     try {
       const { checkoutSessionId, paymentId, razorpayOrderId, razorpaySignature } = req.body;
-      
+
       if (!checkoutSessionId || !paymentId || !razorpayOrderId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields: checkoutSessionId, paymentId, razorpayOrderId" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: checkoutSessionId, paymentId, razorpayOrderId"
         });
       }
 
       // Verify payment signature
       const isValid = verifyPaymentSignature(razorpayOrderId, paymentId, razorpaySignature);
       if (!isValid) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Invalid payment signature" 
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment signature"
         });
       }
 
       // Get checkout session to retrieve cart and order data
       const session = await CheckoutSessionService.getSession(checkoutSessionId);
       if (!session) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Checkout session not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Checkout session not found"
         });
       }
 
@@ -4135,9 +4149,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { cart, totals, customerName, canteenId } = metadata;
 
       if (!cart || !totals || !customerName || !canteenId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Incomplete order data in checkout session" 
+        return res.status(400).json({
+          success: false,
+          message: "Incomplete order data in checkout session"
         });
       }
 
@@ -4145,142 +4159,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderNumber = generateOrderNumber();
       const barcode = generateOrderNumber();
 
-      // Prepare order items
-      const orderItems = cart.map((item: any) => ({
+      // Map to consistent structure
+      const rawItems = cart.map((item: any) => ({
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity
       }));
 
-      // Process each item to add counter IDs
-      const storeCounterIds = new Set<string>();
-      const paymentCounterIds = new Set<string>();
-      const kotCounterIds = new Set<string>();
-      
-      for (const item of orderItems) {
-        const menuItem = await storage.getMenuItem(item.id);
-        
-        if (menuItem) {
-          item.storeCounterId = menuItem.storeCounterId || null;
-          item.paymentCounterId = menuItem.paymentCounterId || null;
-          item.kotCounterId = menuItem.kotCounterId || null;
-          item.isMarkable = menuItem.isMarkable || false;
-          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
-          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
-          item.available = menuItem.available !== undefined ? menuItem.available : true;
-          
-          if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
-          if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
-          if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
-        } else {
-          item.storeCounterId = null;
-          item.paymentCounterId = null;
-          item.kotCounterId = null;
-          item.isMarkable = false;
-          item.isVegetarian = true;
-          item.categoryId = null;
-          item.available = true;
-        }
-      }
+      // Enrich items via OrderService
+      const enriched = await orderService.enrichOrderItems(rawItems);
 
-      const allStoreCounterIds = Array.from(storeCounterIds);
-      const allPaymentCounterIds = Array.from(paymentCounterIds);
-      const allKotCounterIds = Array.from(kotCounterIds);
-      const allCounterIds = Array.from(new Set([...allStoreCounterIds, ...allPaymentCounterIds, ...allKotCounterIds]));
-
-      // Determine if order has markable items
-      let hasMarkableItem = false;
-      for (const item of orderItems) {
-        if (item.isMarkable) {
-          hasMarkableItem = true;
-          break;
-        }
-      }
-
-      // POS orders are always paid, status based on markable items
-      const orderStatus = hasMarkableItem ? "pending" : "ready";
+      // Determine order status
       const paymentStatus = 'paid';
+      const orderStatus = enriched.hasMarkableItem ? "pending" : "ready";
 
       // Fetch payment details from Razorpay to get payment method
       let paymentMethod = 'online'; // Default to 'online'
       try {
         const razorpayPayment = await razorpay.payments.fetch(paymentId);
-        paymentMethod = razorpayPayment.method || 'online'; // upi, card, netbanking, etc.
+        paymentMethod = razorpayPayment.method || 'online';
         console.log(`💳 POS Payment method: ${paymentMethod}`);
       } catch (error) {
         console.error('❌ Failed to fetch Razorpay payment details:', error);
-        // Continue with default 'online'
       }
 
-      // Initialize itemStatusByCounter for auto-ready items
-      const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
-      for (const counterId of allCounterIds) {
-        itemStatusByCounter[counterId] = {};
-        for (const item of orderItems) {
-          if (!item.isMarkable) {
-            itemStatusByCounter[counterId][item.id] = 'ready';
-          } else {
-            itemStatusByCounter[counterId][item.id] = 'pending';
-          }
-        }
-      }
+      // Calculate charges
+      const charges = await orderService.calculateCharges(canteenId, totals);
 
-      // Calculate charges from totals (UPI/online payments include charges)
-      let chargesTotal = 0;
-      let chargesApplied: any[] = [];
-      
-      if (totals.subtotal && totals.total) {
-        // chargesTotal = total - (subtotal - discount + tax)
-        const expectedTotalWithoutCharges = totals.subtotal - (totals.discount || 0) + (totals.tax || 0);
-        chargesTotal = totals.total - expectedTotalWithoutCharges;
-        
-        // Try to fetch canteen charges to reconstruct chargesApplied array
-        if (chargesTotal > 0) {
-          try {
-            const canteenChargesDb = await CanteenCharge.find({ canteenId }).sort({ createdAt: -1 });
-            const canteenCharges = canteenChargesDb.map((c: any) => {
-              const obj: any = c.toObject ? c.toObject() : c;
-              obj.id = obj._id?.toString();
-              delete obj._id;
-              delete obj.__v;
-              return obj;
-            });
-            const activeCharges = canteenCharges.filter((charge: any) => charge.active);
-            
-            chargesApplied = activeCharges.map((charge: any) => {
-              let chargeAmount = 0;
-              if (charge.type === 'percent') {
-                chargeAmount = (totals.subtotal * charge.value) / 100;
-              } else {
-                chargeAmount = charge.value;
-              }
-              
-              return {
-                name: charge.name,
-                type: charge.type,
-                value: charge.value,
-                amount: chargeAmount
-              };
-            });
-          } catch (error) {
-            console.error('Error fetching canteen charges:', error);
-          }
-        }
-      }
-
-      // Create order
-      const order = await storage.createOrder({
-        customerName: customerName,
+      // Construct order data
+      const orderData = {
+        customerName,
         collegeName: 'POS Order',
-        canteenId: canteenId,
+        canteenId,
         customerId: 0,
-        items: JSON.stringify(orderItems),
+        items: JSON.stringify(enriched.enrichedItems),
         amount: totals.total,
         itemsSubtotal: totals.subtotal,
         taxAmount: totals.tax || 0,
-        chargesTotal: chargesTotal,
-        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
+        chargesTotal: charges.chargesTotal,
+        chargesApplied: charges.chargesApplied.length > 0 ? charges.chargesApplied : undefined,
         originalAmount: totals.subtotal,
         discountAmount: totals.discount,
         status: orderStatus,
@@ -4289,35 +4207,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         estimatedTime: 15,
         isOffline: false,
         isCounterOrder: true,
-        paymentStatus: paymentStatus,
-        paymentMethod: paymentMethod,
+        paymentStatus,
+        paymentMethod,
         orderType: 'takeaway',
-        allStoreCounterIds: allStoreCounterIds,
-        allPaymentCounterIds: allPaymentCounterIds,
-        allKotCounterIds: allKotCounterIds,
-        allCounterIds: allCounterIds,
-        itemStatusByCounter: JSON.stringify(itemStatusByCounter),
+        allStoreCounterIds: enriched.allStoreCounterIds,
+        allPaymentCounterIds: enriched.allPaymentCounterIds,
+        allKotCounterIds: enriched.allKotCounterIds,
+        allCounterIds: enriched.allCounterIds,
+        itemStatusByCounter: JSON.stringify(enriched.itemStatusByCounter),
         metadata: JSON.stringify({
           orderType: 'pos',
-          checkoutSessionId: checkoutSessionId,
-          paymentId: paymentId,
-          razorpayOrderId: razorpayOrderId,
-          paymentMethod: paymentMethod
+          checkoutSessionId,
+          paymentId,
+          razorpayOrderId,
+          paymentMethod
         })
+      };
+
+      // Create Order via Service
+      const order = await orderService.createOrder({
+        orderData: insertOrderSchema.parse(orderData),
+        orderItems: enriched.enrichedItems,
+        checkoutSessionId,
+        merchantTransactionId: metadata.merchantTransactionId,
+        paymentId,
+        isPos: true
       });
 
       console.log(`✅ POS Order ${orderNumber} created successfully with payment ${paymentId}`);
 
-      // Update checkout session to completed
-      await CheckoutSessionService.updateStatus(checkoutSessionId, 'completed', {
-        orderId: order.id,
-        orderNumber: orderNumber
-      });
-
-      // Update payment status
-      const payment = await storage.getPaymentByMerchantTxnId(metadata.merchantTransactionId);
-      if (payment) {
-        await storage.updatePayment(payment.id, {
+      // Update payment status (Specific to POS Flow)
+      if (metadata.merchantTransactionId) {
+        await storage.updatePaymentByMerchantTxnId(metadata.merchantTransactionId, {
           status: PAYMENT_STATUS.SUCCESS,
           metadata: JSON.stringify({
             ...metadata,
@@ -4325,21 +4246,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orderNumber: orderNumber,
             paymentId: paymentId
           })
-        });
-      }
-
-      // Broadcast order to WebSocket rooms
-      const wsManager = getWebSocketManager();
-      if (wsManager) {
-        const orderWithParsedData = {
-          ...order,
-          items: orderItems,
-          itemStatusByCounter: itemStatusByCounter
-        };
-
-        wsManager.broadcastToCanteen(canteenId, 'new_order', orderWithParsedData);
-        allCounterIds.forEach((counterId) => {
-          wsManager.broadcastToCounter(counterId, 'new_order', orderWithParsedData);
         });
       }
 
@@ -4356,9 +4262,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('POS Order creation error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Internal server error during order creation" 
+      res.status(500).json({
+        success: false,
+        message: "Internal server error during order creation"
       });
     }
   });
@@ -4367,20 +4273,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pos/orders/create-offline", async (req, res) => {
     try {
       const { checkoutSessionId, customerName, cart, canteenId, totals } = req.body;
-      
+
       if (!checkoutSessionId || !customerName || !cart || !canteenId || !totals) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields: checkoutSessionId, customerName, cart, canteenId, totals" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: checkoutSessionId, customerName, cart, canteenId, totals"
         });
       }
 
       // Get checkout session
       const session = await CheckoutSessionService.getSession(checkoutSessionId);
       if (!session) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Checkout session not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Checkout session not found"
         });
       }
 
@@ -4388,138 +4294,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderNumber = generateOrderNumber();
       const barcode = generateOrderNumber();
 
-      // Prepare order items
-      const orderItems = cart.map((item: any) => ({
+      // Map to consistent structure
+      const rawItems = cart.map((item: any) => ({
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity
       }));
 
-      // Process each item to add counter IDs
-      const storeCounterIds = new Set<string>();
-      const paymentCounterIds = new Set<string>();
-      const kotCounterIds = new Set<string>();
-      
-      for (const item of orderItems) {
-        const menuItem = await storage.getMenuItem(item.id);
-        
-        if (menuItem) {
-          item.storeCounterId = menuItem.storeCounterId || null;
-          item.paymentCounterId = menuItem.paymentCounterId || null;
-          item.kotCounterId = menuItem.kotCounterId || null;
-          item.isMarkable = menuItem.isMarkable || false;
-          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
-          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
-          item.available = menuItem.available !== undefined ? menuItem.available : true;
-          
-          if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
-          if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
-          if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
-        } else {
-          item.storeCounterId = null;
-          item.paymentCounterId = null;
-          item.kotCounterId = null;
-          item.isMarkable = false;
-          item.isVegetarian = true;
-          item.categoryId = null;
-          item.available = true;
-        }
-      }
+      // Enrich items via OrderService
+      const enriched = await orderService.enrichOrderItems(rawItems);
 
-      const allStoreCounterIds = Array.from(storeCounterIds);
-      const allPaymentCounterIds = Array.from(paymentCounterIds);
-      const allKotCounterIds = Array.from(kotCounterIds);
-      const allCounterIds = Array.from(new Set([...allStoreCounterIds, ...allPaymentCounterIds, ...allKotCounterIds]));
-
-      // Determine if order has markable items
-      let hasMarkableItem = false;
-      for (const item of orderItems) {
-        if (item.isMarkable) {
-          hasMarkableItem = true;
-          break;
-        }
-      }
-
-      // Offline orders are always paid, status based on markable items
-      const orderStatus = hasMarkableItem ? "pending" : "ready";
+      // Determine order status and payment status
       const paymentStatus = 'paid';
+      const orderStatus = enriched.hasMarkableItem ? "pending" : "ready";
 
-      // Initialize itemStatusByCounter for auto-ready items
-      const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
-      for (const counterId of allCounterIds) {
-        itemStatusByCounter[counterId] = {};
-        for (const item of orderItems) {
-          if (!item.isMarkable) {
-            itemStatusByCounter[counterId][item.id] = 'ready';
-          } else {
-            itemStatusByCounter[counterId][item.id] = 'pending';
-          }
-        }
-      }
-
-      // Offline orders (cash) do NOT include canteen charges
+      // Offline orders (cash) do NOT include canteen charges (as per original logic)
       const chargesTotal = 0;
       const chargesApplied: any[] = [];
 
-      // Create order
-      const order = await storage.createOrder({
-        customerName: customerName,
+      const orderData = {
+        customerName,
         collegeName: 'POS Order',
-        canteenId: canteenId,
+        canteenId,
         customerId: 0,
-        items: JSON.stringify(orderItems),
+        items: JSON.stringify(enriched.enrichedItems),
         amount: totals.total,
         itemsSubtotal: totals.subtotal,
         taxAmount: totals.tax || 0,
-        chargesTotal: chargesTotal,
-        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
+        chargesTotal,
+        chargesApplied: undefined,
         originalAmount: totals.subtotal,
         discountAmount: totals.discount,
         status: orderStatus,
-        orderNumber: orderNumber,
-        barcode: barcode,
+        orderNumber,
+        barcode,
         estimatedTime: 15,
         isOffline: true,
         isCounterOrder: true,
-        paymentStatus: paymentStatus,
+        paymentStatus,
         paymentMethod: 'offline',
         orderType: 'takeaway',
-        allStoreCounterIds: allStoreCounterIds,
-        allPaymentCounterIds: allPaymentCounterIds,
-        allKotCounterIds: allKotCounterIds,
-        allCounterIds: allCounterIds,
-        itemStatusByCounter: JSON.stringify(itemStatusByCounter),
+        allStoreCounterIds: enriched.allStoreCounterIds,
+        allPaymentCounterIds: enriched.allPaymentCounterIds,
+        allKotCounterIds: enriched.allKotCounterIds,
+        allCounterIds: enriched.allCounterIds,
+        itemStatusByCounter: JSON.stringify(enriched.itemStatusByCounter),
         metadata: JSON.stringify({
           orderType: 'pos',
-          checkoutSessionId: checkoutSessionId,
+          checkoutSessionId,
           paymentMethod: 'offline'
         })
+      };
+
+      // Create Order
+      const order = await orderService.createOrder({
+        orderData: insertOrderSchema.parse(orderData),
+        orderItems: enriched.enrichedItems,
+        checkoutSessionId,
+        isPos: true
       });
 
       console.log(`✅ POS Offline Order ${orderNumber} created successfully`);
-
-      // Update checkout session to completed
-      await CheckoutSessionService.updateStatus(checkoutSessionId, 'completed', {
-        orderId: order.id,
-        orderNumber: orderNumber,
-        paymentMethod: 'offline'
-      });
-
-      // Broadcast order to WebSocket rooms
-      const wsManager = getWebSocketManager();
-      if (wsManager) {
-        const orderWithParsedData = {
-          ...order,
-          items: orderItems,
-          itemStatusByCounter: itemStatusByCounter
-        };
-
-        wsManager.broadcastToCanteen(canteenId, 'new_order', orderWithParsedData);
-        allCounterIds.forEach((counterId) => {
-          wsManager.broadcastToCounter(counterId, 'new_order', orderWithParsedData);
-        });
-      }
 
       res.json({
         success: true,
@@ -4534,9 +4370,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('POS Offline Order creation error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Internal server error during order creation" 
+      res.status(500).json({
+        success: false,
+        message: "Internal server error during order creation"
       });
     }
   });
@@ -4545,27 +4381,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/create-qr", async (req, res) => {
     try {
       const { amount, customerName, canteenId, cart, totals, checkoutSessionId } = req.body;
-      
+
       if (!amount || !customerName || !canteenId || !cart) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields: amount, customerName, canteenId, cart" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: amount, customerName, canteenId, cart"
         });
       }
 
       if (amount <= 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Invalid amount: amount must be greater than 0" 
+        return res.status(400).json({
+          success: false,
+          message: "Invalid amount: amount must be greater than 0"
         });
       }
 
       // Validate Razorpay configuration
       if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
         console.error('🚨 Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
-        return res.status(500).json({ 
-          success: false, 
-          message: "Payment gateway configuration error. Please contact support." 
+        return res.status(500).json({
+          success: false,
+          message: "Payment gateway configuration error. Please contact support."
         });
       }
 
@@ -4585,10 +4421,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storeCounterIds = new Set<string>();
       const paymentCounterIds = new Set<string>();
       const kotCounterIds = new Set<string>();
-      
+
       for (const item of orderItems) {
         const menuItem = await storage.getMenuItem(item.id);
-        
+
         if (menuItem) {
           item.storeCounterId = menuItem.storeCounterId || null;
           item.paymentCounterId = menuItem.paymentCounterId || null;
@@ -4597,7 +4433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
           item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
           item.available = menuItem.available !== undefined ? menuItem.available : true;
-          
+
           if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
           if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
           if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
@@ -4652,9 +4488,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate charges from totals (QR payments include charges)
       let chargesTotal = 0;
       let chargesApplied: any[] = [];
-      
+
       console.log('🔍 [QR] Checking totals for charges calculation:', { totals, hasSubtotal: !!totals?.subtotal, hasTotal: !!totals?.total });
-      
+
       if (totals && totals.subtotal && totals.total) {
         try {
           console.log(`🔍 [QR] Fetching canteen charges for canteenId: ${canteenId}`);
@@ -4667,10 +4503,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return obj;
           });
           console.log(`📊 [QR] Retrieved ${canteenCharges.length} total canteen charges`);
-          
+
           const activeCharges = canteenCharges.filter((charge: any) => charge.active);
           console.log(`📊 [QR] QR Payment - Found ${activeCharges.length} active canteen charges:`, activeCharges);
-          
+
           if (activeCharges.length > 0) {
             // Calculate charges and total
             activeCharges.forEach((charge: any) => {
@@ -4680,9 +4516,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } else {
                 chargeAmount = charge.value;
               }
-              
+
               console.log(`  - Processing charge: ${charge.name} (${charge.type}=${charge.value}) = ${chargeAmount}`);
-              
+
               if (chargeAmount > 0) {
                 chargesTotal += chargeAmount;
                 chargesApplied.push({
@@ -4693,7 +4529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
               }
             });
-            
+
             console.log(`💰 [QR] Calculated chargesTotal: ${chargesTotal}`);
             console.log(`💰 [QR] Calculated chargesApplied: ${JSON.stringify(chargesApplied)}`);
           } else {
@@ -4709,7 +4545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('💰 QR Order Charges Debug:');
       console.log('  - chargesTotal:', chargesTotal);
       console.log('  - chargesApplied:', JSON.stringify(chargesApplied, null, 2));
-      
+
       // Create order with PENDING payment status
       const order = await storage.createOrder({
         customerName: customerName,
@@ -4807,7 +4643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('QR code creation error:', error);
-      
+
       const checkoutSessionId = req.body.checkoutSessionId;
       if (checkoutSessionId) {
         try {
@@ -4816,16 +4652,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error updating checkout session status:', updateError);
         }
       }
-      
+
       if (error.message && error.message.includes('Razorpay QR API Error')) {
-        return res.status(502).json({ 
-          success: false, 
-          message: error.message 
+        return res.status(502).json({
+          success: false,
+          message: error.message
         });
       }
-      
-      res.status(500).json({ 
-        success: false, 
+
+      res.status(500).json({
+        success: false,
         message: "Internal server error during QR code creation",
         error: error.message || 'Unknown error'
       });
@@ -4836,17 +4672,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/payments/qr-status/:qrCodeId", async (req, res) => {
     try {
       const { qrCodeId } = req.params;
-      
+
       if (!qrCodeId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required parameter: qrCodeId" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required parameter: qrCodeId"
         });
       }
 
       // Fetch QR code details
       const qrCode = await fetchRazorpayQR(qrCodeId);
-      
+
       // Fetch all payments for this QR code
       const payments = await fetchAllRazorpayQRPayments(qrCodeId);
 
@@ -4855,12 +4691,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if payment was received
       let paymentReceived = false;
       let razorpayPaymentId = null;
-      
+
       if (payments.count > 0 && payments.items && payments.items.length > 0) {
-        const successfulPayment = payments.items.find((p: any) => 
+        const successfulPayment = payments.items.find((p: any) =>
           p.status === 'captured' || p.status === 'authorized'
         );
-        
+
         if (successfulPayment) {
           paymentReceived = true;
           razorpayPaymentId = successfulPayment.id;
@@ -4907,7 +4743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   paymentId: razorpayPaymentId,
                   qrCodeId: qrCodeId
                 });
-                
+
                 if (order.allCounterIds) {
                   order.allCounterIds.forEach((counterId) => {
                     wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
@@ -4929,7 +4765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get order details to include in response
       const order = await storage.getOrderByQrId(qrCodeId);
-      
+
       res.json({
         success: true,
         qrCode: qrCode,
@@ -4943,8 +4779,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('QR status fetch error:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to fetch QR code status",
         error: error.message || 'Unknown error'
       });
@@ -4955,11 +4791,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/qr-close/:qrCodeId", async (req, res) => {
     try {
       const { qrCodeId } = req.params;
-      
+
       if (!qrCodeId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required parameter: qrCodeId" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required parameter: qrCodeId"
         });
       }
 
@@ -4975,8 +4811,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('QR close error:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to close QR code",
         error: error.message || 'Unknown error'
       });
@@ -5002,10 +4838,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify webhook signature
       const payloadString = JSON.stringify(payload);
-      
+
       if (!verifyWebhookSignature(payloadString, receivedSignature)) {
         console.error('📡 Invalid QR webhook signature - potential security issue');
-        
+
         // In development/test environment, be more lenient
         if (process.env.NODE_ENV === 'development') {
           console.warn('📡 Proceeding with QR webhook processing despite signature failure in development');
@@ -5017,7 +4853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle Razorpay webhook payload structure
       const event = payload.event;
       const entity = payload.payload?.payment?.entity || payload.payload?.qr_code?.entity;
-      
+
       if (!entity) {
         console.error('📡 Invalid QR webhook payload structure:', payload);
         return res.status(400).json({ success: false, message: 'Invalid payload structure' });
@@ -5031,7 +4867,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paymentStatus = entity.status;
         const paymentMethod = entity.method;
         const notes = entity.notes || {};
-        
+
         // Extract QR code reference from notes
         const orderId = notes.orderId || notes.reference_id;
         const qrCodeId = entity.qr_code_id;
@@ -5050,12 +4886,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Find order by QR ID or order number
         let order = null;
-        
+
         if (qrCodeId) {
           order = await storage.getOrderByQrId(qrCodeId);
           console.log('📡 Order lookup by QR ID:', { qrCodeId, found: !!order });
         }
-        
+
         if (!order && orderId) {
           order = await storage.getOrderByOrderNumber(orderId);
           console.log('📡 Order lookup by order number:', { orderId, found: !!order });
@@ -5069,9 +4905,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if payment is already processed
         if (order.paymentStatus === 'PAID') {
           console.log('📡 Payment already processed for order:', order.orderNumber);
-          return res.status(200).json({ 
-            success: true, 
-            message: 'Payment already processed' 
+          return res.status(200).json({
+            success: true,
+            message: 'Payment already processed'
           });
         }
 
@@ -5126,7 +4962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               orderNumber: order.orderNumber,
               paymentId: razorpayPaymentId
             });
-            
+
             if (order.allCounterIds) {
               order.allCounterIds.forEach((counterId) => {
                 wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
@@ -5142,14 +4978,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const processingTime = Date.now() - startTime;
         console.log(`✅ QR webhook processed successfully in ${processingTime}ms`);
 
-        res.status(200).json({ 
+        res.status(200).json({
           success: true,
           message: 'Payment processed successfully',
           orderNumber: order.orderNumber
         });
       } else {
         console.log('📡 Unhandled QR webhook event:', event);
-        res.status(200).json({ 
+        res.status(200).json({
           success: true,
           message: 'Event acknowledged but not processed'
         });
@@ -5157,8 +4993,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('📡 QR Webhook processing error:', error);
       console.error('📡 Error stack:', error.stack);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: 'Webhook processing failed',
         error: error.message || 'Unknown error'
       });
@@ -5170,7 +5006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { jobId } = req.params;
       const { paymentQueue } = await import('./queues/paymentQueue');
-      
+
       const job = await paymentQueue.getJob(jobId);
       if (!job) {
         return res.status(404).json({
@@ -5181,7 +5017,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const state = await job.getState();
       const progress = job.progress;
-      
+
       if (state === 'completed') {
         const result = await job.returnvalue;
         return res.json({
@@ -5232,11 +5068,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payloadKeys: Object.keys(payload),
         environment: process.env.NODE_ENV
       });
-      
+
       if (!verifyWebhookSignature(payloadString, receivedSignature)) {
         console.error('📡 Invalid webhook signature - potential security issue');
         console.log('📡 This might be expected in test/sandbox environment');
-        
+
         // In development/test environment, we might want to be more lenient
         if (process.env.NODE_ENV === 'development') {
           console.warn('📡 Proceeding with webhook processing despite signature failure in development');
@@ -5250,7 +5086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle Razorpay webhook payload structure
       const event = payload.event;
       const entity = payload.payload?.payment?.entity || payload.payload?.order?.entity;
-      
+
       if (!entity) {
         console.error('📡 Invalid webhook payload structure:', payload);
         return res.status(400).json({ success: false, message: 'Invalid payload structure' });
@@ -5261,7 +5097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const razorpayOrderId = entity.order_id;
       const paymentStatus = entity.status;
       const paymentMethod = entity.method;
-      
+
       // Find payment by razorpayOrderId in metadata
       let payment = null;
       const payments = await storage.getPayments();
@@ -5307,74 +5143,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get updated payment after status update
       const updatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
-      
+
       // If payment successful, create order from metadata
       if (mappedPaymentStatus === PAYMENT_STATUS.SUCCESS && (event === 'payment.captured' || event === 'payment.authorized')) {
         if (updatedPayment?.metadata && !updatedPayment.orderId) {
           // Parse order data from metadata
           const orderData = JSON.parse(updatedPayment.metadata);
-          
-          // Create order using helper function
+
+          // Create order using OrderService
           try {
-            const newOrder = await createOrderFromPaymentCallback(orderData, merchantTransactionId);
-            
+            const newOrder = await orderService.createOrderFromPayment(orderData, merchantTransactionId);
+
             if (!newOrder || !newOrder.id) {
               throw new Error('Order creation returned invalid order object');
             }
-            
-            // Update payment with order connection (Mongoose will convert string to ObjectId)
-            const orderIdString = typeof newOrder.id === 'string' ? newOrder.id : String(newOrder.id);
-            
-            const updateResult = await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-              orderId: orderIdString // Mongoose will convert string to ObjectId automatically
-            });
-            
-            if (!updateResult) {
-              console.error(`❌ Failed to update payment ${merchantTransactionId} with orderId ${newOrder.id}`);
-            } else {
-              console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from Razorpay webhook and linked to payment`);
-            }
+
+            console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from Razorpay webhook`);
           } catch (error) {
             console.error('❌ Error creating order from webhook:', error);
-            console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-            console.error('❌ Order data:', JSON.stringify(orderData, null, 2));
-            // Don't fail the webhook, order creation can be retried via payment status check endpoint
+            // Don't fail the webhook
           }
         }
       } else if (mappedPaymentStatus === PAYMENT_STATUS.FAILED) {
         // Handle any failed payment event (payment.failed, order.paid with failed status, etc.)
         // If payment failed, create order entry but don't broadcast to counters
         console.log(`📡 Processing failed payment webhook for merchantTransactionId: ${merchantTransactionId}, event: ${event}`);
-        
+
         if (updatedPayment?.metadata && !updatedPayment.orderId) {
           // Parse order data from metadata
           const orderData = JSON.parse(updatedPayment.metadata);
-          
+
           // Create order for failed payment (no broadcasting)
           try {
-            const newOrder = await createOrderForFailedPayment(orderData, merchantTransactionId);
-            
-            if (!newOrder || !newOrder.id) {
-              throw new Error('Order creation returned invalid order object');
-            }
-            
-            // Update payment with order connection (Mongoose will convert string to ObjectId)
-            const orderIdString = typeof newOrder.id === 'string' ? newOrder.id : String(newOrder.id);
-            
-            const updateResult = await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-              orderId: orderIdString // Mongoose will convert string to ObjectId automatically
-            });
-            
-            if (!updateResult) {
-              console.error(`❌ Failed to update payment ${merchantTransactionId} with orderId ${newOrder.id}`);
-            } else {
-              console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from Razorpay webhook and linked to payment`);
-            }
+            const newOrder = await orderService.createOrderForFailedPayment(orderData, merchantTransactionId);
+            console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from Razorpay webhook`);
           } catch (error) {
             console.error('❌ Error creating order for failed payment from webhook:', error);
-            console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-            console.error('❌ Order data:', JSON.stringify(orderData, null, 2));
-            // Don't fail the webhook, order creation can be retried
           }
         } else {
           console.log(`📡 Failed payment webhook - Order already exists or no metadata. orderId: ${updatedPayment?.orderId}, hasMetadata: ${!!updatedPayment?.metadata}`);
@@ -5393,21 +5197,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { merchantTransactionId } = req.params;
       const payment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
-      
+
       if (!payment) {
         console.log(`❌ Payment ${merchantTransactionId} not found`);
-        return res.status(404).json({ 
-          success: false, 
-          message: "Payment not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found"
         });
       }
-      
+
       console.log(`✅ Payment ${merchantTransactionId} found - Status: ${payment.status}`);
 
       if (payment.status !== PAYMENT_STATUS.FAILED) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Payment is not in failed status" 
+        return res.status(400).json({
+          success: false,
+          message: "Payment is not in failed status"
         });
       }
 
@@ -5421,20 +5225,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!payment.metadata) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Payment metadata not found" 
+        return res.status(400).json({
+          success: false,
+          message: "Payment metadata not found"
         });
       }
 
       const orderData = JSON.parse(payment.metadata);
-      const newOrder = await createOrderForFailedPayment(orderData, merchantTransactionId);
-      
+      const newOrder = await orderService.createOrderForFailedPayment(orderData, merchantTransactionId);
+
       // Order is already linked in createOrderForFailedPayment, just verify
       if (!newOrder || !newOrder.id) {
-        return res.status(500).json({ 
-          success: false, 
-          message: "Failed to create order" 
+        return res.status(500).json({
+          success: false,
+          message: "Failed to create order"
         });
       }
 
@@ -5445,502 +5249,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error creating order for failed payment:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: "Failed to create order for failed payment",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
 
-  // Helper function to create order from payment callback with proper stock management
-  const createOrderFromPaymentCallback = async (orderData: any, merchantTransactionId: string) => {
-    // Check for duplicate order session
-    const customerId = orderData.customerId || 0;
-    const canteenId = orderData.canteenId || '';
-    const amount = orderData.amount || 0;
-    
-    if (amount > 0) {
-      console.log(`🔍 Checking for duplicate order session in payment callback: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}`);
-      
-      const duplicateCheck = await checkDuplicatePaymentMiddleware(
-        customerId,
-        amount,
-        canteenId
-      );
-
-      if (!duplicateCheck.allowed) {
-        console.log(`⚠️ Duplicate order attempt blocked in payment callback for customer ${customerId}`);
-        throw new Error(duplicateCheck.message || 'Duplicate order session detected');
-      }
-    }
-
-    // Parse order items
-    let orderItems = [];
-    try {
-      orderItems = JSON.parse(orderData.items);
-    } catch (error) {
-      throw new Error("Invalid order items format in payment metadata");
-    }
-
-    // NEW LOGIC: Add counter IDs to each item and collect all counter IDs for broadcasting
-    const storeCounterIds = new Set<string>();
-    const paymentCounterIds = new Set<string>();
-    const kotCounterIds = new Set<string>();
-    
-    // Process each item: fetch menu item, add counter IDs to item, collect counter IDs
-    for (const item of orderItems) {
-      try {
-        const menuItem = await storage.getMenuItem(item.id);
-        
-        if (menuItem) {
-          // Add counter IDs directly to the item
-          item.storeCounterId = menuItem.storeCounterId || null;
-          item.paymentCounterId = menuItem.paymentCounterId || null;
-          item.kotCounterId = menuItem.kotCounterId || null;
-          
-          // Add isMarkable and other relevant menu item properties to order item
-          item.isMarkable = menuItem.isMarkable || false;
-          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
-          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
-          item.available = menuItem.available !== undefined ? menuItem.available : true;
-          
-          // Collect counter IDs for broadcasting
-          if (menuItem.storeCounterId) {
-            storeCounterIds.add(menuItem.storeCounterId);
-          }
-          if (menuItem.paymentCounterId) {
-            paymentCounterIds.add(menuItem.paymentCounterId);
-          }
-          if (menuItem.kotCounterId) {
-            kotCounterIds.add(menuItem.kotCounterId);
-          }
-          
-          console.log(`✅ Added properties to item ${item.name}:`, {
-            storeCounterId: item.storeCounterId,
-            paymentCounterId: item.paymentCounterId,
-            kotCounterId: item.kotCounterId,
-            isMarkable: item.isMarkable,
-            isVegetarian: item.isVegetarian
-          });
-        } else {
-          console.error(`❌ Menu item not found for order item: ${item.name} (ID: ${item.id})`);
-          // Still add null/false values so item structure is consistent
-          item.storeCounterId = null;
-          item.paymentCounterId = null;
-          item.kotCounterId = null;
-          item.isMarkable = false; // Default to false if menu item not found
-          item.isVegetarian = true; // Default to true
-          item.categoryId = null;
-          item.available = true;
-        }
-      } catch (error) {
-        console.error(`❌ Error fetching menu item ${item.id}:`, error);
-        item.storeCounterId = null;
-        item.paymentCounterId = null;
-        item.kotCounterId = null;
-      }
-    }
-    
-    // Get arrays of all counter IDs for broadcasting
-    const allStoreCounterIds = Array.from(storeCounterIds);
-    const allPaymentCounterIds = Array.from(paymentCounterIds);
-    const allKotCounterIds = Array.from(kotCounterIds);
-    const allCounterIds = Array.from(new Set([...storeCounterIds, ...paymentCounterIds, ...kotCounterIds]));
-    
-    console.log('📊 Counter IDs collected from items:', {
-      allStoreCounterIds,
-      allPaymentCounterIds,
-      allKotCounterIds,
-      allCounterIds,
-      totalItems: orderItems.length
-    });
-
-    // Check markable status for order status determination
-    let hasMarkableItem = false;
-    let hasMarkableItemWithKot = false; // Check if markable items have KOT counters
-    for (const item of orderItems) {
-      try {
-        const menuItem = await storage.getMenuItem(item.id);
-        if (menuItem && menuItem.isMarkable) {
-          hasMarkableItem = true;
-          // Check if this markable item has a KOT counter assigned
-          if (menuItem.kotCounterId) {
-            hasMarkableItemWithKot = true;
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Error fetching menu item ${item.id} for markable check:`, error);
-      }
-    }
-    
-    console.log('📊 Payment callback - Markable items analysis:', {
-      hasMarkableItem,
-      hasMarkableItemWithKot,
-      allKotCounterIds: allKotCounterIds.length > 0 ? allKotCounterIds : 'none'
-    });
-
-    // Determine order status based on order type and markable items
-    let orderStatus;
-    if (orderData.isCounterOrder) {
-      orderStatus = orderData.status || "delivered";
-    } else if (orderData.isOffline) {
-      const orderAmount = orderData.amount || 0;
-      if (orderAmount <= 0) {
-        orderStatus = hasMarkableItem ? "pending" : "ready";
-      } else {
-        orderStatus = "pending_payment";
-      }
-    } else {
-      // For regular online orders (payment successful), determine status based on markable items
-      orderStatus = hasMarkableItem ? "pending" : "ready";
-    }
-
-    // Generate orderNumber and barcode
-    const orderNumber = generateOrderNumber();
-    const barcode = generateOrderNumber();
-
-    // Initialize itemStatusByCounter for auto-ready items (non-markable items)
-    // Auto-ready items should be marked as 'ready' by default for their assigned counters
-    const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
-    
-    for (const item of orderItems) {
-      // Skip markable items - they will be marked ready manually
-      if (item.isMarkable === true) {
-        continue;
-      }
-      
-      // Auto-ready items: mark as 'ready' for their assigned counters
-      // For store counter items
-      if (item.storeCounterId) {
-        if (!itemStatusByCounter[item.storeCounterId]) {
-          itemStatusByCounter[item.storeCounterId] = {};
-        }
-        itemStatusByCounter[item.storeCounterId][item.id] = 'ready';
-      }
-      
-      // For KOT counter items (if any auto-ready items are assigned to KOT counters)
-      if (item.kotCounterId) {
-        if (!itemStatusByCounter[item.kotCounterId]) {
-          itemStatusByCounter[item.kotCounterId] = {};
-        }
-        itemStatusByCounter[item.kotCounterId][item.id] = 'ready';
-      }
-    }
-    
-    console.log(`🔍 Payment callback - Initialized itemStatusByCounter for auto-ready items:`, {
-      autoReadyItemsCount: orderItems.filter((item: any) => item.isMarkable !== true).length,
-      itemStatusByCounterKeys: Object.keys(itemStatusByCounter),
-      itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : 'none'
-    });
-    
-    // Build complete order data with all required fields
-    // IMPORTANT: Update items string to include counter IDs in each item
-    // IMPORTANT: Preserve orderType and deliveryAddress from orderData
-    const completeOrderData = {
-      ...orderData,
-      orderNumber,
-      barcode,
-      status: orderStatus,
-      paymentStatus: 'paid', // Payment is successful
-      orderType: orderData.orderType || 'takeaway', // Preserve orderType, default to takeaway if not provided
-      deliveryAddress: orderData.deliveryAddress, // Preserve deliveryAddress if present
-      items: JSON.stringify(orderItems), // Items now include storeCounterId, paymentCounterId, and kotCounterId
-      storeCounterId: allStoreCounterIds[0] || null, // Keep first for backward compatibility
-      paymentCounterId: allPaymentCounterIds[0] || null, // Keep first for backward compatibility
-      kotCounterId: allKotCounterIds[0] || null, // Keep first for backward compatibility
-      allStoreCounterIds,
-      allPaymentCounterIds,
-      allKotCounterIds,
-      allCounterIds,
-      itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : undefined // Initialize with auto-ready items
-    };
-    
-    console.log('🔍 Payment callback order data:', {
-      orderType: completeOrderData.orderType,
-      orderDataOrderType: orderData.orderType,
-      hasOrderType: !!orderData.orderType,
-      hasDeliveryAddress: !!completeOrderData.deliveryAddress,
-      deliveryAddress: completeOrderData.deliveryAddress
-    });
-
-    // Validate order data
-    const validatedData = insertOrderSchema.parse(completeOrderData);
-
-    // Check if stock was already reserved at checkout
-    const checkoutSessionId = orderData.checkoutSessionId;
-    const skipStockReduction = !!checkoutSessionId; // Skip if checkout session exists (stock already reserved)
-    
-    if (skipStockReduction) {
-      console.log(`📦 Stock already reserved at checkout for session ${checkoutSessionId}, skipping stock reduction in payment callback`);
-    }
-
-    // Process order with atomic stock management (FIXED: Use stockService instead of direct storage.createOrder)
-    const newOrder = await stockService.processOrderWithStockManagement(validatedData, orderItems, skipStockReduction);
-    
-    // Clear reserved stock from checkout session if order was successfully created
-    if (checkoutSessionId && newOrder) {
-      try {
-        await CheckoutSessionService.clearReservedStock(checkoutSessionId);
-        console.log(`✅ Cleared reserved stock metadata for checkout session ${checkoutSessionId} in payment callback`);
-      } catch (error) {
-        console.error(`❌ Error clearing reserved stock metadata in payment callback:`, error);
-        // Don't fail the order if clearing metadata fails
-      }
-    }
-
-    // Update payment with order ID
-    await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-      orderId: newOrder.id
-    });
-
-    // Broadcast new order via WebSocket to canteen room AND counter rooms
-    const wsManager = getWebSocketManager();
-    if (wsManager) {
-      // ALWAYS broadcast to canteen room first
-      wsManager.broadcastNewOrder(newOrder.canteenId, newOrder);
-      console.log(`📢 Payment callback: Order ${newOrder.orderNumber} broadcasted to canteen room ${newOrder.canteenId}`);
-      
-      // Also broadcast to specific counter rooms if counters are assigned
-      // Use same routing logic as order creation: KOT counters first for markable items
-      const targetCounterIds = [];
-      
-      // Always add payment counter IDs (for payment processing)
-      allPaymentCounterIds.forEach(counterId => {
-        targetCounterIds.push(counterId);
-      });
-      
-      // Routing logic for markable items (same as order creation):
-      // 1. If markable items have KOT counters -> broadcast to BOTH KOT and store counters
-      //    (Store counters will show order but disable buttons until KOT marks ready)
-      // 2. If markable items don't have KOT counters -> broadcast to store counters directly
-      // 3. Non-markable items always go to store counters
-      if (hasMarkableItem) {
-        if (hasMarkableItemWithKot && allKotCounterIds.length > 0) {
-          // Markable items with KOT counters -> send to BOTH KOT and store counters
-          allKotCounterIds.forEach(counterId => {
-            targetCounterIds.push(counterId);
-          });
-          // Also send to store counters (they'll show order but disable buttons)
-          allStoreCounterIds.forEach(counterId => {
-            targetCounterIds.push(counterId);
-          });
-          console.log(`📋 Payment callback - Order ${newOrder.orderNumber}: Markable items have KOT counters - routing to BOTH KOT and store counters`);
-        } else {
-          // Markable items without KOT counters -> send directly to store counters
-          allStoreCounterIds.forEach(counterId => {
-            targetCounterIds.push(counterId);
-          });
-          console.log(`📋 Payment callback - Order ${newOrder.orderNumber}: Markable items without KOT counters - routing directly to store counters`);
-        }
-      } else {
-        // No markable items -> send to store counters directly
-        allStoreCounterIds.forEach(counterId => {
-          targetCounterIds.push(counterId);
-        });
-        console.log(`📋 Payment callback - Order ${newOrder.orderNumber}: No markable items - routing directly to store counters`);
-      }
-      
-      // Also add KOT counters for non-markable items that might have KOT assignments
-      if (!hasMarkableItem) {
-        allKotCounterIds.forEach(counterId => {
-          if (!targetCounterIds.includes(counterId)) {
-            targetCounterIds.push(counterId);
-          }
-        });
-      }
-      
-      // Remove duplicates
-      const uniqueCounterIds = [...new Set(targetCounterIds)];
-      
-      if (uniqueCounterIds.length > 0) {
-        // Broadcast to specific counter rooms
-        // Items already have counter IDs attached, so just send them
-        const orderMessage = {
-          type: 'new_order',
-          data: {
-            ...newOrder,
-            allStoreCounterIds,
-            allPaymentCounterIds,
-            allKotCounterIds,
-            allCounterIds,
-            // Items already have storeCounterId, paymentCounterId, and kotCounterId attached
-            items: orderItems
-          }
-        };
-        
-        console.log(`📊 Payment callback - Order message for broadcast:`, {
-          orderNumber: newOrder.orderNumber,
-          totalItems: orderItems.length,
-          itemsWithCounters: orderItems.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            storeCounterId: item.storeCounterId,
-            paymentCounterId: item.paymentCounterId,
-            kotCounterId: item.kotCounterId
-          })),
-          allStoreCounterIds,
-          allPaymentCounterIds,
-          allKotCounterIds,
-          targetCounterIds: uniqueCounterIds
-        });
-        
-        wsManager.broadcastToCounters(uniqueCounterIds, orderMessage.type, orderMessage.data);
-        console.log(`📢 Payment callback: Order ${newOrder.orderNumber} also broadcasted to counter rooms: ${uniqueCounterIds.join(', ')}`);
-      } else {
-        console.log(`📢 Payment callback: Order ${newOrder.orderNumber} - no specific counters assigned, only canteen room notified`);
-      }
-    } else {
-      console.log('📡 WebSocket manager not available for broadcast');
-    }
-
-    return newOrder;
-  };
-
-  // Create order for failed payment (no broadcasting to counters)
-  const createOrderForFailedPayment = async (orderData: any, merchantTransactionId: string) => {
-    // Parse order items
-    let orderItems = [];
-    try {
-      orderItems = JSON.parse(orderData.items);
-    } catch (error) {
-      throw new Error("Invalid order items format in payment metadata");
-    }
-
-    // NEW LOGIC: Add counter IDs to each item and collect all counter IDs
-    const storeCounterIds = new Set<string>();
-    const paymentCounterIds = new Set<string>();
-    const kotCounterIds = new Set<string>();
-    
-    // Process each item: fetch menu item, add counter IDs to item, collect counter IDs
-    for (const item of orderItems) {
-      try {
-        const menuItem = await storage.getMenuItem(item.id);
-        
-        if (menuItem) {
-          // Add counter IDs directly to the item
-          item.storeCounterId = menuItem.storeCounterId || null;
-          item.paymentCounterId = menuItem.paymentCounterId || null;
-          item.kotCounterId = menuItem.kotCounterId || null;
-          
-          // Add isMarkable and other relevant menu item properties to order item
-          item.isMarkable = menuItem.isMarkable || false;
-          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
-          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
-          item.available = menuItem.available !== undefined ? menuItem.available : true;
-          
-          // Collect counter IDs (even though we won't broadcast)
-          if (menuItem.storeCounterId) {
-            storeCounterIds.add(menuItem.storeCounterId);
-          }
-          if (menuItem.paymentCounterId) {
-            paymentCounterIds.add(menuItem.paymentCounterId);
-          }
-          if (menuItem.kotCounterId) {
-            kotCounterIds.add(menuItem.kotCounterId);
-          }
-        } else {
-          item.storeCounterId = null;
-          item.paymentCounterId = null;
-          item.kotCounterId = null;
-          // Ensure default values even if menu item not found
-          item.isMarkable = false;
-          item.isVegetarian = true;
-          item.categoryId = null;
-          item.available = false;
-        }
-      } catch (error) {
-        console.error(`❌ Error fetching menu item ${item.id}:`, error);
-        item.storeCounterId = null;
-        item.paymentCounterId = null;
-        item.kotCounterId = null;
-      }
-    }
-    
-    // Get arrays of all counter IDs
-    const allStoreCounterIds = Array.from(storeCounterIds);
-    const allPaymentCounterIds = Array.from(paymentCounterIds);
-    const allKotCounterIds = Array.from(kotCounterIds);
-    const allCounterIds = Array.from(new Set([...storeCounterIds, ...paymentCounterIds, ...kotCounterIds]));
-
-    // Generate orderNumber and barcode
-    const orderNumber = generateOrderNumber();
-    const barcode = generateOrderNumber();
-
-    // Build complete order data with payment_failed status
-    // IMPORTANT: Update items string to include counter IDs in each item
-    // IMPORTANT: Preserve orderType and deliveryAddress from orderData
-    const completeOrderData = {
-      ...orderData,
-      orderNumber,
-      barcode,
-      status: 'cancelled', // Use cancelled status for failed payments (will show in order lists)
-      paymentStatus: 'failed', // Payment failed
-      orderType: orderData.orderType || 'takeaway', // Preserve orderType, default to takeaway if not provided
-      deliveryAddress: orderData.deliveryAddress, // Preserve deliveryAddress if present
-      items: JSON.stringify(orderItems), // Items now include storeCounterId, paymentCounterId, and kotCounterId
-      storeCounterId: allStoreCounterIds[0] || null, // Keep first for backward compatibility
-      paymentCounterId: allPaymentCounterIds[0] || null, // Keep first for backward compatibility
-      kotCounterId: allKotCounterIds[0] || null, // Keep first for backward compatibility
-      allStoreCounterIds,
-      allPaymentCounterIds,
-      allKotCounterIds,
-      allCounterIds
-    };
-
-    // Validate order data
-    const validatedData = insertOrderSchema.parse(completeOrderData);
-
-    // Create order WITHOUT stock management (payment failed, so don't reserve stock)
-    // and WITHOUT broadcasting to counters
-    const newOrder = await storage.createOrder(validatedData);
-
-    if (!newOrder || !newOrder.id) {
-      throw new Error('Order creation returned invalid order object - missing id');
-    }
-
-    // Update payment with order connection (Mongoose will convert string to ObjectId)
-    const orderIdString = typeof newOrder.id === 'string' ? newOrder.id : String(newOrder.id);
-    
-    const updateResult = await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-      orderId: orderIdString // Mongoose will convert string to ObjectId automatically
-    });
-    
-    if (!updateResult) {
-      console.error(`❌ Failed to update payment ${merchantTransactionId} with orderId ${newOrder.id}`);
-      throw new Error('Failed to link order to payment');
-    }
-    
-    console.log(`✅ Successfully linked order ${newOrder.orderNumber} (ID: ${newOrder.id}) to payment ${merchantTransactionId}`);
-    // DO NOT broadcast to counters - payment failed, so counters shouldn't see this order
-    console.log(`📢 Order ${newOrder.orderNumber} created for failed payment - NOT broadcasted to counters`);
-
-    return newOrder;
-  };
-
   // Check payment status
   app.get("/api/payments/status/:merchantTransactionId", async (req, res) => {
     try {
       const { merchantTransactionId } = req.params;
-      
+
       // Get payment from database
       const payment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
       if (!payment) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Payment not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found"
         });
       }
 
       // If already successful, ensure order is created and return cached status
       if (payment.status === PAYMENT_STATUS.SUCCESS) {
         let orderNumber = null;
-        
+
         // Create order if not already created (FIXED: Use helper function with stock service)
         if (payment.metadata && !payment.orderId) {
           try {
             const orderData = JSON.parse(payment.metadata);
-            const newOrder = await createOrderFromPaymentCallback(orderData, merchantTransactionId);
+            const newOrder = await orderService.createOrderFromPayment(orderData, merchantTransactionId);
             orderNumber = newOrder.orderNumber;
             console.log(`📦 Order ${newOrder.orderNumber} created via cached status check with stock management`);
           } catch (error) {
@@ -5953,41 +5292,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const order = await storage.getOrder(payment.orderId);
           orderNumber = order?.orderNumber;
         }
-        
+
         return res.json({
           success: true,
           status: payment.status,
-          data: { 
-            ...payment, 
+          data: {
+            ...payment,
             orderNumber,
             shouldClearCart: true // Flag to clear cart on frontend
           }
         });
       }
-      
+
       // If already failed, check if order exists, if not create it
       if (payment.status === PAYMENT_STATUS.FAILED) {
         // Create order if it doesn't exist yet
         if (payment.metadata && !payment.orderId) {
-            try {
-              const orderData = JSON.parse(payment.metadata);
-              const newOrder = await createOrderForFailedPayment(orderData, merchantTransactionId);
-              
-              if (!newOrder || !newOrder.id) {
-                throw new Error('Order creation returned invalid order object');
-              }
-              
-              // Get updated payment with order ID (order is already linked in createOrderForFailedPayment)
-              const updatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
-              
-              console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from status check`);
-              
-              return res.json({
-                success: true,
-                status: updatedPayment.status,
-                data: { 
-                  ...updatedPayment,
-                  orderNumber: newOrder.orderNumber,
+          try {
+            const orderData = JSON.parse(payment.metadata);
+            const newOrder = await orderService.createOrderForFailedPayment(orderData, merchantTransactionId);
+
+            if (!newOrder || !newOrder.id) {
+              throw new Error('Order creation returned invalid order object');
+            }
+
+            // Get updated payment with order ID (order is already linked in createOrderForFailedPayment)
+            const updatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
+
+            console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from status check`);
+
+            return res.json({
+              success: true,
+              status: updatedPayment.status,
+              data: {
+                ...updatedPayment,
+                orderNumber: newOrder.orderNumber,
                 orderId: newOrder.id,
                 shouldRetry: true // Flag to show retry option
               }
@@ -5997,11 +5336,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Continue to return failed status even if order creation fails
           }
         }
-        
+
         return res.json({
           success: true,
           status: payment.status,
-          data: { 
+          data: {
             ...payment,
             shouldRetry: true // Flag to show retry option
           }
@@ -6012,7 +5351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cacheKey = merchantTransactionId;
       const cachedInfo = paymentStatusCache.get(cacheKey);
       const now = Date.now();
-      
+
       if (cachedInfo?.shouldSkipApi && (now - cachedInfo.lastAttempt) < API_RETRY_INTERVAL) {
         console.log(`⚡ Skipping Razorpay API (${cachedInfo.consecutiveFailures} failures) - returning cached data for ${merchantTransactionId}`);
         return res.json({
@@ -6021,10 +5360,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: { ...payment, fromCache: true, reason: 'api_temporarily_disabled' }
         });
       }
-      
+
       // Try to check with Razorpay for latest status
       console.log(`⚡ Attempting Razorpay status check for ${merchantTransactionId}`);
-      
+
       // Get Razorpay order ID from metadata
       let razorpayOrderId = null;
       if (payment.metadata) {
@@ -6048,20 +5387,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Fetch order details from Razorpay
         const razorpayOrder = await getOrderDetails(razorpayOrderId);
-        
+
         // API call succeeded - reset failure count
         paymentStatusCache.set(cacheKey, { lastAttempt: now, consecutiveFailures: 0, shouldSkipApi: false });
-        
+
         // Get payment details if available
         let paymentStatus = PAYMENT_STATUS.PENDING;
         let razorpayPaymentId = null;
         let paymentMethod = 'unknown';
-        
+
         if (razorpayOrder.payments && razorpayOrder.payments.length > 0) {
           const latestPayment = razorpayOrder.payments[0];
           razorpayPaymentId = latestPayment.id;
           paymentMethod = latestPayment.method || 'unknown';
-          
+
           if (latestPayment.status === 'captured' || latestPayment.status === 'authorized') {
             paymentStatus = PAYMENT_STATUS.SUCCESS;
           } else if (latestPayment.status === 'failed') {
@@ -6089,24 +5428,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Parse order data from metadata and create order with proper stock management
               const orderData = JSON.parse(updatedPayment.metadata);
               const newOrder = await createOrderFromPaymentCallback(orderData, merchantTransactionId);
-              
+
               if (!newOrder || !newOrder.id) {
                 throw new Error('Order creation returned invalid order object - missing id');
               }
-              
-    // Update payment with order connection (Mongoose will convert string to ObjectId)
-    const orderIdString = typeof newOrder.id === 'string' ? newOrder.id : String(newOrder.id);
-    
-    const updateResult = await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-      orderId: orderIdString // Mongoose will convert string to ObjectId automatically
-    });
-              
+
+              // Update payment with order connection (Mongoose will convert string to ObjectId)
+              const orderIdString = typeof newOrder.id === 'string' ? newOrder.id : String(newOrder.id);
+
+              const updateResult = await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
+                orderId: orderIdString // Mongoose will convert string to ObjectId automatically
+              });
+
               if (!updateResult) {
                 console.error(`❌ Failed to update payment ${merchantTransactionId} with orderId ${newOrder.id}`);
               } else {
                 console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from payment status check and linked to payment`);
               }
-              
+
               // Get updated payment with order ID
               finalUpdatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
             } catch (error) {
@@ -6137,14 +5476,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Parse order data from metadata
               const orderData = JSON.parse(updatedPayment.metadata);
               const newOrder = await createOrderForFailedPayment(orderData, merchantTransactionId);
-              
+
               if (!newOrder || !newOrder.id) {
                 throw new Error('Order creation returned invalid order object');
               }
-              
+
               // Get updated payment with order ID (order is already linked in createOrderForFailedPayment)
               finalUpdatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
-              
+
               console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from payment status check`);
             } catch (error) {
               console.error('❌ Error creating order for failed payment from payment status check:', error);
@@ -6170,7 +5509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Return appropriate data based on payment status
         const responseData: any = { ...finalUpdatedPayment };
-        
+
         if (paymentStatus === PAYMENT_STATUS.SUCCESS) {
           responseData.shouldClearCart = true;
           // Get order number if order exists
@@ -6203,11 +5542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         // API call failed - track failure and return cached data
         console.log(`⚡ Razorpay API error:`, error);
-        
+
         return res.json({
           success: true,
           status: payment.status,
-          data: { 
+          data: {
             ...payment,
             fromCache: true,
             reason: 'api_error',
@@ -6226,23 +5565,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         consecutiveFailures: newFailures,
         shouldSkipApi: newFailures >= MAX_CONSECUTIVE_FAILURES
       });
-      
+
       console.log(`⚡ Razorpay API failed (${newFailures}/${MAX_CONSECUTIVE_FAILURES}) for ${req.params.merchantTransactionId}`);
-      
+
       // Handle timeout specifically
       if ((error as any).code === 'ECONNABORTED' || (error as any).code === 'ETIMEDOUT') {
         console.log('⏰ Razorpay API timeout - returning cached payment status if available');
-        
+
         // Return the cached payment status to avoid user seeing timeout error
         try {
           const cachedPayment = await storage.getPaymentByMerchantTxnId(req.params.merchantTransactionId);
           if (cachedPayment) {
-            const responseData: any = { 
+            const responseData: any = {
               ...cachedPayment,
               isTimeout: true, // Flag to indicate this is cached due to timeout
               message: 'Payment verification in progress. Please check again in a moment.'
             };
-            
+
             // If payment is successful and has order, include order info
             if (cachedPayment.status === 'success' && cachedPayment.orderId) {
               try {
@@ -6256,7 +5595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 console.error('Error fetching order for cached payment:', orderError);
               }
             }
-            
+
             return res.json({
               success: true,
               status: cachedPayment.status,
@@ -6267,10 +5606,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error fetching cached payment:', dbError);
         }
       }
-      
-      res.status(500).json({ 
-        success: false, 
-        message: "Internal server error during status check" 
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error during status check"
       });
     }
   });
@@ -6279,21 +5618,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/verify-razorpay", async (req, res) => {
     try {
       const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
-      
+
       if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Missing required fields" 
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields"
         });
       }
 
       // Verify payment signature
       const isValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-      
+
       if (!isValid) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Invalid payment signature" 
+        return res.status(400).json({
+          success: false,
+          message: "Invalid payment signature"
         });
       }
 
@@ -6315,9 +5654,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!payment) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Payment not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found"
         });
       }
 
@@ -6333,9 +5672,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Razorpay verification error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Internal server error" 
+      res.status(500).json({
+        success: false,
+        message: "Internal server error"
       });
     }
   });
@@ -6359,7 +5698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { canteenId } = req.params;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      
+
       const result = await storage.getPaymentsByCanteen(canteenId, page, limit);
       res.json(result);
     } catch (error) {
@@ -6372,16 +5711,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test-payment-canteen", async (req, res) => {
     try {
       const { Payment } = await import('./models/mongodb-models');
-      
+
       // Find the first payment without canteenId
       const payment = await Payment.findOne({ canteenId: { $exists: false } });
-      
+
       if (payment) {
         // Update it with canteenId
         await Payment.findByIdAndUpdate(payment._id, {
           canteenId: 'canteen-1758205071111'
         });
-        
+
         res.json({
           success: true,
           message: `Updated payment ${payment.merchantTransactionId} with canteenId`,
@@ -6395,10 +5734,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       console.error('Error updating payment:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Update failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      res.status(500).json({
+        success: false,
+        error: 'Update failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -6407,13 +5746,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/update-all-payments-canteen", async (req, res) => {
     try {
       const { Payment } = await import('./models/mongodb-models');
-      
+
       // Update all payments to have the correct canteenId
       const result = await Payment.updateMany(
         {}, // Update all payments
         { $set: { canteenId: 'canteen-1758205071111' } }
       );
-      
+
       res.json({
         success: true,
         message: `Updated ${result.modifiedCount} payments with canteenId`,
@@ -6422,10 +5761,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error updating payments:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Update failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      res.status(500).json({
+        success: false,
+        error: 'Update failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -6434,26 +5773,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/migrate-payments-canteen", async (req, res) => {
     try {
       console.log('🔄 Starting payments canteen migration...');
-      
+
       const { Payment, Order } = await import('./models/mongodb-models');
       const DEFAULT_CANTEEN_ID = 'canteen-1758205071111';
-      
+
       // Find all payments without canteenId
-      const paymentsWithoutCanteen = await Payment.find({ 
-        canteenId: { $exists: false } 
+      const paymentsWithoutCanteen = await Payment.find({
+        canteenId: { $exists: false }
       });
-      
+
       console.log(`📊 Found ${paymentsWithoutCanteen.length} payments without canteenId`);
-      
+
       let updatedCount = 0;
       let defaultAssignedCount = 0;
-      
+
       for (const payment of paymentsWithoutCanteen) {
         try {
           if (payment.orderId) {
             // Get the order to find its canteenId
             const order = await Order.findById(payment.orderId);
-            
+
             if (order && order.canteenId) {
               // Update payment with the order's canteenId
               await Payment.findByIdAndUpdate(payment._id, {
@@ -6481,26 +5820,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error(`❌ Error updating payment ${payment.merchantTransactionId}:`, error);
         }
       }
-      
+
       console.log('🎉 Payments canteen migration completed!');
       console.log(`📊 Summary:`);
       console.log(`   - Updated from orders: ${updatedCount}`);
       console.log(`   - Assigned to default canteen: ${defaultAssignedCount}`);
       console.log(`   - Total processed: ${updatedCount + defaultAssignedCount}`);
-      
+
       res.json({
         success: true,
         updatedFromOrders: updatedCount,
         assignedToDefault: defaultAssignedCount,
         totalProcessed: updatedCount + defaultAssignedCount
       });
-      
+
     } catch (error) {
       console.error('Error running payments canteen migration:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: 'Migration failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+      res.status(500).json({
+        success: false,
+        error: 'Migration failed',
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -6513,27 +5852,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const limit = parseInt(req.query.limit as string) || 10;
       const searchQuery = req.query.search as string;
       const statusFilter = req.query.status as string;
-      
+
       // If there's a search query, we need to handle customer name search separately
       let finalResult;
       if (searchQuery && searchQuery.trim()) {
         // First get payments that match payment fields
         const paymentResult = await storage.getPaymentsPaginated(page, limit, searchQuery, statusFilter);
-        
+
         // Also search for payments by customer name via orders
         const allOrders = await storage.getOrders();
         const customerSearchRegex = new RegExp(searchQuery.trim(), 'i');
         const matchingOrderIds = allOrders
           .filter(order => customerSearchRegex.test(order.customerName || '') || customerSearchRegex.test(order.orderNumber || ''))
           .map(order => order.id);
-        
+
         // Get payments that match these order IDs
         const allPayments = await storage.getPayments();
-        const customerMatchingPayments = allPayments.filter(payment => 
-          matchingOrderIds.includes(payment.orderId) && 
+        const customerMatchingPayments = allPayments.filter(payment =>
+          matchingOrderIds.includes(payment.orderId) &&
           (!statusFilter || statusFilter === 'all' || payment.status?.toLowerCase() === statusFilter.toLowerCase())
         );
-        
+
         // Combine and deduplicate results
         const combinedPayments = [...paymentResult.payments];
         customerMatchingPayments.forEach(custPayment => {
@@ -6541,12 +5880,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             combinedPayments.push(custPayment);
           }
         });
-        
+
         // Sort by creation date and paginate the combined results
         const sortedPayments = combinedPayments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         const startIndex = (page - 1) * limit;
         const paginatedPayments = sortedPayments.slice(startIndex, startIndex + limit);
-        
+
         finalResult = {
           payments: paginatedPayments,
           totalCount: sortedPayments.length,
@@ -6556,21 +5895,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         finalResult = await storage.getPaymentsPaginated(page, limit, searchQuery, statusFilter);
       }
-      
+
       // Enhance payment data with order information
       const enhancedPayments = await Promise.all(
         finalResult.payments.map(async (payment) => {
           let orderDetails = null;
           let customerName = null;
-          
+
           // Try to get order details if orderId exists
           if (payment.orderId) {
             try {
               // Handle both string and ObjectId formats
-              const orderIdStr = typeof payment.orderId === 'string' 
-                ? payment.orderId 
+              const orderIdStr = typeof payment.orderId === 'string'
+                ? payment.orderId
                 : payment.orderId.toString();
-              
+
               const order = await storage.getOrder(orderIdStr);
               if (order) {
                 orderDetails = {
@@ -6586,31 +5925,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.error(`Error fetching order ${payment.orderId} for payment ${payment.merchantTransactionId}:`, error);
             }
           }
-          
+
           // Fallback: Get customerName from metadata if order doesn't exist
           if (!customerName && payment.metadata) {
             try {
-              const metadata = typeof payment.metadata === 'string' 
-                ? JSON.parse(payment.metadata) 
+              const metadata = typeof payment.metadata === 'string'
+                ? JSON.parse(payment.metadata)
                 : payment.metadata;
               customerName = metadata.customerName || null;
             } catch (e) {
               // Ignore parse errors
             }
           }
-          
+
           // Parse metadata safely
           let parsedMetadata = null;
           if (payment.metadata) {
             try {
-              parsedMetadata = typeof payment.metadata === 'string' 
-                ? JSON.parse(payment.metadata) 
+              parsedMetadata = typeof payment.metadata === 'string'
+                ? JSON.parse(payment.metadata)
                 : payment.metadata;
             } catch (e) {
               // Ignore parse errors
             }
           }
-          
+
           return {
             ...payment,
             orderDetails: orderDetails || (customerName ? { customerName } : null),
@@ -6622,9 +5961,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         })
       );
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         payments: enhancedPayments,
         totalCount: finalResult.totalCount,
         totalPages: finalResult.totalPages,
@@ -6641,13 +5980,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/test-complete/:merchantTransactionId", async (req, res) => {
     try {
       const { merchantTransactionId } = req.params;
-      
+
       // Get payment from database
       const payment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
       if (!payment) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Payment not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found"
         });
       }
 
@@ -6663,7 +6002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update order status
       if (payment.orderId) {
         await storage.updateOrder(payment.orderId, { status: 'preparing' });
-        
+
         // Send WebSocket notification
         const wsManager = getWebSocketManager();
         if (wsManager) {
@@ -6700,23 +6039,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { orderId } = req.params;
       console.log(`💰 POST /api/payments/confirm/${orderId} - Confirming payment for offline order`);
-      
+
       // Get the offline order
       const order = await storage.getOrder(orderId);
       if (!order) {
         console.log(`❌ Order ${orderId} not found`);
-        return res.status(404).json({ 
-          success: false, 
-          message: "Order not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
         });
       }
 
       // Check if it's an offline order with pending payment
       if (!order.isOffline || order.paymentStatus !== 'pending') {
         console.log(`❌ Order ${order.orderNumber} is not an offline order with pending payment - isOffline: ${order.isOffline}, paymentStatus: ${order.paymentStatus}`);
-        return res.status(400).json({ 
-          success: false, 
-          message: "Order is not an offline order with pending payment" 
+        return res.status(400).json({
+          success: false,
+          message: "Order is not an offline order with pending payment"
         });
       }
 
@@ -6728,7 +6067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Error parsing order items:', error);
         orderItems = [];
       }
-      
+
       // Check if order has markable items (using embedded isMarkable property)
       let hasMarkableItem = false;
       for (const item of orderItems) {
@@ -6738,7 +6077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         }
       }
-      
+
       // Determine status based on markable items (same logic as order creation)
       // If has markable items, status should be 'pending' (needs manual marking)
       // If no markable items, status should be 'ready' (auto-ready)
@@ -6747,7 +6086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newStatus = hasMarkableItem ? 'pending' : 'ready';
         console.log(`💳 Payment confirmation: Order has markable items: ${hasMarkableItem}, setting status to: ${newStatus}`);
       }
-      
+
       const updatedOrder = await storage.updateOrder(orderId, {
         paymentStatus: 'confirmed',
         status: newStatus
@@ -6758,13 +6097,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (wsManager) {
         // Broadcast to store mode (active orders)
         wsManager.broadcastNewOrder(order.canteenId, updatedOrder);
-        
+
         // Broadcast payment confirmation event
         wsManager.broadcastToCanteen(order.canteenId, 'payment_confirmed', { order: updatedOrder, orderId });
-        
+
         // Also broadcast order update to ensure all clients get the status change
         wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
-        
+
         console.log(`📢 Payment confirmed for offline order ${order.orderNumber} in canteen ${order.canteenId}`);
         console.log(`📢 Order status changed from pending_payment to ${newStatus}`);
         console.log(`📢 Broadcasting to canteen room: canteen_${order.canteenId}`);
@@ -6784,9 +6123,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error confirming payment:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Failed to confirm payment' 
+      res.status(500).json({
+        success: false,
+        message: 'Failed to confirm payment'
       });
     }
   });
@@ -6802,14 +6141,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/checkout-sessions/create", async (req, res) => {
     try {
       const { customerId, canteenId, sessionDurationMinutes, sessionType } = req.body;
-      
+
       // For POS sessions, customerId can be 0 (no customer ID required)
       const isPosSession = sessionType === 'pos';
-      
+
       if (!isPosSession && !customerId) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Customer ID is required" 
+        return res.status(400).json({
+          success: false,
+          message: "Customer ID is required"
         });
       }
 
@@ -6833,9 +6172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error creating checkout session:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to create checkout session" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to create checkout session"
       });
     }
   });
@@ -6847,9 +6186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessionStatus = await CheckoutSessionService.getSessionStatus(sessionId);
 
       if (!sessionStatus) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Session not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Session not found"
         });
       }
 
@@ -6870,9 +6209,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error getting checkout session status:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to get session status" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to get session status"
       });
     }
   });
@@ -6884,9 +6223,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { status, metadata } = req.body;
 
       if (!status) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Status is required" 
+        return res.status(400).json({
+          success: false,
+          message: "Status is required"
         });
       }
 
@@ -6899,9 +6238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error updating checkout session status:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to update session status" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to update session status"
       });
     }
   });
@@ -6913,18 +6252,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { cartItems } = req.body;
 
       if (!cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Cart items are required" 
+        return res.status(400).json({
+          success: false,
+          message: "Cart items are required"
         });
       }
 
       // Validate session exists
       const session = await CheckoutSessionService.getSession(sessionId);
       if (!session) {
-        return res.status(404).json({ 
-          success: false, 
-          message: "Checkout session not found" 
+        return res.status(404).json({
+          success: false,
+          message: "Checkout session not found"
         });
       }
 
@@ -6937,9 +6276,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Error reserving stock for checkout session:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: error.message || "Failed to reserve stock" 
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to reserve stock"
       });
     }
   });
@@ -6968,9 +6307,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error updating checkout session activity:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to update activity" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to update activity"
       });
     }
   });
@@ -6987,9 +6326,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error abandoning checkout session:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to abandon session" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to abandon session"
       });
     }
   });
@@ -7067,7 +6406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const users = await storage.getAllUsers();
       const orders = await storage.getOrders();
-      
+
       const sampleComplaints = [];
       const complaintTypes = [
         { subject: "Payment Issue", description: "Payment was deducted but order not processed", category: "Payment" },
@@ -7079,13 +6418,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { subject: "App Issue", description: "Unable to place order through app", category: "Technical" },
         { subject: "Refund Request", description: "Need refund for cancelled order", category: "Payment" }
       ];
-      
+
       // Generate complaints from real users
       for (let i = 0; i < Math.min(5, users.length); i++) {
         const user = users[i];
         const complaintType = complaintTypes[i % complaintTypes.length];
         const userOrder = orders.find(o => o.customerId === user.id);
-        
+
         const complaint = await storage.createComplaint({
           subject: complaintType.subject,
           description: complaintType.description,
@@ -7097,10 +6436,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'Open',
           orderId: userOrder?.id
         });
-        
+
         sampleComplaints.push(complaint);
       }
-      
+
       res.json({
         success: true,
         message: `Generated ${sampleComplaints.length} sample complaints`,
@@ -7113,7 +6452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Inventory Management Endpoints
-  
+
   // Get all inventory items (menu item stock tracking)
   app.get("/api/inventory", async (req, res) => {
     try {
@@ -7121,16 +6460,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch menu items and categories from database
       const menuItems = await storage.getMenuItems();
       const categories = await storage.getCategories();
-      
+
       // Convert menu items to inventory tracking items
       const inventoryItems = menuItems.map((item: any) => {
         const category = categories.find((cat: any) => cat.id === item.categoryId);
-        
+
         // Generate realistic stock levels for prepared dishes/items
         const baseStock = Math.floor(Math.random() * 50) + 10; // 10-60 items available
         const minThreshold = 5; // Minimum 5 items before restock
         const maxThreshold = 100; // Maximum capacity
-        
+
         // Determine status based on stock levels
         let status = "in_stock";
         if (baseStock === 0) {
@@ -7138,7 +6477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (baseStock <= minThreshold) {
           status = "low_stock";
         }
-        
+
         return {
           id: `inv_${item.id}`,
           name: item.name,
@@ -7155,7 +6494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           available: item.available && baseStock > 0
         };
       });
-      
+
       console.log(`✅ Successfully fetched ${inventoryItems.length} inventory items`);
       res.json(inventoryItems);
     } catch (error) {
@@ -7169,13 +6508,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log(`📋 POST /api/inventory - Creating inventory item: ${req.body.name}`);
       const itemData = req.body;
-      
+
       // Validate required fields
       if (!itemData.name || !itemData.category) {
         console.log(`❌ Missing required fields: name or category`);
         return res.status(400).json({ message: "Name and category are required" });
       }
-      
+
       // Determine status based on current stock and thresholds
       let status = "in_stock";
       if (itemData.currentStock === 0) {
@@ -7183,17 +6522,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (itemData.currentStock <= itemData.minThreshold) {
         status = "low_stock";
       }
-      
+
       const newItem = {
         ...itemData,
         id: `inv_${Date.now()}`,
         lastRestocked: new Date().toISOString(),
         status
       };
-      
+
       // In production, save to database
       console.log(`✅ New inventory item created: ${newItem.name} (ID: ${newItem.id})`);
-      
+
       res.json(newItem);
     } catch (error) {
       console.error("❌ Error creating inventory item:", error);
@@ -7207,10 +6546,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       console.log(`🔄 PATCH /api/inventory/${id} - Updating inventory item`);
       const updateData = req.body;
-      
+
       // In production, update in database
       console.log(`Updated inventory item ${id}:`, updateData);
-      
+
       res.json({ id, ...updateData });
     } catch (error) {
       console.error("Error updating inventory item:", error);
@@ -7223,10 +6562,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       console.log(`🗑️ DELETE /api/inventory/${id} - Deleting inventory item`);
-      
+
       // In production, delete from database
       console.log(`✅ Inventory item ${id} deleted successfully`);
-      
+
       res.json({ message: "Item deleted successfully" });
     } catch (error) {
       console.error("❌ Error deleting inventory item:", error);
@@ -7240,7 +6579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📋 GET /api/inventory/movements - Fetching stock movements`);
       // Fetch menu items to generate realistic movements
       const menuItems = await storage.getMenuItems();
-      
+
       // Generate realistic stock movements for menu items
       const movements: any[] = [];
       const movementTypes = ['in', 'out', 'adjustment'];
@@ -7250,24 +6589,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'adjustment': ['Stock count correction', 'Expired items removed', 'Quality check adjustment']
       };
       const users = ['Kitchen Staff', 'Chef', 'Canteen Manager', 'Server'];
-      
+
       // Generate movements for first 10 menu items to keep it manageable
       menuItems.slice(0, 10).forEach((item: any, index: number) => {
         // Generate 1-3 movements per item over the past week
         const numMovements = Math.floor(Math.random() * 3) + 1;
-        
+
         for (let i = 0; i < numMovements; i++) {
           const type = movementTypes[Math.floor(Math.random() * movementTypes.length)];
           const reasonList = reasons[type as keyof typeof reasons];
           const reason = reasonList[Math.floor(Math.random() * reasonList.length)];
           const user = users[Math.floor(Math.random() * users.length)];
-          
+
           let quantity = Math.floor(Math.random() * 15) + 1; // 1-15 items
           const originalQuantity = quantity;
-          
+
           if (type === 'out') quantity = -quantity;
           if (type === 'adjustment') quantity = Math.random() > 0.5 ? quantity : -quantity;
-          
+
           movements.push({
             id: `mov_${item.id}_${i}`,
             itemId: `inv_${item.id}`,
@@ -7281,10 +6620,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       });
-      
+
       // Sort by date (newest first)
       movements.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+
       res.json(movements);
     } catch (error) {
       console.error("Error fetching stock movements:", error);
@@ -7296,21 +6635,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventory/movements", async (req, res) => {
     try {
       const movementData = req.body;
-      
+
       // Validate required fields
       if (!movementData.itemId || !movementData.type || !movementData.quantity || !movementData.reason) {
         return res.status(400).json({ message: "ItemId, type, quantity, and reason are required" });
       }
-      
+
       const newMovement = {
         ...movementData,
         id: `mov_${Date.now()}`,
         date: new Date().toISOString()
       };
-      
+
       // In production, save to database and update item stock
       console.log("New stock movement recorded:", newMovement);
-      
+
       res.json(newMovement);
     } catch (error) {
       console.error("Error recording stock movement:", error);
@@ -7324,18 +6663,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For menu item inventory, suppliers would be kitchen/preparation teams
       const categories = await storage.getCategories();
       const menuItems = await storage.getMenuItems();
-      
+
       // Generate kitchen teams/suppliers based on actual categories
       const suppliers = categories.map((category: any) => {
         const categoryItems = menuItems.filter((item: any) => item.categoryId === category.id);
         const itemCount = categoryItems.length;
-        
+
         // Calculate total value based on actual menu items in stock
         const totalValue = categoryItems.reduce((sum: number, item: any) => {
           const avgStock = Math.floor(Math.random() * 30) + 10; // Average stock
           return sum + (item.price * avgStock);
         }, 0);
-        
+
         // Generate kitchen team/supplier name based on category
         const teamNames: { [key: string]: string } = {
           'default': `${category.name} Kitchen Team`,
@@ -7346,24 +6685,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'rice': 'Rice & Grains Station',
           'curry': 'Curry & Gravy Station'
         };
-        
-        const teamKey = Object.keys(teamNames).find(key => 
+
+        const teamKey = Object.keys(teamNames).find(key =>
           category.name.toLowerCase().includes(key)
         ) || 'default';
-        
+
         const teamName = teamNames[teamKey] || `${category.name} Team`;
-        
+
         return {
           id: `sup_${category.id}`,
           name: teamName,
           contact: `Ext. ${Math.floor(Math.random() * 100) + 100}`,
-          email: `${teamName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '')}@sillobyte.production`,
+          email: `${teamName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z]/g, '')}@sillobite.production`,
           itemCount,
           totalValue: Math.round(totalValue),
           category: category.name
         };
       }).filter((supplier: any) => supplier.itemCount > 0); // Only include teams with items
-      
+
       res.json(suppliers);
     } catch (error) {
       console.error("Error fetching suppliers:", error);
@@ -7401,11 +6740,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/coupons", async (req, res) => {
     try {
       const couponData: InsertCoupon = req.body;
-      
+
       // Validate required fields
-      if (!couponData.code || !couponData.description || !couponData.discountType || 
-          !couponData.discountValue || !couponData.usageLimit || !couponData.validFrom || 
-          !couponData.validUntil || !couponData.createdBy) {
+      if (!couponData.code || !couponData.description || !couponData.discountType ||
+        !couponData.discountValue || !couponData.usageLimit || !couponData.validFrom ||
+        !couponData.validUntil || !couponData.createdBy) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
@@ -7421,7 +6760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate dates
       const validFrom = new Date(couponData.validFrom);
       const validUntil = new Date(couponData.validUntil);
-      
+
       if (validFrom >= validUntil) {
         return res.status(400).json({ message: "Valid from date must be before valid until date" });
       }
@@ -7431,7 +6770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...couponData,
         canteenId: couponData.canteenId // Remove hardcoded fallback
       };
-      
+
       const coupon = await storage.createCoupon(finalCouponData);
       res.status(201).json(coupon);
     } catch (error) {
@@ -7448,11 +6787,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/coupons/validate", async (req, res) => {
     try {
       const { code, userId, orderAmount } = req.body;
-      
+
       if (!code || !orderAmount) {
-        return res.status(400).json({ 
-          valid: false, 
-          message: "Coupon code and order amount are required" 
+        return res.status(400).json({
+          valid: false,
+          message: "Coupon code and order amount are required"
         });
       }
 
@@ -7460,9 +6799,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(validation);
     } catch (error) {
       console.error("Error validating coupon:", error);
-      res.status(500).json({ 
-        valid: false, 
-        message: "Failed to validate coupon" 
+      res.status(500).json({
+        valid: false,
+        message: "Failed to validate coupon"
       });
     }
   });
@@ -7471,11 +6810,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/coupons/apply", async (req, res) => {
     try {
       const { code, userId, orderAmount } = req.body;
-      
+
       if (!code || !userId || !orderAmount) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Coupon code, user ID, and order amount are required" 
+        return res.status(400).json({
+          success: false,
+          message: "Coupon code, user ID, and order amount are required"
         });
       }
 
@@ -7483,9 +6822,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error("Error applying coupon:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to apply coupon" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to apply coupon"
       });
     }
   });
@@ -7565,7 +6904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/coupons/:id/assign", async (req, res) => {
     try {
       const { userIds } = req.body;
-      
+
       if (!Array.isArray(userIds) || userIds.length === 0) {
         return res.status(400).json({ message: "User IDs array is required" });
       }
@@ -7574,7 +6913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!result.success) {
         return res.status(400).json({ message: result.message });
       }
-      
+
       res.json({ message: result.message });
     } catch (error) {
       console.error("Error assigning coupon to users:", error);
@@ -7606,11 +6945,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all users from PostgreSQL
       const allUsers = await storage.getAllUsers();
-      
+
       // Filter by search term if provided
       if (search) {
         const searchTerm = (search as string).toLowerCase();
-        users = allUsers.filter(user => 
+        users = allUsers.filter(user =>
           user.name.toLowerCase().includes(searchTerm) ||
           user.email.toLowerCase().includes(searchTerm) ||
           (user.registerNumber && user.registerNumber.toLowerCase().includes(searchTerm)) ||
@@ -7647,29 +6986,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/organization/:organizationId/users", async (req, res) => {
     try {
       const { organizationId } = req.params;
-      
+
       if (!organizationId) {
         return res.status(400).json({ error: 'Organization ID is required' });
       }
 
       // Get all users from PostgreSQL
       const allUsers = await storage.getAllUsers();
-      
+
       // Filter users by organization ID
       // Organization users have the organization ID in the 'college' field (prefixed with 'org-')
       // or in a separate 'organization' field
       const organizationUsers = allUsers.filter(user => {
         // Check if college field contains the organization ID (with or without 'org-' prefix)
         // Organization IDs are stored as 'org-{id}' in the college field
-        const collegeMatches = user.college === organizationId || 
-                              user.college === `org-${organizationId}`;
-        
+        const collegeMatches = user.college === organizationId ||
+          user.college === `org-${organizationId}`;
+
         // Check if organization field matches (if it exists)
         const organizationMatches = (user as any).organization === organizationId;
-        
+
         // Also check for organization roles (employee, contractor, visitor, guest)
         const isOrgRole = ['employee', 'contractor', 'visitor', 'guest'].includes(user.role);
-        
+
         return (collegeMatches || organizationMatches) && isOrgRole;
       });
 
@@ -7707,13 +7046,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         canteenId as string,
         async () => await storage.getCountersByCanteen(canteenId as string)
       );
-      
+
       // Filter by type if specified
       let filteredCounters = counters;
       if (type && ['payment', 'store', 'kot'].includes(type as string)) {
         filteredCounters = counters.filter((counter: any) => counter.type === type);
       }
-      
+
       res.json(filteredCounters);
     } catch (error) {
       console.error("Error fetching counters:", error);
@@ -7765,7 +7104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const counterId = req.params.id;
       const counter = await storage.getCounterById(counterId);
-      
+
       if (!counter) {
         return res.status(404).json({ message: "Counter not found" });
       }
@@ -7782,7 +7121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const counterId = req.params.id;
       const counterName = await storage.getPaymentCounterName(counterId);
-      
+
       res.json({ name: counterName });
     } catch (error) {
       console.error("Error fetching counter name:", error);
@@ -7794,15 +7133,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/counters/:id", async (req, res) => {
     try {
       const counterId = req.params.id;
-      
+
       // Get counter first to get canteenId for cache invalidation
       const counter = await storage.getCounterById(counterId);
       if (!counter) {
         return res.status(404).json({ message: "Counter not found" });
       }
-      
+
       const deleted = await storage.deleteCounter(counterId);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "Counter not found" });
       }
@@ -7822,7 +7161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/payment-stats", async (req, res) => {
     try {
       const { canteenId, counterId } = req.query;
-      
+
       if (!canteenId || !counterId) {
         return res.status(400).json({ message: "Canteen ID and Counter ID are required" });
       }
@@ -7839,7 +7178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/store-stats", async (req, res) => {
     try {
       const { canteenId, counterId } = req.query;
-      
+
       if (!canteenId || !counterId) {
         return res.status(400).json({ message: "Canteen ID and Counter ID are required" });
       }
@@ -7857,18 +7196,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId } = req.body;
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       const result = await storage.processPayment(orderId, counterId);
       if (!result) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -7879,10 +7218,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           oldStatus: oldOrder.status,
           newStatus: result.status
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
-        
+
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting process-payment update to counter room: ${counterId}`);
@@ -7891,7 +7230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for process-payment broadcast');
       }
-      
+
       res.json({ message: "Payment processed successfully", order: result });
     } catch (error) {
       console.error("Error processing payment:", error);
@@ -7904,18 +7243,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId } = req.body;
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Verify this is an offline order with pending payment
       if (!oldOrder.isOffline || oldOrder.status !== 'pending_payment' || oldOrder.paymentStatus !== 'pending') {
         return res.status(400).json({ message: "Order is not an offline order pending payment" });
       }
-      
+
       // Update order status to preparing and payment status to completed
       console.log(`💳 Server: About to confirm offline payment for order ${orderId}`);
       const result = await storage.confirmOfflinePayment(orderId, counterId);
@@ -7930,7 +7269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatus: result.paymentStatus,
         isOffline: result.isOffline
       });
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -7944,10 +7283,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           newPaymentStatus: result.paymentStatus,
           allStoreCounterIds: result.allStoreCounterIds
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
-        
+
         // Broadcast to all store counter rooms that this order should now be processed
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
@@ -7955,7 +7294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             wsManager.broadcastToCounter(storeCounterId, 'new_order', result);
           });
         }
-        
+
         // Broadcast to ALL payment counters to remove the order from their UI
         if (result.allPaymentCounterIds && result.allPaymentCounterIds.length > 0) {
           result.allPaymentCounterIds.forEach((paymentCounterId: string) => {
@@ -7963,7 +7302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             wsManager.broadcastToCounter(paymentCounterId, 'payment_confirmed', result);
           });
         }
-        
+
         // Also broadcast to the specific payment counter that confirmed the payment
         if (counterId) {
           console.log(`📢 Broadcasting confirm-payment update to confirming payment counter room: ${counterId}`);
@@ -7972,7 +7311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for confirm-payment broadcast');
       }
-      
+
       res.json({ message: "Offline payment confirmed successfully - order broadcasted to store counters", order: result });
     } catch (error) {
       console.error("Error confirming offline payment:", error);
@@ -7985,18 +7324,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId } = req.body;
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Verify this is an offline order with pending payment
       if (!oldOrder.isOffline || oldOrder.status !== 'pending_payment' || oldOrder.paymentStatus !== 'pending') {
         return res.status(400).json({ message: "Order is not an offline order pending payment" });
       }
-      
+
       // Update order status to rejected
       console.log(`💳 Server: About to reject offline order ${orderId} with counter ${counterId}`);
       const result = await storage.rejectOfflineOrder(orderId, counterId);
@@ -8013,7 +7352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rejectedBy: result.rejectedBy,
         allPaymentCounterIds: result.allPaymentCounterIds
       });
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -8027,10 +7366,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           newPaymentStatus: result.paymentStatus,
           rejectedByCounter: counterId
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
-        
+
         // Broadcast to all payment counters to remove the order from their UI
         if (result.allPaymentCounterIds && result.allPaymentCounterIds.length > 0) {
           console.log(`📢 Broadcasting order rejection to ${result.allPaymentCounterIds.length} payment counters:`, result.allPaymentCounterIds);
@@ -8054,7 +7393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for order rejection broadcast');
       }
-      
+
       res.json({ message: "Offline order rejected successfully", order: result });
     } catch (error) {
       console.error("Error rejecting offline order:", error);
@@ -8067,44 +7406,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId, deliveryPersonId, deliveryPersonEmail } = req.body;
-      
+
       console.log(`🚚 POST /api/orders/${orderId}/out-for-delivery - Request received:`, {
         orderId,
         counterId,
         deliveryPersonId,
         deliveryPersonEmail
       });
-      
+
       if (!orderId || orderId === 'undefined' || orderId === 'null') {
         console.error(`❌ Invalid order ID: ${orderId}`);
         return res.status(400).json({ message: "Invalid order ID" });
       }
-      
+
       if (!counterId) {
         console.error(`❌ Counter ID is required but not provided`);
         return res.status(400).json({ message: "Counter ID is required" });
       }
-      
+
       if (!deliveryPersonId) {
         console.error(`❌ Delivery person ID is required but not provided`);
         return res.status(400).json({ message: "Delivery person ID is required" });
       }
-      
+
       if (!deliveryPersonEmail) {
         console.warn(`⚠️ Delivery person email not provided, WebSocket notification may fail`);
       }
-      
+
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Mark items at counter level as out for delivery
       const result = await storage.markOrderOutForDelivery(orderId, counterId, deliveryPersonId);
       if (!result) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Verify the update was successful
       const updatedOrder = await storage.getOrder(orderId);
       console.log(`✅ Order updated. Verification:`, {
@@ -8115,21 +7454,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expectedDeliveryPersonId: deliveryPersonId,
         itemStatusByCounter: updatedOrder?.itemStatusByCounter
       });
-      
+
       if (updatedOrder?.deliveryPersonId !== deliveryPersonId) {
         console.error(`❌ WARNING: Order deliveryPersonId mismatch! Expected: ${deliveryPersonId}, Got: ${updatedOrder?.deliveryPersonId}`);
       }
-      
+
       // Update delivery person stats and mark as unavailable
       const { db } = await import('./db');
       const database = db();
       let deliveryPerson = null;
-      
+
       if (deliveryPersonId) {
         deliveryPerson = await database.deliveryPerson.findFirst({
           where: { deliveryPersonId }
         });
-        
+
         if (deliveryPerson) {
           console.log(`🔍 Found delivery person in database:`, {
             id: deliveryPerson.id,
@@ -8138,12 +7477,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: deliveryPerson.email,
             requestedEmail: deliveryPersonEmail
           });
-          
+
           // Verify email matches
           if (deliveryPerson.email !== deliveryPersonEmail) {
             console.warn(`⚠️ Email mismatch! Delivery person ${deliveryPersonId} has email ${deliveryPerson.email}, but assignment requested ${deliveryPersonEmail}`);
           }
-          
+
           await database.deliveryPerson.update({
             where: { id: deliveryPerson.id },
             data: {
@@ -8156,13 +7495,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn(`⚠️ Delivery person ${deliveryPersonId} not found in database`);
         }
       }
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
         // Get order ID in correct format (MongoDB uses _id)
         const orderIdForMessage = (result as any)._id?.toString() || result.id?.toString() || result.id;
-        
+
         console.log(`📢 Broadcasting out-for-delivery for order ${result.orderNumber}:`, {
           orderId: orderIdForMessage,
           orderNumber: result.orderNumber,
@@ -8172,10 +7511,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deliveryPersonId,
           deliveryPersonEmail
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
-        
+
         // Send notification to assigned delivery person via WebSocket
         if (deliveryPersonEmail) {
           wsManager.broadcastToDeliveryPerson(deliveryPersonEmail, {
@@ -8196,7 +7535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.warn(`⚠️ No delivery person email provided, cannot send WebSocket notification`);
         }
-        
+
         // Broadcast to all relevant counter rooms with item-level status update
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
@@ -8204,13 +7543,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', result);
           });
         }
-        
+
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting item-level out-for-delivery to specific counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'item_status_changed', result);
         }
-        
+
         // If overall order status changed to out_for_delivery, also broadcast order status change
         if (result.status === 'out_for_delivery' && oldOrder.status !== 'out_for_delivery') {
           console.log(`📢 Broadcasting overall order status change to out_for_delivery`);
@@ -8219,7 +7558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for out-for-delivery broadcast');
       }
-      
+
       console.log(`✅ Order ${orderId} marked as out for delivery`);
       res.json(result);
     } catch (error) {
@@ -8233,19 +7572,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId } = req.body; // counterId is optional - if not provided, all markable items will be marked ready
-      
+
       // Validate orderId
       if (!orderId || orderId === 'undefined' || orderId === 'null') {
         console.error(`❌ Invalid order ID: ${orderId}`);
         return res.status(400).json({ message: "Invalid order ID" });
       }
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Parse order items to check if counterId is a KOT counter
       let orderItems = [];
       try {
@@ -8253,16 +7592,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error('Error parsing order items:', error);
       }
-      
+
       const result = await storage.markOrderReady(orderId, counterId);
       if (!result) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Check if items were marked ready from a KOT counter
       const kotStoreCounters = (result as any)._kotStoreCounters || [];
       const isKotCounter = kotStoreCounters.length > 0 || (counterId && orderItems.some((item: any) => item.kotCounterId === counterId));
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -8277,7 +7616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           kotStoreCounters,
           itemStatusByCounter: result.itemStatusByCounter
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         // Fetch full order from DB to ensure all fields are included (especially important for KOT counter updates)
         const fullOrderForUser = await storage.getOrder(orderId);
@@ -8290,7 +7629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             itemStatusByCounter: result.itemStatusByCounter || fullOrderForUser.itemStatusByCounter,
             status: result.status || fullOrderForUser.status
           };
-          
+
           console.log(`📢 Broadcasting to canteen room for user order status page:`, {
             orderNumber: orderDataForUser.orderNumber,
             canteenId: orderDataForUser.canteenId,
@@ -8301,11 +7640,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasItems: !!orderDataForUser.items,
             itemsType: typeof orderDataForUser.items
           });
-          
+
           // Always broadcast status update (even if status doesn't change, itemStatusByCounter might have changed)
           wsManager.broadcastOrderStatusUpdate(orderDataForUser.canteenId, orderDataForUser, oldOrder.status, orderDataForUser.status);
           console.log(`📢 ✅ Broadcasted order_status_changed to canteen room ${orderDataForUser.canteenId}`);
-          
+
           // Also broadcast order_updated to ensure user side receives item-level status changes
           // This is important when items are marked ready from KOT counter (status might not change)
           wsManager.broadcastToCanteen(orderDataForUser.canteenId, 'order_updated', orderDataForUser);
@@ -8313,7 +7652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orderNumber: orderDataForUser.orderNumber,
             hasItemStatusByCounter: !!orderDataForUser.itemStatusByCounter
           });
-          
+
           // Also broadcast item_status_changed for user side to handle item-level updates
           wsManager.broadcastToCanteen(orderDataForUser.canteenId, 'item_status_changed', orderDataForUser);
           console.log(`📢 ✅ Broadcasted item_status_changed to canteen room ${orderDataForUser.canteenId}:`, {
@@ -8321,11 +7660,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             hasItemStatusByCounter: !!orderDataForUser.itemStatusByCounter
           });
         }
-        
+
         // If marked ready from KOT counter, broadcast to store counters
         if (isKotCounter && kotStoreCounters.length > 0) {
           console.log(`🍳 Items marked ready from KOT counter ${counterId}, broadcasting to store counters:`, kotStoreCounters);
-          
+
           // Get the full order with all fields populated for broadcasting
           // Use the result from markOrderReady which already has the updated data
           // But fetch fresh from DB to ensure we have all fields including items
@@ -8340,7 +7679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 items: result.items || oldOrder.items, // Ensure items are included
                 itemStatusByCounter: result.itemStatusByCounter || oldOrder.itemStatusByCounter
               };
-              
+
               kotStoreCounters.forEach((storeCounterId: string) => {
                 wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', fallbackOrder);
                 console.log(`📢 ✅ Broadcasted item_status_changed (fallback) for order ${fallbackOrder.orderNumber} to store counter ${storeCounterId}`);
@@ -8355,7 +7694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.error('Error parsing order items for broadcast:', error);
               orderItems = [];
             }
-            
+
             // Prepare order data with all necessary fields
             const orderDataForBroadcast = {
               ...fullOrder,
@@ -8367,7 +7706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               allCounterIds: fullOrder.allCounterIds || result.allCounterIds,
               _fromKotCounter: counterId // Flag to indicate this came from KOT counter
             };
-            
+
             console.log(`📢 Preparing to broadcast order ${orderDataForBroadcast.orderNumber} to store counters:`, {
               orderId: orderDataForBroadcast.id,
               orderNumber: orderDataForBroadcast.orderNumber,
@@ -8376,7 +7715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               allStoreCounterIds: orderDataForBroadcast.allStoreCounterIds,
               storeCountersToNotify: kotStoreCounters
             });
-            
+
             kotStoreCounters.forEach((storeCounterId: string) => {
               // Use item_status_changed instead of new_order to properly update existing orders
               wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
@@ -8384,7 +7723,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         }
-        
+
         // Broadcast to all relevant counter rooms (for status updates)
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
@@ -8395,7 +7734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         }
-        
+
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting mark-ready update to specific counter room: ${counterId}`);
@@ -8404,7 +7743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for mark-ready broadcast');
       }
-      
+
       res.json({ message: "Order marked as ready", order: result });
     } catch (error) {
       console.error("Error marking order as ready:", error);
@@ -8417,18 +7756,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { status, counterId } = req.body;
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       const result = await storage.updateOrderStatus(orderId, status, counterId);
       if (!result) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -8439,10 +7778,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           oldStatus: oldOrder.status,
           newStatus: result.status
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
-        
+
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting update-status to counter room: ${counterId}`);
@@ -8451,7 +7790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for update-status broadcast');
       }
-      
+
       res.json({ message: "Order status updated", order: result });
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -8464,18 +7803,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId } = req.body;
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       const result = await storage.completeOrder(orderId, counterId);
       if (!result) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -8486,10 +7825,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           oldStatus: oldOrder.status,
           newStatus: result.status
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
-        
+
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting complete order to counter room: ${counterId}`);
@@ -8498,7 +7837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for complete order broadcast');
       }
-      
+
       res.json({ message: "Order completed", order: result });
     } catch (error) {
       console.error("Error completing order:", error);
@@ -8511,36 +7850,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { counterId, deliveryPersonId } = req.body;
-      
+
       // Validate orderId
       if (!orderId || orderId === 'undefined' || orderId === 'null') {
         console.error(`❌ Invalid order ID: ${orderId}`);
         return res.status(400).json({ message: "Invalid order ID" });
       }
-      
+
       console.log(`🚚 Deliver order request:`, { orderId, counterId, deliveryPersonId });
-      
+
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
         console.log(`❌ Order not found: ${orderId}`);
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       console.log(`📦 Old order status: ${oldOrder.status}`);
-      
+
       // Check if this is a delivery person delivery (either from body or order has deliveryPersonId)
       const isDeliveryPersonDelivery = !!deliveryPersonId || (!!oldOrder.deliveryPersonId && !counterId);
-      
+
       // Check if this is a direct complete order request (no counterId and no deliveryPersonId)
       const isDirectComplete = !counterId && !deliveryPersonId && !oldOrder.deliveryPersonId;
-      
+
       let result;
       if (isDeliveryPersonDelivery) {
         // Delivery person delivery - mark entire order as delivered immediately
-        console.log(`🚚 Delivery person marking order as delivered:`, { 
-          orderId, 
-          deliveryPersonId: deliveryPersonId || oldOrder.deliveryPersonId 
+        console.log(`🚚 Delivery person marking order as delivered:`, {
+          orderId,
+          deliveryPersonId: deliveryPersonId || oldOrder.deliveryPersonId
         });
         result = await storage.deliverOrderByDeliveryPerson(orderId, deliveryPersonId || oldOrder.deliveryPersonId);
       } else if (isDirectComplete) {
@@ -8549,7 +7888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { Order } = await import('./models/mongodb-models');
         result = await Order.findByIdAndUpdate(
           orderId,
-          { 
+          {
             status: 'delivered',
             deliveredAt: new Date(),
             barcodeUsed: true
@@ -8560,12 +7899,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Counter delivery - mark items for specific counter
         result = await storage.deliverOrder(orderId, counterId);
       }
-      
+
       if (!result) {
         console.log(`❌ Failed to deliver order: ${orderId}`);
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       console.log(`✅ Order delivered successfully:`, {
         orderId: result.id,
         orderNumber: result.orderNumber,
@@ -8575,7 +7914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deliveryPersonId: result.deliveryPersonId,
         isDeliveryPersonDelivery
       });
-      
+
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
@@ -8587,7 +7926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           newStatus: result.status,
           isDeliveryPersonDelivery
         });
-        
+
         // Broadcast to canteen room (for user order status page)
         // Ensure order data includes all identifiers for proper matching on client
         const orderDataForBroadcast = {
@@ -8597,7 +7936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderNumber: result.orderNumber
         };
         wsManager.broadcastOrderStatusUpdate(result.canteenId, orderDataForBroadcast, oldOrder.status, result.status);
-        
+
         // Broadcast to all relevant counter rooms for item-level updates
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
@@ -8605,13 +7944,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
           });
         }
-        
+
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
           console.log(`📢 Broadcasting deliver order to counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', orderDataForBroadcast);
         }
-        
+
         // Broadcast to delivery person if this was a delivery person delivery
         if (isDeliveryPersonDelivery && result.deliveryPersonId) {
           try {
@@ -8620,7 +7959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const deliveryPerson = await database.deliveryPerson.findUnique({
               where: { deliveryPersonId: result.deliveryPersonId }
             });
-            
+
             if (deliveryPerson && deliveryPerson.email) {
               console.log(`📢 Broadcasting delivery completion to delivery person: ${deliveryPerson.email}`);
               wsManager.broadcastToDeliveryPerson(deliveryPerson.email, {
@@ -8637,7 +7976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.log('📡 WebSocket manager not available for deliver order broadcast');
       }
-      
+
       res.json({ message: "Order delivered", order: result });
     } catch (error) {
       console.error("Error delivering order:", error);
@@ -8646,7 +7985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========== Delivery Person Management API Routes ==========
-  
+
   // Helper function to generate unique delivery person ID
   async function generateDeliveryPersonId(database: any): Promise<string> {
     // Get the count of existing delivery persons
@@ -8655,34 +7994,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const nextNumber = (count + 1).toString().padStart(3, '0');
     return `DP${nextNumber}`;
   }
-  
+
   // Get all delivery persons for a canteen
   app.get("/api/canteens/:canteenId/delivery-persons", async (req, res) => {
     try {
       console.log("🚚 GET /api/canteens/:canteenId/delivery-persons - Request received");
       const { canteenId } = req.params;
       console.log("🚚 Canteen ID:", canteenId);
-      
+
       if (!canteenId) {
         return res.status(400).json({ error: "Canteen ID is required" });
       }
-      
+
       const { db } = await import('./db');
       const database = db();
-      
+
       // Check if deliveryPerson model exists - Prisma uses camelCase for model names
       if (!database.deliveryPerson) {
         console.error("❌ DeliveryPerson model not found in Prisma client.");
         console.error("Available models:", Object.keys(database).filter(k => !k.startsWith('_') && typeof database[k] === 'object'));
-        return res.status(500).json({ 
-          error: "DeliveryPerson model not available. Please restart the server after running 'npx prisma generate'" 
+        return res.status(500).json({
+          error: "DeliveryPerson model not available. Please restart the server after running 'npx prisma generate'"
         });
       }
-      
+
       const deliveryPersons = await database.deliveryPerson.findMany({
-        where: { 
+        where: {
           canteenId,
-          isActive: true 
+          isActive: true
         },
         orderBy: [
           { isAvailable: 'desc' }, // Available first
@@ -8690,8 +8029,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { createdAt: 'desc' }
         ]
       });
-      
-      console.log(`🚚 Found ${deliveryPersons.length} delivery persons for canteen ${canteenId}:`, 
+
+      console.log(`🚚 Found ${deliveryPersons.length} delivery persons for canteen ${canteenId}:`,
         deliveryPersons.map(dp => ({
           id: dp.id,
           deliveryPersonId: dp.deliveryPersonId,
@@ -8699,13 +8038,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: dp.email
         }))
       );
-      
+
       res.json(deliveryPersons);
     } catch (error: any) {
       console.error("❌ Error fetching delivery persons:", error);
       if (error.message?.includes('deliveryPerson') || error.message?.includes('findMany')) {
-        return res.status(500).json({ 
-          error: "Database model not available. Please restart the server after running 'npx prisma generate'" 
+        return res.status(500).json({
+          error: "Database model not available. Please restart the server after running 'npx prisma generate'"
         });
       }
       res.status(500).json({ error: "Failed to fetch delivery persons" });
@@ -8718,15 +8057,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { db } = await import('./db');
       const database = db();
-      
+
       const deliveryPerson = await database.deliveryPerson.findUnique({
         where: { id: parseInt(id) }
       });
-      
+
       if (!deliveryPerson) {
         return res.status(404).json({ error: "Delivery person not found" });
       }
-      
+
       res.json(deliveryPerson);
     } catch (error) {
       console.error("Error fetching delivery person:", error);
@@ -8740,20 +8079,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email } = req.params;
       const { db } = await import('./db');
       const database = db();
-      
+
       console.log(`🔍 GET /api/delivery-persons/by-email/${email} - Fetching delivery person`);
-      
+
       // Check for multiple records with same email
       const allWithEmail = await database.deliveryPerson.findMany({
         where: { email: email }
       });
-      
+
       if (allWithEmail.length > 1) {
-        console.warn(`⚠️ Found ${allWithEmail.length} delivery persons with email ${email}:`, 
+        console.warn(`⚠️ Found ${allWithEmail.length} delivery persons with email ${email}:`,
           allWithEmail.map(dp => ({ id: dp.id, deliveryPersonId: dp.deliveryPersonId, name: dp.name, isActive: dp.isActive }))
         );
       }
-      
+
       // Prioritize active delivery persons, then by most recent
       const deliveryPerson = await database.deliveryPerson.findFirst({
         where: { email: email },
@@ -8762,12 +8101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           { createdAt: 'desc' } // Then most recent
         ]
       });
-      
+
       if (!deliveryPerson) {
         console.error(`❌ Delivery person not found for email: ${email}`);
         return res.status(404).json({ error: "Delivery person not found" });
       }
-      
+
       console.log(`✅ Found delivery person by email:`, {
         id: deliveryPerson.id,
         deliveryPersonId: deliveryPerson.deliveryPersonId,
@@ -8775,7 +8114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: deliveryPerson.email,
         canteenId: deliveryPerson.canteenId
       });
-      
+
       res.json(deliveryPerson);
     } catch (error) {
       console.error("Error fetching delivery person by email:", error);
@@ -8791,10 +8130,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const database = db();
       const { insertDeliveryPersonSchema, insertUserSchema } = await import('@shared/schema');
       const bcrypt = await import('bcrypt');
-      
+
       // Prepare data - convert empty strings to undefined
       const email = req.body.email && req.body.email.trim() !== '' ? req.body.email.trim() : undefined;
-      
+
       // If email is provided, check if user already exists
       let existingUser = null;
       if (email) {
@@ -8805,7 +8144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // If user exists without passwordHash, we'll update it after creating delivery person
       }
-      
+
       const dataToValidate = {
         canteenId,
         name: req.body.name,
@@ -8826,13 +8165,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         notes: req.body.notes || undefined,
       };
-      
+
       // Validate input
       const validatedData = insertDeliveryPersonSchema.parse(dataToValidate);
-      
+
       // Generate unique delivery person ID
       const deliveryPersonId = await generateDeliveryPersonId(database);
-      
+
       // Create delivery person in PostgreSQL
       const deliveryPerson = await database.deliveryPerson.create({
         data: {
@@ -8840,34 +8179,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deliveryPersonId,
         }
       });
-      
+
       // If email is provided, create or update User account with delivery_person role
       let createdUser = null;
       if (email) {
         try {
           // Get password from request body
           const password = req.body.password;
-          
+
           if (!password || password.trim() === '') {
             // Rollback: Delete the delivery person if password is missing
             await database.deliveryPerson.delete({ where: { id: deliveryPerson.id } });
             return res.status(400).json({ error: "Password is required when email is provided" });
           }
-          
+
           // Validate password strength (minimum 6 characters)
           if (password.length < 6) {
             // Rollback: Delete the delivery person if password is invalid
             await database.deliveryPerson.delete({ where: { id: deliveryPerson.id } });
             return res.status(400).json({ error: "Password must be at least 6 characters long" });
           }
-          
+
           // Hash the password
           const saltRounds = 10;
           const passwordHash = await bcrypt.default.hash(password, saltRounds);
-          
+
           if (existingUser) {
             // User exists but doesn't have passwordHash - update it
-            await storage.updateUser(existingUser.id, { 
+            await storage.updateUser(existingUser.id, {
               passwordHash,
               role: 'delivery_person',
               isProfileComplete: true
@@ -8885,18 +8224,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
               passwordHash: passwordHash,
               isProfileComplete: true, // Delivery person profile is already complete
             };
-            
+
             const validatedUserData = insertUserSchema.parse(userData);
             createdUser = await storage.createUser(validatedUserData);
-            
+
             console.log(`✅ Created user account for delivery person: ${email} with role: delivery_person`);
             console.log(`   User ID: ${createdUser.id}, Email: ${createdUser.email}`);
           }
-          
+
           // Note: Password is set by canteen owner, no need to log it
         } catch (userError: any) {
           console.error("❌ Error creating/updating user account for delivery person:", userError);
-          
+
           // Rollback: Delete the delivery person if user creation/update fails
           try {
             await database.deliveryPerson.delete({ where: { id: deliveryPerson.id } });
@@ -8904,29 +8243,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } catch (deleteError) {
             console.error("❌ Failed to rollback delivery person deletion:", deleteError);
           }
-          
+
           // If user creation fails, we still have the delivery person record
           // Log the error but don't fail the entire request
           if (userError.code === 'P2002') {
             console.warn(`⚠️ User with email ${email} already exists, skipping user creation`);
             return res.status(409).json({ error: "A user with this email already exists" });
           }
-          
+
           // Return detailed error for other cases
           const errorMessage = userError.message || 'Unknown error';
           console.error(`❌ User creation/update failed: ${errorMessage}`);
-          return res.status(500).json({ 
+          return res.status(500).json({
             error: "Failed to create/update user account for delivery person",
             details: errorMessage
           });
         }
       }
-      
+
       console.log(`✅ Created delivery person: ${deliveryPersonId} for canteen ${canteenId}`);
       if (createdUser) {
         console.log(`   Associated user account created: ${createdUser.email} (ID: ${createdUser.id})`);
       }
-      
+
       res.status(201).json({
         ...deliveryPerson,
         userCreated: !!createdUser,
@@ -8950,16 +8289,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { db } = await import('./db');
       const database = db();
-      
+
       // Check if delivery person exists
       const existing = await database.deliveryPerson.findUnique({
         where: { id: parseInt(id) }
       });
-      
+
       if (!existing) {
         return res.status(404).json({ error: "Delivery person not found" });
       }
-      
+
       // Prepare update data
       const updateData: any = {};
       if (req.body.name !== undefined) updateData.name = req.body.name;
@@ -8981,12 +8320,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.isAvailable !== undefined) updateData.isAvailable = req.body.isAvailable;
       if (req.body.totalOrderDelivered !== undefined) updateData.totalOrderDelivered = parseInt(req.body.totalOrderDelivered);
       if (req.body.notes !== undefined) updateData.notes = req.body.notes || null;
-      
+
       const deliveryPerson = await database.deliveryPerson.update({
         where: { id: parseInt(id) },
         data: updateData
       });
-      
+
       res.json(deliveryPerson);
     } catch (error) {
       console.error("Error updating delivery person:", error);
@@ -9000,21 +8339,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { db } = await import('./db');
       const database = db();
-      
+
       const deliveryPerson = await database.deliveryPerson.findUnique({
         where: { id: parseInt(id) }
       });
-      
+
       if (!deliveryPerson) {
         return res.status(404).json({ error: "Delivery person not found" });
       }
-      
+
       // Soft delete - set isActive to false
       await database.deliveryPerson.update({
         where: { id: parseInt(id) },
         data: { isActive: false }
       });
-      
+
       res.json({ message: "Delivery person deleted successfully" });
     } catch (error) {
       console.error("Error deleting delivery person:", error);
@@ -9029,22 +8368,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import('./db');
       const database = db();
       const { Order } = await import('./models/mongodb-models');
-      
+
       // Get delivery person to find their deliveryPersonId
       const deliveryPerson = await database.deliveryPerson.findUnique({
         where: { id: parseInt(id) }
       });
-      
+
       if (!deliveryPerson) {
         return res.status(404).json({ error: "Delivery person not found" });
       }
-      
+
       // Get orders assigned to this delivery person that are not completed/delivered
       const orders = await Order.find({
         deliveryPersonId: deliveryPerson.deliveryPersonId,
         status: { $nin: ['completed', 'delivered', 'cancelled'] }
       }).sort({ createdAt: -1 });
-      
+
       res.json(orders.map(order => ({
         id: order._id.toString(),
         orderNumber: order.orderNumber,
@@ -9074,17 +8413,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import('./db');
       const database = db();
       const { Order } = await import('./models/mongodb-models');
-      
+
       // Get delivery person by email to find their deliveryPersonId
       const deliveryPerson = await database.deliveryPerson.findFirst({
         where: { email: email }
       });
-      
+
       if (!deliveryPerson) {
         console.error(`❌ Delivery person not found for email: ${email}`);
         return res.status(404).json({ error: "Delivery person not found" });
       }
-      
+
       console.log(`🔍 Fetching orders for delivery person:`, {
         email,
         deliveryPersonId: deliveryPerson.deliveryPersonId,
@@ -9092,30 +8431,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: deliveryPerson.isActive,
         isAvailable: deliveryPerson.isAvailable
       });
-      
+
       // Get all orders assigned to this delivery person (active and completed)
       const activeOrders = await Order.find({
         deliveryPersonId: deliveryPerson.deliveryPersonId,
         status: { $nin: ['completed', 'delivered', 'cancelled'] }
       }).sort({ createdAt: -1 });
-      
-      console.log(`📦 Found ${activeOrders.length} active orders for delivery person ${deliveryPerson.deliveryPersonId}:`, 
+
+      console.log(`📦 Found ${activeOrders.length} active orders for delivery person ${deliveryPerson.deliveryPersonId}:`,
         activeOrders.map((o: any) => ({
           orderNumber: o.orderNumber,
           status: o.status,
           deliveryPersonId: o.deliveryPersonId
         }))
       );
-      
+
       const completedOrders = await Order.find({
         deliveryPersonId: deliveryPerson.deliveryPersonId,
         status: { $in: ['completed', 'delivered'] }
       }).sort({ createdAt: -1 }).limit(20); // Limit to last 20 completed orders
-      
+
       // Get all counters for the canteen to map counter IDs to names
       const { Counter } = await import('./models/mongodb-models');
       const allCanteenIds = [...new Set([...activeOrders.map((o: any) => o.canteenId), ...completedOrders.map((o: any) => o.canteenId)])];
-      const counters = await Counter.find({ 
+      const counters = await Counter.find({
         canteenId: { $in: allCanteenIds },
         type: 'store'
       });
@@ -9258,30 +8597,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Web Push API routes
   app.use('/api/push', webPushRoutes);
-  
+
   // Register System Settings API routes
   app.use('/api/system-settings', systemSettingsRoutes);
   app.use('/api/database', databaseManagementRoutes);
-  
+
   // Register Google OAuth API routes
   app.use('/api/auth/google', googleAuthRoutes);
-  
+
   // Register Email/Password Authentication API routes
   app.use('/api/auth', authRoutes);
-  
+
   // Register Temporary User Session API routes
   const { default: tempUserSessionRoutes } = await import('./routes/tempUserSession');
   app.use('/', tempUserSessionRoutes);
-  
+
   // Register Restaurant Management API routes
   app.use('/', restaurantManagementRoutes);
-  
+
   // Register SEO routes (sitemap, robots.txt)
   app.use('/', sitemapRoutes);
 
   // Register Print Agent API routes
   app.use('/api/print', printAgentRoutes);
-  
+
   // Register Bidding API routes
   app.use('/api/bidding', biddingRoutes);
   app.use('/api', payoutRoutes);
@@ -9295,7 +8634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate QR code
       const { validateOrganizationQRCodeHash } = await import('@shared/qrCodeUtils');
       const validation = validateOrganizationQRCodeHash(organizationId, decodedAddress, hash);
-      
+
       if (!validation.isValid) {
         // Redirect to login with error
         return res.redirect(`/login?error=invalid_qr&fromQR=true`);
@@ -9324,7 +8663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerIconRoutes(app);
 
   // ========== Coding Challenges API Routes ==========
-  
+
   // Get all challenges (admin only)
   app.get("/api/admin/challenges", async (req, res) => {
     try {
@@ -9379,11 +8718,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/challenges", async (req, res) => {
     try {
       const challengeData = req.body;
-      
+
       // Validate required fields
-      if (!challengeData.name || !challengeData.description || 
-          challengeData.questionCount === undefined || challengeData.totalQuestions === undefined ||
-          challengeData.xpReward === undefined) {
+      if (!challengeData.name || !challengeData.description ||
+        challengeData.questionCount === undefined || challengeData.totalQuestions === undefined ||
+        challengeData.xpReward === undefined) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
@@ -9409,7 +8748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await challenge.save();
-      
+
       res.status(201).json({
         id: challenge._id.toString(),
         name: challenge.name,
@@ -9535,14 +8874,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/addresses", async (req, res) => {
     try {
       const userId = parseInt(req.query.userId as string);
-      
+
       if (!userId || isNaN(userId)) {
         return res.status(400).json({ error: "User ID is required" });
       }
 
       const { UserAddress } = await import('./models/mongodb-models');
       const addresses = await UserAddress.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
-      
+
       res.json(addresses.map((addr: any) => ({
         id: (addr._id as any).toString(),
         userId: addr.userId,
@@ -9575,7 +8914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { UserAddress } = await import('./models/mongodb-models');
-      
+
       // If this is set as default, unset other default addresses
       if (isDefault) {
         await UserAddress.updateMany({ userId, isDefault: true }, { isDefault: false });

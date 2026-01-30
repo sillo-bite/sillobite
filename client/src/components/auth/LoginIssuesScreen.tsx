@@ -22,7 +22,7 @@ const loginIssueSchema = z.object({
   userType: z.enum(["student", "staff"]),
   issueType: z.enum([
     "forgot_email",
-    "account_locked", 
+    "account_locked",
     "email_changed",
     "registration_problem",
     "other"
@@ -110,7 +110,7 @@ export default function LoginIssuesScreen({ onBackToLogin }: LoginIssuesScreenPr
       <div className="w-full max-w-[420px] h-full flex flex-col space-y-3">
         <div className="text-center space-y-1.5 flex-shrink-0">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-[hsl(0,0%,85%)] dark:bg-card rounded-xl border border-border">
-            <img src="/splash_logo.svg" alt="Sillobyte Logo" className="w-8 h-8 object-contain" />
+            <img src="/splash_logo.svg" alt="SilloBite Logo" className="w-8 h-8 object-contain" />
           </div>
           <h1 className="text-xl font-bold text-foreground">
             Report Login Issue
@@ -268,8 +268,8 @@ export default function LoginIssuesScreen({ onBackToLogin }: LoginIssuesScreenPr
               </div>
 
               <div className="pt-1 flex-shrink-0">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={!isValid || submitIssueMutation.isPending}
                   className="w-full h-10 bg-primary hover:bg-primary/90 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >

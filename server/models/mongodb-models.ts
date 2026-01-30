@@ -1,5 +1,46 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Web Push Subscription Model
+export interface IWebPushSubscription extends Document {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  userId: string;
+  userRole: string;
+  canteenId?: string;
+  deviceInfo?: string;
+  userAgent?: string;
+  subscriptionId: string; // Hash of endpoint
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const WebPushSubscriptionSchema = new Schema<IWebPushSubscription>({
+  endpoint: { type: String, required: true },
+  keys: {
+    p256dh: { type: String, required: true },
+    auth: { type: String, required: true }
+  },
+  userId: { type: String, required: true, index: true },
+  userRole: { type: String, required: true, index: true },
+  canteenId: { type: String, index: true },
+  deviceInfo: { type: String },
+  userAgent: { type: String },
+  subscriptionId: { type: String, required: true, unique: true, index: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Update the updatedAt field before saving
+WebPushSubscriptionSchema.pre('save', function (next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+export const WebPushSubscription = mongoose.model<IWebPushSubscription>('WebPushSubscription', WebPushSubscriptionSchema);
+
 // Category Model
 export interface ICategory extends Document {
   name: string;
@@ -96,7 +137,7 @@ MenuItemSchema.index({ description: 1 });
 // Text index for efficient full-text search (name and description)
 MenuItemSchema.index(
   { name: 'text', description: 'text' },
-  { 
+  {
     weights: { name: 10, description: 5 },
     name: 'menu_item_text_search'
   }
@@ -325,7 +366,7 @@ DeliveryPersonSchema.index({ canteenId: 1, isActive: 1 });
 DeliveryPersonSchema.index({ canteenId: 1, createdAt: -1 });
 
 // Update the updatedAt field before saving
-DeliveryPersonSchema.pre('save', function(next) {
+DeliveryPersonSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -379,7 +420,7 @@ const NotificationTemplateSchema = new Schema<INotificationTemplate>({
 });
 
 // Update the updatedAt field before saving
-NotificationTemplateSchema.pre('save', function(next) {
+NotificationTemplateSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -416,7 +457,7 @@ const CustomNotificationTemplateSchema = new Schema<ICustomNotificationTemplate>
 });
 
 // Update the updatedAt field before saving
-CustomNotificationTemplateSchema.pre('save', function(next) {
+CustomNotificationTemplateSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -481,20 +522,20 @@ const ComplaintSchema = new Schema<IComplaint>({
   userId: { type: Number }, // References PostgreSQL user
   userName: { type: String, required: true },
   userEmail: { type: String },
-  category: { 
-    type: String, 
+  category: {
+    type: String,
     required: true,
     enum: ['Payment', 'Service', 'Quality', 'Technical', 'General'],
     default: 'General'
   },
-  priority: { 
-    type: String, 
+  priority: {
+    type: String,
     required: true,
     enum: ['Low', 'Medium', 'High', 'Critical'],
     default: 'Medium'
   },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     required: true,
     enum: ['Open', 'In Progress', 'Resolved', 'Closed'],
     default: 'Open'
@@ -509,7 +550,7 @@ const ComplaintSchema = new Schema<IComplaint>({
 });
 
 // Update the updatedAt field on save
-ComplaintSchema.pre('save', function(next) {
+ComplaintSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -583,10 +624,10 @@ const MediaBannerSchema = new Schema<IMediaBanner>({
   originalName: { type: String, required: true },
   mimeType: { type: String, required: true },
   size: { type: Number, required: true },
-  type: { 
-    type: String, 
-    required: true, 
-    enum: ['image', 'video'] 
+  type: {
+    type: String,
+    required: true,
+    enum: ['image', 'video']
   },
   fileId: { type: Schema.Types.ObjectId }, // GridFS file reference (legacy support)
   cloudinaryPublicId: { type: String }, // Cloudinary public ID
@@ -600,7 +641,7 @@ const MediaBannerSchema = new Schema<IMediaBanner>({
 });
 
 // Update the updatedAt field on save
-MediaBannerSchema.pre('save', function(next) {
+MediaBannerSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -726,7 +767,7 @@ const CodingChallengeSchema = new Schema<ICodingChallenge>({
 });
 
 // Update updatedAt on save
-CodingChallengeSchema.pre('save', function(next) {
+CodingChallengeSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -752,8 +793,8 @@ const PaymentSessionSchema = new Schema<IPaymentSession>({
   amount: { type: Number, required: true },
   canteenId: { type: String, required: true },
   orderData: { type: String, required: true },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['active', 'completed', 'expired', 'cancelled'],
     default: 'active'
   },
@@ -791,8 +832,8 @@ const CheckoutSessionSchema = new Schema<ICheckoutSession>({
   sessionId: { type: String, required: true, unique: true },
   customerId: { type: Number, required: true },
   canteenId: { type: String },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['active', 'completed', 'abandoned', 'expired', 'payment_initiated', 'payment_completed', 'payment_failed'],
     default: 'active'
   },
@@ -878,7 +919,7 @@ PrintAgentSchema.index({ outletId: 1, status: 1 });
 PrintAgentSchema.index({ status: 1 });
 
 // Update updatedAt before saving
-PrintAgentSchema.pre('save', function(next) {
+PrintAgentSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -935,7 +976,7 @@ PrintJobSchema.index({ orderId: 1 });
 PrintJobSchema.index({ orderNumber: 1 });
 
 // Update updatedAt before saving
-PrintJobSchema.pre('save', function(next) {
+PrintJobSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -1009,7 +1050,7 @@ UserAddressSchema.index({ userId: 1, createdAt: -1 });
 UserAddressSchema.index({ userId: 1, isDefault: 1 });
 
 // Update updatedAt before saving
-UserAddressSchema.pre('save', function(next) {
+UserAddressSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -1070,7 +1111,7 @@ OrganizationQRCodeSchema.index({ qrId: 1 });
 OrganizationQRCodeSchema.index({ hash: 1 });
 
 // Update updatedAt before saving
-OrganizationQRCodeSchema.pre('save', function(next) {
+OrganizationQRCodeSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -1104,8 +1145,8 @@ const SettlementSchema = new Schema<ISettlement>({
   periodEnd: { type: Date, required: true },
   orderIds: { type: [String], default: [] },
   orderCount: { type: Number, default: 0 },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['pending', 'processing', 'completed', 'failed'],
     default: 'pending'
   },
@@ -1125,7 +1166,7 @@ SettlementSchema.index({ status: 1, createdAt: -1 });
 SettlementSchema.index({ payoutRequestId: 1 });
 
 // Update updatedAt before saving
-SettlementSchema.pre('save', function(next) {
+SettlementSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -1161,8 +1202,8 @@ const PayoutRequestSchema = new Schema<IPayoutRequest>({
   requestId: { type: String, required: true, unique: true },
   canteenId: { type: String, required: true },
   amount: { type: Number, required: true },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['pending', 'approved', 'rejected', 'processing', 'completed', 'cancelled'],
     default: 'pending'
   },
@@ -1193,7 +1234,7 @@ PayoutRequestSchema.index({ requestedBy: 1 });
 PayoutRequestSchema.index({ settlementId: 1 });
 
 // Update updatedAt before saving
-PayoutRequestSchema.pre('save', function(next) {
+PayoutRequestSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });
@@ -1226,13 +1267,13 @@ const PositionBidSchema = new Schema<IPositionBid>({
   collegeId: { type: String },
   targetDate: { type: Date, required: true },
   bidAmount: { type: Number, required: true },
-  status: { 
-    type: String, 
+  status: {
+    type: String,
     enum: ['pending', 'closed', 'paid', 'failed', 'expired', 'active'],
     default: 'pending'
   },
-  paymentStatus: { 
-    type: String, 
+  paymentStatus: {
+    type: String,
     enum: ['pending', 'processing', 'completed', 'failed', 'refunded'],
     default: 'pending'
   },
@@ -1254,7 +1295,7 @@ PositionBidSchema.index({ status: 1, paymentStatus: 1, targetDate: 1 });
 PositionBidSchema.index({ bidId: 1 });
 
 // Update updatedAt before saving
-PositionBidSchema.pre('save', function(next) {
+PositionBidSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });

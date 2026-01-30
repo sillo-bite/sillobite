@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   webPushManager,
   initializeWebPushNotifications,
@@ -23,6 +23,7 @@ interface UseWebPushNotificationsReturn {
   requestPermission: () => Promise<void>;
   unsubscribe: () => Promise<void>;
   sendTestNotification: () => Promise<void>;
+  initializeNotifications: () => Promise<boolean>;
 
   // Computed states
   canSubscribe: boolean;
@@ -31,8 +32,9 @@ interface UseWebPushNotificationsReturn {
 }
 
 export function useWebPushNotifications(
-  userId?: string, 
-  userRole?: string
+  userId?: string,
+  userRole?: string,
+  canteenId?: string
 ): UseWebPushNotificationsReturn {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -40,6 +42,7 @@ export function useWebPushNotifications(
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const initializingRef = useRef(false);
 
   // Check if browser supports notifications
   const supportsNotifications = ('serviceWorker' in navigator) && ('PushManager' in window);
@@ -68,8 +71,8 @@ export function useWebPushNotifications(
     setError(null);
 
     try {
-      const success = await initializeWebPushNotifications(userId, userRole);
-      
+      const success = await initializeWebPushNotifications(userId, userRole, canteenId);
+
       if (success) {
         updateState();
         return true;
@@ -84,7 +87,7 @@ export function useWebPushNotifications(
     } finally {
       setIsLoading(false);
     }
-  }, [userId, userRole, supportsNotifications, updateState]);
+  }, [userId, userRole, canteenId, supportsNotifications, updateState]);
 
   // Only initialize if already subscribed (for existing users)
   useEffect(() => {
@@ -98,7 +101,7 @@ export function useWebPushNotifications(
         if ('serviceWorker' in navigator) {
           const registration = await navigator.serviceWorker.ready;
           const existingSubscription = await registration.pushManager.getSubscription();
-          
+
           if (existingSubscription) {
             // User already has a subscription, update state without full initialization
             setIsSubscribed(true);
@@ -117,22 +120,22 @@ export function useWebPushNotifications(
   // Update user info when it changes
   useEffect(() => {
     if (userId && userRole && isInitialized) {
-      webPushManager.updateUserInfo(userId, userRole);
+      webPushManager.updateUserInfo(userId, userRole, canteenId);
     }
-  }, [userId, userRole, isInitialized]);
+  }, [userId, userRole, canteenId, isInitialized]);
 
   // Monitor permission changes and re-initialize if permission becomes granted
   useEffect(() => {
     if (!supportsNotifications || !userId) return;
-    
+
     const checkPermissionChanges = () => {
       const currentPermission = getNotificationPermissionStatus();
-      
+
       // If permission changed from denied/default to granted, re-initialize
       if (currentPermission === 'granted' && permission !== 'granted' && isInitialized && !isSubscribed) {
         console.log('🔄 Permission changed to granted, re-initializing...');
         updateState();
-        
+
         // Try to auto-subscribe since permission is now granted
         const autoSubscribe = async () => {
           try {
@@ -145,7 +148,7 @@ export function useWebPushNotifications(
             console.warn('Failed to auto-subscribe after permission change:', error);
           }
         };
-        
+
         autoSubscribe();
       } else if (currentPermission !== permission) {
         // Update state if permission changed
@@ -169,6 +172,14 @@ export function useWebPushNotifications(
 
   // Request permission and subscribe (with lazy initialization)
   const requestPermission = useCallback(async () => {
+    // Prevent duplicate calls using ref (synchronous check) and state
+    if (initializingRef.current || isLoading) {
+      console.log('⚠️ requestPermission called but already in progress, skipping');
+      return;
+    }
+
+    console.log('🔄 requestPermission called');
+    initializingRef.current = true;
     setIsLoading(true);
     setError(null);
 
@@ -184,7 +195,7 @@ export function useWebPushNotifications(
       }
 
       const success = await requestNotificationPermission();
-      
+
       if (success) {
         updateState();
         console.log('🎉 Push notifications enabled successfully!');
@@ -196,11 +207,11 @@ export function useWebPushNotifications(
         } else {
           setError('Failed to enable push notifications. Please try again.');
         }
-        updateState(); // Update state even on failure to reflect permission changes
+        updateState(); // Update state even on failure to reflect access changes
       }
     } catch (err: any) {
       console.error('Push notification permission error:', err);
-      
+
       // Provide specific error messages based on permission state
       const currentPermission = getNotificationPermissionStatus();
       if (currentPermission === 'denied') {
@@ -210,12 +221,13 @@ export function useWebPushNotifications(
       } else {
         setError(err.message || 'Failed to enable notifications. Please check your browser settings.');
       }
-      
+
       updateState(); // Update state to reflect current permission
     } finally {
+      initializingRef.current = false;
       setIsLoading(false);
     }
-  }, [isInitialized, initializeNotifications, updateState]);
+  }, [isInitialized, initializeNotifications, updateState, isLoading]);
 
   // Unsubscribe from notifications
   const unsubscribe = useCallback(async () => {
@@ -224,7 +236,7 @@ export function useWebPushNotifications(
 
     try {
       const success = await unsubscribeFromNotifications();
-      
+
       if (success) {
         updateState();
       } else {
@@ -250,7 +262,7 @@ export function useWebPushNotifications(
 
     try {
       const success = await sendTestNotification();
-      
+
       if (!success) {
         setError('Failed to send test notification');
       }

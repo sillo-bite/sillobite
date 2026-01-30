@@ -12,11 +12,11 @@ interface SEOHeadProps {
 }
 
 const SEOHead: React.FC<SEOHeadProps> = ({
-  title = "Sillobyte - Order Food Online from College Canteens | Fast & Convenient",
-  description = "Order delicious food from your college canteen with Sillobyte. Fast, convenient, and secure online food ordering platform for students. Browse menus, place orders, and enjoy quick delivery.",
+  title = "SilloBite - Order Food Online from College Canteens | Fast & Convenient",
+  description = "Order delicious food from your college canteen with SilloBite. Fast, convenient, and secure online food ordering platform for students. Browse menus, place orders, and enjoy quick delivery.",
   keywords = "college canteen, food ordering, online food delivery, student meals, campus dining, food app, canteen management, college food, student dining, food ordering app",
-  canonicalUrl = "https://sillobyte.onrender.com",
-  ogImage = "https://sillobyte.onrender.com/api/icon.png?size=512",
+  canonicalUrl = "https://sillobite.onrender.com",
+  ogImage = "https://sillobite.onrender.com/api/icon.png?size=512",
   ogType = "website",
   noIndex = false,
   structuredData
@@ -29,7 +29,7 @@ const SEOHead: React.FC<SEOHeadProps> = ({
     const updateMetaTag = (name: string, content: string, property?: boolean) => {
       const attribute = property ? 'property' : 'name';
       let meta = document.querySelector(`meta[${attribute}="${name}"]`) as HTMLMetaElement;
-      
+
       if (!meta) {
         meta = document.createElement('meta');
         meta.setAttribute(attribute, name);

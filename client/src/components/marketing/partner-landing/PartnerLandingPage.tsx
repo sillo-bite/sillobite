@@ -1,6 +1,6 @@
 import { Navbar } from "./Navbar";
 import { HeroSection } from "./HeroSection";
-import { WhySillobyteSection } from "./WhySillobyteSection";
+import { WhySilloBiteSection } from "./WhySilloBiteSection";
 import { WhoWeServeSection } from "./WhoWeServeSection";
 import { HowItWorksSection } from "./HowItWorksSection";
 import { FeaturesSection } from "./FeaturesSection";
@@ -17,7 +17,7 @@ const PartnerLandingPage = () => {
       <Navbar />
       <main>
         <HeroSection />
-        <WhySillobyteSection />
+        <WhySilloBiteSection />
         <WhoWeServeSection />
         <HowItWorksSection />
         <FeaturesSection />

@@ -130,9 +130,8 @@ export const ContactSection = () => {
       <div ref={ref} className="max-w-7xl mx-auto container-padding">
         {/* Premium Header */}
         <div
-          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`text-center max-w-3xl mx-auto mb-16 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
           <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-6 leading-tight">
             Get Started{" "}
@@ -149,9 +148,8 @@ export const ContactSection = () => {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left: Visual/Info Section */}
           <div
-            className={`space-y-8 transition-all duration-700 ease-out ${
-              isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
-            }`}
+            className={`space-y-8 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+              }`}
             style={{ transitionDelay: "150ms" }}
           >
             <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-secondary/10 rounded-3xl p-10 border border-primary/20 shadow-xl">
@@ -159,7 +157,7 @@ export const ContactSection = () => {
                 Schedule Your Personalized Consultation
               </h3>
               <p className="text-muted-foreground leading-relaxed mb-8">
-                Discover how Sillobyte can transform your institutional dining operations. Our team will provide a comprehensive demonstration tailored to your specific needs.
+                Discover how SilloBite can transform your institutional dining operations. Our team will provide a comprehensive demonstration tailored to your specific needs.
               </p>
 
               <div className="space-y-6">
@@ -198,9 +196,8 @@ export const ContactSection = () => {
 
           {/* Right: Form Section */}
           <div
-            className={`bg-gradient-to-br from-background via-background to-card/50 rounded-3xl border border-border/50 p-8 md:p-10 shadow-2xl transition-all duration-700 ease-out ${
-              isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4"
-            }`}
+            className={`bg-gradient-to-br from-background via-background to-card/50 rounded-3xl border border-border/50 p-8 md:p-10 shadow-2xl transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4"
+              }`}
             style={{ transitionDelay: "200ms" }}
           >
             {isSubmitted ? (

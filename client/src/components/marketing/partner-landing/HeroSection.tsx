@@ -26,9 +26,8 @@ export const HeroSection = () => {
           {/* Left: Premium Content */}
           <div className="space-y-10 lg:space-y-12">
             <h1
-              className={`font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] text-foreground transition-all duration-700 ease-out ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
+              className={`font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] text-foreground transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
               style={{ transitionDelay: "100ms" }}
             >
               Revolutionize{" "}
@@ -41,23 +40,21 @@ export const HeroSection = () => {
             </h1>
 
             <p
-              className={`text-xl md:text-2xl text-muted-foreground max-w-2xl leading-relaxed font-light transition-all duration-700 ease-out ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
+              className={`text-xl md:text-2xl text-muted-foreground max-w-2xl leading-relaxed font-light transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
               style={{ transitionDelay: "200ms" }}
             >
-              Sillobyte delivers an all-inclusive digital ecosystem for institutional dining operations. Seamlessly connecting educational institutions, healthcare facilities, and corporate campuses with cutting-edge ordering, payment processing, and operational management—all accessible instantly through any web browser.
+              SilloBite delivers an all-inclusive digital ecosystem for institutional dining operations. Seamlessly connecting educational institutions, healthcare facilities, and corporate campuses with cutting-edge ordering, payment processing, and operational management—all accessible instantly through any web browser.
             </p>
 
             <div
-              className={`flex flex-col sm:flex-row gap-4 transition-all duration-700 ease-out ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
+              className={`flex flex-col sm:flex-row gap-4 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
               style={{ transitionDelay: "300ms" }}
             >
-              <Button 
-                variant="hero" 
-                size="xl" 
+              <Button
+                variant="hero"
+                size="xl"
                 onClick={scrollToContact}
                 className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-xl hover:shadow-2xl transition-all duration-300 w-full sm:w-auto"
               >
@@ -69,9 +66,9 @@ export const HeroSection = () => {
                 </span>
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
               </Button>
-              <Button 
-                variant="hero-outline" 
-                size="xl" 
+              <Button
+                variant="hero-outline"
+                size="xl"
                 onClick={scrollToContact}
                 className="border-2 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300 w-full sm:w-auto"
               >
@@ -80,9 +77,8 @@ export const HeroSection = () => {
             </div>
 
             <div
-              className={`flex flex-wrap items-center gap-8 pt-6 transition-all duration-700 ease-out ${
-                isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-              }`}
+              className={`flex flex-wrap items-center gap-8 pt-6 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                }`}
               style={{ transitionDelay: "400ms" }}
             >
               <div className="flex items-center gap-3 text-base text-muted-foreground">
@@ -102,9 +98,8 @@ export const HeroSection = () => {
 
           {/* Right: Abstract Data Flow Visualization */}
           <div
-            className={`relative transition-all duration-1000 ease-out ${
-              isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"
-            }`}
+            className={`relative transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"
+              }`}
             style={{ transitionDelay: "200ms" }}
           >
             {/* Main Container */}
@@ -132,9 +127,8 @@ export const HeroSection = () => {
                 return (
                   <div
                     key={index}
-                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out ${
-                      isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
-                    }`}
+                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
+                      }`}
                     style={{
                       transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                       transitionDelay: `${feature.delay}ms`,
@@ -151,15 +145,13 @@ export const HeroSection = () => {
                     />
 
                     {/* Feature Card */}
-                    <div 
-                      className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-card via-card to-card/95 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 flex flex-col items-center justify-center backdrop-blur-sm ${
-                        feature.color === "primary" ? "border-2 border-primary/30" : "border-2 border-secondary/30"
-                      }`}
+                    <div
+                      className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-card via-card to-card/95 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 flex flex-col items-center justify-center backdrop-blur-sm ${feature.color === "primary" ? "border-2 border-primary/30" : "border-2 border-secondary/30"
+                        }`}
                     >
-                      <feature.icon 
-                        className={`w-8 h-8 md:w-10 md:h-10 mb-1 ${
-                          feature.color === "primary" ? "text-primary" : "text-secondary"
-                        }`} 
+                      <feature.icon
+                        className={`w-8 h-8 md:w-10 md:h-10 mb-1 ${feature.color === "primary" ? "text-primary" : "text-secondary"
+                          }`}
                       />
                       <span className="text-[10px] md:text-xs font-semibold text-foreground text-center px-1">
                         {feature.label}
@@ -178,9 +170,8 @@ export const HeroSection = () => {
               ].map((stat, index) => (
                 <div
                   key={index}
-                  className={`absolute bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 rounded-2xl p-4 md:p-5 border border-primary/20 shadow-lg backdrop-blur-sm transition-all duration-700 ease-out ${
-                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                  }`}
+                  className={`absolute bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 rounded-2xl p-4 md:p-5 border border-primary/20 shadow-lg backdrop-blur-sm transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                    }`}
                   style={{
                     top: stat.top,
                     left: stat.left,

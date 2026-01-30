@@ -16,12 +16,12 @@ import OrderNotFoundModal from '@/components/orders/OrderNotFoundModal';
 
 import DeliveryPersonSelectModal from '@/components/canteen/DeliveryPersonSelectModal';
 // Removed PanelGroup import - using custom layout instead
-import { 
-  Store, 
-  Search, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
+import {
+  Store,
+  Search,
+  CheckCircle,
+  XCircle,
+  Clock,
   ArrowLeft,
   RefreshCw,
   ShoppingCart,
@@ -80,14 +80,14 @@ interface CanteenInfo {
 // Helper function to filter items in an order for a specific counter
 function filterOrderItems(order: any, counterId: string): any | null {
   if (!order || !order.items) return null;
-  
+
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-  
+
   // Filter items that belong to this counter by checking item.storeCounterId
   const relevantItems = items.filter((item: any) => {
     // Check if item has storeCounterId and it matches this counter
     const belongsToCounter = item.storeCounterId === counterId;
-    
+
     if (belongsToCounter) {
       console.log(`✅ Item ${item.name} belongs to counter ${counterId}`, {
         itemName: item.name,
@@ -95,10 +95,10 @@ function filterOrderItems(order: any, counterId: string): any | null {
         targetCounterId: counterId
       });
     }
-    
+
     return belongsToCounter;
   });
-  
+
   if (relevantItems.length > 0) {
     console.log(`✅ Order ${order.orderNumber} has ${relevantItems.length} relevant items (out of ${items.length} total) for store counter ${counterId}`);
     // Return a filtered order with only the relevant items
@@ -107,7 +107,7 @@ function filterOrderItems(order: any, counterId: string): any | null {
       items: JSON.stringify(relevantItems)
     };
   }
-  
+
   console.log(`❌ Order ${order.orderNumber} has no items for store counter ${counterId} (checked ${items.length} items)`);
   return null;
 }
@@ -115,10 +115,10 @@ function filterOrderItems(order: any, counterId: string): any | null {
 // Helper function to filter orders for specific counter
 function filterOrderForCounter(order: any, counterId: string): any | null {
   if (!order) return null;
-  
+
   // Check if the counter is in the allStoreCounterIds array (order should be broadcasted to this counter)
   const shouldShowOrder = order.allStoreCounterIds && order.allStoreCounterIds.includes(counterId);
-  
+
   if (!shouldShowOrder) {
     console.log(`❌ Order ${order.orderNumber} not broadcasted to counter ${counterId}`, {
       allStoreCounterIds: order.allStoreCounterIds,
@@ -126,7 +126,7 @@ function filterOrderForCounter(order: any, counterId: string): any | null {
     });
     return null;
   }
-  
+
   // Filter items for this counter
   return filterOrderItems(order, counterId);
 }
@@ -137,15 +137,15 @@ function hasCounterDeliveredItems(order: any, counterId: string): boolean {
     if (!order.itemStatusByCounter || !order.itemStatusByCounter[counterId]) {
       return false;
     }
-    
+
     const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
     const counterItemStatus = order.itemStatusByCounter[counterId];
-    
+
     // Check if all items belonging to this counter are completed
     // Use item.storeCounterId directly (no menu item lookup needed)
     const counterItems = items.filter((item: any) => item.storeCounterId === counterId);
-    
-    return counterItems.length > 0 && counterItems.every((item: any) => 
+
+    return counterItems.length > 0 && counterItems.every((item: any) =>
       counterItemStatus[item.id] === 'completed'
     );
   } catch (error) {
@@ -166,7 +166,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   useEffect(() => {
     document.title = "Store Counter | KIT-CANTEEN Owner Dashboard";
   }, []);
-  
+
   // Track mobile viewport for compact controls
   useEffect(() => {
     const handleResize = () => {
@@ -216,10 +216,10 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   });
 
   // Extract counters from API response
-  const counters = Array.isArray(countersData) 
-    ? countersData 
+  const counters = Array.isArray(countersData)
+    ? countersData
     : (countersData as any)?.items || (countersData as any)?.counters || [];
-  
+
   // Create a map of counter ID to counter name for quick lookup
   const counterMap = new Map<string, { name: string; type: string }>();
   counters.forEach((counter: any) => {
@@ -242,12 +242,12 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         canteenId,
         fullOrder: order
       });
-      
+
       // Check if this order is relevant to this counter
-      const isRelevantToCounter = order.allStoreCounterIds?.includes(counterId) || 
-                                  order.allCounterIds?.includes(counterId) || 
-                                  order.storeCounterId === counterId;
-      
+      const isRelevantToCounter = order.allStoreCounterIds?.includes(counterId) ||
+        order.allCounterIds?.includes(counterId) ||
+        order.storeCounterId === counterId;
+
       console.log('🏪 StoreMode order relevance check:', {
         orderNumber: order.orderNumber,
         counterId,
@@ -257,7 +257,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         storeCounterId: order.storeCounterId,
         menuItemsLength: menuItems.length
       });
-      
+
       if (isRelevantToCounter) {
         // Check if menu items are available for filtering
         if (menuItems.length === 0) {
@@ -265,35 +265,35 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           queryClient.invalidateQueries({ queryKey: ['/api/orders', canteenId, counterId, menuItems.length] });
           return;
         }
-        
+
         // Check if this counter has already delivered their items in this order
         const counterHasDelivered = hasCounterDeliveredItems(order, counterId);
         if (counterHasDelivered) {
           // Remove order from cache if counter has delivered
           queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
             if (!oldData) return oldData;
-            return oldData.filter((o: any) => 
+            return oldData.filter((o: any) =>
               o.id !== order.id && o.orderNumber !== order.orderNumber
             );
           });
           return;
         }
-        
+
         // Filter orders to show only items belonging to this counter
         const relevantOrder = filterOrderForCounter(order, counterId);
         if (relevantOrder) {
           // Add new order to cache directly - use exact query key including menuItems.length
           queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
             if (!oldData) return [relevantOrder];
-            
+
             // Check if order already exists
-            const exists = oldData.some((o: any) => 
+            const exists = oldData.some((o: any) =>
               o.id === relevantOrder.id || o.orderNumber === relevantOrder.orderNumber
             );
-            
+
             if (exists) {
               // Update existing order
-              return oldData.map((o: any) => 
+              return oldData.map((o: any) =>
                 o.id === relevantOrder.id || o.orderNumber === relevantOrder.orderNumber
                   ? relevantOrder
                   : o
@@ -308,24 +308,24 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     },
     onOrderUpdate: (order) => {
       // Check if this order is relevant to this counter
-      const isRelevantToCounter = order?.allStoreCounterIds?.includes(counterId) || 
-                                  order?.allCounterIds?.includes(counterId) || 
-                                  order?.storeCounterId === counterId;
-      
+      const isRelevantToCounter = order?.allStoreCounterIds?.includes(counterId) ||
+        order?.allCounterIds?.includes(counterId) ||
+        order?.storeCounterId === counterId;
+
       if (!isRelevantToCounter) return;
-      
+
       // Filter the order for this counter before updating cache
       const filteredOrder = filterOrderForCounter(order, counterId);
       if (!filteredOrder) return;
-      
+
       // Update cache directly - use exact query key including menuItems.length
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return [filteredOrder];
-        
-        const existingIndex = oldData.findIndex((o: any) => 
+
+        const existingIndex = oldData.findIndex((o: any) =>
           o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
         );
-        
+
         if (existingIndex >= 0) {
           // Update existing order - preserve full itemStatusByCounter
           const updated = [...oldData];
@@ -348,33 +348,33 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     },
     onOrderStatusChange: (order, oldStatus, newStatus) => {
       // Check if this order is relevant to this counter
-      const isRelevantToCounter = order?.allStoreCounterIds?.includes(counterId) || 
-                                  order?.allCounterIds?.includes(counterId) || 
-                                  order?.storeCounterId === counterId;
-      
+      const isRelevantToCounter = order?.allStoreCounterIds?.includes(counterId) ||
+        order?.allCounterIds?.includes(counterId) ||
+        order?.storeCounterId === counterId;
+
       if (!isRelevantToCounter) return;
-      
+
       // Filter the order for this counter before updating cache
       const filteredOrder = filterOrderForCounter(order, counterId);
       if (!filteredOrder) {
         // Order no longer relevant to this counter, remove it
         queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
           if (!oldData) return oldData;
-          return oldData.filter((o: any) => 
+          return oldData.filter((o: any) =>
             o.id !== order.id && o.orderNumber !== order.orderNumber
           );
         });
         return;
       }
-      
+
       // Update cache directly - use exact query key including menuItems.length
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return [filteredOrder];
-        
-        const existingIndex = oldData.findIndex((o: any) => 
+
+        const existingIndex = oldData.findIndex((o: any) =>
           o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
         );
-        
+
         if (existingIndex >= 0) {
           // Update existing order - preserve full itemStatusByCounter
           const updated = [...oldData];
@@ -397,24 +397,24 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     },
     onItemStatusChange: (order) => {
       // Handle item-level status changes (from mark-ready or out-for-delivery)
-      const isRelevantToCounter = order?.allStoreCounterIds?.includes(counterId) || 
-                                  order?.allCounterIds?.includes(counterId) || 
-                                  order?.storeCounterId === counterId;
-      
+      const isRelevantToCounter = order?.allStoreCounterIds?.includes(counterId) ||
+        order?.allCounterIds?.includes(counterId) ||
+        order?.storeCounterId === counterId;
+
       if (!isRelevantToCounter) return;
-      
+
       // Filter the order for this counter before updating cache
       const filteredOrder = filterOrderForCounter(order, counterId);
       if (!filteredOrder) return;
-      
+
       // Update cache directly - use exact query key including menuItems.length
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return [filteredOrder];
-        
-        const existingIndex = oldData.findIndex((o: any) => 
+
+        const existingIndex = oldData.findIndex((o: any) =>
           o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
         );
-        
+
         if (existingIndex >= 0) {
           // Update existing order - preserve full itemStatusByCounter from the order update
           const updated = [...oldData];
@@ -455,14 +455,14 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       menuItemsLength: menuItems.length,
       shouldJoin: isConnected && counterId && canteenId && menuItems.length > 0
     });
-    
+
     console.log('🏪 StoreMode - Attempting to join counter room:', {
       counterId,
       canteenId,
       isConnected,
       menuItemsLoaded: menuItems.length > 0
     });
-    
+
     if (isConnected && counterId && canteenId && menuItems.length > 0) {
       // Add a small delay to ensure WebSocket is fully connected
       const timeoutId = setTimeout(() => {
@@ -470,7 +470,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         joinCounterRoom(counterId, canteenId);
         console.log('🏪 StoreMode joinCounterRoom called for:', counterId);
       }, 100);
-      
+
       return () => {
         clearTimeout(timeoutId);
         if (counterId) {
@@ -489,7 +489,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         console.log('🏪 StoreMode retry: attempting to join counter room again:', counterId);
         joinCounterRoom(counterId, canteenId);
       }, 2000); // Increased delay to avoid duplicate calls
-      
+
       return () => clearTimeout(retryTimeout);
     }
   }, [isConnected, counterId, canteenId, menuItems.length, joinCounterRoom]);
@@ -516,7 +516,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         allCounterIds: order.allCounterIds,
         itemsCount: order.items ? (typeof order.items === 'string' ? JSON.parse(order.items).length : order.items.length) : 0
       })));
-      
+
       // Filter orders that belong to this store counter and filter items within each order
       // IMPORTANT: Always check items first, as allStoreCounterIds might be incomplete
       const filteredOrders = result.map((order: any) => {
@@ -528,13 +528,13 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           hasAllStoreCounterIds: !!order.allStoreCounterIds,
           hasAllCounterIds: !!order.allCounterIds
         });
-        
+
         // Use simplified filtering - check if counter is in allStoreCounterIds and filter items by item.storeCounterId
         return filterOrderForCounter(order, counterId);
       }).filter((order: any) => order !== null); // Remove null orders
-      
+
       console.log('🏪 StoreMode filtered orders for store counter:', filteredOrders);
-      
+
       return filteredOrders;
     },
     enabled: !!counterId && !!canteenId && menuItems.length > 0,
@@ -556,10 +556,10 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     isArray: Array.isArray(menuItems)
   });
 
-  console.log('🏪 StoreMode useQuery state:', { 
-    isLoading, 
-    error, 
-    ordersCount: orders.length, 
+  console.log('🏪 StoreMode useQuery state:', {
+    isLoading,
+    error,
+    ordersCount: orders.length,
     enabled: !!counterId && !!canteenId,
     counterId,
     canteenId
@@ -585,11 +585,11 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         // Use exact query key including menuItems.length
         queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
           if (!oldData) return [filteredOrder];
-          
-          const existingIndex = oldData.findIndex((o: any) => 
+
+          const existingIndex = oldData.findIndex((o: any) =>
             o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
           );
-          
+
           if (existingIndex >= 0) {
             // Update existing order - merge itemStatusByCounter to ensure all updates are reflected
             const updated = [...oldData];
@@ -606,10 +606,10 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           }
         });
       }
-      
+
       // Also invalidate to ensure we get the latest data from server
       // This ensures subsequent updates work correctly
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['/api/orders', canteenId, counterId, menuItems.length],
         refetchType: 'active' // Only refetch active queries
       });
@@ -633,7 +633,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       return apiRequest(`/api/orders/${orderId}/out-for-delivery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           counterId,
           deliveryPersonId,
           deliveryPersonEmail
@@ -647,12 +647,12 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         status: updatedOrder.status,
         deliveryPersonId: updatedOrder.deliveryPersonId
       });
-      
+
       const filteredOrder = filterOrderForCounter(updatedOrder, counterId);
       if (filteredOrder) {
         queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
           if (!oldData) return [filteredOrder];
-          const existingIndex = oldData.findIndex((o: any) => 
+          const existingIndex = oldData.findIndex((o: any) =>
             o.id === filteredOrder.id || o.orderNumber === filteredOrder.orderNumber
           );
           if (existingIndex >= 0) {
@@ -682,7 +682,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       // Don't invalidate immediately - let WebSocket updates handle it
       // Only invalidate if WebSocket is not connected to ensure we get updates
       if (!isConnected) {
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['/api/orders', canteenId, counterId, menuItems.length],
           refetchType: 'active'
         });
@@ -702,7 +702,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         console.log('🔍 menuItems is not an array:', menuItems);
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       console.log('🔍 Checking order for markable items:', {
         orderId: order.id,
@@ -711,12 +711,12 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         itemsLength: items?.length,
         menuItemsLength: menuItems.length
       });
-      
+
       // Use item.isMarkable directly (included in order items during creation)
       const hasMarkable = items.some((item: any) => {
         // Check isMarkable from item itself (added during order creation)
         const isMarkable = item.isMarkable === true;
-        
+
         console.log('🔍 Checking item:', {
           itemName: item.name,
           itemId: item.id,
@@ -724,10 +724,10 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           itemHasIsMarkable: 'isMarkable' in item,
           itemData: { isMarkable: item.isMarkable, storeCounterId: item.storeCounterId }
         });
-        
+
         return isMarkable;
       });
-      
+
       console.log('🔍 Order has markable items:', hasMarkable);
       return hasMarkable;
     } catch (error) {
@@ -744,19 +744,19 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         console.log('🔍 menuItems is not an array:', menuItems);
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-      
+
       // Get item status for this counter
       const counterItemStatus = order.itemStatusByCounter?.[counterId] || {};
-      
+
       // Filter items that belong to this counter AND are markable AND not yet ready
       // Use item.storeCounterId and item.isMarkable directly (included in order items during creation)
       const counterItems = items.filter((item: any) => {
         // Check if item belongs to this counter using item.storeCounterId
         const belongsToCounter = item.storeCounterId === counterId;
         if (!belongsToCounter) return false;
-        
+
         // Check if item is markable using item.isMarkable (added during order creation)
         const isMarkable = item.isMarkable === true;
         if (!isMarkable) {
@@ -766,22 +766,22 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           });
           return false;
         }
-        
+
         // Check if item is NOT already ready, out_for_delivery, or completed
         const itemStatus = counterItemStatus[item.id] || 'pending';
         const isNotReady = itemStatus !== 'ready' && itemStatus !== 'completed' && itemStatus !== 'out_for_delivery';
-        
+
         if (isNotReady) {
           console.log(`✅ Item ${item.name} (${item.id}) is markable and NOT ready - status: ${itemStatus}`);
         } else {
           console.log(`⏭️ Item ${item.name} (${item.id}) skipped - already ready/out_for_delivery/completed`);
         }
-        
+
         return isNotReady;
       });
-      
+
       const hasMarkable = counterItems.length > 0;
-      
+
       console.log('🔍 Counter has markable items (not ready):', {
         orderId: order.id,
         orderNumber: order.orderNumber,
@@ -794,7 +794,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           status: counterItemStatus[item.id] || 'pending'
         }))
       });
-      
+
       return hasMarkable;
     } catch (error) {
       console.error('Error checking counter markable items:', error);
@@ -808,13 +808,13 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       if (!Array.isArray(menuItems)) {
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-      
+
       // Check if any items belong to this counter
       // Use item.storeCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.storeCounterId === counterId);
-      
+
       return counterItems.length > 0;
     } catch (error) {
       console.error('Error checking counter items:', error);
@@ -827,13 +827,13 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     try {
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       const counterItemStatus = order.itemStatusByCounter?.[counterId] || {};
-      
+
       // Check if all items belonging to this counter are ready
       // Use item.storeCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.storeCounterId === counterId);
-      
+
       if (counterItems.length === 0) return false;
-      
+
       // For each item, check if it's ready
       return counterItems.every((item: any) => {
         // For auto-ready items (not markable), check order status
@@ -856,25 +856,25 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       if (!order.itemStatusByCounter || !order.itemStatusByCounter[counterId]) {
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       const counterItemStatus = order.itemStatusByCounter[counterId];
-      
+
       // Check if all ready items belonging to this counter are out for delivery
       // Use item.storeCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.storeCounterId === counterId);
-      
+
       // Only check items that are markable (need preparation) or were ready
       // Items that are not markable (auto-ready) don't need to be marked out for delivery
       const markableOrReadyItems = counterItems.filter((item: any) => {
         const itemStatus = counterItemStatus[item.id] as 'pending' | 'ready' | 'out_for_delivery' | 'completed' | undefined;
         return item.isMarkable === true || itemStatus === 'ready' || itemStatus === 'out_for_delivery';
       });
-      
+
       if (markableOrReadyItems.length === 0) {
         return false; // No items to check
       }
-      
+
       // All markable/ready items must be out_for_delivery
       return markableOrReadyItems.every((item: any) => {
         const itemStatus = counterItemStatus[item.id] as 'pending' | 'ready' | 'out_for_delivery' | 'completed' | undefined;
@@ -892,14 +892,14 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       if (!order.itemStatusByCounter || !order.itemStatusByCounter[counterId]) {
         return false;
       }
-      
+
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       const counterItemStatus = order.itemStatusByCounter[counterId];
-      
+
       // Check if all items belonging to this counter are completed
       // Use item.storeCounterId directly (no menu item lookup needed)
       const counterItems = items.filter((item: any) => item.storeCounterId === counterId);
-      
+
       return counterItems.every((item: any) => counterItemStatus[item.id] === 'completed');
     } catch (error) {
       console.error('Error checking counter items completed status:', error);
@@ -917,7 +917,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           return itemStatus;
         }
       }
-      
+
       // If item is not markable (auto-ready), check order status as fallback
       // Auto-ready items are considered ready if order is ready or preparing
       if (item.isMarkable !== true) {
@@ -926,7 +926,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         }
         return 'pending';
       }
-      
+
       // For markable items without itemStatusByCounter entry, return pending
       return 'pending';
     } catch (error) {
@@ -941,21 +941,21 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     try {
       const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
       const preparingKotCounters = new Map<string, string>(); // Map of KOT counter ID to name
-      
+
       // Check each item that belongs to this store counter
-      const storeCounterItems = items.filter((item: any) => 
+      const storeCounterItems = items.filter((item: any) =>
         item.storeCounterId === counterId && item.isMarkable === true && item.kotCounterId
       );
-      
+
       for (const item of storeCounterItems) {
         const kotCounterId = item.kotCounterId;
         if (!kotCounterId) continue;
-        
+
         // Check if this item is ready in the KOT counter
         // If itemStatusByCounter doesn't have the KOT counter entry, or item is not ready, it's still preparing
         const kotCounterStatus = order.itemStatusByCounter?.[kotCounterId];
         const itemStatusInKot = kotCounterStatus?.[item.id];
-        
+
         // If item is not ready in KOT counter, add KOT counter to preparing list
         if (itemStatusInKot !== 'ready' && itemStatusInKot !== 'completed' && itemStatusInKot !== 'out_for_delivery') {
           const kotCounter = counterMap.get(kotCounterId);
@@ -964,7 +964,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           }
         }
       }
-      
+
       // Return array of KOT counter info
       return Array.from(preparingKotCounters.entries()).map(([id, name]) => ({ id, name }));
     } catch (error) {
@@ -987,9 +987,9 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       // Also include orders where items are out for delivery at counter level
       const isActiveStatus = ['pending', 'preparing', 'ready', 'out_for_delivery'].includes(orderStatus);
       const hasItemsOutForDelivery = areCounterItemsOutForDelivery(order);
-      
+
       if (!isActiveStatus && !hasItemsOutForDelivery) return false;
-      
+
       // Check if this counter has already delivered their items
       const counterItemsCompleted = areCounterItemsCompleted(order);
       return !counterItemsCompleted;
@@ -1001,23 +1001,23 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     return orders.filter((order: Order) => {
       const isPending = order.status === 'pending';
       if (!isPending) return false;
-      
+
       // Check if THIS counter has markable items that are NOT ready
       // This is counter-specific - only check items belonging to this counter
       try {
         const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
         const itemStatusByCounter = order.itemStatusByCounter || {};
-        
+
         // Filter markable items that belong to THIS counter
         const counterMarkableItems = items.filter((item: any) => {
           return item.storeCounterId === counterId && item.isMarkable === true;
         });
-        
+
         // If this counter has no markable items, exclude from prep required
         if (counterMarkableItems.length === 0) {
           return false;
         }
-        
+
         // Check if all markable items for THIS counter are ready
         let allCounterMarkableItemsReady = true;
         for (const item of counterMarkableItems) {
@@ -1027,9 +1027,9 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
             break;
           }
         }
-        
+
         const counterItemsCompleted = areCounterItemsCompleted(order);
-        
+
         // Show in prep required if:
         // 1. Order is pending
         // 2. This counter has markable items that are NOT all ready
@@ -1042,15 +1042,39 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   }, [orders, counterId]);
 
   // Filter orders based on search
-  const filteredActiveOrders = activeOrders.filter((order: Order) => 
+  const filteredActiveOrders = activeOrders.filter((order: Order) =>
     order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredPrepOrders = prepRequiredOrders.filter((order: Order) => 
+  const filteredPrepOrders = prepRequiredOrders.filter((order: Order) =>
     order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Handle deep linking/highlighting of orders
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightOrderNumber = params.get('highlight');
+    if (highlightOrderNumber && orders.length > 0) {
+      // Small timeout to ensure DOM is rendered
+      setTimeout(() => {
+        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
+        if (element) {
+          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add visual highlight
+          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          }, 5000);
+        } else {
+          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
+        }
+      }, 500);
+    }
+  }, [orders, window.location.search]);
 
   // Consolidated pending items (not ready/out for delivery/completed) for this counter
   const consolidatedPendingItems = useMemo(() => {
@@ -1111,7 +1135,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   const getPrepBadge = (order: Order) => {
     // Check if there are still markable items that need prep for this counter
     const hasMarkableForCounter = hasMarkableItemsForCounter(order);
-    
+
     if (hasMarkableForCounter) {
       return <div className="bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50 text-xs font-semibold px-2 py-1 rounded-full shadow-sm">Prep Required</div>;
     } else {
@@ -1130,11 +1154,11 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   };
 
   const formatOrderTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
   };
 
@@ -1172,21 +1196,21 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   // Helper function to check if scanned barcode matches order (full barcode or first 4 digits)
   const matchesBarcode = (scannedBarcode: string, orderBarcode: string): boolean => {
     if (!orderBarcode) return false;
-    
+
     // Exact match
     if (scannedBarcode === orderBarcode) return true;
-    
+
     // Check if scanned is first 4 digits of order barcode
     if (scannedBarcode.length === 4 && orderBarcode.length >= 4) {
       const first4Digits = orderBarcode.slice(0, 4);
       return scannedBarcode === first4Digits;
     }
-    
+
     // Check if order barcode starts with scanned barcode (for partial matches)
     if (scannedBarcode.length < orderBarcode.length) {
       return orderBarcode.startsWith(scannedBarcode);
     }
-    
+
     return false;
   };
 
@@ -1194,13 +1218,13 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     try {
       console.log('🔍 Barcode scanned:', barcode, 'for order:', currentOrderForBarcode?.id);
       console.log('🔍 Order barcode:', currentOrderForBarcode?.barcode);
-      
+
       // Store the order data before closing the barcode modal
       const orderForVerification = currentOrderForBarcode;
-      
+
       // Close the barcode scan modal first
       setIsBarcodeModalOpen(false);
-      
+
       // Verify if the scanned barcode matches the order's barcode (full or first 4 digits)
       if (orderForVerification && matchesBarcode(barcode, orderForVerification.barcode)) {
         console.log('✅ Barcode/OTP matches! Showing order found modal');
@@ -1234,26 +1258,26 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         console.error('❌ No order selected for delivery');
         return;
       }
-      
+
       // Get order ID - try id, _id, or orderNumber
       const orderId = currentOrderForBarcode.id || currentOrderForBarcode._id || currentOrderForBarcode.orderNumber;
-      
+
       if (!orderId) {
         console.error('❌ Order ID not found in order object:', currentOrderForBarcode);
         return;
       }
-      
+
       setIsDelivering(true);
       console.log('📦 Marking order as delivered:', { orderId, orderNumber: currentOrderForBarcode.orderNumber });
-      
+
       // Call the deliver API endpoint
       await apiRequest(`/api/orders/${orderId}/deliver`, {
         method: 'POST',
         body: JSON.stringify({ counterId })
       });
-      
+
       console.log('✅ Order marked as delivered successfully');
-      
+
       // Update cache directly instead of invalidating
       queryClient.setQueryData(['/api/orders', canteenId, counterId, menuItems.length], (oldData: any) => {
         if (!oldData) return oldData;
@@ -1265,7 +1289,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
           return o;
         });
       });
-      
+
       handleCloseOrderFoundModal();
     } catch (error) {
       console.error('Error marking order as delivered:', error);
@@ -1311,16 +1335,14 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                     {canteenInfo?.canteen?.name || 'CANTEEN'} - Store Mode
                   </h1>
                   <div className="flex items-center space-x-1" title={
-                    isConnected 
-                      ? `WebSocket connected to counter room: ${counterId}` 
+                    isConnected
+                      ? `WebSocket connected to counter room: ${counterId}`
                       : 'WebSocket disconnected - orders will not update in real-time'
                   }>
-                    <div className={`w-2 h-2 rounded-full ${
-                      isConnected ? 'bg-success' : 'bg-destructive'
-                    }`}></div>
-                    <span className={`text-xs ${
-                      isConnected ? 'text-success' : 'text-destructive'
-                    }`}>
+                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-destructive'
+                      }`}></div>
+                    <span className={`text-xs ${isConnected ? 'text-success' : 'text-destructive'
+                      }`}>
                       {isConnected ? 'Live' : 'Offline'}
                     </span>
                   </div>
@@ -1406,7 +1428,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                 </Badge>
               </div>
             </div>
-            
+
             <div className="mb-3 md:mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -1423,9 +1445,9 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
               {filteredActiveOrders.map((order: Order) => {
                 const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
                 const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                
+
                 return (
-                  <Card key={order.id} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-success/5 dark:to-success/10 border border-border hover:border-success/50 dark:hover:border-success/50 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
+                  <Card key={order.id} id={`order-card-${order.orderNumber}`} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-success/5 dark:to-success/10 border border-border hover:border-success/50 dark:hover:border-success/50 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
                     <div className="absolute inset-0 bg-gradient-to-r from-success/5 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <CardContent className="relative p-4">
                       {/* Compact Header with Order ID and Status */}
@@ -1450,7 +1472,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                           {getPrepBadge(order)}
                         </div>
                       </div>
-                      
+
                       {/* KOT Preparation Indicator */}
                       {(() => {
                         const kotCountersPreparing = getKotCountersPreparing(order);
@@ -1468,7 +1490,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                         }
                         return null;
                       })()}
-                      
+
                       {/* Compact Customer and Items Section */}
                       <div className="mb-3 space-y-1">
                         <div className="flex items-center space-x-2">
@@ -1485,14 +1507,12 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                               return (
                                 <div key={index} className="flex items-center justify-between gap-3 py-0.5">
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                      isCompleted ? 'bg-success' :
+                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-success' :
                                       isReady ? 'bg-success' : 'bg-warning'
-                                    }`}></div>
-                                    <span className={`font-medium truncate ${
-                                      isCompleted ? 'text-success' :
+                                      }`}></div>
+                                    <span className={`font-medium truncate ${isCompleted ? 'text-success' :
                                       isReady ? 'text-success' : 'text-foreground'
-                                    }`}>
+                                      }`}>
                                       {item.quantity}x {item.name}
                                     </span>
                                     {isCompleted && (
@@ -1513,7 +1533,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Compact Bottom Section with Action Button */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
@@ -1525,7 +1545,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                             <span>{formatOrderTime(order.createdAt)}</span>
                           </div>
                         </div>
-                        
+
                         {/* Small Action Button in Bottom Right */}
                         {(() => {
                           const counterItemsCompleted = areCounterItemsCompleted(order);
@@ -1534,7 +1554,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                           const counterItemsReady = areCounterItemsReady(order);
                           const itemsInKotPreparation = hasItemsInKotPreparation(order);
                           const kotCountersPreparing = getKotCountersPreparing(order);
-                          
+
                           console.log('🔍 Button logic check:', {
                             orderNumber: order.orderNumber,
                             counterId,
@@ -1546,7 +1566,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                             itemsInKotPreparation,
                             kotCountersPreparing: kotCountersPreparing.map(k => k.name)
                           });
-                          
+
                           if (counterItemsCompleted) {
                             // Items for this counter are completed - Show completed indicator
                             return (
@@ -1600,7 +1620,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                             const isDeliveryOrder = orderAny.orderType === 'delivery';
                             const isOutForDelivery = areCounterItemsOutForDelivery(order);
                             const hasDeliveryPerson = !!orderAny.deliveryPersonId;
-                            
+
                             // If delivery person is already assigned, don't show "Out for Delivery" button
                             // The delivery person will handle the delivery
                             if (hasDeliveryPerson) {
@@ -1615,7 +1635,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                               }
                               return null;
                             }
-                            
+
                             if (isDeliveryOrder && !isOutForDelivery) {
                               // Delivery order that's ready but not yet out for delivery - Show "Out for Delivery" button
                               return (
@@ -1655,7 +1675,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                                 // Delivery person assigned - don't show Scan Barcode button
                                 return null;
                               }
-                              
+
                               return (
                                 <Button
                                   variant="cart"
@@ -1676,7 +1696,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                             const isDeliveryOrder = orderAny.orderType === 'delivery';
                             const isOutForDelivery = areCounterItemsOutForDelivery(order);
                             const hasDeliveryPerson = !!orderAny.deliveryPersonId;
-                            
+
                             // If delivery person is already assigned, don't show "Out for Delivery" button
                             // The delivery person will handle the delivery
                             if (hasDeliveryPerson) {
@@ -1691,7 +1711,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                               }
                               return null;
                             }
-                            
+
                             if (isDeliveryOrder && !isOutForDelivery) {
                               // Delivery order ready but not out for delivery - Show "Out for Delivery" button
                               return (
@@ -1729,12 +1749,12 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                               // BUT hide it if delivery person is assigned (delivery person will handle delivery)
                               const orderAny = order as any;
                               const hasDeliveryPerson = !!orderAny.deliveryPersonId;
-                              
+
                               if (hasDeliveryPerson) {
                                 // Delivery person assigned - don't show Scan Barcode button
                                 return null;
                               }
-                              
+
                               return (
                                 <Button
                                   variant="cart"
@@ -1762,360 +1782,358 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
 
           {/* Prep Required Orders Panel */}
           {(!isMobile || showPrepSection) && (
-          <div className="h-full bg-muted/50 p-4 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-warning" />
-                <h2 className="text-lg font-semibold">▲ Prep Required Orders</h2>
-                <div className="w-2 h-2 bg-warning rounded-full"></div>
+            <div className="h-full bg-muted/50 p-4 flex flex-col min-h-0">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                  <h2 className="text-lg font-semibold">▲ Prep Required Orders</h2>
+                  <div className="w-2 h-2 bg-warning rounded-full"></div>
+                </div>
               </div>
-            </div>
-            
-            <p className="text-sm text-muted-foreground mb-4">
-              Orders requiring manual preparation (unseen orders prioritized)
-            </p>
 
-            <div className="space-y-3 flex-1 overflow-y-auto counter-scrollbar pr-2 min-h-0">
-              {filteredPrepOrders.map((order: Order) => {
-                const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-                const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
-                
-                return (
-                  <Card key={order.id} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-warning/5 dark:to-warning/10 border border-border hover:border-warning/50 dark:hover:border-warning/50 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
-                    <div className="absolute inset-0 bg-gradient-to-r from-warning/5 to-destructive/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <CardContent className="relative p-4">
-                      {/* Compact Header with Order ID and Status */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <div className="flex items-center bg-card rounded-lg px-2 py-1.5 shadow-sm border border-border">
-                            <span className="text-sm font-semibold text-foreground">
-                              #{formatted.prefix}
-                            </span>
-                            <div className="ml-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-md shadow-sm">
-                              {formatted.highlighted}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          {getStatusBadge(order)}
-                          {order.estimatedTime && (
-                            <div className="bg-muted text-muted-foreground border border-border text-xs font-medium px-2 py-1 rounded-full shadow-sm">
-                              {order.estimatedTime}m
-                            </div>
-                          )}
-                          {getPrepBadge(order)}
-                          {getPriorityBadge(order)}
-                        </div>
-                      </div>
-                      
-                      {/* KOT Preparation Indicator */}
-                      {(() => {
-                        const kotCountersPreparing = getKotCountersPreparing(order);
-                        if (kotCountersPreparing.length > 0) {
-                          return (
-                            <div className="mb-3 p-2 bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 rounded-lg">
-                              <div className="flex items-center space-x-2">
-                                <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                                <span className="text-sm font-medium text-primary">
-                                  Preparing in KOT Counter: {kotCountersPreparing.map(k => k.name).join(', ')}
-                                </span>
+              <p className="text-sm text-muted-foreground mb-4">
+                Orders requiring manual preparation (unseen orders prioritized)
+              </p>
+
+              <div className="space-y-3 flex-1 overflow-y-auto counter-scrollbar pr-2 min-h-0">
+                {filteredPrepOrders.map((order: Order) => {
+                  const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
+                  const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+
+                  return (
+                    <Card key={order.id} id={`order-card-${order.orderNumber}`} onClick={() => handleOrderClick(order)} className="group relative overflow-hidden bg-gradient-to-br from-card to-warning/5 dark:to-warning/10 border border-border hover:border-warning/50 dark:hover:border-warning/50 hover:shadow-xl transition-all duration-300 cursor-pointer mb-3 rounded-xl">
+                      <div className="absolute inset-0 bg-gradient-to-r from-warning/5 to-destructive/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <CardContent className="relative p-4">
+                        {/* Compact Header with Order ID and Status */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <div className="flex items-center bg-card rounded-lg px-2 py-1.5 shadow-sm border border-border">
+                              <span className="text-sm font-semibold text-foreground">
+                                #{formatted.prefix}
+                              </span>
+                              <div className="ml-2 bg-destructive text-destructive-foreground text-xs font-bold px-2 py-1 rounded-md shadow-sm">
+                                {formatted.highlighted}
                               </div>
                             </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                      
-                      {/* Compact Customer and Items Section */}
-                      <div className="mb-3 space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-1.5 h-1.5 bg-warning rounded-full"></div>
-                          <span className="text-sm font-medium text-foreground">Customer: {order.customerName}</span>
-                        </div>
-                        <div className="bg-card rounded-lg px-3 py-2 border border-border max-h-48">
-                          <div className="text-sm text-muted-foreground space-y-0.5">
-                            {items.map((item: any, index: number) => {
-                              const itemStatus = getItemStatus(order, item.id, item);
-                              const isReady = itemStatus === 'ready' || itemStatus === 'out_for_delivery';
-                              const isCompleted = itemStatus === 'completed';
-                              const isOutForDelivery = itemStatus === 'out_for_delivery';
-                              return (
-                                <div key={index} className="flex items-center justify-between gap-3 py-0.5">
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                                      isCompleted ? 'bg-success' :
-                                      isReady ? 'bg-success' : 'bg-warning'
-                                    }`}></div>
-                                    <span className={`font-medium truncate ${
-                                      isCompleted ? 'text-success' :
-                                      isReady ? 'text-success' : 'text-foreground'
-                                    }`}>
-                                      {item.quantity}x {item.name}
-                                    </span>
-                                    {isCompleted && (
-                                      <div className="bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50 text-xs px-1.5 py-0.5 rounded-full font-semibold shadow-sm flex-shrink-0">
-                                        Delivered
-                                      </div>
-                                    )}
-                                    {isReady && !isCompleted && (
-                                      <div className="bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50 text-xs px-1.5 py-0.5 rounded-full font-semibold shadow-sm flex-shrink-0">
-                                        Ready
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span className="text-xs text-muted-foreground font-medium flex-shrink-0">₹{item.price}</span>
-                                </div>
-                              );
-                            })}
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            {getStatusBadge(order)}
+                            {order.estimatedTime && (
+                              <div className="bg-muted text-muted-foreground border border-border text-xs font-medium px-2 py-1 rounded-full shadow-sm">
+                                {order.estimatedTime}m
+                              </div>
+                            )}
+                            {getPrepBadge(order)}
+                            {getPriorityBadge(order)}
                           </div>
                         </div>
-                      </div>
-                      
-                      {/* Compact Bottom Section with Action Button */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="text-xl font-bold text-warning">
-                            ₹{order.amount}
-                          </div>
-                          <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{formatOrderTime(order.createdAt)}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Small Action Button in Bottom Right */}
+
+                        {/* KOT Preparation Indicator */}
                         {(() => {
-                          const counterItemsCompleted = areCounterItemsCompleted(order);
-                          const hasMarkableForCounter = hasMarkableItemsForCounter(order);
-                          const hasItemsForCounter = hasCounterItems(order);
-                          const counterItemsReady = areCounterItemsReady(order);
-                          const itemsInKotPreparation = hasItemsInKotPreparation(order);
                           const kotCountersPreparing = getKotCountersPreparing(order);
-                          
-                          console.log('🔍 Button logic check:', {
-                            orderNumber: order.orderNumber,
-                            counterId,
-                            counterItemsCompleted,
-                            hasMarkableForCounter,
-                            hasItemsForCounter,
-                            counterItemsReady,
-                            orderStatus: order.status,
-                            itemsInKotPreparation,
-                            kotCountersPreparing: kotCountersPreparing.map(k => k.name)
-                          });
-                          
-                          if (counterItemsCompleted) {
-                            // Items for this counter are completed - Show completed indicator
+                          if (kotCountersPreparing.length > 0) {
                             return (
-                              <div className="flex items-center space-x-1 text-success text-sm font-medium">
-                                <CheckCircle className="h-4 w-4" />
-                                <span>Delivered</span>
+                              <div className="mb-3 p-2 bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 rounded-lg">
+                                <div className="flex items-center space-x-2">
+                                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                                  <span className="text-sm font-medium text-primary">
+                                    Preparing in KOT Counter: {kotCountersPreparing.map(k => k.name).join(', ')}
+                                  </span>
+                                </div>
                               </div>
                             );
-                          } else if (itemsInKotPreparation) {
-                            // Items are still being prepared in KOT counters - Hide buttons
-                            // The indicator is shown above, so just return null for buttons
-                            return null;
-                          } else if (hasMarkableForCounter) {
-                            // FIXED: If there are markable items for this counter that are NOT ready, show Mark Ready button
-                            // This takes priority over other checks - markable items must be marked ready first
-                            return (
-                              <Button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Get order ID - try id, _id, or orderNumber
-                                  const orderAny = order as any;
-                                  const orderId = order.id || orderAny._id || order.orderNumber;
-                                  if (!orderId) {
-                                    console.error('❌ Order ID not found in order object:', order);
-                                    return;
-                                  }
-                                  markReadyMutation.mutate(orderId);
-                                }}
-                                disabled={markReadyMutation.isPending}
-                                size="sm"
-                                className="bg-warning hover:bg-warning/90 text-warning-foreground text-xs px-3 py-1.5 rounded-md shadow-lg hover:shadow-xl ring-2 ring-warning/20 hover:ring-warning/40 border border-warning/30 dark:border-warning/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                              >
-                                {markReadyMutation.isPending ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                    Updating...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle className="h-3 w-3 mr-1" />
-                                    Mark Ready
-                                  </>
-                                )}
-                              </Button>
-                            );
-                          } else if (counterItemsReady || (!hasMarkableForCounter && hasItemsForCounter)) {
-                            // Items for this counter are ready OR items are not markable (auto-ready)
-                            // For delivery orders, check if items are "out_for_delivery" at counter level - if not, show "Out for Delivery" button
-                            // If items are "out_for_delivery" or it's a takeaway order, show "Scan Barcode"
-                            const orderAny = order as any;
-                            const isDeliveryOrder = orderAny.orderType === 'delivery';
-                            const isOutForDelivery = areCounterItemsOutForDelivery(order);
-                            const hasDeliveryPerson = !!orderAny.deliveryPersonId;
-                            
-                            // If delivery person is already assigned, don't show "Out for Delivery" button
-                            // The delivery person will handle the delivery
-                            if (hasDeliveryPerson) {
-                              // Delivery person assigned - show status or nothing
-                              if (isOutForDelivery) {
-                                return (
-                                  <div className="flex items-center space-x-1 text-primary text-sm font-medium">
-                                    <Truck className="h-4 w-4" />
-                                    <span>Out for Delivery</span>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }
-                            
-                            if (isDeliveryOrder && !isOutForDelivery) {
-                              // Delivery order that's ready but not yet out for delivery - Show "Out for Delivery" button
-                              return (
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const orderAny = order as any;
-                                    const orderId = order.id || orderAny._id || order.orderNumber;
-                                    if (!orderId) {
-                                      console.error('❌ Order ID not found in order object:', order);
-                                      return;
-                                    }
-                                    setCurrentOrderForDelivery(order);
-                                    setIsDeliveryPersonModalOpen(true);
-                                  }}
-                                  disabled={markOutForDeliveryMutation.isPending}
-                                  size="sm"
-                                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm px-4 py-2 rounded-md shadow-lg hover:shadow-xl ring-2 ring-primary/20 hover:ring-primary/40 border border-primary/30 dark:border-primary/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                                >
-                                  {markOutForDeliveryMutation.isPending ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Updating...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Truck className="h-4 w-4 mr-2" />
-                                      Out for Delivery
-                                    </>
-                                  )}
-                                </Button>
-                              );
-                            } else {
-                              // Takeaway order OR delivery order already out for delivery - Show Scan Barcode button
-                              // BUT hide it if delivery person is assigned (delivery person will handle delivery)
-                              if (hasDeliveryPerson) {
-                                // Delivery person assigned - don't show Scan Barcode button
-                                return null;
-                              }
-                              
-                              return (
-                                <Button
-                                  variant="cart"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBarcodeScan(order);
-                                  }}
-                                  size="sm"
-                                >
-                                  <QrCode className="h-4 w-4 mr-2" />
-                                  Scan Barcode
-                                </Button>
-                              );
-                            }
-                          } else if (order.status === 'ready' || order.status === 'out_for_delivery' || areCounterItemsReady(order)) {
-                            // Order is ready - Show appropriate button based on order type
-                            const orderAny = order as any;
-                            const isDeliveryOrder = orderAny.orderType === 'delivery';
-                            const isOutForDelivery = areCounterItemsOutForDelivery(order);
-                            const hasDeliveryPerson = !!orderAny.deliveryPersonId;
-                            
-                            // If delivery person is already assigned, don't show "Out for Delivery" button
-                            // The delivery person will handle the delivery
-                            if (hasDeliveryPerson) {
-                              // Delivery person assigned - show status or nothing
-                              if (isOutForDelivery) {
-                                return (
-                                  <div className="flex items-center space-x-1 text-primary text-sm font-medium">
-                                    <Truck className="h-4 w-4" />
-                                    <span>Out for Delivery</span>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }
-                            
-                            if (isDeliveryOrder && !isOutForDelivery) {
-                              // Delivery order ready but not out for delivery - Show "Out for Delivery" button
-                              return (
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const orderAny = order as any;
-                                    const orderId = order.id || orderAny._id || order.orderNumber;
-                                    if (!orderId) {
-                                      console.error('❌ Order ID not found in order object:', order);
-                                      return;
-                                    }
-                                    setCurrentOrderForDelivery(order);
-                                    setIsDeliveryPersonModalOpen(true);
-                                  }}
-                                  disabled={markOutForDeliveryMutation.isPending}
-                                  size="sm"
-                                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm px-4 py-2 rounded-md shadow-lg hover:shadow-xl ring-2 ring-primary/20 hover:ring-primary/40 border border-primary/30 dark:border-primary/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                                >
-                                  {markOutForDeliveryMutation.isPending ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                      Updating...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Truck className="h-4 w-4 mr-2" />
-                                      Out for Delivery
-                                    </>
-                                  )}
-                                </Button>
-                              );
-                            } else {
-                              // Takeaway or delivery already out - Show Scan Barcode button
-                              // BUT hide it if delivery person is assigned (delivery person will handle delivery)
-                              const orderAny = order as any;
-                              const hasDeliveryPerson = !!orderAny.deliveryPersonId;
-                              
-                              if (hasDeliveryPerson) {
-                                // Delivery person assigned - don't show Scan Barcode button
-                                return null;
-                              }
-                              
-                              return (
-                                <Button
-                                  variant="cart"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBarcodeScan(order);
-                                  }}
-                                  size="sm"
-                                >
-                                  <QrCode className="h-4 w-4 mr-2" />
-                                  Scan Barcode
-                                </Button>
-                              );
-                            }
                           }
                           return null;
                         })()}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+
+                        {/* Compact Customer and Items Section */}
+                        <div className="mb-3 space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-1.5 h-1.5 bg-warning rounded-full"></div>
+                            <span className="text-sm font-medium text-foreground">Customer: {order.customerName}</span>
+                          </div>
+                          <div className="bg-card rounded-lg px-3 py-2 border border-border max-h-48">
+                            <div className="text-sm text-muted-foreground space-y-0.5">
+                              {items.map((item: any, index: number) => {
+                                const itemStatus = getItemStatus(order, item.id, item);
+                                const isReady = itemStatus === 'ready' || itemStatus === 'out_for_delivery';
+                                const isCompleted = itemStatus === 'completed';
+                                const isOutForDelivery = itemStatus === 'out_for_delivery';
+                                return (
+                                  <div key={index} className="flex items-center justify-between gap-3 py-0.5">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-success' :
+                                        isReady ? 'bg-success' : 'bg-warning'
+                                        }`}></div>
+                                      <span className={`font-medium truncate ${isCompleted ? 'text-success' :
+                                        isReady ? 'text-success' : 'text-foreground'
+                                        }`}>
+                                        {item.quantity}x {item.name}
+                                      </span>
+                                      {isCompleted && (
+                                        <div className="bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50 text-xs px-1.5 py-0.5 rounded-full font-semibold shadow-sm flex-shrink-0">
+                                          Delivered
+                                        </div>
+                                      )}
+                                      {isReady && !isCompleted && (
+                                        <div className="bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50 text-xs px-1.5 py-0.5 rounded-full font-semibold shadow-sm flex-shrink-0">
+                                          Ready
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-xs text-muted-foreground font-medium flex-shrink-0">₹{item.price}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Compact Bottom Section with Action Button */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="text-xl font-bold text-warning">
+                              ₹{order.amount}
+                            </div>
+                            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span>{formatOrderTime(order.createdAt)}</span>
+                            </div>
+                          </div>
+
+                          {/* Small Action Button in Bottom Right */}
+                          {(() => {
+                            const counterItemsCompleted = areCounterItemsCompleted(order);
+                            const hasMarkableForCounter = hasMarkableItemsForCounter(order);
+                            const hasItemsForCounter = hasCounterItems(order);
+                            const counterItemsReady = areCounterItemsReady(order);
+                            const itemsInKotPreparation = hasItemsInKotPreparation(order);
+                            const kotCountersPreparing = getKotCountersPreparing(order);
+
+                            console.log('🔍 Button logic check:', {
+                              orderNumber: order.orderNumber,
+                              counterId,
+                              counterItemsCompleted,
+                              hasMarkableForCounter,
+                              hasItemsForCounter,
+                              counterItemsReady,
+                              orderStatus: order.status,
+                              itemsInKotPreparation,
+                              kotCountersPreparing: kotCountersPreparing.map(k => k.name)
+                            });
+
+                            if (counterItemsCompleted) {
+                              // Items for this counter are completed - Show completed indicator
+                              return (
+                                <div className="flex items-center space-x-1 text-success text-sm font-medium">
+                                  <CheckCircle className="h-4 w-4" />
+                                  <span>Delivered</span>
+                                </div>
+                              );
+                            } else if (itemsInKotPreparation) {
+                              // Items are still being prepared in KOT counters - Hide buttons
+                              // The indicator is shown above, so just return null for buttons
+                              return null;
+                            } else if (hasMarkableForCounter) {
+                              // FIXED: If there are markable items for this counter that are NOT ready, show Mark Ready button
+                              // This takes priority over other checks - markable items must be marked ready first
+                              return (
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Get order ID - try id, _id, or orderNumber
+                                    const orderAny = order as any;
+                                    const orderId = order.id || orderAny._id || order.orderNumber;
+                                    if (!orderId) {
+                                      console.error('❌ Order ID not found in order object:', order);
+                                      return;
+                                    }
+                                    markReadyMutation.mutate(orderId);
+                                  }}
+                                  disabled={markReadyMutation.isPending}
+                                  size="sm"
+                                  className="bg-warning hover:bg-warning/90 text-warning-foreground text-xs px-3 py-1.5 rounded-md shadow-lg hover:shadow-xl ring-2 ring-warning/20 hover:ring-warning/40 border border-warning/30 dark:border-warning/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                >
+                                  {markReadyMutation.isPending ? (
+                                    <>
+                                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                      Updating...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      Mark Ready
+                                    </>
+                                  )}
+                                </Button>
+                              );
+                            } else if (counterItemsReady || (!hasMarkableForCounter && hasItemsForCounter)) {
+                              // Items for this counter are ready OR items are not markable (auto-ready)
+                              // For delivery orders, check if items are "out_for_delivery" at counter level - if not, show "Out for Delivery" button
+                              // If items are "out_for_delivery" or it's a takeaway order, show "Scan Barcode"
+                              const orderAny = order as any;
+                              const isDeliveryOrder = orderAny.orderType === 'delivery';
+                              const isOutForDelivery = areCounterItemsOutForDelivery(order);
+                              const hasDeliveryPerson = !!orderAny.deliveryPersonId;
+
+                              // If delivery person is already assigned, don't show "Out for Delivery" button
+                              // The delivery person will handle the delivery
+                              if (hasDeliveryPerson) {
+                                // Delivery person assigned - show status or nothing
+                                if (isOutForDelivery) {
+                                  return (
+                                    <div className="flex items-center space-x-1 text-primary text-sm font-medium">
+                                      <Truck className="h-4 w-4" />
+                                      <span>Out for Delivery</span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }
+
+                              if (isDeliveryOrder && !isOutForDelivery) {
+                                // Delivery order that's ready but not yet out for delivery - Show "Out for Delivery" button
+                                return (
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const orderAny = order as any;
+                                      const orderId = order.id || orderAny._id || order.orderNumber;
+                                      if (!orderId) {
+                                        console.error('❌ Order ID not found in order object:', order);
+                                        return;
+                                      }
+                                      setCurrentOrderForDelivery(order);
+                                      setIsDeliveryPersonModalOpen(true);
+                                    }}
+                                    disabled={markOutForDeliveryMutation.isPending}
+                                    size="sm"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm px-4 py-2 rounded-md shadow-lg hover:shadow-xl ring-2 ring-primary/20 hover:ring-primary/40 border border-primary/30 dark:border-primary/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                  >
+                                    {markOutForDeliveryMutation.isPending ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Truck className="h-4 w-4 mr-2" />
+                                        Out for Delivery
+                                      </>
+                                    )}
+                                  </Button>
+                                );
+                              } else {
+                                // Takeaway order OR delivery order already out for delivery - Show Scan Barcode button
+                                // BUT hide it if delivery person is assigned (delivery person will handle delivery)
+                                if (hasDeliveryPerson) {
+                                  // Delivery person assigned - don't show Scan Barcode button
+                                  return null;
+                                }
+
+                                return (
+                                  <Button
+                                    variant="cart"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBarcodeScan(order);
+                                    }}
+                                    size="sm"
+                                  >
+                                    <QrCode className="h-4 w-4 mr-2" />
+                                    Scan Barcode
+                                  </Button>
+                                );
+                              }
+                            } else if (order.status === 'ready' || order.status === 'out_for_delivery' || areCounterItemsReady(order)) {
+                              // Order is ready - Show appropriate button based on order type
+                              const orderAny = order as any;
+                              const isDeliveryOrder = orderAny.orderType === 'delivery';
+                              const isOutForDelivery = areCounterItemsOutForDelivery(order);
+                              const hasDeliveryPerson = !!orderAny.deliveryPersonId;
+
+                              // If delivery person is already assigned, don't show "Out for Delivery" button
+                              // The delivery person will handle the delivery
+                              if (hasDeliveryPerson) {
+                                // Delivery person assigned - show status or nothing
+                                if (isOutForDelivery) {
+                                  return (
+                                    <div className="flex items-center space-x-1 text-primary text-sm font-medium">
+                                      <Truck className="h-4 w-4" />
+                                      <span>Out for Delivery</span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }
+
+                              if (isDeliveryOrder && !isOutForDelivery) {
+                                // Delivery order ready but not out for delivery - Show "Out for Delivery" button
+                                return (
+                                  <Button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const orderAny = order as any;
+                                      const orderId = order.id || orderAny._id || order.orderNumber;
+                                      if (!orderId) {
+                                        console.error('❌ Order ID not found in order object:', order);
+                                        return;
+                                      }
+                                      setCurrentOrderForDelivery(order);
+                                      setIsDeliveryPersonModalOpen(true);
+                                    }}
+                                    disabled={markOutForDeliveryMutation.isPending}
+                                    size="sm"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm px-4 py-2 rounded-md shadow-lg hover:shadow-xl ring-2 ring-primary/20 hover:ring-primary/40 border border-primary/30 dark:border-primary/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                                  >
+                                    {markOutForDeliveryMutation.isPending ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Truck className="h-4 w-4 mr-2" />
+                                        Out for Delivery
+                                      </>
+                                    )}
+                                  </Button>
+                                );
+                              } else {
+                                // Takeaway or delivery already out - Show Scan Barcode button
+                                // BUT hide it if delivery person is assigned (delivery person will handle delivery)
+                                const orderAny = order as any;
+                                const hasDeliveryPerson = !!orderAny.deliveryPersonId;
+
+                                if (hasDeliveryPerson) {
+                                  // Delivery person assigned - don't show Scan Barcode button
+                                  return null;
+                                }
+
+                                return (
+                                  <Button
+                                    variant="cart"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBarcodeScan(order);
+                                    }}
+                                    size="sm"
+                                  >
+                                    <QrCode className="h-4 w-4 mr-2" />
+                                    Scan Barcode
+                                  </Button>
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
-          </div>
           )}
         </div>
       </div>

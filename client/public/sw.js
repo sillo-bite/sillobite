@@ -1,5 +1,5 @@
-// Service Worker for Sillobyte Canteen PWA
-const CACHE_NAME = 'sillobyte-canteen-v4'; // Incremented to force cache clear for PWA splash fix
+// Service Worker for SilloBite Canteen PWA
+const CACHE_NAME = 'sillobite-canteen-v4'; // Incremented to force cache clear for PWA splash fix
 const CACHE_VERSION = 'cache-v' + Date.now(); // Dynamic cache version
 const APP_VERSION = '2.2.0'; // App version updated for PWA splash screen fix
 const STATIC_CACHE_URLS = [
@@ -12,11 +12,11 @@ const STATIC_CACHE_URLS = [
 // Install event - cache static resources
 self.addEventListener('install', event => {
   console.log('Service Worker: Installing');
-  
+
   // Force immediate update for icon changes
   console.log('🔧 Force updating service worker for icon changes');
   self.skipWaiting();
-  
+
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -58,7 +58,7 @@ self.addEventListener('message', event => {
     console.log('Service Worker: Skipping waiting...');
     self.skipWaiting();
   }
-  
+
   if (event.data && event.data.type === 'GET_VERSION') {
     // Send version info back to client
     event.ports[0].postMessage({
@@ -77,12 +77,12 @@ self.addEventListener('fetch', event => {
   if (!event.request.url.startsWith(self.location.origin)) return;
 
   const url = new URL(event.request.url);
-  
+
   // CRITICAL: Use Network First for HTML documents to ensure latest version is always loaded
-  if (event.request.destination === 'document' || 
-      url.pathname === '/' || 
-      url.pathname.endsWith('.html') ||
-      url.pathname === '/index.html') {
+  if (event.request.destination === 'document' ||
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname === '/index.html') {
     event.respondWith(
       fetch(event.request)
         .then(fetchResponse => {
@@ -100,7 +100,7 @@ self.addEventListener('fetch', event => {
           // Fallback to cache only if network fails (offline)
           return caches.match(event.request)
             .then(response => response || caches.match('/'))
-            .then(response => response || new Response('Offline - Please check your connection', { 
+            .then(response => response || new Response('Offline - Please check your connection', {
               status: 503,
               headers: { 'Content-Type': 'text/html' }
             }));
@@ -108,7 +108,7 @@ self.addEventListener('fetch', event => {
     );
     return;
   }
-  
+
   // Use Network First strategy for JS/CSS assets to ensure updates are loaded
   if (url.pathname.includes('/assets/') && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) {
     event.respondWith(
@@ -174,6 +174,7 @@ self.addEventListener('sync', event => {
 // Handle push notifications
 self.addEventListener('push', event => {
   console.log('Service Worker: Push notification received', event);
+  console.log('Service Worker: Push Event Data:', event.data ? event.data.text() : 'No Data');
 
   let notificationData = {
     title: 'Canteen App',
@@ -252,7 +253,9 @@ self.addEventListener('push', event => {
   event.waitUntil(
     Promise.all([
       // Show browser notification with enhanced Android options
-      self.registration.showNotification(notificationData.title, androidNotificationOptions),
+      self.registration.showNotification(notificationData.title, androidNotificationOptions)
+        .then(() => console.log('✅ Service Worker: Notification shown successfully'))
+        .catch(err => console.error('❌ Service Worker: Failed to show notification', err)),
       // Send to all clients for in-app notification panel
       self.clients.matchAll().then(clients => {
         clients.forEach(client => {

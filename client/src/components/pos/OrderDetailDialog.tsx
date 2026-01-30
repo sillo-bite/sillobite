@@ -1,5 +1,5 @@
 import { Printer, User, Calendar, DollarSign, ShoppingCart, CreditCard } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { OwnerButton, OwnerBadge } from "@/components/owner";
 import { formatCurrency, formatDate } from "@/utils/posCalculations";
 
@@ -21,12 +21,12 @@ export function OrderDetailDialog({
   if (!transaction) return null;
 
   const items = JSON.parse(transaction.items || '[]');
-  
+
   // Parse chargesApplied if it exists
   let charges: any[] = [];
   if (transaction.chargesApplied) {
-    charges = typeof transaction.chargesApplied === 'string' 
-      ? JSON.parse(transaction.chargesApplied) 
+    charges = typeof transaction.chargesApplied === 'string'
+      ? JSON.parse(transaction.chargesApplied)
       : transaction.chargesApplied;
   }
 
@@ -34,17 +34,17 @@ export function OrderDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <div>
-              <span className="text-lg font-semibold">Order Details</span>
-              <p className="text-sm font-normal text-muted-foreground mt-1">#{transaction.orderNumber}</p>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1 text-left">
+              <DialogTitle>Order Details</DialogTitle>
+              <DialogDescription>#{transaction.orderNumber}</DialogDescription>
             </div>
             <OwnerBadge variant="success" className="text-xs">
               {transaction.status}
             </OwnerBadge>
-          </DialogTitle>
+          </div>
         </DialogHeader>
-        
+
         <div className="space-y-6 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
@@ -54,7 +54,7 @@ export function OrderDetailDialog({
                 <p className="font-medium">{transaction.customerName}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
               <Calendar className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
@@ -62,7 +62,7 @@ export function OrderDetailDialog({
                 <p className="font-medium">{formatDate(transaction.createdAt)}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
               <CreditCard className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
@@ -70,7 +70,7 @@ export function OrderDetailDialog({
                 <p className="font-medium capitalize">{transaction.paymentMethod}</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
               <ShoppingCart className="w-5 h-5 text-muted-foreground mt-0.5" />
               <div>
@@ -90,8 +90,8 @@ export function OrderDetailDialog({
                 <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                   <div className="flex items-center gap-3 flex-1">
                     {item.imageUrl && (
-                      <img 
-                        src={item.imageUrl} 
+                      <img
+                        src={item.imageUrl}
                         alt={item.name}
                         className="w-12 h-12 object-cover rounded"
                       />
@@ -116,21 +116,21 @@ export function OrderDetailDialog({
               <span className="text-muted-foreground">Subtotal</span>
               <span className="font-medium">{formatCurrency(transaction.itemsSubtotal || transaction.amount)}</span>
             </div>
-            
+
             {transaction.discountAmount > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Discount</span>
                 <span className="font-medium text-success">-{formatCurrency(transaction.discountAmount)}</span>
               </div>
             )}
-            
+
             {transaction.taxAmount > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Tax</span>
                 <span className="font-medium">{formatCurrency(transaction.taxAmount)}</span>
               </div>
             )}
-            
+
             {charges.length > 0 && (
               <>
                 {charges.map((charge: any, idx: number) => (
@@ -143,7 +143,7 @@ export function OrderDetailDialog({
                 ))}
               </>
             )}
-            
+
             <div className="flex items-center justify-between font-bold text-lg pt-3 border-t border-border">
               <span className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
@@ -155,15 +155,15 @@ export function OrderDetailDialog({
         </div>
 
         <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
-          <OwnerButton 
-            variant="secondary" 
-            onClick={() => onOpenChange(false)} 
+          <OwnerButton
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
             className="flex-1 sm:flex-none"
           >
             Close
           </OwnerButton>
-          <OwnerButton 
-            variant="primary" 
+          <OwnerButton
+            variant="primary"
             onClick={() => onPrint(transaction)}
             disabled={isPrinting}
             icon={<Printer className="w-4 h-4" />}
