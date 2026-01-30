@@ -1,4 +1,4 @@
-// Google Analytics and Search Console Integration for Sillobyte
+// Google Analytics and Search Console Integration for SilloBite
 
 // Google Analytics 4 Configuration
 export const GA_TRACKING_ID = 'G-XXXXXXXXXX'; // Replace with your actual GA4 tracking ID
@@ -140,11 +140,11 @@ export const trackUserDemographics = (college?: string, department?: string) => 
 export const submitSitemapToSearchConsole = () => {
   // This would typically be done through Google Search Console web interface
   // But we can provide the sitemap URL for manual submission
-  const sitemapUrl = 'https://sillobyte.onrender.com/sitemap.xml';
+  const sitemapUrl = 'https://sillobite.onrender.com/sitemap.xml';
   console.log('Submit this sitemap URL to Google Search Console:', sitemapUrl);
-  
+
   // You can also use the Search Console API if you have the proper credentials
-  // fetch('https://www.googleapis.com/webmasters/v3/sites/https%3A%2F%2Fsillobyte.onrender.com%2F/sitemaps', {
+  // fetch('https://www.googleapis.com/webmasters/v3/sites/https%3A%2F%2Fsillobite.onrender.com%2F/sitemaps', {
   //   method: 'POST',
   //   headers: {
   //     'Authorization': `Bearer ${ACCESS_TOKEN}`,
@@ -175,10 +175,10 @@ export const trackSEOMetrics = () => {
 export const initAnalytics = () => {
   initGoogleAnalytics();
   trackSEOMetrics();
-  
+
   // Track initial page view
   trackPageView(window.location.pathname, document.title);
-  
+
   // Track PWA launch if applicable
   if (window.matchMedia('(display-mode: standalone)').matches) {
     trackPWAEvent('launch');

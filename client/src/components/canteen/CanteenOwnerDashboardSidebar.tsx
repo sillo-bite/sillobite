@@ -29,12 +29,12 @@ import { UpdateManager } from "@/utils/updateManager";
 import { passiveUpdateDetector } from "@/utils/passiveUpdateDetector";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/hooks/useAuth";
-import WebPushNotificationManager from "@/utils/webPushNotifications";
-import { 
-  ChefHat, 
-  DollarSign, 
-  ShoppingBag, 
-  Users, 
+import { useWebPushNotifications } from "@/hooks/useWebPushNotifications";
+import {
+  ChefHat,
+  DollarSign,
+  ShoppingBag,
+  Users,
   TrendingUp,
   Clock,
   Star,
@@ -94,11 +94,10 @@ function SidebarNavItem({ icon: Icon, label, active, onClick, badge, collapsed }
     <button
       onClick={onClick}
       title={collapsed ? label : undefined}
-      className={`w-full relative flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3"} py-2 text-sm font-medium rounded-lg transition-colors ${
-        active 
-          ? 'bg-primary text-primary-foreground' 
-          : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-      }`}
+      className={`w-full relative flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3"} py-2 text-sm font-medium rounded-lg transition-colors ${active
+        ? 'bg-primary text-primary-foreground'
+        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+        }`}
     >
       <div className="flex items-center">
         <Icon className={`w-4 h-4 ${collapsed ? "" : "mr-3"}`} />
@@ -192,7 +191,7 @@ export default function CanteenOwnerDashboardSidebar() {
   // Component to display counter name
   const CounterNameDisplay = ({ counterId }: { counterId: string }) => {
     const [name, setName] = useState<string>('Loading...');
-    
+
     useEffect(() => {
       const fetchCounterName = async () => {
         try {
@@ -202,17 +201,17 @@ export default function CanteenOwnerDashboardSidebar() {
           setName('Unknown Counter');
         }
       };
-      
+
       fetchCounterName();
     }, [counterId]);
-    
+
     return <span className="font-medium text-success">{name}</span>;
   };
-  
+
   const { user, isAuthenticated, isCanteenOwner } = useAuthSync();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { logout } = useAuth();
-  
+
   // State declarations
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
@@ -244,9 +243,14 @@ export default function CanteenOwnerDashboardSidebar() {
     }
   });
   const [isMobile, setIsMobile] = useState(false);
-  const [isPushReady, setIsPushReady] = useState(false);
   const [showAllOrders, setShowAllOrders] = useState(false);
-  const pushManagerRef = useRef<WebPushNotificationManager | null>(null);
+
+  // Use the updated hook with canteenId
+  const {
+    requestPermission: requestPushPermission,
+    isSubscribed: isPushSubscribed
+  } = useWebPushNotifications(user?.email || undefined, "canteen_owner", canteenId);
+
   const sidebarCollapsed = isSidebarCollapsed && !isMobile;
 
   useEffect(() => {
@@ -266,14 +270,14 @@ export default function CanteenOwnerDashboardSidebar() {
   // Helper functions
   const generateOrderNumber = () => Math.floor(Math.random() * 900000000000) + 100000000000;
   const generateBarcode = () => Math.floor(Math.random() * 900000000000) + 100000000000;
-  
+
   // Theme options
   const themeOptions = [
     { value: 'light' as const, label: 'Light', icon: Sun },
     { value: 'dark' as const, label: 'Dark', icon: Moon },
     { value: 'system' as const, label: 'System', icon: Monitor },
   ];
-  
+
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
       await logout();
@@ -284,21 +288,21 @@ export default function CanteenOwnerDashboardSidebar() {
   useEffect(() => {
     const setupPush = async () => {
       try {
-        if (!isAuthenticated || !isCanteenOwner || !user?.email) return;
-        if (!pushManagerRef.current) {
-          pushManagerRef.current = new WebPushNotificationManager();
+        if (!isAuthenticated || !isCanteenOwner || !user?.email || !canteenId) return;
+
+        // Only request permission if not already subscribed and supported
+        if (!isPushSubscribed) {
+          // We can't auto-request permission in some browsers without user interaction
+          // But since the original code did it, we'll try it here to maintain behavior
+          // Ideally this should be a button click
+          await requestPushPermission();
         }
-        const manager = pushManagerRef.current;
-        const initialized = await manager.initialize(user.email, "canteen_owner");
-        if (!initialized) return;
-        await manager.requestPermissionAndSubscribe();
-        setIsPushReady(true);
       } catch (error) {
         console.warn("Push setup failed:", error);
       }
     };
     setupPush();
-  }, [isAuthenticated, isCanteenOwner, user?.email]);
+  }, [isAuthenticated, isCanteenOwner, user?.email, canteenId, isPushSubscribed, requestPushPermission]);
 
   const sendDeviceNotification = async (title: string, body: string, data?: Record<string, any>) => {
     try {
@@ -320,7 +324,7 @@ export default function CanteenOwnerDashboardSidebar() {
       console.warn("Failed to show device notification:", error);
     }
   };
-  
+
   // Play notification sound for new orders
   const playNotificationSound = () => {
     try {
@@ -328,16 +332,16 @@ export default function CanteenOwnerDashboardSidebar() {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
-      
+
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-      
+
       oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
       oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-      
+
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
       gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      
+
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.3);
     } catch (error) {
@@ -463,7 +467,7 @@ export default function CanteenOwnerDashboardSidebar() {
       const fetchCanteenId = async () => {
         try {
           const response = await fetch(`/api/system-settings/canteens/by-owner/${user.email}`);
-          
+
           if (response.ok) {
             const canteenData = await response.json();
             setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}`);
@@ -474,7 +478,7 @@ export default function CanteenOwnerDashboardSidebar() {
           setLocation('/login?error=canteen_fetch_failed');
         }
       };
-      
+
       fetchCanteenId();
     }
   }, [isAuthenticated, isCanteenOwner, user?.email, canteenId, setLocation]);
@@ -486,7 +490,7 @@ export default function CanteenOwnerDashboardSidebar() {
   }>({
     queryKey: ["/api/categories", canteenId],
     queryFn: async () => {
-      const url = canteenId 
+      const url = canteenId
         ? `/api/categories?canteenId=${canteenId}&limit=1000` // Get all categories for dashboard
         : '/api/categories?limit=1000';
       const response = await apiRequest(url);
@@ -504,7 +508,7 @@ export default function CanteenOwnerDashboardSidebar() {
     // Separate cache key to avoid user-facing available-only menu cache
     queryKey: ["/api/menu", canteenId, "owner-all-items"],
     queryFn: async () => {
-      const url = canteenId 
+      const url = canteenId
         ? `/api/menu?canteenId=${canteenId}&limit=1000&availableOnly=false` // Owner view: include unavailable/out-of-stock
         : '/api/menu?limit=1000&availableOnly=false';
       const response = await apiRequest(url);
@@ -573,6 +577,13 @@ export default function CanteenOwnerDashboardSidebar() {
   const handleTabChange = (tab: string) => {
     if (ownerSidebarConfig[tab] === false) return;
     setActiveTab(tab);
+
+    // Update URL with tab parameter to persist state on refresh
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set('tab', tab);
+    const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+    setLocation(newUrl);
+
     if (isMobile) {
       setIsSidebarOpen(false);
     }
@@ -608,7 +619,7 @@ export default function CanteenOwnerDashboardSidebar() {
       payout: "Payout",
       "store-mode": "Store Mode"
     };
-    
+
     const tabTitle = tabTitles[activeTab] || "Dashboard";
     const canteenName = canteenData?.name || "Canteen";
     document.title = `${tabTitle} - ${canteenName} | KIT-CANTEEN Owner Dashboard`;
@@ -687,21 +698,10 @@ export default function CanteenOwnerDashboardSidebar() {
       });
       // Play notification sound
       playNotificationSound();
-      // Push device notification if ready
-      if (isPushReady) {
-        const formatted = formatOrderIdDisplay(order.orderNumber || order.id?.toString() || "");
-        const title = `New Order #${formatted.full}`;
-        const body = `${order.customerName || 'Customer'} • ₹${order.amount || 0}`;
-        sendDeviceNotification(title, body, {
-          tag: `order-${order.id || order.orderNumber}`,
-          orderId: order.id,
-          canteenId,
-        });
-      }
       // For new orders, invalidate to get the full updated list
       queryClient.invalidateQueries({ queryKey: ["/api/orders/paginated"] });
       queryClient.invalidateQueries({ queryKey: ["/api/orders/active/paginated"] });
-      
+
       // Remove the new order indicator after 5 seconds
       setTimeout(() => {
         setNewOrderIds(prev => {
@@ -717,19 +717,19 @@ export default function CanteenOwnerDashboardSidebar() {
         if (!oldData?.items) return oldData;
         return {
           ...oldData,
-          items: oldData.items.map((o: any) => 
+          items: oldData.items.map((o: any) =>
             o.id === order.id || o.orderNumber === order.orderNumber
               ? { ...o, ...order }
               : o
           )
         };
       });
-      
+
       queryClient.setQueryData(["/api/orders/active/paginated"], (oldData: any) => {
         if (!oldData?.items) return oldData;
         return {
           ...oldData,
-          items: oldData.items.map((o: any) => 
+          items: oldData.items.map((o: any) =>
             o.id === order.id || o.orderNumber === order.orderNumber
               ? { ...o, ...order }
               : o
@@ -753,18 +753,18 @@ export default function CanteenOwnerDashboardSidebar() {
     .filter((order: any) => {
       // Filter by status first
       const isActiveStatus = order.status === "pending" || order.status === "preparing" || order.status === "ready";
-      
+
       // If no search query, return all active orders
       if (!searchQuery) return isActiveStatus;
-      
+
       // If there's a search query, also apply search filter
       if (isActiveStatus) {
         const searchLower = searchQuery.toLowerCase();
         return order.orderNumber?.toLowerCase().includes(searchLower) ||
-               order.customerName?.toLowerCase().includes(searchLower) ||
-               order.items?.toLowerCase().includes(searchLower);
+          order.customerName?.toLowerCase().includes(searchLower) ||
+          order.items?.toLowerCase().includes(searchLower);
       }
-      
+
       return false;
     })
     .sort((a: any, b: any) => {
@@ -772,13 +772,13 @@ export default function CanteenOwnerDashboardSidebar() {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 
-  const allFilteredOrders = searchQuery 
+  const allFilteredOrders = searchQuery
     ? (paginatedOrders as any[]).filter((order: any) => {
-        const searchLower = searchQuery.toLowerCase();
-        return order.orderNumber?.toLowerCase().includes(searchLower) ||
-               order.customerName?.toLowerCase().includes(searchLower) ||
-               order.items?.toLowerCase().includes(searchLower);
-      })
+      const searchLower = searchQuery.toLowerCase();
+      return order.orderNumber?.toLowerCase().includes(searchLower) ||
+        order.customerName?.toLowerCase().includes(searchLower) ||
+        order.items?.toLowerCase().includes(searchLower);
+    })
     : paginatedOrders;
 
   // Calculate real stats from actual orders data
@@ -814,7 +814,7 @@ export default function CanteenOwnerDashboardSidebar() {
   const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.amount || 0), 0);
 
   // Calculate trends
-  const ordersTrend = yesterdayOrders.length > 0 
+  const ordersTrend = yesterdayOrders.length > 0
     ? `${((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length * 100).toFixed(0)}% from yesterday`
     : todayOrders.length > 0 ? "New today" : "No orders yet";
 
@@ -833,7 +833,7 @@ export default function CanteenOwnerDashboardSidebar() {
     {
       title: "Today's Revenue",
       value: `₹${todayRevenue.toLocaleString('en-IN')}`,
-      trend: revenueTrend, 
+      trend: revenueTrend,
       icon: DollarSign
     },
     {
@@ -904,24 +904,24 @@ export default function CanteenOwnerDashboardSidebar() {
   // Helper function to check if scanned barcode matches order (full barcode or first 4 digits)
   const matchesBarcode = (scannedBarcode: string, orderBarcode: string): boolean => {
     if (!orderBarcode) return false;
-    
+
     // Exact match
     if (scannedBarcode === orderBarcode || scannedBarcode === String(orderBarcode) || String(orderBarcode) === scannedBarcode) {
       return true;
     }
-    
+
     // Check if scanned is first 4 digits of order barcode
     if (scannedBarcode.length === 4 && orderBarcode.length >= 4) {
       const first4Digits = String(orderBarcode).slice(0, 4);
       return scannedBarcode === first4Digits;
     }
-    
+
     // Check if order barcode starts with scanned barcode (for partial matches)
     const orderBarcodeStr = String(orderBarcode);
     if (scannedBarcode.length < orderBarcodeStr.length) {
       return orderBarcodeStr.startsWith(scannedBarcode);
     }
-    
+
     return false;
   };
 
@@ -933,30 +933,30 @@ export default function CanteenOwnerDashboardSidebar() {
 
     // Find the order with matching barcode (full barcode or first 4 digits OTP) in both active and all orders for the current page
     const localOrders = [...(paginatedActiveOrders as any[]), ...(paginatedOrders as any[])];
-    
+
     // Try to find order by full barcode, orderNumber, id, or first 4 digits OTP
     const matchingOrder = localOrders.find((order: any) => {
       // Full barcode match
       if (matchesBarcode(barcodeInput, order.barcode)) return true;
       if (matchesBarcode(barcodeInput, order.orderNumber)) return true;
       if (matchesBarcode(barcodeInput, order.id)) return true;
-      
+
       // Legacy exact matches
       if (order.barcode === barcodeInput || order.orderNumber === barcodeInput || order.id === barcodeInput) return true;
-      
+
       return false;
     });
 
     if (matchingOrder) {
       // Check if the scanned barcode matches the selected order
-      if (selectedOrderForScan && 
-          selectedOrderForScan.id !== matchingOrder.id &&
-          !matchesBarcode(barcodeInput, selectedOrderForScan.barcode) &&
-          !matchesBarcode(barcodeInput, selectedOrderForScan.orderNumber)) {
+      if (selectedOrderForScan &&
+        selectedOrderForScan.id !== matchingOrder.id &&
+        !matchesBarcode(barcodeInput, selectedOrderForScan.barcode) &&
+        !matchesBarcode(barcodeInput, selectedOrderForScan.orderNumber)) {
         setBarcodeInput("");
         return;
       }
-      
+
       console.log("🔍 Barcode/OTP scan successful, showing order details in dialog");
       setScannedOrder(matchingOrder);
       setShowOrderDetails(true);
@@ -1025,12 +1025,12 @@ export default function CanteenOwnerDashboardSidebar() {
     try {
       await Promise.all([
         refetchCategories(),
-        refetchMenuItems(), 
+        refetchMenuItems(),
         refetchPaginated(),
         refetchPaginatedActive()
       ]);
-      } catch (error) {
-      }
+    } catch (error) {
+    }
   };
 
   // Handle order card click for details popup and mark as seen
@@ -1039,7 +1039,7 @@ export default function CanteenOwnerDashboardSidebar() {
     if (user?.id && (!order.seenBy || !order.seenBy.includes(user.id))) {
       markOrderSeenMutation.mutate(order.id);
     }
-    
+
     setSelectedOrderForDetails(order);
     setShowOrderDetailPopup(true);
   };
@@ -1056,25 +1056,25 @@ export default function CanteenOwnerDashboardSidebar() {
       if (order.status === "pending_payment") {
         return false;
       }
-      
+
       // Only show orders in pending or preparing status that need prep
       if (order.status !== "pending" && order.status !== "preparing") {
         return false;
       }
-      
+
       try {
         const items = JSON.parse(order.items || '[]');
         // Only show orders that have at least one markable item (prep required)
         const markableItems = items.filter((item: any) => item.isMarkable === true);
-        
+
         // If no markable items, exclude from prep required
         if (markableItems.length === 0) {
           return false;
         }
-        
+
         // Check if all markable items are already ready PER COUNTER
         const itemStatusByCounter = order.itemStatusByCounter || {};
-        
+
         // Group markable items by their storeCounterId
         const markableItemsByCounter: { [counterId: string]: any[] } = {};
         markableItems.forEach((item: any) => {
@@ -1084,11 +1084,11 @@ export default function CanteenOwnerDashboardSidebar() {
           }
           markableItemsByCounter[itemCounterId].push(item);
         });
-        
+
         // Check if ANY counter has unready markable items
         for (const counterId in markableItemsByCounter) {
           const counterMarkableItems = markableItemsByCounter[counterId];
-          
+
           // Check if all markable items for this counter are ready
           for (const item of counterMarkableItems) {
             const itemStatus = itemStatusByCounter[counterId]?.[item.id];
@@ -1097,7 +1097,7 @@ export default function CanteenOwnerDashboardSidebar() {
             }
           }
         }
-        
+
         return false; // All counters have all items ready
       } catch (error) {
         return false;
@@ -1109,11 +1109,11 @@ export default function CanteenOwnerDashboardSidebar() {
       // Use isOrderUnseen function for consistency with rendering logic
       const aUnseen = isOrderUnseen(a);
       const bUnseen = isOrderUnseen(b);
-      
+
       // If one is unseen and other is seen, prioritize unseen
       if (aUnseen && !bUnseen) return -1;
       if (!aUnseen && bUnseen) return 1;
-      
+
       // If both have same seen status, sort by creation time (newest first)
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
@@ -1139,8 +1139,8 @@ export default function CanteenOwnerDashboardSidebar() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <Badge 
-              variant={webSocketStatus.isConnected ? "default" : "secondary"} 
+            <Badge
+              variant={webSocketStatus.isConnected ? "default" : "secondary"}
               className={`${webSocketStatus.isConnected ? "animate-pulse" : ""} whitespace-nowrap`}
             >
               {webSocketStatus.isConnected ? (
@@ -1208,251 +1208,249 @@ export default function CanteenOwnerDashboardSidebar() {
                       data-testid="input-search-active-orders"
                     />
                   </div>
-                          
+
                   <div className="flex-1 min-h-0 overflow-y-auto p-2 app-scrollbar">
-                {activeOrders.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingBag className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-xl text-muted-foreground">No Active Orders</p>
-                    <p className="text-sm text-muted-foreground mt-2">New orders will appear here</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {activeOrders.map((order: any) => (
-                      <Card key={order.id} className={`border-l-4 cursor-pointer transition-all duration-300 shadow-md hover:shadow-xl border border-border bg-card ${
-                        order.status === 'preparing' ? 'border-l-primary hover:border-l-primary/80' : 
-                        order.status === 'ready' ? 'border-l-success hover:border-l-success/80' : 
-                        'border-l-warning hover:border-l-warning/80'
-                      } ${isOrderUnseen(order) ? 'bg-success/10 border-success/20' : ''} ${
-                        newOrderIds.has(order.id || order.orderNumber) ? 'ring-2 ring-success/40 bg-success/10 animate-pulse' : ''
-                      }`} onClick={() => handleOrderCardClick(order)}>
-                        <CardContent className="p-2 sm:p-3">
-                          <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 mb-2">
-                                <div className="flex items-center font-medium text-sm sm:text-base">
-                                  <span>#{(() => {
-                                    const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-                                    return formatted.prefix;
-                                  })()}</span>
-                                  <span className="bg-primary/20 text-primary font-bold px-1 rounded ml-0 text-xs sm:text-sm">
-                                    {(() => {
-                                      const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-                                      return formatted.highlighted;
-                                    })()}
-                                  </span>
-                                </div>
-                                {newOrderIds.has(order.id || order.orderNumber) && (
-                                  <Badge variant="destructive" className="animate-pulse text-xs">
-                                    NEW ORDER
-                                  </Badge>
-                                )}
-                                <Badge className={`${getOrderStatusColor(order.status)} text-xs`}>
-                                  {getOrderStatusText(order.status)}
-                                </Badge>
-                                <Badge variant="secondary" className="text-xs">{order.estimatedTime}m</Badge>
-                                {(() => {
-                                  try {
-                                    const items = JSON.parse(order.items || '[]');
-                                    const hasMarkableItem = items.some((item: any) => {
-                                      // Try both id and _id fields
-                                      const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
-                                      const isMarkable = menuItem?.isMarkable === true;
-                                      return isMarkable;
-                                    });
-                                    return (
-                                      <Badge 
-                                        variant={hasMarkableItem ? "secondary" : "outline"}
-                                        className={hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"}
-                                      >
-                                        {hasMarkableItem ? "Prep Required" : "Auto-Ready"}
+                    {activeOrders.length === 0 ? (
+                      <div className="text-center py-12">
+                        <ShoppingBag className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                        <p className="text-xl text-muted-foreground">No Active Orders</p>
+                        <p className="text-sm text-muted-foreground mt-2">New orders will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activeOrders.map((order: any) => (
+                          <Card key={order.id} className={`border-l-4 cursor-pointer transition-all duration-300 shadow-md hover:shadow-xl border border-border bg-card ${order.status === 'preparing' ? 'border-l-primary hover:border-l-primary/80' :
+                            order.status === 'ready' ? 'border-l-success hover:border-l-success/80' :
+                              'border-l-warning hover:border-l-warning/80'
+                            } ${isOrderUnseen(order) ? 'bg-success/10 border-success/20' : ''} ${newOrderIds.has(order.id || order.orderNumber) ? 'ring-2 ring-success/40 bg-success/10 animate-pulse' : ''
+                            }`} onClick={() => handleOrderCardClick(order)}>
+                            <CardContent className="p-2 sm:p-3">
+                              <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center flex-wrap gap-1.5 sm:gap-2 mb-2">
+                                    <div className="flex items-center font-medium text-sm sm:text-base">
+                                      <span>#{(() => {
+                                        const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
+                                        return formatted.prefix;
+                                      })()}</span>
+                                      <span className="bg-primary/20 text-primary font-bold px-1 rounded ml-0 text-xs sm:text-sm">
+                                        {(() => {
+                                          const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
+                                          return formatted.highlighted;
+                                        })()}
+                                      </span>
+                                    </div>
+                                    {newOrderIds.has(order.id || order.orderNumber) && (
+                                      <Badge variant="destructive" className="animate-pulse text-xs">
+                                        NEW ORDER
                                       </Badge>
-                                    );
-                                  } catch {
-                                    return null;
-                                  }
-                                })()}
-                              </div>
-                              <p className="text-xs sm:text-sm text-muted-foreground truncate">Customer: {order.customerName}</p>
-                              <p className="text-xs sm:text-sm line-clamp-2">
-                                {order.items && typeof order.items === 'string' 
-                                  ? (() => {
+                                    )}
+                                    <Badge className={`${getOrderStatusColor(order.status)} text-xs`}>
+                                      {getOrderStatusText(order.status)}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs">{order.estimatedTime}m</Badge>
+                                    {(() => {
                                       try {
-                                        const parsedItems = JSON.parse(order.items);
-                                        return Array.isArray(parsedItems) 
-                                          ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
-                                          : order.items;
+                                        const items = JSON.parse(order.items || '[]');
+                                        const hasMarkableItem = items.some((item: any) => {
+                                          // Try both id and _id fields
+                                          const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
+                                          const isMarkable = menuItem?.isMarkable === true;
+                                          return isMarkable;
+                                        });
+                                        return (
+                                          <Badge
+                                            variant={hasMarkableItem ? "secondary" : "outline"}
+                                            className={hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"}
+                                          >
+                                            {hasMarkableItem ? "Prep Required" : "Auto-Ready"}
+                                          </Badge>
+                                        );
                                       } catch {
-                                        return order.items;
+                                        return null;
                                       }
-                                    })()
-                                  : 'No items'
-                                }
-                              </p>
-                            </div>
-                            <div className="text-left sm:text-right space-y-2 flex-shrink-0">
-                              <p className="font-semibold text-sm sm:text-base">₹{order.amount}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A'}
-                              </p>
-                              <div className="flex flex-col sm:flex-col space-y-2">
-                                {(() => {
-                                  try {
-                                    const items = JSON.parse(order.items || '[]');
-                                    const hasMarkableItem = items.some((item: any) => {
-                                      const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
-                                      return menuItem?.isMarkable === true;
-                                    });
-                                    
-                                    // Auto-Ready orders that are stuck in pending - show Mark Ready button
-                                    if (!hasMarkableItem && order.status === "pending") {
-                                      return (
-                                        <Button
-                                          size="sm"
-                                          variant="cart"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            // For non-markable items, use PATCH to update status directly
-                                            apiRequest(`/api/orders/${order.id}`, {
-                                              method: "PATCH",
-                                              body: JSON.stringify({ status: "ready" }),
-                                            }).then(() => {
-                                              queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
-                                              queryClient.invalidateQueries({ queryKey: ["/api/orders/active/paginated"] });
-                                            });
-                                          }}
-                                          data-testid={`button-mark-ready-${order.id}`}
-                                          className="text-xs sm:text-sm w-full sm:w-auto"
-                                        >
-                                          <span className="hidden sm:inline">Mark as Ready</span>
-                                          <span className="sm:hidden">Mark Ready</span>
-                                        </Button>
-                                      );
+                                    })()}
+                                  </div>
+                                  <p className="text-xs sm:text-sm text-muted-foreground truncate">Customer: {order.customerName}</p>
+                                  <p className="text-xs sm:text-sm line-clamp-2">
+                                    {order.items && typeof order.items === 'string'
+                                      ? (() => {
+                                        try {
+                                          const parsedItems = JSON.parse(order.items);
+                                          return Array.isArray(parsedItems)
+                                            ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
+                                            : order.items;
+                                        } catch {
+                                          return order.items;
+                                        }
+                                      })()
+                                      : 'No items'
                                     }
-                                    
-                                    // Auto-Ready orders show Scan Barcode button when ready
-                                    if (!hasMarkableItem && order.status === "ready") {
-                                      return (
-                                        <Button
-                                          size="sm"
-                                          variant="default"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleScanBarcode(order);
-                                          }}
-                                          className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm w-full sm:w-auto"
-                                          data-testid={`button-scan-barcode-${order.id}`}
-                                        >
-                                          <ScanLine className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                                          <span className="hidden sm:inline">Scan Barcode</span>
-                                          <span className="sm:hidden">Scan</span>
-                                        </Button>
-                                      );
-                                    }
-                                    
-                                    // Prep Required orders show Mark Ready button when pending/preparing
-                                    if (hasMarkableItem && (order.status === "pending" || order.status === "preparing")) {
-                                      return (
-                                        <Button
-                                          size="sm"
-                                          variant="cart"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            // Use mark-ready endpoint which updates itemStatusByCounter
-                                            // counterId is optional - if not provided, all markable items will be marked ready
-                                            // Get order ID - try id, _id, or orderNumber
-                                            const orderAny = order as any;
-                                            const orderId = order.id || orderAny._id || order.orderNumber;
-                                            if (!orderId) {
-                                              return;
-                                            }
-                                            markOrderReadyMutation.mutate({ orderId });
-                                          }}
-                                          disabled={markOrderReadyMutation.isPending}
-                                          data-testid={`button-mark-ready-${order.id}`}
-                                          className="text-xs sm:text-sm w-full sm:w-auto"
-                                        >
-                                          {markOrderReadyMutation.isPending ? (
-                                            <>
-                                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                              <span className="hidden sm:inline">Updating...</span>
-                                              <span className="sm:hidden">...</span>
-                                            </>
-                                          ) : (
-                                            "Mark Ready"
-                                          )}
-                                        </Button>
-                                      );
-                                    }
-                                    
-                                    // Prep Required orders show Scan Barcode button when ready
-                                    if (hasMarkableItem && order.status === "ready") {
-                                      return (
-                                        <Button
-                                          size="sm"
-                                          variant="default"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleScanBarcode(order);
-                                          }}
-                                          className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm w-full sm:w-auto"
-                                          data-testid={`button-scan-barcode-${order.id}`}
-                                        >
-                                          <ScanLine className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-                                          <span className="hidden sm:inline">Scan Barcode</span>
-                                          <span className="sm:hidden">Scan</span>
-                                        </Button>
-                                      );
-                                    }
-                                    
-                                    return null;
-                                  } catch {
-                                    return null;
-                                  }
-                                })()}
+                                  </p>
+                                </div>
+                                <div className="text-left sm:text-right space-y-2 flex-shrink-0">
+                                  <p className="font-semibold text-sm sm:text-base">₹{order.amount}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A'}
+                                  </p>
+                                  <div className="flex flex-col sm:flex-col space-y-2">
+                                    {(() => {
+                                      try {
+                                        const items = JSON.parse(order.items || '[]');
+                                        const hasMarkableItem = items.some((item: any) => {
+                                          const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
+                                          return menuItem?.isMarkable === true;
+                                        });
+
+                                        // Auto-Ready orders that are stuck in pending - show Mark Ready button
+                                        if (!hasMarkableItem && order.status === "pending") {
+                                          return (
+                                            <Button
+                                              size="sm"
+                                              variant="cart"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                // For non-markable items, use PATCH to update status directly
+                                                apiRequest(`/api/orders/${order.id}`, {
+                                                  method: "PATCH",
+                                                  body: JSON.stringify({ status: "ready" }),
+                                                }).then(() => {
+                                                  queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
+                                                  queryClient.invalidateQueries({ queryKey: ["/api/orders/active/paginated"] });
+                                                });
+                                              }}
+                                              data-testid={`button-mark-ready-${order.id}`}
+                                              className="text-xs sm:text-sm w-full sm:w-auto"
+                                            >
+                                              <span className="hidden sm:inline">Mark as Ready</span>
+                                              <span className="sm:hidden">Mark Ready</span>
+                                            </Button>
+                                          );
+                                        }
+
+                                        // Auto-Ready orders show Scan Barcode button when ready
+                                        if (!hasMarkableItem && order.status === "ready") {
+                                          return (
+                                            <Button
+                                              size="sm"
+                                              variant="default"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleScanBarcode(order);
+                                              }}
+                                              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm w-full sm:w-auto"
+                                              data-testid={`button-scan-barcode-${order.id}`}
+                                            >
+                                              <ScanLine className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                              <span className="hidden sm:inline">Scan Barcode</span>
+                                              <span className="sm:hidden">Scan</span>
+                                            </Button>
+                                          );
+                                        }
+
+                                        // Prep Required orders show Mark Ready button when pending/preparing
+                                        if (hasMarkableItem && (order.status === "pending" || order.status === "preparing")) {
+                                          return (
+                                            <Button
+                                              size="sm"
+                                              variant="cart"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                // Use mark-ready endpoint which updates itemStatusByCounter
+                                                // counterId is optional - if not provided, all markable items will be marked ready
+                                                // Get order ID - try id, _id, or orderNumber
+                                                const orderAny = order as any;
+                                                const orderId = order.id || orderAny._id || order.orderNumber;
+                                                if (!orderId) {
+                                                  return;
+                                                }
+                                                markOrderReadyMutation.mutate({ orderId });
+                                              }}
+                                              disabled={markOrderReadyMutation.isPending}
+                                              data-testid={`button-mark-ready-${order.id}`}
+                                              className="text-xs sm:text-sm w-full sm:w-auto"
+                                            >
+                                              {markOrderReadyMutation.isPending ? (
+                                                <>
+                                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                  <span className="hidden sm:inline">Updating...</span>
+                                                  <span className="sm:hidden">...</span>
+                                                </>
+                                              ) : (
+                                                "Mark Ready"
+                                              )}
+                                            </Button>
+                                          );
+                                        }
+
+                                        // Prep Required orders show Scan Barcode button when ready
+                                        if (hasMarkableItem && order.status === "ready") {
+                                          return (
+                                            <Button
+                                              size="sm"
+                                              variant="default"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleScanBarcode(order);
+                                              }}
+                                              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs sm:text-sm w-full sm:w-auto"
+                                              data-testid={`button-scan-barcode-${order.id}`}
+                                            >
+                                              <ScanLine className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+                                              <span className="hidden sm:inline">Scan Barcode</span>
+                                              <span className="sm:hidden">Scan</span>
+                                            </Button>
+                                          );
+                                        }
+
+                                        return null;
+                                      } catch {
+                                        return null;
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </Panel>
-            
+
             <PanelResizeHandle className="w-1 bg-border hover:bg-primary/20 transition-colors" />
 
             {/* Right Side - Preparing Orders */}
             <Panel defaultSize={50} minSize={30}>
-                  <div className="h-full bg-card">
-                    <div className="h-full flex flex-col">
-                      <div className="p-2 md:p-3 border-b border-border flex-shrink-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-sm font-semibold flex items-center">
-                      <AlertTriangle className="w-3 h-3 mr-1.5" />
-                      Prep Required Orders
-                    </h3>
-                    <div className="flex items-center space-x-1">
-                      <div className="w-1.5 h-1.5 bg-success rounded-full animate-pulse"></div>
-                      <span className="text-[10px] text-success font-medium">Live</span>
+              <div className="h-full bg-card">
+                <div className="h-full flex flex-col">
+                  <div className="p-2 md:p-3 border-b border-border flex-shrink-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-sm font-semibold flex items-center">
+                        <AlertTriangle className="w-3 h-3 mr-1.5" />
+                        Prep Required Orders
+                      </h3>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-1.5 h-1.5 bg-success rounded-full animate-pulse"></div>
+                        <span className="text-[10px] text-success font-medium">Live</span>
+                      </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">Orders requiring manual preparation (unseen orders prioritized)</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Orders requiring manual preparation (unseen orders prioritized)</p>
-                </div>
-                
-                <div className="flex-1 min-h-0 overflow-y-auto p-2 app-scrollbar">
-                  {preparingOrders.length === 0 ? (
-                    <div className="text-center py-6">
-                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-xs text-muted-foreground">No prep-required orders</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">Orders with markable items (pending/preparing) will appear here</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {preparingOrders.map((order: any) => (
+
+                  <div className="flex-1 min-h-0 overflow-y-auto p-2 app-scrollbar">
+                    {preparingOrders.length === 0 ? (
+                      <div className="text-center py-6">
+                        <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-xs text-muted-foreground">No prep-required orders</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Orders with markable items (pending/preparing) will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {preparingOrders.map((order: any) => (
                           <Card key={order.id} className={`border-l-4 cursor-pointer transition-all duration-200 shadow-md hover:shadow-xl border-l-primary ${isOrderUnseen(order) ? 'bg-success/10 border-success/20' : ''}`} onClick={() => handleOrderCardClick(order)}>
                             <CardContent className="p-2 md:p-3">
                               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1484,7 +1482,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                         });
                                         return (
                                           <>
-                                            <Badge 
+                                            <Badge
                                               variant={hasMarkableItem ? "secondary" : "outline"}
                                               className={hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50 text-xs" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50 text-xs"}
                                             >
@@ -1504,17 +1502,17 @@ export default function CanteenOwnerDashboardSidebar() {
                                   </div>
                                   <p className="text-xs text-muted-foreground">Customer: {order.customerName}</p>
                                   <p className="text-xs">
-                                    {order.items && typeof order.items === 'string' 
+                                    {order.items && typeof order.items === 'string'
                                       ? (() => {
-                                          try {
-                                            const parsedItems = JSON.parse(order.items);
-                                            return Array.isArray(parsedItems) 
-                                              ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
-                                              : order.items;
-                                          } catch {
-                                            return order.items;
-                                          }
-                                        })()
+                                        try {
+                                          const parsedItems = JSON.parse(order.items);
+                                          return Array.isArray(parsedItems)
+                                            ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
+                                            : order.items;
+                                        } catch {
+                                          return order.items;
+                                        }
+                                      })()
                                       : 'No items'
                                     }
                                   </p>
@@ -1533,7 +1531,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                           const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
                                           return menuItem?.isMarkable === true;
                                         });
-                                        
+
                                         // Show Mark Ready button for markable items in pending/preparing status
                                         if (hasMarkableItem && (order.status === "pending" || order.status === "preparing")) {
                                           return (
@@ -1554,18 +1552,18 @@ export default function CanteenOwnerDashboardSidebar() {
                                               data-testid={`button-mark-ready-${order.id}`}
                                             >
                                               {markOrderReadyMutation.isPending ? (
-                                            <>
-                                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                              Updating...
-                                            </>
-                                          ) : (
-                                            "Mark Ready"
-                                          )}
+                                                <>
+                                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                                  Updating...
+                                                </>
+                                              ) : (
+                                                "Mark Ready"
+                                              )}
                                             </Button>
                                           );
                                         }
 
-                                        
+
                                         return null;
                                       } catch {
                                         return null;
@@ -1578,18 +1576,18 @@ export default function CanteenOwnerDashboardSidebar() {
                           </Card>
                         ))}
                       </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
           </PanelGroup>
         </div>
-        
+
         {/* Keep all existing dialogs - they will work in both modes */}
         {/* Barcode Scanning Dialog */}
         <Dialog open={showBarcodeDialog} onOpenChange={setShowBarcodeDialog}>
-          <DialogContent 
+          <DialogContent
             className="max-w-lg w-[90%] sm:max-w-md max-h-[85vh] overflow-y-auto p-6 rounded-lg app-scrollbar"
             onKeyDown={(e) => {
               if (showOrderDetails && scannedOrder && e.key === 'Enter') {
@@ -1628,7 +1626,7 @@ export default function CanteenOwnerDashboardSidebar() {
                 )}
               </DialogTitle>
             </DialogHeader>
-            
+
             <div className="space-y-6">
               {!showOrderDetails ? (
                 // Step 1: Barcode Input
@@ -1657,7 +1655,7 @@ export default function CanteenOwnerDashboardSidebar() {
                         autoFocus
                       />
                     </div>
-                    
+
                     <div className="bg-warning/20 border border-warning/40 dark:border-warning/50 rounded-lg p-3">
                       <div className="flex items-center space-x-2 mb-1">
                         <AlertTriangle className="w-4 h-4 text-warning" />
@@ -1668,7 +1666,7 @@ export default function CanteenOwnerDashboardSidebar() {
                       </p>
                     </div>
 
-                    <Button 
+                    <Button
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
@@ -1692,7 +1690,7 @@ export default function CanteenOwnerDashboardSidebar() {
                         <CheckCircle className="w-5 h-5 text-success" />
                         <h3 className="font-semibold text-success">Order Found!</h3>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                         <div>
                           <span className="text-muted-foreground">Order ID:</span>
@@ -1701,7 +1699,7 @@ export default function CanteenOwnerDashboardSidebar() {
                             return formatted.prefix + formatted.highlighted;
                           })()}</p>
                         </div>
-                        
+
                         <div>
                           <span className="text-muted-foreground">Status:</span>
                           <div className="mt-1">
@@ -1710,12 +1708,12 @@ export default function CanteenOwnerDashboardSidebar() {
                             </Badge>
                           </div>
                         </div>
-                        
+
                         <div>
                           <span className="text-muted-foreground">Customer:</span>
                           <p className="font-medium">{scannedOrder.customerName || 'N/A'}</p>
                         </div>
-                        
+
                         <div>
                           <span className="text-muted-foreground">Total Amount:</span>
                           <p className="font-bold text-lg text-success">₹{scannedOrder.amount}</p>
@@ -1730,10 +1728,10 @@ export default function CanteenOwnerDashboardSidebar() {
                         <div className="space-y-3 max-h-48 overflow-y-auto bg-muted/50 rounded-lg p-3 app-scrollbar">
                           {(() => {
                             try {
-                              const items = typeof scannedOrder.items === 'string' 
-                                ? JSON.parse(scannedOrder.items) 
+                              const items = typeof scannedOrder.items === 'string'
+                                ? JSON.parse(scannedOrder.items)
                                 : scannedOrder.items || [];
-                              
+
                               return items.length > 0 ? items.map((item: any, index: number) => (
                                 <div key={index} className="bg-card rounded-lg p-3 shadow-sm border border-border">
                                   <div className="flex justify-between items-start">
@@ -1786,7 +1784,7 @@ export default function CanteenOwnerDashboardSidebar() {
                 >
                   Cancel
                 </Button>
-                
+
                 {showOrderDetails && scannedOrder && (
                   <Button
                     variant="cart"
@@ -1818,7 +1816,7 @@ export default function CanteenOwnerDashboardSidebar() {
             </div>
           </DialogContent>
         </Dialog>
-        
+
         {/* Order Detail Popup */}
         <Dialog open={showOrderDetailPopup} onOpenChange={setShowOrderDetailPopup}>
           <DialogContent className="max-w-2xl w-[95%] max-h-[90vh] overflow-y-auto p-0 app-scrollbar">
@@ -1828,7 +1826,7 @@ export default function CanteenOwnerDashboardSidebar() {
                 Order Details
               </DialogTitle>
             </DialogHeader>
-            
+
             {selectedOrderForDetails && (
               <div className="p-6 space-y-6">
                 <div className="bg-primary/10 rounded-lg p-4">
@@ -1839,10 +1837,10 @@ export default function CanteenOwnerDashboardSidebar() {
                   <div className="space-y-3">
                     {(() => {
                       try {
-                        const items = typeof selectedOrderForDetails.items === 'string' 
-                          ? JSON.parse(selectedOrderForDetails.items) 
+                        const items = typeof selectedOrderForDetails.items === 'string'
+                          ? JSON.parse(selectedOrderForDetails.items)
                           : selectedOrderForDetails.items || [];
-                        
+
                         return items.length > 0 ? items.map((item: any, index: number) => (
                           <div key={index} className="bg-card rounded-lg p-4 shadow-sm border border-primary/20 dark:border-primary/30">
                             <div className="flex justify-between items-start">
@@ -1964,17 +1962,15 @@ export default function CanteenOwnerDashboardSidebar() {
     <div className="h-screen bg-background flex overflow-hidden relative">
       {/* Mobile overlay for sidebar */}
       <div
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${
-          isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
         onClick={() => setIsSidebarOpen(false)}
       />
 
       {/* Sidebar Navigation */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-64 md:w-56 ${sidebarCollapsed ? "lg:w-16" : "lg:w-64"} bg-card border-r border-border flex flex-col flex-shrink-0 transform transition-[transform,width] duration-200 ease-in-out lg:relative ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-64 md:w-56 ${sidebarCollapsed ? "lg:w-16" : "lg:w-64"} bg-card border-r border-border flex flex-col flex-shrink-0 transform transition-[transform,width] duration-200 ease-in-out lg:relative ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
       >
         {/* Sidebar Header */}
         <div className={`border-b flex-shrink-0 ${sidebarCollapsed ? "p-3" : "p-6"}`}>
@@ -2009,27 +2005,27 @@ export default function CanteenOwnerDashboardSidebar() {
         {/* Navigation Items */}
         <nav className={`flex-1 ${sidebarCollapsed ? "px-2" : "px-3"} py-4 space-y-2 overflow-y-auto min-h-0 app-scrollbar`}>
           {ownerSidebarConfig["overview"] && (
-            <SidebarNavItem 
-              icon={BarChart3} 
-              label="Overview" 
+            <SidebarNavItem
+              icon={BarChart3}
+              label="Overview"
               active={activeTab === "overview"}
               onClick={() => handleTabChange("overview")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["counters"] && (
-            <SidebarNavItem 
-              icon={Settings} 
-              label="Counter Selection" 
+            <SidebarNavItem
+              icon={Settings}
+              label="Counter Selection"
               active={activeTab === "counters"}
               onClick={() => handleNavigate(`/canteen-owner-dashboard/${canteenId}/counters`)}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["orders"] && (
-            <SidebarNavItem 
-              icon={ShoppingBag} 
-              label="Orders" 
+            <SidebarNavItem
+              icon={ShoppingBag}
+              label="Orders"
               active={activeTab === "orders"}
               onClick={() => handleTabChange("orders")}
               badge={activeOrders.length > 0 ? activeOrders.length : undefined}
@@ -2037,84 +2033,84 @@ export default function CanteenOwnerDashboardSidebar() {
             />
           )}
           {ownerSidebarConfig["payment-counter"] && (
-            <SidebarNavItem 
-              icon={CreditCard} 
-              label="Payment Counter" 
+            <SidebarNavItem
+              icon={CreditCard}
+              label="Payment Counter"
               active={activeTab === "payment-counter"}
               onClick={() => handleTabChange("payment-counter")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["pos-billing"] && (
-            <SidebarNavItem 
-              icon={Receipt} 
-              label="POS Billing" 
+            <SidebarNavItem
+              icon={Receipt}
+              label="POS Billing"
               active={activeTab === "pos-billing"}
               onClick={() => handleTabChange("pos-billing")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["menu"] && (
-            <SidebarNavItem 
-              icon={ChefHat} 
-              label="Menu Management" 
+            <SidebarNavItem
+              icon={ChefHat}
+              label="Menu Management"
               active={activeTab === "menu"}
               onClick={() => handleTabChange("menu")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["content"] && (
-            <SidebarNavItem 
-              icon={TrendingUp} 
-              label="Content Manager" 
+            <SidebarNavItem
+              icon={TrendingUp}
+              label="Content Manager"
               active={activeTab === "content"}
               onClick={() => handleTabChange("content")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["analytics"] && (
-            <SidebarNavItem 
-              icon={BarChart3} 
-              label="Analytics" 
+            <SidebarNavItem
+              icon={BarChart3}
+              label="Analytics"
               active={activeTab === "analytics"}
               onClick={() => handleTabChange("analytics")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["delivery-management"] && (
-            <SidebarNavItem 
-              icon={Truck} 
-              label="Delivery Management" 
+            <SidebarNavItem
+              icon={Truck}
+              label="Delivery Management"
               active={activeTab === "delivery-management"}
               onClick={() => handleTabChange("delivery-management")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["payout"] && (
-            <SidebarNavItem 
-              icon={DollarSign} 
-              label="Payout" 
+            <SidebarNavItem
+              icon={DollarSign}
+              label="Payout"
               active={activeTab === "payout"}
               onClick={() => handleTabChange("payout")}
               collapsed={sidebarCollapsed}
             />
           )}
           {ownerSidebarConfig["position-bidding"] && (
-            <SidebarNavItem 
-              icon={Gavel} 
-              label="Bid for Position" 
+            <SidebarNavItem
+              icon={Gavel}
+              label="Bid for Position"
               active={activeTab === "position-bidding"}
               onClick={() => handleTabChange("position-bidding")}
               collapsed={sidebarCollapsed}
             />
           )}
-          
+
           {/* Store Mode Toggle */}
           {ownerSidebarConfig["store-mode"] && (
             <div className="border-t pt-2 mt-2">
-              <SidebarNavItem 
-                icon={isStoreMode ? Minimize : Maximize} 
-                label={isStoreMode ? "Exit Store Mode" : "Store Mode"} 
+              <SidebarNavItem
+                icon={isStoreMode ? Minimize : Maximize}
+                label={isStoreMode ? "Exit Store Mode" : "Store Mode"}
                 active={false}
                 onClick={() => setIsStoreMode(!isStoreMode)}
                 collapsed={sidebarCollapsed}
@@ -2126,8 +2122,8 @@ export default function CanteenOwnerDashboardSidebar() {
 
         {/* Sidebar Footer */}
         <div className={`${sidebarCollapsed ? "p-2" : "p-3"} border-t space-y-2 flex-shrink-0`}>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             onClick={() => setShowNotifications(true)}
             className={`w-full ${sidebarCollapsed ? "justify-center px-2" : "justify-start"} relative`}
@@ -2136,16 +2132,16 @@ export default function CanteenOwnerDashboardSidebar() {
             <Bell className={`w-4 h-4 ${sidebarCollapsed ? "" : "mr-2"}`} />
             {!sidebarCollapsed && "Notifications"}
             {notifications.filter(n => !n.read).length > 0 && (
-              <Badge 
-                variant="destructive" 
+              <Badge
+                variant="destructive"
                 className={sidebarCollapsed ? "absolute right-1.5 top-1.5 h-5 min-w-5 px-1 flex items-center justify-center text-[10px]" : "ml-auto h-5 w-5 p-0 flex items-center justify-center text-xs"}
               >
                 {notifications.filter(n => !n.read).length}
               </Badge>
             )}
           </Button>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             onClick={() => setShowSettings(true)}
             className={`w-full ${sidebarCollapsed ? "justify-center px-2" : "justify-start"}`}
@@ -2206,8 +2202,8 @@ export default function CanteenOwnerDashboardSidebar() {
               >
                 <LogOut className="w-3.5 h-3.5" />
               </Button>
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 onClick={() => setLocation("/login")}
                 className="hidden sm:inline-flex hover:bg-accent hover:text-accent-foreground h-8"
@@ -2220,11 +2216,10 @@ export default function CanteenOwnerDashboardSidebar() {
 
         {/* Content Area */}
         <div className="flex-1 p-4 md:p-6 min-h-0 overflow-hidden">
-          <div className={`max-w-7xl mx-auto w-full ${
-            ["orders", "pos-billing", "menu", "content", "analytics", "delivery-management", "payout"].includes(activeTab) 
-              ? "h-full flex flex-col min-h-0" 
-              : ""
-          }`}>
+          <div className={`max-w-7xl mx-auto w-full ${["orders", "pos-billing", "menu", "content", "analytics", "delivery-management", "payout"].includes(activeTab)
+            ? "h-full flex flex-col min-h-0"
+            : ""
+            }`}>
             {/* Overview Content */}
             {activeTab === "overview" && (
               <div className="space-y-6">
@@ -2259,8 +2254,8 @@ export default function CanteenOwnerDashboardSidebar() {
                   <CardContent>
                     <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                       {(paginatedOrders as any[]).slice(0, 7).map((order: any) => (
-                        <div 
-                          key={order.id} 
+                        <div
+                          key={order.id}
                           className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 border rounded-lg cursor-pointer hover:bg-accent/50 transition-colors"
                           onClick={() => setLocation(`/canteen-order-detail/${order.id}`)}
                         >
@@ -2289,7 +2284,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                     return menuItem?.isMarkable === true;
                                   });
                                   return (
-                                    <Badge 
+                                    <Badge
                                       variant={hasMarkableItem ? "secondary" : "outline"}
                                       className={`${hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"} whitespace-nowrap`}
                                     >
@@ -2303,17 +2298,17 @@ export default function CanteenOwnerDashboardSidebar() {
                             </div>
                             <p className="text-sm text-muted-foreground">Customer: {order.customerName || 'N/A'}</p>
                             <p className="text-sm">
-                              {order.items && typeof order.items === 'string' 
+                              {order.items && typeof order.items === 'string'
                                 ? (() => {
-                                    try {
-                                      const parsedItems = JSON.parse(order.items);
-                                      return Array.isArray(parsedItems) 
-                                        ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
-                                        : order.items;
-                                    } catch {
-                                      return order.items;
-                                    }
-                                  })()
+                                  try {
+                                    const parsedItems = JSON.parse(order.items);
+                                    return Array.isArray(parsedItems)
+                                      ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
+                                      : order.items;
+                                  } catch {
+                                    return order.items;
+                                  }
+                                })()
                                 : 'No items'
                               }
                             </p>
@@ -2370,7 +2365,7 @@ export default function CanteenOwnerDashboardSidebar() {
                       <TabsList className="w-full mb-2 flex-shrink-0 h-9 hidden">
                         <TabsTrigger value="active">Active Orders ({activeOrders.length})</TabsTrigger>
                       </TabsList>
-                      
+
                       <TabsContent value="active" className="flex-1 flex flex-col min-h-0 mt-0">
                         {!showAllOrders ? (
                           <div className="flex-1 flex flex-col min-h-0">
@@ -2389,225 +2384,224 @@ export default function CanteenOwnerDashboardSidebar() {
                                 </div>
                               </div>
                             </div>
-                          
+
                             <div className="flex-1 min-h-0 flex flex-col">
-                          {paginatedActiveLoading ? (
-                            <div className="text-center py-8">
-                              <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" />
-                              <p className="text-muted-foreground">Loading active orders...</p>
-                            </div>
-                          ) : paginatedActiveOrders.length === 0 ? (
-                            <div className="text-center py-8">
-                              <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                              <p className="text-muted-foreground">No active orders</p>
-                              <p className="text-sm text-muted-foreground mt-2">Active orders will appear here when customers place orders</p>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex-1 min-h-0 overflow-y-auto app-scrollbar">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[140px] gap-1.5 sm:gap-2">
-                                  {paginatedActiveOrders.map((order: any) => (
-                                <Card key={order.id} className={`h-auto sm:h-[140px] border-l-4 cursor-pointer transition-all duration-200 shadow-md hover:shadow-xl border border-border bg-card flex flex-col ${
-                                  order.status === 'preparing' ? 'border-l-primary hover:border-l-primary/80' : 
-                                  order.status === 'ready' ? 'border-l-success hover:border-l-success/80' : 
-                                  'border-l-warning hover:border-l-warning/80'
-                                }`} onClick={() => handleOrderCardClick(order)}>
-                                  <CardContent className="p-2 flex flex-col h-full min-h-0">
-                                    <div className="flex flex-col h-full min-h-0">
-                                      {/* Header Section - Fixed Height */}
-                                      <div className="flex-shrink-0 mb-1">
-                                        <div className="flex items-center gap-1 mb-0.5 flex-wrap">
-                                          <div className="flex items-center font-medium text-foreground">
-                                            <span className="text-[10px]">#{(() => {
-                                              const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-                                              return formatted.prefix;
-                                            })()}</span>
-                                            <span className="bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary font-bold px-1 py-0.5 rounded text-[10px] ml-0.5 border border-primary/30 dark:border-primary/50">
-                                              {(() => {
-                                                const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-                                                return formatted.highlighted;
-                                              })()}
-                                            </span>
-                                          </div>
-                                          <Badge className={`${getOrderStatusColor(order.status)} text-[10px] px-1 py-0 h-4`}>
-                                            {getOrderStatusText(order.status)}
-                                          </Badge>
-                                          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">{order.estimatedTime}m</Badge>
-                                          {(() => {
-                                            try {
-                                              const items = JSON.parse(order.items || '[]');
-                                              const hasMarkableItem = items.some((item: any) => {
-                                                const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
-                                                return menuItem?.isMarkable === true;
-                                              });
-                                              
-                                              return (
-                                                <Badge 
-                                                  variant={hasMarkableItem ? "secondary" : "outline"}
-                                                  className={`${hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"} text-[10px] px-1 py-0 h-4`}
-                                                >
-                                                  {hasMarkableItem ? "Prep" : "Auto"}
-                                                </Badge>
-                                              );
-                                            } catch (error) {
-                                              return null;
-                                            }
-                                          })()}
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground truncate">{order.customerName}</p>
-                                      </div>
-                                      
-                                      {/* Items List - Flexible with truncation */}
-                                      <div className="flex-1 min-h-0 mb-1">
-                                        <p className="text-[10px] text-foreground line-clamp-2 leading-tight">
-                                          {order.items && typeof order.items === 'string' 
-                                            ? (() => {
-                                                try {
-                                                  const parsedItems = JSON.parse(order.items);
-                                                  return Array.isArray(parsedItems) 
-                                                    ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
-                                                    : order.items;
-                                                } catch {
-                                                  return order.items;
-                                                }
-                                              })()
-                                            : 'No items'
-                                          }
-                                        </p>
-                                      </div>
-                                      
-                                      {/* Footer Section - Fixed at Bottom */}
-                                      <div className="flex-shrink-0 flex items-end justify-between gap-1.5">
-                                        <div className="flex flex-col items-start">
-                                          <p className="text-xs font-semibold text-foreground">₹{order.amount}</p>
-                                          <p className="text-[10px] text-muted-foreground">
-                                            {order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A'}
-                                          </p>
-                                        </div>
-                                        <div className="flex-shrink-0">
-                                          {(() => {
-                                            try {
-                                              const items = JSON.parse(order.items || '[]');
-                                              const hasMarkableItem = items.some((item: any) => {
-                                                const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
-                                                return menuItem?.isMarkable === true;
-                                              });
-                                              
-                                              // Auto-Ready orders that are stuck in pending - show Mark Ready button
-                                              if (!hasMarkableItem && order.status === "pending") {
-                                                return (
-                                                  <Button
-                                                    size="sm"
-                                                    variant="cart"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      markOrderReadyMutation.mutate({ orderId: order.id });
-                                                    }}
-                                                    disabled={markOrderReadyMutation.isPending}
-                                                    className="h-5 text-[10px] px-1.5"
-                                                    data-testid={`button-mark-ready-${order.id}`}
-                                                  >
-                                                    {markOrderReadyMutation.isPending ? "..." : "Ready"}
-                                                  </Button>
-                                                );
-                                              }
-                                              
-                                              // Auto-Ready orders show Scan Barcode button when ready
-                                              if (!hasMarkableItem && order.status === "ready") {
-                                                return (
-                                                  <Button
-                                                    size="sm"
-                                                    variant="default"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleScanBarcode(order);
-                                                    }}
-                                                    className="bg-primary hover:bg-primary/90 text-primary-foreground h-5 text-[10px] px-1.5"
-                                                    data-testid={`button-scan-barcode-${order.id}`}
-                                                  >
-                                                    <ScanLine className="w-2.5 h-2.5 mr-0.5" />
-                                                    Scan
-                                                  </Button>
-                                                );
-                                              }
-                                              
-                                              // Prep Required orders show Mark Ready button when pending/preparing
-                                              if (hasMarkableItem && (order.status === "pending" || order.status === "preparing")) {
-                                                return (
-                                                  <Button
-                                                    size="sm"
-                                                    variant="cart"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      markOrderReadyMutation.mutate({ orderId: order.id });
-                                                    }}
-                                                    disabled={markOrderReadyMutation.isPending}
-                                                    className="h-5 text-[10px] px-1.5"
-                                                    data-testid={`button-mark-ready-${order.id}`}
-                                                  >
-                                                    {markOrderReadyMutation.isPending ? (
-                                                      <>
-                                                        <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" />
-                                                        ...
-                                                      </>
-                                                    ) : (
-                                                      "Ready"
-                                                    )}
-                                                  </Button>
-                                                );
-                                              }
-                                              
-                                              // Prep Required orders show Scan Barcode button when ready
-                                              if (hasMarkableItem && order.status === "ready") {
-                                                return (
-                                                  <Button
-                                                    size="sm"
-                                                    variant="default"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleScanBarcode(order);
-                                                    }}
-                                                    className="bg-primary hover:bg-primary/90 text-primary-foreground h-5 text-[10px] px-1.5"
-                                                    data-testid={`button-scan-barcode-${order.id}`}
-                                                  >
-                                                    <ScanLine className="w-2.5 h-2.5 mr-0.5" />
-                                                    Scan
-                                                  </Button>
-                                                );
-                                              }
-                                              
-                                              return null;
-                                            } catch {
-                                              return null;
-                                            }
-                                          })()}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              ))}
+                              {paginatedActiveLoading ? (
+                                <div className="text-center py-8">
+                                  <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" />
+                                  <p className="text-muted-foreground">Loading active orders...</p>
                                 </div>
-                              </div>
-                              
-                              {/* Active Orders Pagination - Bottom */}
-                              <div className="flex-shrink-0 mt-1 pt-1 border-t">
-                                <Pagination
-                                  currentPage={currentActivePage}
-                                  totalPages={totalActivePages || 1}
-                                  onPageChange={goToActivePage}
-                                  onNextPage={goToActiveNextPage}
-                                  onPreviousPage={goToActivePreviousPage}
-                                  onFirstPage={goToActiveFirstPage}
-                                  onLastPage={goToActiveLastPage}
-                                  hasNextPage={hasActiveNextPage}
-                                  hasPreviousPage={hasActivePreviousPage}
-                                  totalCount={totalActiveOrdersCount || 0}
-                                  pageSize={12}
-                                />
-                              </div>
-                            </>
-                          )}
+                              ) : paginatedActiveOrders.length === 0 ? (
+                                <div className="text-center py-8">
+                                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                  <p className="text-muted-foreground">No active orders</p>
+                                  <p className="text-sm text-muted-foreground mt-2">Active orders will appear here when customers place orders</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex-1 min-h-0 overflow-y-auto app-scrollbar">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[140px] gap-1.5 sm:gap-2">
+                                      {paginatedActiveOrders.map((order: any) => (
+                                        <Card key={order.id} className={`h-auto sm:h-[140px] border-l-4 cursor-pointer transition-all duration-200 shadow-md hover:shadow-xl border border-border bg-card flex flex-col ${order.status === 'preparing' ? 'border-l-primary hover:border-l-primary/80' :
+                                          order.status === 'ready' ? 'border-l-success hover:border-l-success/80' :
+                                            'border-l-warning hover:border-l-warning/80'
+                                          }`} onClick={() => handleOrderCardClick(order)}>
+                                          <CardContent className="p-2 flex flex-col h-full min-h-0">
+                                            <div className="flex flex-col h-full min-h-0">
+                                              {/* Header Section - Fixed Height */}
+                                              <div className="flex-shrink-0 mb-1">
+                                                <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+                                                  <div className="flex items-center font-medium text-foreground">
+                                                    <span className="text-[10px]">#{(() => {
+                                                      const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
+                                                      return formatted.prefix;
+                                                    })()}</span>
+                                                    <span className="bg-primary/20 text-primary dark:bg-primary/30 dark:text-primary font-bold px-1 py-0.5 rounded text-[10px] ml-0.5 border border-primary/30 dark:border-primary/50">
+                                                      {(() => {
+                                                        const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
+                                                        return formatted.highlighted;
+                                                      })()}
+                                                    </span>
+                                                  </div>
+                                                  <Badge className={`${getOrderStatusColor(order.status)} text-[10px] px-1 py-0 h-4`}>
+                                                    {getOrderStatusText(order.status)}
+                                                  </Badge>
+                                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">{order.estimatedTime}m</Badge>
+                                                  {(() => {
+                                                    try {
+                                                      const items = JSON.parse(order.items || '[]');
+                                                      const hasMarkableItem = items.some((item: any) => {
+                                                        const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
+                                                        return menuItem?.isMarkable === true;
+                                                      });
+
+                                                      return (
+                                                        <Badge
+                                                          variant={hasMarkableItem ? "secondary" : "outline"}
+                                                          className={`${hasMarkableItem ? "bg-warning/20 text-warning dark:bg-warning/30 dark:text-warning border border-warning/40 dark:border-warning/50" : "bg-success/20 text-success dark:bg-success/30 dark:text-success border border-success/40 dark:border-success/50"} text-[10px] px-1 py-0 h-4`}
+                                                        >
+                                                          {hasMarkableItem ? "Prep" : "Auto"}
+                                                        </Badge>
+                                                      );
+                                                    } catch (error) {
+                                                      return null;
+                                                    }
+                                                  })()}
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground truncate">{order.customerName}</p>
+                                              </div>
+
+                                              {/* Items List - Flexible with truncation */}
+                                              <div className="flex-1 min-h-0 mb-1">
+                                                <p className="text-[10px] text-foreground line-clamp-2 leading-tight">
+                                                  {order.items && typeof order.items === 'string'
+                                                    ? (() => {
+                                                      try {
+                                                        const parsedItems = JSON.parse(order.items);
+                                                        return Array.isArray(parsedItems)
+                                                          ? parsedItems.map((item: any) => `${item.quantity}x ${item.name}`).join(', ')
+                                                          : order.items;
+                                                      } catch {
+                                                        return order.items;
+                                                      }
+                                                    })()
+                                                    : 'No items'
+                                                  }
+                                                </p>
+                                              </div>
+
+                                              {/* Footer Section - Fixed at Bottom */}
+                                              <div className="flex-shrink-0 flex items-end justify-between gap-1.5">
+                                                <div className="flex flex-col items-start">
+                                                  <p className="text-xs font-semibold text-foreground">₹{order.amount}</p>
+                                                  <p className="text-[10px] text-muted-foreground">
+                                                    {order.createdAt ? new Date(order.createdAt).toLocaleTimeString() : 'N/A'}
+                                                  </p>
+                                                </div>
+                                                <div className="flex-shrink-0">
+                                                  {(() => {
+                                                    try {
+                                                      const items = JSON.parse(order.items || '[]');
+                                                      const hasMarkableItem = items.some((item: any) => {
+                                                        const menuItem = menuItems.find(mi => mi.id === item.id || (mi as any)._id === item.id);
+                                                        return menuItem?.isMarkable === true;
+                                                      });
+
+                                                      // Auto-Ready orders that are stuck in pending - show Mark Ready button
+                                                      if (!hasMarkableItem && order.status === "pending") {
+                                                        return (
+                                                          <Button
+                                                            size="sm"
+                                                            variant="cart"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              markOrderReadyMutation.mutate({ orderId: order.id });
+                                                            }}
+                                                            disabled={markOrderReadyMutation.isPending}
+                                                            className="h-5 text-[10px] px-1.5"
+                                                            data-testid={`button-mark-ready-${order.id}`}
+                                                          >
+                                                            {markOrderReadyMutation.isPending ? "..." : "Ready"}
+                                                          </Button>
+                                                        );
+                                                      }
+
+                                                      // Auto-Ready orders show Scan Barcode button when ready
+                                                      if (!hasMarkableItem && order.status === "ready") {
+                                                        return (
+                                                          <Button
+                                                            size="sm"
+                                                            variant="default"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              handleScanBarcode(order);
+                                                            }}
+                                                            className="bg-primary hover:bg-primary/90 text-primary-foreground h-5 text-[10px] px-1.5"
+                                                            data-testid={`button-scan-barcode-${order.id}`}
+                                                          >
+                                                            <ScanLine className="w-2.5 h-2.5 mr-0.5" />
+                                                            Scan
+                                                          </Button>
+                                                        );
+                                                      }
+
+                                                      // Prep Required orders show Mark Ready button when pending/preparing
+                                                      if (hasMarkableItem && (order.status === "pending" || order.status === "preparing")) {
+                                                        return (
+                                                          <Button
+                                                            size="sm"
+                                                            variant="cart"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              markOrderReadyMutation.mutate({ orderId: order.id });
+                                                            }}
+                                                            disabled={markOrderReadyMutation.isPending}
+                                                            className="h-5 text-[10px] px-1.5"
+                                                            data-testid={`button-mark-ready-${order.id}`}
+                                                          >
+                                                            {markOrderReadyMutation.isPending ? (
+                                                              <>
+                                                                <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" />
+                                                                ...
+                                                              </>
+                                                            ) : (
+                                                              "Ready"
+                                                            )}
+                                                          </Button>
+                                                        );
+                                                      }
+
+                                                      // Prep Required orders show Scan Barcode button when ready
+                                                      if (hasMarkableItem && order.status === "ready") {
+                                                        return (
+                                                          <Button
+                                                            size="sm"
+                                                            variant="default"
+                                                            onClick={(e) => {
+                                                              e.stopPropagation();
+                                                              handleScanBarcode(order);
+                                                            }}
+                                                            className="bg-primary hover:bg-primary/90 text-primary-foreground h-5 text-[10px] px-1.5"
+                                                            data-testid={`button-scan-barcode-${order.id}`}
+                                                          >
+                                                            <ScanLine className="w-2.5 h-2.5 mr-0.5" />
+                                                            Scan
+                                                          </Button>
+                                                        );
+                                                      }
+
+                                                      return null;
+                                                    } catch {
+                                                      return null;
+                                                    }
+                                                  })()}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* Active Orders Pagination - Bottom */}
+                                  <div className="flex-shrink-0 mt-1 pt-1 border-t">
+                                    <Pagination
+                                      currentPage={currentActivePage}
+                                      totalPages={totalActivePages || 1}
+                                      onPageChange={goToActivePage}
+                                      onNextPage={goToActiveNextPage}
+                                      onPreviousPage={goToActivePreviousPage}
+                                      onFirstPage={goToActiveFirstPage}
+                                      onLastPage={goToActiveLastPage}
+                                      hasNextPage={hasActiveNextPage}
+                                      hasPreviousPage={hasActivePreviousPage}
+                                      totalCount={totalActiveOrdersCount || 0}
+                                      pageSize={12}
+                                    />
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -2628,7 +2622,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="flex-1 min-h-0 flex flex-col">
                               {paginatedLoading ? (
                                 <div className="text-center py-8">
@@ -2678,7 +2672,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                                   {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
                                                 </p>
                                               </div>
-                                              
+
                                               {/* Bottom Section - Price and Button */}
                                               <div className="flex-shrink-0 flex items-end justify-between gap-2 mt-2 pt-2 border-t border-border">
                                                 <p className="text-xs sm:text-sm font-semibold text-foreground">₹{order.amount}</p>
@@ -2701,7 +2695,7 @@ export default function CanteenOwnerDashboardSidebar() {
                                       ))}
                                     </div>
                                   </div>
-                                  
+
                                   {/* All Orders Pagination */}
                                   <div className="flex-shrink-0 mt-1 pt-1 border-t">
                                     <Pagination
@@ -2747,8 +2741,8 @@ export default function CanteenOwnerDashboardSidebar() {
             {/* POS Billing Content */}
             {activeTab === "pos-billing" && (
               <div className="h-full flex flex-col min-h-0">
-                <PosBilling 
-                  canteenId={canteenId || ''} 
+                <PosBilling
+                  canteenId={canteenId || ''}
                   onOpenSettings={() => setShowSettings(true)}
                 />
               </div>
@@ -2757,8 +2751,8 @@ export default function CanteenOwnerDashboardSidebar() {
             {/* Menu Content */}
             {activeTab === "menu" && (
               <div className="h-full flex flex-col min-h-0">
-                <CanteenOwnerMenuManagement 
-                  menuItems={menuItems} 
+                <CanteenOwnerMenuManagement
+                  menuItems={menuItems}
                   categories={categories}
                   onMenuUpdate={refetchMenuItems}
                   canteenId={canteenId}
@@ -2782,7 +2776,7 @@ export default function CanteenOwnerDashboardSidebar() {
                       <CardTitle className="text-lg text-foreground">Analytics Dashboard</CardTitle>
                       <p className="text-xs text-muted-foreground mt-0.5">Comprehensive insights with date-based filtering</p>
                     </div>
-                    
+
                     {/* Date Controls */}
                     <div className="flex flex-wrap items-center gap-2 md:gap-3 mt-2 pt-2 border-t border-border">
                       {/* Timeframe Selector */}
@@ -2807,9 +2801,9 @@ export default function CanteenOwnerDashboardSidebar() {
                         <CalendarDays className="w-3 h-3 text-muted-foreground" />
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="w-36 h-7 text-xs justify-start border-border bg-card hover:bg-accent hover:text-accent-foreground"
                             >
                               <CalendarDays className="mr-1 h-3 w-3" />
@@ -2921,24 +2915,24 @@ export default function CanteenOwnerDashboardSidebar() {
                               </CardHeader>
                               <CardContent className="p-3">
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                            {(() => {
-                              const statusConfig = [
-                                { status: 'pending', label: 'Pending', color: 'bg-warning', textColor: 'text-warning' },
-                                { status: 'preparing', label: 'Preparing', color: 'bg-primary', textColor: 'text-primary' },
-                                { status: 'ready', label: 'Ready', color: 'bg-success', textColor: 'text-success' },
-                                { status: 'delivered', label: 'Delivered', color: 'bg-muted', textColor: 'text-muted-foreground' }
-                              ];
+                                  {(() => {
+                                    const statusConfig = [
+                                      { status: 'pending', label: 'Pending', color: 'bg-warning', textColor: 'text-warning' },
+                                      { status: 'preparing', label: 'Preparing', color: 'bg-primary', textColor: 'text-primary' },
+                                      { status: 'ready', label: 'Ready', color: 'bg-success', textColor: 'text-success' },
+                                      { status: 'delivered', label: 'Delivered', color: 'bg-muted', textColor: 'text-muted-foreground' }
+                                    ];
 
-                                  return statusConfig.map(config => (
-                                    <div key={config.status} className="text-center p-3 border border-border rounded-lg bg-card">
-                                      <div className={`w-10 h-10 ${config.color} rounded-full mx-auto mb-1.5 flex items-center justify-center`}>
-                                        <span className="text-white font-bold text-sm">{periodAnalytics.statusCounts[config.status] || 0}</span>
+                                    return statusConfig.map(config => (
+                                      <div key={config.status} className="text-center p-3 border border-border rounded-lg bg-card">
+                                        <div className={`w-10 h-10 ${config.color} rounded-full mx-auto mb-1.5 flex items-center justify-center`}>
+                                          <span className="text-white font-bold text-sm">{periodAnalytics.statusCounts[config.status] || 0}</span>
+                                        </div>
+                                        <p className={`font-semibold text-sm ${config.textColor}`}>{config.label}</p>
+                                        <p className="text-[10px] text-muted-foreground">Orders</p>
                                       </div>
-                                      <p className={`font-semibold text-sm ${config.textColor}`}>{config.label}</p>
-                                      <p className="text-[10px] text-muted-foreground">Orders</p>
-                                    </div>
-                                  ));
-                                })()}
+                                    ));
+                                  })()}
                                 </div>
                               </CardContent>
                             </Card>
@@ -2953,46 +2947,46 @@ export default function CanteenOwnerDashboardSidebar() {
                               </CardHeader>
                               <CardContent className="p-3">
                                 <div className="space-y-3">
-                            {(() => {
-                              const topItems = Object.values(periodAnalytics.itemStats)
-                                .sort((a: any, b: any) => b.quantity - a.quantity)
-                                .slice(0, 5);
+                                  {(() => {
+                                    const topItems = Object.values(periodAnalytics.itemStats)
+                                      .sort((a: any, b: any) => b.quantity - a.quantity)
+                                      .slice(0, 5);
 
-                                  if (topItems.length === 0) {
-                                    return (
-                                      <div className="text-center py-6">
-                                        <ChefHat className="w-10 h-10 mx-auto mb-3 opacity-50 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground">No order data for selected period</p>
-                                      </div>
-                                    );
-                                  }
+                                    if (topItems.length === 0) {
+                                      return (
+                                        <div className="text-center py-6">
+                                          <ChefHat className="w-10 h-10 mx-auto mb-3 opacity-50 text-muted-foreground" />
+                                          <p className="text-sm text-muted-foreground">No order data for selected period</p>
+                                        </div>
+                                      );
+                                    }
 
-                                  const maxQuantity = Math.max(...topItems.map((item: any) => item.quantity));
+                                    const maxQuantity = Math.max(...topItems.map((item: any) => item.quantity));
 
-                                  return topItems.map((item: any, index: number) => (
-                                    <div key={index} className="flex items-center space-x-3">
-                                      <div className="flex-shrink-0 w-7 h-7 bg-primary rounded-full flex items-center justify-center">
-                                        <span className="text-primary-foreground text-xs font-bold">{index + 1}</span>
+                                    return topItems.map((item: any, index: number) => (
+                                      <div key={index} className="flex items-center space-x-3">
+                                        <div className="flex-shrink-0 w-7 h-7 bg-primary rounded-full flex items-center justify-center">
+                                          <span className="text-primary-foreground text-xs font-bold">{index + 1}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <p className="font-medium text-sm text-foreground">{item.name}</p>
+                                            <p className="text-xs text-muted-foreground">{item.quantity} sold</p>
+                                          </div>
+                                          <div className="w-full bg-muted rounded-full h-1.5">
+                                            <div
+                                              className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                                              style={{ width: `${maxQuantity > 0 ? (item.quantity / maxQuantity) * 100 : 0}%` }}
+                                            ></div>
+                                          </div>
+                                          <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                                            <span>₹{item.revenue} revenue</span>
+                                            <span>{item.orders} orders</span>
+                                          </div>
+                                        </div>
                                       </div>
-                                      <div className="flex-1">
-                                        <div className="flex items-center justify-between mb-1">
-                                          <p className="font-medium text-sm text-foreground">{item.name}</p>
-                                          <p className="text-xs text-muted-foreground">{item.quantity} sold</p>
-                                        </div>
-                                        <div className="w-full bg-muted rounded-full h-1.5">
-                                          <div 
-                                            className="bg-primary h-1.5 rounded-full transition-all duration-300"
-                                            style={{ width: `${maxQuantity > 0 ? (item.quantity / maxQuantity) * 100 : 0}%` }}
-                                          ></div>
-                                        </div>
-                                        <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                                          <span>₹{item.revenue} revenue</span>
-                                          <span>{item.orders} orders</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ));
-                                })()}
+                                    ));
+                                  })()}
                                 </div>
                               </CardContent>
                             </Card>
@@ -3007,51 +3001,50 @@ export default function CanteenOwnerDashboardSidebar() {
                               </CardHeader>
                               <CardContent className="p-3">
                                 <div className="space-y-3">
-                            {(() => {
-                              const recentOrders = [...filteredOrders]
-                                .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                .slice(0, 10);
+                                  {(() => {
+                                    const recentOrders = [...filteredOrders]
+                                      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                                      .slice(0, 10);
 
-                                  if (recentOrders.length === 0) {
-                                    return (
-                                      <div className="text-center py-6">
-                                        <Clock className="w-10 h-10 mx-auto mb-3 opacity-50 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground">No activity for selected period</p>
-                                      </div>
-                                    );
-                                  }
+                                    if (recentOrders.length === 0) {
+                                      return (
+                                        <div className="text-center py-6">
+                                          <Clock className="w-10 h-10 mx-auto mb-3 opacity-50 text-muted-foreground" />
+                                          <p className="text-sm text-muted-foreground">No activity for selected period</p>
+                                        </div>
+                                      );
+                                    }
 
-                                  return recentOrders.map((order: any, index: number) => (
-                                    <div key={order.id} className="flex items-start space-x-2 pb-3 border-b border-border last:border-b-0">
-                                      <div className={`w-2.5 h-2.5 rounded-full mt-2 ${
-                                        order.status === 'delivered' ? 'bg-success' :
-                                        order.status === 'ready' ? 'bg-primary' :
-                                        order.status === 'preparing' ? 'bg-warning' :
-                                        'bg-warning'
-                                      }`}></div>
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                          <p className="font-medium text-sm text-foreground truncate">
-                                            Order #{(() => {
-                                              const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-                                              return formatted.prefix + formatted.highlighted;
-                                            })()}
-                                          </p>
-                                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                                            {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
-                                          </span>
-                                        </div>
-                                        <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
-                                        <div className="flex items-center justify-between mt-1 gap-2">
-                                          <Badge className={`${getOrderStatusColor(order.status)} text-xs px-1.5 py-0 h-4 border-border`} variant="outline">
-                                            {getOrderStatusText(order.status)}
-                                          </Badge>
-                                          <span className="text-xs font-medium text-foreground">₹{order.amount}</span>
+                                    return recentOrders.map((order: any, index: number) => (
+                                      <div key={order.id} className="flex items-start space-x-2 pb-3 border-b border-border last:border-b-0">
+                                        <div className={`w-2.5 h-2.5 rounded-full mt-2 ${order.status === 'delivered' ? 'bg-success' :
+                                          order.status === 'ready' ? 'bg-primary' :
+                                            order.status === 'preparing' ? 'bg-warning' :
+                                              'bg-warning'
+                                          }`}></div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <p className="font-medium text-sm text-foreground truncate">
+                                              Order #{(() => {
+                                                const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
+                                                return formatted.prefix + formatted.highlighted;
+                                              })()}
+                                            </p>
+                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                              {order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A'}
+                                            </span>
+                                          </div>
+                                          <p className="text-xs text-muted-foreground truncate">{order.customerName}</p>
+                                          <div className="flex items-center justify-between mt-1 gap-2">
+                                            <Badge className={`${getOrderStatusColor(order.status)} text-xs px-1.5 py-0 h-4 border-border`} variant="outline">
+                                              {getOrderStatusText(order.status)}
+                                            </Badge>
+                                            <span className="text-xs font-medium text-foreground">₹{order.amount}</span>
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                  ));
-                                })()}
+                                    ));
+                                  })()}
                                 </div>
                               </CardContent>
                             </Card>
@@ -3067,25 +3060,25 @@ export default function CanteenOwnerDashboardSidebar() {
                                 </CardHeader>
                                 <CardContent className="p-3">
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              {[
-                                {
-                                  title: "Daily Orders",
-                                  value: periodAnalytics.totalOrders,
-                                  subtitle: "orders placed",
-                                  color: "text-primary"
-                                },
-                                {
-                                  title: "Daily Revenue", 
-                                  value: `₹${periodAnalytics.totalRevenue}`,
-                                  subtitle: "total sales",
-                                  color: "text-success"
-                                },
-                                {
-                                  title: "Avg Order Value",
-                                  value: `₹${periodAnalytics.averageOrderValue}`,
-                                  subtitle: "per order",
-                                  color: "text-warning"
-                                }
+                                    {[
+                                      {
+                                        title: "Daily Orders",
+                                        value: periodAnalytics.totalOrders,
+                                        subtitle: "orders placed",
+                                        color: "text-primary"
+                                      },
+                                      {
+                                        title: "Daily Revenue",
+                                        value: `₹${periodAnalytics.totalRevenue}`,
+                                        subtitle: "total sales",
+                                        color: "text-success"
+                                      },
+                                      {
+                                        title: "Avg Order Value",
+                                        value: `₹${periodAnalytics.averageOrderValue}`,
+                                        subtitle: "per order",
+                                        color: "text-warning"
+                                      }
                                     ].map((metric, index) => (
                                       <div key={index} className="text-center p-3 border border-border rounded-lg bg-card">
                                         <p className="text-xs font-medium text-muted-foreground">{metric.title}</p>
@@ -3125,10 +3118,10 @@ export default function CanteenOwnerDashboardSidebar() {
                                         const category = categories.find((cat: any) => {
                                           const catId = cat.id || cat._id;
                                           const itemCategoryId = item.categoryId;
-                                          return catId === itemCategoryId || 
-                                                 catId === (itemCategoryId as any)?._id || 
-                                                 catId === (itemCategoryId as any)?.id ||
-                                                 String(catId) === String(itemCategoryId);
+                                          return catId === itemCategoryId ||
+                                            catId === (itemCategoryId as any)?._id ||
+                                            catId === (itemCategoryId as any)?.id ||
+                                            String(catId) === String(itemCategoryId);
                                         });
 
                                         return (
@@ -3137,13 +3130,12 @@ export default function CanteenOwnerDashboardSidebar() {
                                             <td className="p-1.5 text-muted-foreground">{category?.name || 'Uncategorized'}</td>
                                             <td className="p-1.5 text-foreground">₹{item.price}</td>
                                             <td className="p-1.5">
-                                              <Badge 
-                                                variant={item.available ? "default" : "secondary"} 
-                                                className={`text-[10px] px-1 py-0 h-4 border-border ${
-                                                  item.available 
-                                                    ? "bg-success/20 text-success border-success/40" 
-                                                    : "bg-muted text-muted-foreground"
-                                                }`}
+                                              <Badge
+                                                variant={item.available ? "default" : "secondary"}
+                                                className={`text-[10px] px-1 py-0 h-4 border-border ${item.available
+                                                  ? "bg-success/20 text-success border-success/40"
+                                                  : "bg-muted text-muted-foreground"
+                                                  }`}
                                               >
                                                 {item.available ? "Available" : "Unavailable"}
                                               </Badge>
@@ -3250,9 +3242,8 @@ export default function CanteenOwnerDashboardSidebar() {
               notifications.map((notification) => {
                 const isUnread = !notification.read;
                 return (
-                  <div key={notification.id} className={`p-3 border rounded-lg ${
-                    isUnread ? 'bg-primary/5 border-primary/20' : ''
-                  }`}>
+                  <div key={notification.id} className={`p-3 border rounded-lg ${isUnread ? 'bg-primary/5 border-primary/20' : ''
+                    }`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <p className={`font-medium ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
@@ -3344,11 +3335,10 @@ export default function CanteenOwnerDashboardSidebar() {
                           <button
                             key={option.value}
                             onClick={() => setTheme(option.value)}
-                            className={`p-3 rounded-lg border transition-all ${
-                              isActive
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border hover:border-primary/50'
-                            }`}
+                            className={`p-3 rounded-lg border transition-all ${isActive
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50'
+                              }`}
                           >
                             <div className="flex flex-col items-center space-y-2">
                               <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -3364,7 +3354,7 @@ export default function CanteenOwnerDashboardSidebar() {
                       Current: {theme.charAt(0).toUpperCase() + theme.slice(1)} ({resolvedTheme})
                     </p>
                   </div>
-                  
+
                   <div>
                     <Label className="text-sm font-medium mb-3 block">Favorite Counter</Label>
                     <Select
@@ -3490,7 +3480,7 @@ export default function CanteenOwnerDashboardSidebar() {
               Barcode Scanner
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-6">
             {/* Barcode Input Section */}
             <Card className="border-2 border-primary/20 bg-primary/5 dark:bg-primary/10">
@@ -3518,7 +3508,7 @@ export default function CanteenOwnerDashboardSidebar() {
                     autoFocus
                   />
                 </div>
-                
+
                 <div className="bg-warning/20 border border-warning/40 dark:border-warning/50 rounded-lg p-3">
                   <div className="flex items-center space-x-2 mb-1">
                     <AlertTriangle className="w-4 h-4 text-warning" />
@@ -3529,7 +3519,7 @@ export default function CanteenOwnerDashboardSidebar() {
                   </p>
                 </div>
 
-                <Button 
+                <Button
                   type="button"
                   onClick={(e) => {
                     e.preventDefault();
@@ -3554,7 +3544,7 @@ export default function CanteenOwnerDashboardSidebar() {
                     <CheckCircle className="w-5 h-5 text-success" />
                     <h3 className="font-semibold text-success">Order Found!</h3>
                   </div>
-                  
+
                   {/* Basic Order Info */}
                   <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                     <div>
@@ -3564,7 +3554,7 @@ export default function CanteenOwnerDashboardSidebar() {
                         return formatted.prefix + formatted.highlighted;
                       })()}</p>
                     </div>
-                    
+
                     <div>
                       <span className="text-muted-foreground">Status:</span>
                       <div className="mt-1">
@@ -3573,22 +3563,22 @@ export default function CanteenOwnerDashboardSidebar() {
                         </Badge>
                       </div>
                     </div>
-                    
+
                     <div>
                       <span className="text-muted-foreground">Customer:</span>
                       <p className="font-medium">{scannedOrder.customerName || 'N/A'}</p>
                     </div>
-                    
+
                     <div>
                       <span className="text-muted-foreground">Total Amount:</span>
                       <p className="font-bold text-lg text-success">₹{scannedOrder.amount}</p>
                     </div>
-                    
+
                     <div>
                       <span className="text-muted-foreground">Barcode:</span>
                       <p className="font-mono text-xs">{scannedOrder.barcode}</p>
                     </div>
-                    
+
                     <div>
                       <span className="text-muted-foreground">Order Time:</span>
                       <p className="text-xs">{new Date(scannedOrder.createdAt).toLocaleString()}</p>
@@ -3604,10 +3594,10 @@ export default function CanteenOwnerDashboardSidebar() {
                     <div className="space-y-3 max-h-48 overflow-y-auto bg-muted/50 rounded-lg p-3">
                       {(() => {
                         try {
-                          const items = typeof scannedOrder.items === 'string' 
-                            ? JSON.parse(scannedOrder.items) 
+                          const items = typeof scannedOrder.items === 'string'
+                            ? JSON.parse(scannedOrder.items)
                             : scannedOrder.items || [];
-                          
+
                           return items.length > 0 ? items.map((item: any, index: number) => (
                             <div key={index} className="bg-card rounded-lg p-3 shadow-sm border border-border">
                               <div className="flex justify-between items-start">
@@ -3684,7 +3674,7 @@ export default function CanteenOwnerDashboardSidebar() {
               >
                 Cancel
               </Button>
-              
+
               {showOrderDetails && scannedOrder && (
                 <Button
                   variant="cart"
@@ -3726,7 +3716,7 @@ export default function CanteenOwnerDashboardSidebar() {
               Order Details
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedOrderForDetails && (
             <div className="p-6 space-y-6">
               {/* ORDERED DISHES - PRIORITY DISPLAY */}
@@ -3738,10 +3728,10 @@ export default function CanteenOwnerDashboardSidebar() {
                 <div className="space-y-3">
                   {(() => {
                     try {
-                      const items = typeof selectedOrderForDetails.items === 'string' 
-                        ? JSON.parse(selectedOrderForDetails.items) 
+                      const items = typeof selectedOrderForDetails.items === 'string'
+                        ? JSON.parse(selectedOrderForDetails.items)
                         : selectedOrderForDetails.items || [];
-                      
+
                       return items.length > 0 ? items.map((item: any, index: number) => (
                         <div key={index} className="bg-card rounded-lg p-4 shadow-sm border border-primary/20 dark:border-primary/30">
                           <div className="flex justify-between items-start">

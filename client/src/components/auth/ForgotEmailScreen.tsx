@@ -81,7 +81,7 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
       // Try register number first (student format check)
       if (data.identifier.match(/^7115\d{2}[A-Za-z]{3}\d{3}$/)) {
         response = await fetch(`/api/users/by-register/${data.identifier}`);
-      } 
+      }
       // Try staff ID (6 digits)
       else if (data.identifier.match(/^\d{6}$/)) {
         response = await fetch(`/api/users/by-staff/${data.identifier}`);
@@ -169,8 +169,8 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
                       <FormControl>
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-foreground w-4 h-4" />
-                          <Input 
-                            {...field} 
+                          <Input
+                            {...field}
                             placeholder="711523ABC123 or 123456"
                             type="text"
                             className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg"
@@ -182,9 +182,9 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
                   )}
                 />
 
-                <Button 
-                  type="submit" 
-                  className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl" 
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl"
                   disabled={isLoading}
                 >
                   {isLoading ? "Searching..." : "Find Account"}
@@ -227,8 +227,8 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
                       <FormControl>
                         <div className="relative group">
                           <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
-                          <Input 
-                            {...field} 
+                          <Input
+                            {...field}
                             placeholder="Enter your registered phone number"
                             className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
                           />
@@ -240,17 +240,17 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
                 />
 
                 <div className="flex gap-3">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setStep("lookup")}
                     className="flex-1 h-11 border-border hover:bg-accent rounded-xl transition-all duration-200"
                   >
                     Back
                   </Button>
-                  <Button 
-                    type="submit" 
-                    className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200" 
+                  <Button
+                    type="submit"
+                    className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -296,14 +296,14 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
             </Alert>
 
             <div className="space-y-3 pt-1">
-              <Button 
-                onClick={onBackToLogin} 
+              <Button
+                onClick={onBackToLogin}
                 className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
               >
                 Back to Login
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setStep("change-email")}
                 className="w-full h-11 border-border hover:bg-accent rounded-xl transition-all duration-200"
               >
@@ -344,9 +344,9 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
                       <FormControl>
                         <div className="relative group">
                           <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground group-focus-within:text-primary w-4 h-4 transition-colors" />
-                          <Input 
-                            {...field} 
-                            placeholder="you@example.com" 
+                          <Input
+                            {...field}
+                            placeholder="you@example.com"
                             type="email"
                             className="pl-10 pr-4 h-11 bg-input border border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-lg text-sm transition-all"
                           />
@@ -358,17 +358,17 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
                 />
 
                 <div className="flex gap-3">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setStep("show-email")}
                     className="flex-1 h-11 border-border hover:bg-accent rounded-xl transition-all duration-200"
                   >
                     Back
                   </Button>
-                  <Button 
-                    type="submit" 
-                    className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200" 
+                  <Button
+                    type="submit"
+                    className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -399,7 +399,7 @@ export default function ForgotEmailScreen({ onBackToLogin }: ForgotEmailScreenPr
       <div className="w-full max-w-[420px] space-y-6">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-card rounded-xl border border-border">
-            <img src="/splash_logo.svg" alt="Sillobyte Logo" className="w-10 h-10 object-contain" />
+            <img src="/splash_logo.svg" alt="SilloBite Logo" className="w-10 h-10 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
             Forgot Email?

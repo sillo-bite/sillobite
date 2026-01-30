@@ -824,7 +824,7 @@ export default function CheckoutPage() {
               key: paymentResponse.keyId,
               amount: paymentResponse.amount,
               currency: paymentResponse.currency || 'INR',
-              name: 'Kit Sillobyte',
+              name: 'Kit SilloBite',
               description: 'Order Payment',
               order_id: paymentResponse.razorpayOrderId,
               handler: function (response: any) {

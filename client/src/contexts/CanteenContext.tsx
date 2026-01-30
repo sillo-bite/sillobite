@@ -39,11 +39,13 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
 
   // Sequential flow: Fetch user from cache first, then use that to fetch canteens
   const { data: cachedUser, isLoading: userLoading } = useUserFromCache();
-  
+
   // Repair mechanism: If user is missing organization field, try to restore it from database
   useEffect(() => {
     const userToCheck = cachedUser || user;
-    if (userToCheck && userToCheck.role === 'guest' && !userToCheck.organization && userToCheck.id) {
+    // Only attempt to repair regular users who are missing organization data
+    // Do NOT attempt to repair temporary users as they draw organization data from their session
+    if (userToCheck && userToCheck.role === 'guest' && !userToCheck.organization && userToCheck.id && !userToCheck.isTemporary) {
       // Fetch user from database to get organizationId
       (async () => {
         try {
@@ -53,14 +55,14 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
             const dbUser = await userResponse.json();
             if (dbUser.organizationId) {
               console.log('✅ Found organizationId in database:', dbUser.organizationId);
-              
+
               // Update user data in localStorage with organization field
               const updatedUser = {
                 ...userToCheck,
                 organization: dbUser.organizationId,
                 organizationId: dbUser.organizationId,
               };
-              
+
               localStorage.setItem('user', JSON.stringify(updatedUser));
               window.dispatchEvent(new CustomEvent('userAuthChange'));
               console.log('✅ Organization field restored from database:', updatedUser);
@@ -86,14 +88,14 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
 
   // Determine which query to use based on user role, college, organization, or restaurant
   const isAdmin = effectiveUser?.role === 'admin' || effectiveUser?.role === 'super_admin';
-  
+
   // Check for restaurant context in user data (for authenticated users)
   const hasRestaurantContext = effectiveUser?.restaurantId && effectiveUser?.restaurantName && effectiveUser?.tableNumber;
-  
+
   // Prioritize restaurant context over college/organization if present
-  const shouldUseRestaurantFilter = (isTemporaryUser && !!(serverTempUser?.restaurantId || tempUserData?.restaurantId)) || 
-                                   (effectiveIsAuthenticated && hasRestaurantContext);
-  
+  const shouldUseRestaurantFilter = (isTemporaryUser && !!(serverTempUser?.restaurantId || tempUserData?.restaurantId)) ||
+    (effectiveIsAuthenticated && hasRestaurantContext);
+
   // Only use college/organization filters if no restaurant context exists
   // Detect if college/organization ID is actually an organization based on prefix
   // Note: For organization users, the 'college' field may contain the organization ID (prefixed with 'org-')
@@ -101,7 +103,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   // Some users only have collegeId/organizationId populated, so ensure we pick them up
   const userCollege = effectiveUser?.college || (effectiveUser as any)?.collegeId;
   const userOrganization = effectiveUser?.organization || (effectiveUser as any)?.organizationId;
-  
+
   // Debug logging for organization detection
   useEffect(() => {
     console.log('🏢 ===== CANTEEN CONTEXT - ORGANIZATION DETECTION =====');
@@ -114,42 +116,42 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     console.log('🏢 Has Restaurant Context:', hasRestaurantContext);
     console.log('🏢 Should Use Restaurant Filter:', shouldUseRestaurantFilter);
   }, [effectiveUser, userCollege, userOrganization, effectiveIsAuthenticated, isAdmin, isTemporaryUser, hasRestaurantContext, shouldUseRestaurantFilter]);
-  
+
   // Check if the college field actually contains an organization ID
   const collegeIsOrganization = userCollege && userCollege.startsWith('org-');
   const hasRealCollege = userCollege && !collegeIsOrganization;
   const hasRealOrganization = userOrganization || collegeIsOrganization;
-  
+
   // IMPORTANT: Prioritize organization filter over college filter
   // If user has an organization, use organization filter (even if they also have a college)
   // Only use college filter if there's no organization
   const shouldUseOrganizationFilter = effectiveIsAuthenticated && !isAdmin && !shouldUseRestaurantFilter && hasRealOrganization;
   const shouldUseCollegeFilter = effectiveIsAuthenticated && !isAdmin && !shouldUseRestaurantFilter && !isTemporaryUser && hasRealCollege && !hasRealOrganization; // Only use college if no organization
-  
+
   // Check if we're on an admin page - disable API calls for admin pages
   const isAdminPage = window.location.pathname.startsWith('/admin');
-  
+
   // Sequential flow: Only fetch canteens after user data is available
   const shouldFetchCanteens = (effectiveIsAuthenticated || isTemporaryUser) && !isAdminPage && !userLoading && !locationLoading;
 
   // Determine institution type and ID for the new unified hook
   // PRIORITY: Use selectedLocation if available, otherwise fall back to user's college/organization
-  const institutionType = selectedLocationType ? selectedLocationType : 
-                         (shouldUseCollegeFilter ? 'college' : 
-                         shouldUseOrganizationFilter ? 'organization' : 
-                         shouldUseRestaurantFilter ? 'restaurant' :
-                         null);
+  const institutionType = selectedLocationType ? selectedLocationType :
+    (shouldUseCollegeFilter ? 'college' :
+      shouldUseOrganizationFilter ? 'organization' :
+        shouldUseRestaurantFilter ? 'restaurant' :
+          null);
   const institutionId = selectedLocationId ? selectedLocationId :
-                        (shouldUseCollegeFilter ? userCollege : 
-                        shouldUseOrganizationFilter ? (userOrganization || (collegeIsOrganization ? userCollege : null)) : 
-                        shouldUseRestaurantFilter ? (
-                          // For authenticated users with restaurant context, use their restaurantId
-                          hasRestaurantContext ? effectiveUser?.restaurantId :
-                          // For temporary users, use the restaurant ID from temp session
-                          serverTempUser?.restaurantId || tempUserData?.restaurantId
-                        ) :
-                        null);
-  
+    (shouldUseCollegeFilter ? userCollege :
+      shouldUseOrganizationFilter ? (userOrganization || (collegeIsOrganization ? userCollege : null)) :
+        shouldUseRestaurantFilter ? (
+          // For authenticated users with restaurant context, use their restaurantId
+          hasRestaurantContext ? effectiveUser?.restaurantId :
+            // For temporary users, use the restaurant ID from temp session
+            serverTempUser?.restaurantId || tempUserData?.restaurantId
+        ) :
+          null);
+
   // Debug logging for organization detection and filter decisions (after variables are defined)
   useEffect(() => {
     console.log('🏢 ===== CANTEEN CONTEXT - ORGANIZATION DETECTION =====');
@@ -180,22 +182,22 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     }
     console.log('🏢 ===== END CANTEEN CONTEXT =====');
   }, [selectedLocationType, selectedLocationId, effectiveUser, userCollege, userOrganization, effectiveIsAuthenticated, isAdmin, isTemporaryUser, hasRestaurantContext, shouldUseRestaurantFilter, collegeIsOrganization, hasRealCollege, hasRealOrganization, shouldUseCollegeFilter, shouldUseOrganizationFilter, institutionType, institutionId, shouldFetchCanteens]);
-  
+
   // Listen for location changes and reset selected canteen
   useEffect(() => {
     const handleLocationChange = () => {
       setSelectedCanteen(null);
       hasManuallySelected.current = false;
     };
-    
+
     window.addEventListener('locationChanged', handleLocationChange);
     return () => window.removeEventListener('locationChanged', handleLocationChange);
   }, []);
 
   // Use lazy loading for institution-specific canteens
-  const { 
-    data: canteensLazyData, 
-    isLoading: canteensLoading, 
+  const {
+    data: canteensLazyData,
+    isLoading: canteensLoading,
     error: canteensError,
     hasNextPage,
     isFetchingNextPage,
@@ -211,9 +213,9 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const { data: restaurantCanteensData, isLoading: restaurantLoading, error: restaurantError } = useCanteensByRestaurant(
     shouldUseRestaurantFilter ? (
       // For authenticated users with restaurant context, use their restaurantId
-      hasRestaurantContext ? effectiveUser?.restaurantId : 
-      // For temporary users, use the restaurant ID from temp session
-      serverTempUser?.restaurantId || tempUserData?.restaurantId
+      hasRestaurantContext ? effectiveUser?.restaurantId :
+        // For temporary users, use the restaurant ID from temp session
+        serverTempUser?.restaurantId || tempUserData?.restaurantId
     ) : undefined,
     shouldUseRestaurantFilter && shouldFetchCanteens
   );
@@ -224,18 +226,18 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   );
 
   // Choose the appropriate data source - use lazy loaded, restaurant, or all canteens
-  const isLoading = shouldUseRestaurantFilter ? restaurantLoading : 
-                   institutionType ? canteensLoading : allLoading;
-  const error = shouldUseRestaurantFilter ? restaurantError : 
-               institutionType ? canteensError : allError;
-  
+  const isLoading = shouldUseRestaurantFilter ? restaurantLoading :
+    institutionType ? canteensLoading : allLoading;
+  const error = shouldUseRestaurantFilter ? restaurantError :
+    institutionType ? canteensError : allError;
+
   // Flatten all pages of lazy loaded canteens
   const lazyLoadedCanteens = canteensLazyData?.pages?.flatMap(page => (page as any).canteens) || [];
   const restaurantCanteens = restaurantCanteensData?.canteens || [];
   const allCanteens = allCanteensData?.canteens || [];
   const unsortedCanteens: Canteen[] = shouldUseRestaurantFilter ? restaurantCanteens :
-                             institutionType ? lazyLoadedCanteens : allCanteens;
-  
+    institutionType ? lazyLoadedCanteens : allCanteens;
+
   // Sort canteens by priority (lower number = higher priority), then by name
   const canteens: Canteen[] = [...unsortedCanteens].sort((a, b) => {
     const priorityA = a.priority ?? 0;
@@ -245,7 +247,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     }
     return (a.name || '').localeCompare(b.name || '');
   });
-  
+
   // Get total count from the first page
   const totalCanteens = institutionType ? ((canteensLazyData?.pages?.[0] as any)?.total || 0) : ((allCanteensData as any)?.total || 0);
 
@@ -268,7 +270,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
         // If manually selected canteen is no longer available, reset the flag and select highest priority
         hasManuallySelected.current = false;
       }
-      
+
       // Only auto-select highest priority canteen if:
       // 1. No canteen is currently selected, OR
       // 2. The selected canteen is not in the available list
@@ -313,7 +315,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     // Lazy loading functions
     hasNextPage: institutionType ? hasNextPage : false,
     isFetchingNextPage: institutionType ? isFetchingNextPage : false,
-    fetchNextPage: institutionType ? fetchNextPage : () => {},
+    fetchNextPage: institutionType ? fetchNextPage : () => { },
     totalCanteens,
   }), [
     selectedCanteen,

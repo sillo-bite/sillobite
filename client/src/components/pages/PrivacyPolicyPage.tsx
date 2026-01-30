@@ -56,8 +56,8 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader 
-        title="Privacy Policy" 
+      <PageHeader
+        title="Privacy Policy"
         onBack={handleBackClick}
       />
 
@@ -67,7 +67,7 @@ export default function PrivacyPolicyPage() {
           <CardContent className="p-6">
             <h2 className="text-xl font-bold mb-4">Your Privacy Matters</h2>
             <p className="text-muted-foreground leading-relaxed">
-              At our Digital Canteen, we are committed to protecting your privacy and personal information. 
+              At our Digital Canteen, we are committed to protecting your privacy and personal information.
               This Privacy Policy explains how we collect, use, and safeguard your data when you use our application.
             </p>
             <div className="mt-4 p-3 bg-accent/50 rounded-lg">
@@ -127,7 +127,7 @@ export default function PrivacyPolicyPage() {
               If you have any questions about this Privacy Policy or how we handle your data, please contact us:
             </p>
             <div className="space-y-2 text-sm">
-              <p><span className="font-medium">Email:</span> sillobyte.production@gmail.com</p>
+              <p><span className="font-medium">Email:</span> sillobite.production@gmail.com</p>
               <p><span className="font-medium">Phone:</span> +91 8220963071</p>
               <p><span className="font-medium">Address:</span> Main Campus, City, State, Country</p>
             </div>
@@ -139,8 +139,8 @@ export default function PrivacyPolicyPage() {
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-warning mb-2">Policy Updates</h3>
             <p className="text-sm text-muted-foreground">
-              We may update this Privacy Policy from time to time. We will notify you of any significant changes 
-              through the app or via email. Your continued use of the app after such modifications will constitute 
+              We may update this Privacy Policy from time to time. We will notify you of any significant changes
+              through the app or via email. Your continued use of the app after such modifications will constitute
               your acknowledgment of the modified Privacy Policy.
             </p>
           </CardContent>

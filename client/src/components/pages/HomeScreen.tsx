@@ -881,7 +881,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   <div className="pt-2 border-t border-current/20">
                     <p className={`text-sm mb-4 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                       }`}>
-                      To continue using Sillobyte, please complete your profile or scan a QR code at a restaurant table.
+                      To continue using SilloBite, please complete your profile or scan a QR code at a restaurant table.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                       <Button

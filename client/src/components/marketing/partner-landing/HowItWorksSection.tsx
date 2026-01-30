@@ -6,7 +6,7 @@ const steps = [
     icon: Smartphone,
     step: "01",
     title: "Customers Initiate Orders",
-    description: "Students, staff members, and employees access the Sillobyte platform through any web-enabled device, explore comprehensive menu offerings, and submit orders directly from their personal devices.",
+    description: "Students, staff members, and employees access the SilloBite platform through any web-enabled device, explore comprehensive menu offerings, and submit orders directly from their personal devices.",
   },
   {
     icon: MonitorPlay,
@@ -36,9 +36,8 @@ export const HowItWorksSection = () => {
       <div ref={ref} className="max-w-6xl mx-auto container-padding">
         {/* Premium Header */}
         <div
-          className={`text-center max-w-3xl mx-auto mb-20 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`text-center max-w-3xl mx-auto mb-20 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
           <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-6 leading-tight">
             Simple Process,{" "}
@@ -55,10 +54,9 @@ export const HowItWorksSection = () => {
         <div className="relative">
           {/* Vertical Connector Line - Desktop */}
           <div
-            className={`hidden lg:block absolute left-12 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/20 via-primary to-secondary/20 transition-all duration-1000 ${
-              isVisible ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
-            }`}
-            style={{ 
+            className={`hidden lg:block absolute left-12 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/20 via-primary to-secondary/20 transition-all duration-1000 ${isVisible ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
+              }`}
+            style={{
               transformOrigin: "top",
               transitionDelay: "300ms"
             }}
@@ -68,13 +66,12 @@ export const HowItWorksSection = () => {
           <div className="space-y-12 lg:space-y-16">
             {steps.map((step, index) => {
               const isEven = index % 2 === 0;
-              
+
               return (
                 <div
                   key={step.step}
-                  className={`relative transition-all duration-700 ease-out ${
-                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                  }`}
+                  className={`relative transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+                    }`}
                   style={{ transitionDelay: `${200 + index * 150}ms` }}
                 >
                   <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">

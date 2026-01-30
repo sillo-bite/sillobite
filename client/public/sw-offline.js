@@ -1,7 +1,7 @@
 // Service Worker for offline caching and performance
-const CACHE_NAME = 'sillobyte-v1';
-const STATIC_CACHE = 'sillobyte-static-v1';
-const DYNAMIC_CACHE = 'sillobyte-dynamic-v1';
+const CACHE_NAME = 'sillobite-v1';
+const STATIC_CACHE = 'sillobite-static-v1';
+const DYNAMIC_CACHE = 'sillobite-dynamic-v1';
 
 // Static assets to cache
 const STATIC_ASSETS = [
@@ -21,7 +21,7 @@ const API_CACHE_PATTERNS = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker installing...');
-  
+
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
@@ -41,7 +41,7 @@ self.addEventListener('install', (event) => {
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('🚀 Service Worker activating...');
-  
+
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
@@ -93,10 +93,10 @@ self.addEventListener('fetch', (event) => {
 // Handle API requests with cache-first strategy
 async function handleApiRequest(request) {
   const url = new URL(request.url);
-  
+
   // Check if this API endpoint should be cached
   const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
-  
+
   if (!shouldCache) {
     return fetch(request);
   }
@@ -106,7 +106,7 @@ async function handleApiRequest(request) {
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
       console.log('📦 Serving API from cache:', url.pathname);
-      
+
       // Return cached response and update in background
       fetch(request)
         .then((response) => {
@@ -119,36 +119,36 @@ async function handleApiRequest(request) {
         .catch(() => {
           // Ignore background update errors
         });
-      
+
       return cachedResponse;
     }
 
     // Fetch from network
     const response = await fetch(request);
-    
+
     if (response.ok) {
       const responseClone = response.clone();
       caches.open(DYNAMIC_CACHE)
         .then((cache) => cache.put(request, responseClone));
     }
-    
+
     return response;
   } catch (error) {
     console.error('❌ API request failed:', error);
-    
+
     // Return offline fallback for cached requests
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
-    
+
     // Return offline response for API requests
     return new Response(
-      JSON.stringify({ 
-        error: 'Offline', 
-        message: 'You are offline. Please check your connection.' 
+      JSON.stringify({
+        error: 'Offline',
+        message: 'You are offline. Please check your connection.'
       }),
-      { 
+      {
         status: 503,
         headers: { 'Content-Type': 'application/json' }
       }
@@ -170,7 +170,7 @@ async function handleStaticRequest(request) {
       caches.open(STATIC_CACHE)
         .then((cache) => cache.put(request, responseClone));
     }
-    
+
     return response;
   } catch (error) {
     console.error('❌ Static request failed:', error);
@@ -185,13 +185,13 @@ async function handlePageRequest(request) {
     return response;
   } catch (error) {
     console.error('❌ Page request failed:', error);
-    
+
     // Return cached index.html for offline SPA routing
     const cachedResponse = await caches.match('/index.html');
     if (cachedResponse) {
       return cachedResponse;
     }
-    
+
     return new Response('Offline', { status: 503 });
   }
 }
@@ -207,7 +207,7 @@ self.addEventListener('sync', (event) => {
 async function doBackgroundSync() {
   // Handle offline actions when connection is restored
   console.log('🔄 Performing background sync...');
-  
+
   // You can implement offline action queuing here
   // For example, sync cart items, favorites, etc.
 }
@@ -226,7 +226,7 @@ self.addEventListener('push', (event) => {
         primaryKey: data.primaryKey
       }
     };
-    
+
     event.waitUntil(
       self.registration.showNotification(data.title, options)
     );
@@ -236,7 +236,7 @@ self.addEventListener('push', (event) => {
 // Notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+
   event.waitUntil(
     clients.openWindow('/')
   );

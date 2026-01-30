@@ -9,14 +9,14 @@ import { HelpCircle } from "lucide-react";
 
 const faqs = [
   {
-    question: "Is specialized hardware required to implement Sillobyte?",
+    question: "Is specialized hardware required to implement SilloBite?",
     answer:
-      "No specialized hardware is necessary. Sillobyte operates on any device equipped with a modern web browser—including tablets, smartphones, laptops, or existing point-of-sale terminals. For kitchen display systems, any Android tablet or monitor with browser capabilities functions perfectly.",
+      "No specialized hardware is necessary. SilloBite operates on any device equipped with a modern web browser—including tablets, smartphones, laptops, or existing point-of-sale terminals. For kitchen display systems, any Android tablet or monitor with browser capabilities functions perfectly.",
   },
   {
-    question: "Does Sillobyte support both digital and cash payment methods?",
+    question: "Does SilloBite support both digital and cash payment methods?",
     answer:
-      "Absolutely. Sillobyte provides comprehensive support for UPI (PhonePe, Google Pay), Card payments (Credit/Debit), Digital Wallets, and Cash transactions. Digital payments are processed through integrated payment gateway infrastructure, while cash transactions are managed at payment counters with complete tracking and unified financial reporting.",
+      "Absolutely. SilloBite provides comprehensive support for UPI (PhonePe, Google Pay), Card payments (Credit/Debit), Digital Wallets, and Cash transactions. Digital payments are processed through integrated payment gateway infrastructure, while cash transactions are managed at payment counters with complete tracking and unified financial reporting.",
   },
   {
     question: "What is the typical implementation timeline?",
@@ -24,19 +24,19 @@ const faqs = [
       "Most institutions are fully operational within 24-48 hours. Our team handles menu configuration, counter setup, and staff training. Complex multi-location deployments may require 3-5 days for complete implementation.",
   },
   {
-    question: "Can Sillobyte manage operations across multiple service counters?",
+    question: "Can SilloBite manage operations across multiple service counters?",
     answer:
-      "Yes, Sillobyte is architected for multi-counter operational workflows from the ground up. Each counter—including billing, kitchen, and pickup stations—can operate with dedicated displays and role-specific access controls.",
+      "Yes, SilloBite is architected for multi-counter operational workflows from the ground up. Each counter—including billing, kitchen, and pickup stations—can operate with dedicated displays and role-specific access controls.",
   },
   {
-    question: "Is Sillobyte exclusively available as a Progressive Web Application?",
+    question: "Is SilloBite exclusively available as a Progressive Web Application?",
     answer:
-      "Yes, Sillobyte is designed as a Progressive Web Application by default. This architecture enables instant access without app store downloads, automatic updates, and offline functionality. Users simply visit the platform URL and can add it to their device home screen for a native app-like experience.",
+      "Yes, SilloBite is designed as a Progressive Web Application by default. This architecture enables instant access without app store downloads, automatic updates, and offline functionality. Users simply visit the platform URL and can add it to their device home screen for a native app-like experience.",
   },
   {
-    question: "Does Sillobyte support multiple institutions or locations?",
+    question: "Does SilloBite support multiple institutions or locations?",
     answer:
-      "Yes. Sillobyte is built with multi-institution architecture as a core design principle. A single platform can manage multiple colleges, hospital campuses, or corporate offices, each with independent canteens, menus, user bases, and configuration settings. Ideal for institutional networks or multi-location operations.",
+      "Yes. SilloBite is built with multi-institution architecture as a core design principle. A single platform can manage multiple colleges, hospital campuses, or corporate offices, each with independent canteens, menus, user bases, and configuration settings. Ideal for institutional networks or multi-location operations.",
   },
 ];
 
@@ -52,9 +52,8 @@ export const FAQSection = () => {
       <div ref={ref} className="max-w-6xl mx-auto container-padding">
         {/* Premium Header */}
         <div
-          className={`text-center mb-16 transition-all duration-700 ease-out ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
+          className={`text-center mb-16 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            }`}
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6">
             <HelpCircle className="w-4 h-4" />
@@ -79,9 +78,8 @@ export const FAQSection = () => {
               {leftColumn.map((faq, index) => (
                 <div
                   key={index}
-                  className={`transition-all duration-700 ease-out ${
-                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                  }`}
+                  className={`transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                    }`}
                   style={{ transitionDelay: `${150 + index * 100}ms` }}
                 >
                   <AccordionItem
@@ -106,9 +104,8 @@ export const FAQSection = () => {
               {rightColumn.map((faq, index) => (
                 <div
                   key={index + leftColumn.length}
-                  className={`transition-all duration-700 ease-out ${
-                    isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                  }`}
+                  className={`transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                    }`}
                   style={{ transitionDelay: `${200 + (index + leftColumn.length) * 100}ms` }}
                 >
                   <AccordionItem

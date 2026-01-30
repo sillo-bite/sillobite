@@ -36,7 +36,7 @@ export default function MaintenanceScreen({
   };
 
   // Different message for authenticated users
-  const displayMessage = isAuthenticated 
+  const displayMessage = isAuthenticated
     ? "You are logged in, but most features are currently unavailable due to maintenance. You can still browse basic features once maintenance is complete."
     : message;
 
@@ -44,7 +44,7 @@ export default function MaintenanceScreen({
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 dark:from-amber-950 dark:to-orange-950 flex items-center justify-center p-4" data-testid="maintenance-screen">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-      
+
       <div className="relative z-10 w-full max-w-md">
         <Card className="border-amber-200 dark:border-amber-800 shadow-lg bg-white dark:bg-card" data-testid="maintenance-card">
           <CardHeader className="text-center pb-2">
@@ -52,23 +52,23 @@ export default function MaintenanceScreen({
             <div className="mx-auto mb-4 w-16 h-16 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center" data-testid="maintenance-icon">
               <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
             </div>
-            
+
             {/* Status Badge */}
             <Badge variant="outline" className="mx-auto mb-4 border-amber-400 text-amber-700 dark:text-amber-300" data-testid="maintenance-status">
               <Clock className="h-3 w-3 mr-1" />
               Under Maintenance
             </Badge>
-            
+
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100" data-testid="maintenance-title">
               {title}
             </CardTitle>
           </CardHeader>
-          
+
           <CardContent className="text-center space-y-6">
             <CardDescription className="text-base text-gray-600 dark:text-gray-300 leading-relaxed" data-testid="maintenance-message">
               {displayMessage}
             </CardDescription>
-            
+
             {/* Estimated Time */}
             {estimatedTime && (
               <div className="bg-amber-50 dark:bg-amber-950/50 rounded-lg p-4 border border-amber-200 dark:border-amber-800" data-testid="maintenance-estimated-time">
@@ -81,7 +81,7 @@ export default function MaintenanceScreen({
                 </p>
               </div>
             )}
-            
+
             {/* Contact Information */}
             {contactInfo && (
               <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800" data-testid="maintenance-contact">
@@ -94,7 +94,7 @@ export default function MaintenanceScreen({
                 </p>
               </div>
             )}
-            
+
             {/* Authentication Options - Only show if user is not authenticated and showAuthOptions is true */}
             {showAuthOptions && !isAuthenticated && (
               <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-4 border border-blue-200 dark:border-blue-800" data-testid="maintenance-auth-options">
@@ -103,7 +103,7 @@ export default function MaintenanceScreen({
                     You can still sign in or create an account:
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <Button 
+                    <Button
                       onClick={handleLogin}
                       variant="outline"
                       className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900/50"
@@ -112,7 +112,7 @@ export default function MaintenanceScreen({
                       <LogIn className="w-4 h-4 mr-2" />
                       Sign In
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleRegister}
                       variant="outline"
                       className="flex-1 border-green-200 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-300 dark:hover:bg-green-900/50"
@@ -128,7 +128,7 @@ export default function MaintenanceScreen({
 
             {/* Actions */}
             <div className="space-y-3">
-              <Button 
+              <Button
                 onClick={handleRefresh}
                 className="w-full bg-amber-600 hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800 text-white"
                 data-testid="button-refresh"
@@ -136,9 +136,9 @@ export default function MaintenanceScreen({
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Check Again
               </Button>
-              
+
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isAuthenticated 
+                {isAuthenticated
                   ? "Most features will be available once maintenance is complete."
                   : "We apologize for any inconvenience. The system will be back online shortly."
                 }
@@ -146,21 +146,21 @@ export default function MaintenanceScreen({
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Branding */}
         <div className="mt-6 text-center">
           <div className="inline-flex items-center space-x-2 text-gray-600 dark:text-gray-400">
             <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
               <span className="text-primary text-sm font-bold">D</span>
             </div>
-            <span className="text-sm">Sillobyte</span>
+            <span className="text-sm">SilloBite</span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
             Powered by Ragul & Steepan
           </p>
         </div>
       </div>
-      
+
       {/* Animated Background Elements */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-amber-200/10 dark:bg-amber-800/10 rounded-full animate-pulse"></div>
       <div className="absolute bottom-40 right-8 w-24 h-24 bg-orange-200/10 dark:bg-orange-800/10 rounded-full animate-pulse delay-1000"></div>

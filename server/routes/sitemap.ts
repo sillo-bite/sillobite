@@ -6,9 +6,9 @@ const router = Router();
 // Generate dynamic sitemap
 router.get('/sitemap.xml', async (req, res) => {
   try {
-    const baseUrl = 'https://sillobyte.onrender.com';
+    const baseUrl = 'https://sillobite.onrender.com';
     const currentDate = new Date().toISOString().split('T')[0];
-    
+
     // Static pages
     const staticPages = [
       { url: '/', priority: '1.0', changefreq: 'daily' },
@@ -31,12 +31,12 @@ router.get('/sitemap.xml', async (req, res) => {
     // Get dynamic content from database
     let canteens: any[] = [];
     let categories: any[] = [];
-    
+
     try {
       // Get canteens (if you have a canteens collection)
       const canteensCollection = db.collection('canteens');
       canteens = await canteensCollection.find({}).limit(50).toArray();
-      
+
       // Get categories (if you have a categories collection)
       const categoriesCollection = db.collection('categories');
       categories = await categoriesCollection.find({}).limit(20).toArray();
@@ -97,7 +97,7 @@ router.get('/sitemap.xml', async (req, res) => {
 
 // Generate robots.txt
 router.get('/robots.txt', (req, res) => {
-  const robotsTxt = `# Robots.txt for Sillobyte Canteen - https://sillobyte.onrender.com
+  const robotsTxt = `# Robots.txt for SilloBite Canteen - https://sillobite.onrender.com
 
 # Allow all search engines to crawl the site
 User-agent: *
@@ -154,10 +154,10 @@ Allow: /favicon.png
 Allow: /favicon.svg
 
 # Sitemap location
-Sitemap: https://sillobyte.onrender.com/sitemap.xml
+Sitemap: https://sillobite.onrender.com/sitemap.xml
 
 # Host declaration
-Host: https://sillobyte.onrender.com`;
+Host: https://sillobite.onrender.com`;
 
   res.set('Content-Type', 'text/plain');
   res.send(robotsTxt);
