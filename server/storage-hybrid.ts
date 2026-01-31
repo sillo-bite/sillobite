@@ -1,9 +1,11 @@
 import { PrismaClient } from '@prisma/client';
-import type { User, Prisma } from '@prisma/client';
 import { connectToMongoDB } from './mongodb';
-import { 
-  Category, MenuItem, Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter,
-  type ICategory, type IMenuItem, type IOrder, type IOrderItem, 
+import {
+  User, InsertUser, MenuItem, Category, MediaBanner, CodingChallenge, CanteenCharge, UserRole
+} from "@shared/schema";
+import {
+  Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter,
+  type ICategory, type IMenuItem, type IOrder, type IOrderItem,
   type INotification, type ILoginIssue, type IPayment, type IComplaint, type ICoupon, type ICounter
 } from './models/mongodb-models';
 import { db as getPostgresDb } from "./db";
@@ -20,27 +22,27 @@ export interface UserFilters {
   department?: string;
   year?: string;
 }
-export type InsertMenuItem = { 
-  name: string; 
-  price: number; 
-  categoryId?: string; 
+export type InsertMenuItem = {
+  name: string;
+  price: number;
+  categoryId?: string;
   canteenId: string;
-  available?: boolean; 
-  stock?: number; 
-  description?: string; 
-  addOns?: string; 
-  isVegetarian?: boolean; 
+  available?: boolean;
+  stock?: number;
+  description?: string;
+  addOns?: string;
+  isVegetarian?: boolean;
   isMarkable?: boolean;
-  isTrending?: boolean 
+  isTrending?: boolean
 };
-export type InsertOrder = { 
-  orderNumber: string; 
-  customerId?: number; 
-  customerName: string; 
-  items: string; 
-  amount: number; 
-  status?: string; 
-  estimatedTime?: number; 
+export type InsertOrder = {
+  orderNumber: string;
+  customerId?: number;
+  customerName: string;
+  items: string;
+  amount: number;
+  status?: string;
+  estimatedTime?: number;
   barcode: string;
   canteenId: string;
   seenBy?: number[];
@@ -57,42 +59,42 @@ export type InsertOrder = {
   paymentMethod?: string;
 };
 export type InsertNotification = { type: string; message: string; read?: boolean };
-export type InsertLoginIssue = { 
-  name: string; 
-  email?: string; 
-  phoneNumber?: string; 
-  registerNumber?: string; 
-  staffId?: string; 
-  issueType: string; 
-  description: string; 
-  status?: string 
+export type InsertLoginIssue = {
+  name: string;
+  email?: string;
+  phoneNumber?: string;
+  registerNumber?: string;
+  staffId?: string;
+  issueType: string;
+  description: string;
+  status?: string
 };
-export type InsertPayment = { 
-  orderId?: string | null; 
+export type InsertPayment = {
+  orderId?: string | null;
   canteenId?: string; // Added canteenId field
-  merchantTransactionId: string; 
+  merchantTransactionId: string;
   phonePeTransactionId?: string; // Legacy field for backward compatibility
-  razorpayTransactionId?: string; 
-  amount: number; 
-  status?: string; 
-  paymentMethod?: string; 
-  responseCode?: string; 
-  responseMessage?: string; 
-  checksum?: string; 
-  metadata?: string 
+  razorpayTransactionId?: string;
+  amount: number;
+  status?: string;
+  paymentMethod?: string;
+  responseCode?: string;
+  responseMessage?: string;
+  checksum?: string;
+  metadata?: string
 };
-export type InsertComplaint = { 
-  subject: string; 
-  description: string; 
-  userId?: number; 
-  userName: string; 
-  userEmail?: string; 
-  category?: string; 
-  priority?: string; 
-  status?: string; 
-  orderId?: string; 
-  adminNotes?: string; 
-  resolvedBy?: string 
+export type InsertComplaint = {
+  subject: string;
+  description: string;
+  userId?: number;
+  userName: string;
+  userEmail?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  orderId?: string;
+  adminNotes?: string;
+  resolvedBy?: string
 };
 
 export type InsertCoupon = {
@@ -144,25 +146,25 @@ export interface IStorage {
   unblockUser(id: number): Promise<User | null>;
   deleteUser(id: number): Promise<void>;
   deleteAllUsers(): Promise<void>;
-  
+
   // User-specific data methods for admin panel
   getUserOrders(userId: number): Promise<any[]>;
   getUserPayments(userId: number): Promise<any[]>;
   getComplaintsByUser(userId: number): Promise<any[]>;
-  
+
   // Categories (MongoDB)
   getCategories(): Promise<any[]>;
   createCategory(category: InsertCategory): Promise<any>;
   updateCategory(id: string, data: any): Promise<any>;
   deleteCategory(id: string): Promise<void>;
-  
+
   // Menu Items (MongoDB)
   getMenuItems(): Promise<any[]>;
   getMenuItem(id: string): Promise<any | undefined>;
   createMenuItem(item: InsertMenuItem): Promise<any>;
   updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<any>;
   deleteMenuItem(id: string): Promise<void>;
-  
+
   // Orders (MongoDB)
   getOrders(): Promise<any[]>;
   getOrdersPaginated(page: number, limit: number, canteenId?: string, isCounterOrder?: boolean, isOffline?: boolean): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }>;
@@ -193,21 +195,21 @@ export interface IStorage {
   rejectOfflineOrder(orderId: string, counterId: string): Promise<any>;
   deliverOrder(orderId: string, counterId: string): Promise<any>;
   deliverOrderByDeliveryPerson(orderId: string, deliveryPersonId: string): Promise<any>;
-  
+
   // Notifications (MongoDB)
   getNotifications(): Promise<any[]>;
   createNotification(notification: InsertNotification): Promise<any>;
   updateNotification(id: string, notification: Partial<InsertNotification>): Promise<any>;
   deleteNotification(id: string): Promise<void>;
-  
+
   // Login Issues (MongoDB)
   getLoginIssues(): Promise<any[]>;
   getLoginIssue(id: string): Promise<any | undefined>;
   createLoginIssue(issue: InsertLoginIssue): Promise<any>;
   updateLoginIssue(id: string, issue: Partial<any>): Promise<any>;
   deleteLoginIssue(id: string): Promise<void>;
-  
-  
+
+
   // Payments (MongoDB)
   getPayments(): Promise<any[]>;
   getPaymentsPaginated(page: number, limit: number, searchQuery?: string, statusFilter?: string): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
@@ -249,14 +251,14 @@ export interface IStorage {
   }>;
 
   // Maintenance Notice operations (MongoDB)
-  
+
   // Counter operations (MongoDB)
   getCountersByCanteen(canteenId: string): Promise<any[]>;
   createCounter(data: { name: string; code: string; counterId: string; canteenId: string; type: string }): Promise<any>;
   getCounterById(counterId: string): Promise<any | null>;
   getPaymentCounterName(paymentCounterId: string): Promise<string>;
   deleteCounter(counterId: string): Promise<boolean>;
-  
+
 }
 
 export class HybridStorage implements IStorage {
@@ -277,11 +279,11 @@ export class HybridStorage implements IStorage {
   async getUsersPaginated(page: number, limit: number, filters?: UserFilters): Promise<{ users: User[], totalCount: number, totalPages: number, currentPage: number }> {
     const db = getPostgresDb();
     const offset = (page - 1) * limit;
-    
+
     // Build where clause based on filters
     const where: any = {};
     const orConditions: any[] = [];
-    
+
     if (filters?.search) {
       orConditions.push(
         { name: { contains: filters.search, mode: 'insensitive' } },
@@ -290,19 +292,19 @@ export class HybridStorage implements IStorage {
         { staffId: { contains: filters.search, mode: 'insensitive' } }
       );
     }
-    
+
     if (filters?.role && filters.role !== 'all') {
       where.role = filters.role;
     }
-    
+
     if (filters?.college && filters.college !== 'all') {
       where.college = filters.college;
     }
-    
+
     if (filters?.department && filters.department !== 'all') {
       where.department = filters.department;
     }
-    
+
     if (filters?.year && filters.year !== 'all') {
       const year = parseInt(filters.year);
       if (!isNaN(year)) {
@@ -313,15 +315,15 @@ export class HybridStorage implements IStorage {
         );
       }
     }
-    
+
     // Only add OR clause if we have OR conditions
     if (orConditions.length > 0) {
       where.OR = orConditions;
     }
-    
+
     // Get total count
     const totalCount = await db.user.count({ where });
-    
+
     // Get paginated users
     const users = await db.user.findMany({
       where,
@@ -329,9 +331,9 @@ export class HybridStorage implements IStorage {
       skip: offset,
       take: limit
     });
-    
+
     const totalPages = Math.ceil(totalCount / limit);
-    
+
     return {
       users,
       totalCount,
@@ -375,7 +377,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     // Case-insensitive search for register number
     const user = await db.user.findFirst({
-      where: { 
+      where: {
         registerNumber: {
           equals: registerNumber,
           mode: 'insensitive'
@@ -389,7 +391,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     // Case-insensitive search for staff ID
     const user = await db.user.findFirst({
-      where: { 
+      where: {
         staffId: {
           equals: staffId,
           mode: 'insensitive'
@@ -403,7 +405,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     // Case-insensitive search for role
     const user = await db.user.findFirst({
-      where: { 
+      where: {
         role: {
           equals: role,
           mode: 'insensitive'
@@ -415,19 +417,19 @@ export class HybridStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const db = getPostgresDb();
-    
+
     // Normalize register number and staff ID to uppercase for consistency
     // For guest users, don't include registerNumber, department, or joiningYear
     const userData = { ...insertUser };
-    
+
     const normalizedUser: any = {
       ...userData,
       registerNumber: insertUser.registerNumber?.toUpperCase(),
       staffId: insertUser.staffId?.toUpperCase()
     };
-    
+
     // For guest users, ensure we don't include unnecessary fields
-    if (insertUser.role === 'guest') {
+    if (insertUser.role === UserRole.GUEST) {
       delete normalizedUser.registerNumber;
       delete normalizedUser.department;
       delete normalizedUser.joiningYear;
@@ -437,7 +439,7 @@ export class HybridStorage implements IStorage {
       delete normalizedUser.staffId;
       // Keep organizationId for guest users
     }
-    
+
     const user = await db.user.create({
       data: normalizedUser
     });
@@ -505,22 +507,22 @@ export class HybridStorage implements IStorage {
 
   async deleteCategory(id: string): Promise<void> {
     console.log(`🗑️ Starting deletion of category ${id}`);
-    
+
     try {
       // First, find and count menu items in this category
       const menuItemsInCategory = await MenuItem.find({ categoryId: id });
       console.log(`🗑️ Found ${menuItemsInCategory.length} menu items for category ${id}`);
       console.log(`🗑️ Menu items:`, menuItemsInCategory.map(item => ({ id: item._id, name: item.name, categoryId: item.categoryId })));
-      
+
       // Delete all menu items in this category
       const deleteResult = await MenuItem.deleteMany({ categoryId: id });
       console.log(`🗑️ Delete result:`, deleteResult);
       console.log(`🗑️ Deleted ${deleteResult.deletedCount} menu items for category ${id}`);
-      
+
       // Verify deletion
       const remainingItems = await MenuItem.find({ categoryId: id });
       console.log(`🗑️ Remaining items after deletion: ${remainingItems.length}`);
-      
+
       // Then delete the category itself
       const categoryResult = await Category.findByIdAndDelete(id);
       console.log(`🗑️ Deleted category ${id}:`, categoryResult ? 'Success' : 'Not found');
@@ -540,7 +542,7 @@ export class HybridStorage implements IStorage {
       categoryName: item.categoryId?.name || 'No category'
     })));
     console.log('🔍 Total menu items found:', menuItems.length);
-    
+
     // Add fallback category names for items without categories
     const itemsWithFallback = menuItems.map(item => {
       const plainItem = mongoToPlain(item);
@@ -552,12 +554,12 @@ export class HybridStorage implements IStorage {
       }
       return plainItem;
     });
-    
+
     console.log('🔍 Final menu items with categories:', itemsWithFallback.map(item => ({
       name: item.name,
       category: item.category
     })));
-    
+
     return itemsWithFallback;
   }
 
@@ -583,19 +585,19 @@ export class HybridStorage implements IStorage {
     const item = await MenuItem.findById(id)
       .populate('categoryId', 'name')
       .lean(); // Use lean() to get plain object directly
-    
+
     if (!item) return undefined;
-    
+
     const plainItem = mongoToPlain(item);
     if (!plainItem.categoryId || !plainItem.categoryId.name) {
       plainItem.category = this.getDefaultCategoryName(plainItem.name);
     } else {
       plainItem.category = plainItem.categoryId.name;
     }
-    
+
     // Counter IDs should already be in plainItem from lean() and mongoToPlain()
     // No need to modify them - they're already there if in DB
-    
+
     return plainItem;
   }
 
@@ -607,8 +609,8 @@ export class HybridStorage implements IStorage {
 
   async updateMenuItem(id: string, item: Partial<InsertMenuItem>): Promise<any> {
     const updatedItem = await MenuItem.findByIdAndUpdate(
-      id, 
-      { $set: item }, 
+      id,
+      { $set: item },
       { new: true, runValidators: true }
     );
     return mongoToPlain(updatedItem);
@@ -627,20 +629,20 @@ export class HybridStorage implements IStorage {
   async getOrdersPaginated(page: number = 1, limit: number = 15, canteenId?: string, isCounterOrder?: boolean, isOffline?: boolean): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }> {
     const skip = (page - 1) * limit;
     const filter: any = canteenId ? { canteenId } : {};
-    
+
     if (isCounterOrder !== undefined) {
       filter.isCounterOrder = isCounterOrder;
     }
-    
+
     if (isOffline !== undefined) {
       filter.isOffline = isOffline;
     }
-    
+
     const [orders, totalCount] = await Promise.all([
       Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
       Order.countDocuments(filter)
     ]);
-    
+
     return {
       orders: mongoToPlain(orders),
       totalCount,
@@ -654,22 +656,22 @@ export class HybridStorage implements IStorage {
     // Include all active order statuses: placed, pending, pending_payment (COD), preparing, ready (ready for pickup)
     const activeStatusFilter = { status: { $in: ['placed', 'pending', 'pending_payment', 'preparing', 'ready'] } };
     let filter: any = { ...activeStatusFilter };
-    
+
     // Filter by customerId if provided (for user-specific orders)
     if (customerId) {
       filter.customerId = customerId;
     }
-    
+
     // Filter by canteenId if provided
     if (canteenId) {
       filter.canteenId = canteenId;
     }
-    
+
     const [orders, totalCount] = await Promise.all([
       Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit), // Newest first for user's current order
       Order.countDocuments(filter)
     ]);
-    
+
     return {
       orders: mongoToPlain(orders),
       totalCount,
@@ -686,17 +688,17 @@ export class HybridStorage implements IStorage {
   async getUserActiveOrders(customerId: number): Promise<any[]> {
     // Active statuses (non-delivered, non-cancelled)
     const activeStatuses = ['placed', 'pending', 'pending_payment', 'preparing', 'ready'];
-    
+
     // ✅ Efficient DB-level query with compound index
     const orders = await Order.find({
       customerId: customerId,
       status: { $in: activeStatuses }
     })
-    .sort({ createdAt: -1 }) // Newest first
-    .limit(10) // Realistically, users have max 3-5 active orders
-    .select('orderNumber customerId customerName collegeName items amount originalAmount discountAmount appliedCoupon status estimatedTime barcode canteenId createdAt')
-    .lean(); // Use lean() for faster reads - no mongoose overhead
-    
+      .sort({ createdAt: -1 }) // Newest first
+      .limit(10) // Realistically, users have max 3-5 active orders
+      .select('orderNumber customerId customerName collegeName items amount originalAmount discountAmount appliedCoupon status estimatedTime barcode canteenId createdAt')
+      .lean(); // Use lean() for faster reads - no mongoose overhead
+
     return orders.map(order => {
       if (order._id) {
         (order as any).id = order._id.toString();
@@ -712,25 +714,25 @@ export class HybridStorage implements IStorage {
   async getOrderStats(canteenId?: string): Promise<{ pending: number, preparing: number, completed: number, cancelled: number, total: number }> {
     try {
       console.log('📊 getOrderStats called with canteenId:', canteenId);
-      
+
       // Check MongoDB connection with retry logic
       let retries = 0;
       const maxRetries = 5;
-      
+
       while (mongoose.connection.readyState !== 1 && retries < maxRetries) {
         console.log(`📊 MongoDB not connected (attempt ${retries + 1}/${maxRetries}), attempting to connect...`);
         await connectToMongoDB();
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
         retries++;
       }
-      
+
       if (mongoose.connection.readyState !== 1) {
         throw new Error('Failed to establish MongoDB connection after multiple attempts');
       }
-      
+
       const filter = canteenId ? { canteenId } : {};
       console.log('📊 Filter for stats:', filter);
-      
+
       const [pending, preparing, completed, cancelled, total] = await Promise.all([
         Order.countDocuments({ ...filter, status: 'pending' }),
         Order.countDocuments({ ...filter, status: 'preparing' }),
@@ -738,7 +740,7 @@ export class HybridStorage implements IStorage {
         Order.countDocuments({ ...filter, status: 'cancelled' }),
         Order.countDocuments(filter)
       ]);
-      
+
       const stats = {
         pending,
         preparing,
@@ -746,7 +748,7 @@ export class HybridStorage implements IStorage {
         cancelled,
         total
       };
-      
+
       console.log('📊 Order stats result:', stats);
       return stats;
     } catch (error) {
@@ -772,18 +774,18 @@ export class HybridStorage implements IStorage {
   }): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }> {
     try {
       console.log('🔍 getFilteredOrders called with params:', params);
-      
+
       // Check MongoDB connection with retry logic
       let retries = 0;
       const maxRetries = 5;
-      
+
       while (mongoose.connection.readyState !== 1 && retries < maxRetries) {
         console.log(`🔍 MongoDB not connected (attempt ${retries + 1}/${maxRetries}), attempting to connect...`);
         await connectToMongoDB();
         await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
         retries++;
       }
-      
+
       if (mongoose.connection.readyState !== 1) {
         throw new Error('Failed to establish MongoDB connection after multiple attempts');
       }
@@ -910,7 +912,7 @@ export class HybridStorage implements IStorage {
 
   async searchOrders(query: string, page: number = 1, limit: number = 15): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }> {
     const skip = (page - 1) * limit;
-    
+
     // Create a comprehensive search filter
     const searchFilter = {
       $or: [
@@ -920,12 +922,12 @@ export class HybridStorage implements IStorage {
         { barcode: { $regex: query, $options: 'i' } }
       ]
     };
-    
+
     const [orders, totalCount] = await Promise.all([
       Order.find(searchFilter).sort({ createdAt: -1 }).skip(skip).limit(limit),
       Order.countDocuments(searchFilter)
     ]);
-    
+
     return {
       orders: mongoToPlain(orders),
       totalCount,
@@ -953,14 +955,14 @@ export class HybridStorage implements IStorage {
   async getOrderByBarcode(barcode: string): Promise<any | undefined> {
     // First try exact barcode match
     let order = await Order.findOne({ barcode });
-    
+
     // If not found and barcode is 4 digits, try to find by first 4 digits (OTP)
     if (!order && barcode.length === 4 && /^\d{4}$/.test(barcode)) {
       // Use regex to find orders where barcode starts with these 4 digits
       const regex = new RegExp('^' + barcode);
       order = await Order.findOne({ barcode: regex });
     }
-    
+
     return order ? mongoToPlain(order) : undefined;
   }
 
@@ -1040,21 +1042,21 @@ export class HybridStorage implements IStorage {
 
   async getPaymentsPaginated(page: number, limit: number, searchQuery?: string, statusFilter?: string): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }> {
     const skip = (page - 1) * limit;
-    
+
     // Build search filter
     let filter: any = {};
-    
+
     // Status filter
     if (statusFilter && statusFilter !== 'all') {
       filter.status = { $regex: new RegExp(statusFilter, 'i') };
     }
-    
+
     // Search query filter
     if (searchQuery && searchQuery.trim()) {
       const searchRegex = new RegExp(searchQuery.trim(), 'i');
       filter.$or = [
         { merchantTransactionId: searchRegex },
-        { 
+        {
           $or: [
             { phonePeTransactionId: searchRegex },
             { razorpayTransactionId: searchRegex }
@@ -1065,14 +1067,14 @@ export class HybridStorage implements IStorage {
         { responseMessage: searchRegex }
       ];
     }
-    
+
     const [payments, totalCount] = await Promise.all([
       Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
       Payment.countDocuments(filter)
     ]);
-    
+
     const totalPages = Math.ceil(totalCount / limit);
-    
+
     return {
       payments: mongoToPlain(payments),
       totalCount,
@@ -1083,7 +1085,7 @@ export class HybridStorage implements IStorage {
 
   async getPaymentsByCanteen(canteenId: string, page: number = 1, limit: number = 10): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }> {
     const skip = (page - 1) * limit;
-    
+
     // Get payments directly by canteenId (new approach)
     const [payments, totalCount] = await Promise.all([
       Payment.find({ canteenId })
@@ -1093,9 +1095,9 @@ export class HybridStorage implements IStorage {
         .limit(limit),
       Payment.countDocuments({ canteenId })
     ]);
-    
+
     const totalPages = Math.ceil(totalCount / limit);
-    
+
     return {
       payments: mongoToPlain(payments),
       totalCount,
@@ -1122,8 +1124,8 @@ export class HybridStorage implements IStorage {
 
   async updatePayment(id: string, payment: Partial<InsertPayment>): Promise<any> {
     const updatedPayment = await Payment.findByIdAndUpdate(
-      id, 
-      { ...payment, updatedAt: new Date() }, 
+      id,
+      { ...payment, updatedAt: new Date() },
       { new: true }
     );
     return mongoToPlain(updatedPayment);
@@ -1235,7 +1237,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     const user = await db.user.findUnique({ where: { id } });
     if (!user) return null;
-    
+
     return await db.user.update({
       where: { id },
       data: { role: 'blocked_' + user.role } // Prefix role with 'blocked_'
@@ -1246,12 +1248,12 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     const user = await db.user.findUnique({ where: { id } });
     if (!user) return null;
-    
+
     // Remove 'blocked_' prefix if it exists
-    const unblocked_role = user.role?.startsWith('blocked_') 
+    const unblocked_role = user.role?.startsWith('blocked_')
       ? user.role.replace('blocked_', '')
       : user.role;
-      
+
     return await db.user.update({
       where: { id },
       data: { role: unblocked_role }
@@ -1314,7 +1316,7 @@ export class HybridStorage implements IStorage {
   async toggleCouponStatus(id: string): Promise<any | undefined> {
     const coupon = await Coupon.findById(id);
     if (!coupon) return undefined;
-    
+
     coupon.isActive = !coupon.isActive;
     const saved = await coupon.save();
     return mongoToPlain(saved);
@@ -1328,7 +1330,7 @@ export class HybridStorage implements IStorage {
   }> {
     try {
       const coupon = await Coupon.findOne({ code });
-      
+
       if (!coupon) {
         return { valid: false, message: 'Coupon not found' };
       }
@@ -1362,9 +1364,9 @@ export class HybridStorage implements IStorage {
       }
 
       if (orderAmount && coupon.minimumOrderAmount && orderAmount < coupon.minimumOrderAmount) {
-        return { 
-          valid: false, 
-          message: `Minimum order amount of ₹${coupon.minimumOrderAmount} required` 
+        return {
+          valid: false,
+          message: `Minimum order amount of ₹${coupon.minimumOrderAmount} required`
         };
       }
 
@@ -1401,7 +1403,7 @@ export class HybridStorage implements IStorage {
   }> {
     try {
       const validation = await this.validateCoupon(code, userId, orderAmount);
-      
+
       if (!validation.valid) {
         return {
           success: false,
@@ -1522,7 +1524,7 @@ export class HybridStorage implements IStorage {
   async getCouponsForUser(userId: number): Promise<any[]> {
     try {
       const now = new Date();
-      
+
       // Find coupons assigned to this specific user or available to all
       const coupons = await Coupon.find({
         isActive: true,
@@ -1535,7 +1537,7 @@ export class HybridStorage implements IStorage {
         ],
         usedBy: { $ne: userId } // Exclude already used coupons
       }).sort({ createdAt: -1 });
-      
+
       return mongoToPlain(coupons);
     } catch (error) {
       console.error('Error getting coupons for user:', error);
@@ -1567,7 +1569,7 @@ export class HybridStorage implements IStorage {
   }
 
   // DATABASE MANAGEMENT OPERATIONS
-  
+
   /**
    * Get database statistics for admin dashboard
    */
@@ -1575,9 +1577,9 @@ export class HybridStorage implements IStorage {
     try {
       const mongoStats = await this.getMongoDBStats();
       const pgStats = await this.getPostgreSQLStats();
-      
+
       const totalSizeBytes = (mongoStats.dataSize || 0) + (pgStats.size || 0);
-      
+
       return {
         mongodb: mongoStats,
         postgresql: pgStats,
@@ -1596,7 +1598,7 @@ export class HybridStorage implements IStorage {
       throw error;
     }
   }
-  
+
   /**
    * Get MongoDB collection statistics
    */
@@ -1604,47 +1606,47 @@ export class HybridStorage implements IStorage {
     try {
       // Use centralized connection check
       const { isMongoConnected } = await import('./mongodb');
-      
+
       if (!isMongoConnected()) {
         throw new Error('MongoDB not connected');
       }
-      
+
       // Wait for the db property to be available
       let retries = 0;
       while (!mongoose.connection.db && retries < 10) {
         await new Promise(resolve => setTimeout(resolve, 100));
         retries++;
       }
-      
+
       if (!mongoose.connection.db) {
         throw new Error('MongoDB database not available');
       }
-      
+
       const admin = mongoose.connection.db.admin();
       const dbStats = await admin.command({ dbStats: 1 });
-      
-      
+
+
       // Get collection stats (real-time data only)
       const collections = await mongoose.connection.db.listCollections().toArray();
       const collectionStats = [];
       let totalDataSize = 0;
       let totalStorageSize = 0;
       let totalIndexSize = 0;
-      
+
       for (const collection of collections) {
         try {
           const stats = await mongoose.connection.db.command({ collStats: collection.name });
           const count = await mongoose.connection.db.collection(collection.name).countDocuments();
-          
+
           const collectionSize = stats.size || 0;
           const collectionStorageSize = stats.storageSize || 0;
           const collectionIndexSize = stats.totalIndexSize || 0;
-          
-          
+
+
           totalDataSize += collectionSize;
           totalStorageSize += collectionStorageSize;
           totalIndexSize += collectionIndexSize;
-          
+
           collectionStats.push({
             name: collection.name,
             count: count,
@@ -1654,18 +1656,18 @@ export class HybridStorage implements IStorage {
             indexes: stats.nindexes || 0,
             indexSize: collectionIndexSize
           });
-          
+
         } catch (err) {
           console.warn(`Could not get stats for collection ${collection.name}:`, err instanceof Error ? err.message : String(err));
         }
       }
-      
+
       // Use the calculated totals if dbStats shows 0
       const finalDataSize = dbStats.dataSize || totalDataSize;
       const finalStorageSize = dbStats.storageSize || totalStorageSize;
       const finalIndexSize = dbStats.indexSize || totalIndexSize;
-      
-      
+
+
       return {
         dataSize: finalDataSize,
         storageSize: finalStorageSize,
@@ -1680,20 +1682,20 @@ export class HybridStorage implements IStorage {
       throw new Error(`Cannot fetch real-time MongoDB data: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  
+
   /**
    * Get PostgreSQL database statistics
    */
   async getPostgreSQLStats() {
     try {
       const db = getPostgresDb();
-      
+
       // Get database size
       const sizeResult = await db.$queryRaw`
         SELECT pg_size_pretty(pg_database_size(current_database())) as size,
                pg_database_size(current_database()) as size_bytes
       ` as Array<{ size: string; size_bytes: bigint }>;
-      
+
       // Get table statistics
       const tableStats = await db.$queryRaw`
         SELECT 
@@ -1706,10 +1708,10 @@ export class HybridStorage implements IStorage {
         WHERE schemaname = 'public'
         ORDER BY tablename, attname
       ` as Array<any>;
-      
+
       // Get user count
       const userCount = await db.user.count();
-      
+
       return {
         size: Number(sizeResult[0]?.size_bytes || 0),
         sizeFormatted: sizeResult[0]?.size || '0 bytes',
@@ -1735,7 +1737,7 @@ export class HybridStorage implements IStorage {
       };
     }
   }
-  
+
   /**
    * Format bytes to human readable format
    */
@@ -1746,7 +1748,7 @@ export class HybridStorage implements IStorage {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
-  
+
   /**
    * Run database maintenance operations (alias for compatibility)
    */
@@ -1759,7 +1761,7 @@ export class HybridStorage implements IStorage {
    */
   async runDatabaseMaintenance(operations: string[]) {
     const results = [];
-    
+
     for (const operation of operations) {
       try {
         switch (operation) {
@@ -1767,57 +1769,57 @@ export class HybridStorage implements IStorage {
             await this.analyzePostgreSQL();
             results.push({ operation, status: 'success', message: 'PostgreSQL analysis completed' });
             break;
-            
+
           case 'compact_mongo':
             await this.compactMongoDB();
             results.push({ operation, status: 'success', message: 'MongoDB compaction initiated' });
             break;
-            
+
           case 'rebuild_indexes':
             await this.rebuildMongoIndexes();
             results.push({ operation, status: 'success', message: 'MongoDB indexes rebuilt' });
             break;
-            
+
           case 'vacuum_postgres':
             await this.vacuumPostgreSQL();
             results.push({ operation, status: 'success', message: 'PostgreSQL vacuum completed' });
             break;
-            
+
           case 'optimize_postgres':
             await this.optimizePostgreSQL();
             results.push({ operation, status: 'success', message: 'PostgreSQL optimization completed' });
             break;
-            
+
           case 'cleanup_mongo':
             await this.cleanupMongoDB();
             results.push({ operation, status: 'success', message: 'MongoDB cleanup completed' });
             break;
-            
+
           case 'reindex_postgres':
             await this.reindexPostgreSQL();
             results.push({ operation, status: 'success', message: 'PostgreSQL reindexing completed' });
             break;
-            
+
           case 'validate_mongo':
             await this.validateMongoCollections();
             results.push({ operation, status: 'success', message: 'MongoDB collections validated' });
             break;
-            
+
           default:
             results.push({ operation, status: 'error', message: 'Unknown operation' });
         }
       } catch (error) {
-        results.push({ 
-          operation, 
-          status: 'error', 
-          message: error instanceof Error ? error.message : 'Unknown error' 
+        results.push({
+          operation,
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
-    
+
     return results;
   }
-  
+
   /**
    * Analyze PostgreSQL tables for optimization
    */
@@ -1825,7 +1827,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     await db.$executeRaw`ANALYZE`;
   }
-  
+
   /**
    * Vacuum PostgreSQL database
    */
@@ -1833,7 +1835,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     await db.$executeRaw`VACUUM ANALYZE`;
   }
-  
+
   /**
    * Compact MongoDB collections
    */
@@ -1841,17 +1843,17 @@ export class HybridStorage implements IStorage {
     if (!mongoose.connection.db) {
       throw new Error('MongoDB not connected');
     }
-    
+
     // Get MongoDB version to check if compact is supported
     const admin = mongoose.connection.db.admin();
     const buildInfo = await admin.buildInfo();
     const version = buildInfo.version;
     const majorVersion = parseInt(version.split('.')[0]);
-    
+
     if (majorVersion >= 4) {
       // Use compact command for MongoDB 4.0+
       const collections = await mongoose.connection.db.listCollections().toArray();
-      
+
       for (const collection of collections) {
         try {
           await mongoose.connection.db.command({ compact: collection.name });
@@ -1863,7 +1865,7 @@ export class HybridStorage implements IStorage {
       console.log('MongoDB version does not support compact command');
     }
   }
-  
+
   /**
    * Rebuild MongoDB indexes
    */
@@ -1871,9 +1873,9 @@ export class HybridStorage implements IStorage {
     if (!mongoose.connection.db) {
       throw new Error('MongoDB not connected');
     }
-    
+
     const collections = await mongoose.connection.db.listCollections().toArray();
-    
+
     for (const collection of collections) {
       try {
         await mongoose.connection.db.command({ reIndex: collection.name });
@@ -1882,20 +1884,20 @@ export class HybridStorage implements IStorage {
       }
     }
   }
-  
+
   /**
    * Optimize PostgreSQL database
    */
   private async optimizePostgreSQL() {
     const db = getPostgresDb();
-    
+
     try {
       // Run full vacuum and analyze
       await db.$executeRaw`VACUUM FULL ANALYZE`;
-      
+
       // Update table statistics
       await db.$executeRaw`ANALYZE`;
-      
+
       // Recompute table statistics
       await db.$executeRaw`
         UPDATE pg_stat_user_tables 
@@ -1908,7 +1910,7 @@ export class HybridStorage implements IStorage {
       await db.$executeRaw`VACUUM ANALYZE`;
     }
   }
-  
+
   /**
    * Clean up MongoDB collections
    */
@@ -1916,13 +1918,13 @@ export class HybridStorage implements IStorage {
     if (!mongoose.connection.db) {
       throw new Error('MongoDB not connected');
     }
-    
+
     const collections = await mongoose.connection.db.listCollections().toArray();
-    
+
     for (const collection of collections) {
       try {
         const collectionObj = mongoose.connection.db.collection(collection.name);
-        
+
         // Remove documents with null or undefined critical fields (if any)
         // This is a basic cleanup - in a real app you'd have specific cleanup rules
         const result = await collectionObj.deleteMany({
@@ -1931,7 +1933,7 @@ export class HybridStorage implements IStorage {
             { _id: { $exists: false } }
           ]
         });
-        
+
         if (result.deletedCount > 0) {
           console.log(`Cleaned up ${result.deletedCount} invalid documents from ${collection.name}`);
         }
@@ -1940,19 +1942,19 @@ export class HybridStorage implements IStorage {
       }
     }
   }
-  
+
   /**
    * Reindex PostgreSQL database
    */
   private async reindexPostgreSQL() {
     const db = getPostgresDb();
-    
+
     try {
       // Reindex all indexes in the database
       await db.$executeRaw`REINDEX DATABASE CURRENT_DATABASE()`;
     } catch (error) {
       console.warn('Full database reindex failed, trying table-level reindex:', error instanceof Error ? error.message : String(error));
-      
+
       try {
         // Fallback to reindexing specific tables
         await db.$executeRaw`REINDEX TABLE "User"`;
@@ -1962,7 +1964,7 @@ export class HybridStorage implements IStorage {
       }
     }
   }
-  
+
   /**
    * Validate MongoDB collections
    */
@@ -1970,24 +1972,24 @@ export class HybridStorage implements IStorage {
     if (!mongoose.connection.db) {
       throw new Error('MongoDB not connected');
     }
-    
+
     const collections = await mongoose.connection.db.listCollections().toArray();
     const validationResults = [];
-    
+
     for (const collection of collections) {
       try {
-        const result = await mongoose.connection.db.command({ 
+        const result = await mongoose.connection.db.command({
           validate: collection.name,
           full: false // Set to true for more thorough validation (slower)
         });
-        
+
         validationResults.push({
           collection: collection.name,
           valid: result.valid,
           warnings: result.warnings || [],
           errors: result.errors || []
         });
-        
+
         if (!result.valid) {
           console.warn(`Collection ${collection.name} validation failed:`, result);
         }
@@ -2000,10 +2002,10 @@ export class HybridStorage implements IStorage {
         });
       }
     }
-    
+
     return validationResults;
   }
-  
+
   /**
    * Create database backup metadata
    */
@@ -2018,31 +2020,31 @@ export class HybridStorage implements IStorage {
       collections: [] as string[],
       tables: [] as string[]
     };
-    
+
     if (type === 'mongodb' || type === 'full') {
       const mongoStats = await this.getMongoDBStats();
       metadata.collections = mongoStats.collections.map(c => c.name);
       metadata.size += mongoStats.dataSize;
     }
-    
+
     if (type === 'postgresql' || type === 'full') {
       const pgStats = await this.getPostgreSQLStats();
       metadata.tables = Object.keys(pgStats.tables);
       metadata.size += pgStats.size;
     }
-    
+
     return metadata;
   }
 
   // BACKUP AND RESTORE OPERATIONS
-  
+
   /**
    * Create database backup
    */
   async createBackup(type: 'mongodb' | 'postgresql' | 'full') {
     const timestamp = new Date().toISOString();
     const backupId = `backup_${Date.now()}`;
-    
+
     try {
       let backupData: any = {
         id: backupId,
@@ -2052,13 +2054,13 @@ export class HybridStorage implements IStorage {
         data: {},
         downloadable: false
       };
-      
+
       if (type === 'mongodb' || type === 'full') {
         // MongoDB backup
         const mongoBackup = await this.createMongoBackup();
         backupData.data.mongodb = mongoBackup;
       }
-      
+
       if (type === 'postgresql' || type === 'full') {
         // PostgreSQL backup
         const pgBackup = await this.createPostgreSQLBackup();
@@ -2066,17 +2068,17 @@ export class HybridStorage implements IStorage {
         backupData.downloadable = true;
         backupData.filename = `postgresql_backup_${backupId}.sql`;
       }
-      
+
       backupData.status = 'completed';
       if (type === 'postgresql') {
         backupData.size = backupData.data.postgresql.size;
       } else {
         backupData.size = JSON.stringify(backupData.data).length;
       }
-      
+
       // Store backup metadata (in production, you'd store this in a proper backup storage)
       this.backupStorage.set(backupId, backupData);
-      
+
       return {
         id: backupId,
         type,
@@ -2091,16 +2093,16 @@ export class HybridStorage implements IStorage {
       throw new Error(`Failed to create ${type} backup: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  
+
   private backupStorage = new Map<string, any>();
-  
+
   /**
    * Create MongoDB backup
    */
   private async createMongoBackup() {
     const collections = await mongoose.connection.db?.listCollections().toArray() || [];
     const backup: any = {};
-    
+
     for (const collection of collections) {
       try {
         const collectionData = await mongoose.connection.db?.collection(collection.name).find({}).toArray();
@@ -2110,23 +2112,23 @@ export class HybridStorage implements IStorage {
         backup[collection.name] = [];
       }
     }
-    
+
     return backup;
   }
-  
+
   /**
    * Create PostgreSQL backup as SQL dump
    */
   private async createPostgreSQLBackup() {
     const db = getPostgresDb();
-    
+
     try {
       // Get all users (this is the main table we have)
       const users = await db.user.findMany();
-      
+
       // Generate SQL dump content
       let sqlDump = `-- PostgreSQL Database Backup\n-- Generated on: ${new Date().toISOString()}\n\n`;
-      
+
       // Add table creation statement
       sqlDump += `-- Table: users\n`;
       sqlDump += `DROP TABLE IF EXISTS "users";\n`;
@@ -2146,7 +2148,7 @@ export class HybridStorage implements IStorage {
       sqlDump += `  "is_profile_complete" BOOLEAN DEFAULT false,\n`;
       sqlDump += `  "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n`;
       sqlDump += `);\n\n`;
-      
+
       // Add data inserts
       if (users.length > 0) {
         sqlDump += `-- Data for table: users\n`;
@@ -2167,13 +2169,13 @@ export class HybridStorage implements IStorage {
             user.isProfileComplete ? 'true' : 'false',
             `'${user.createdAt.toISOString()}'`
           ];
-          
+
           sqlDump += `INSERT INTO "users" ("id", "email", "name", "phone_number", "role", "register_number", "department", "joining_year", "passing_out_year", "current_study_year", "is_passed", "staff_id", "is_profile_complete", "created_at") VALUES (${values.join(', ')});\n`;
         }
       }
-      
+
       sqlDump += `\n-- End of backup\n`;
-      
+
       return {
         sql: sqlDump,
         recordCount: users.length,
@@ -2184,7 +2186,7 @@ export class HybridStorage implements IStorage {
       throw error;
     }
   }
-  
+
   /**
    * Get backup list
    */
@@ -2197,20 +2199,20 @@ export class HybridStorage implements IStorage {
       size: backup.size,
       filename: `${backup.id}_${backup.type}.json`
     }));
-    
+
     return backups.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
-  
+
   /**
    * Get backup info
    */
   async getBackupInfo(backupId: string) {
     const backup = this.backupStorage.get(backupId);
-    
+
     if (!backup) {
       return null;
     }
-    
+
     return {
       id: backup.id,
       type: backup.type,
@@ -2221,17 +2223,17 @@ export class HybridStorage implements IStorage {
       filename: backup.filename || `${backup.id}_${backup.type}.json`
     };
   }
-  
+
   /**
    * Get backup content for download
    */
   async getBackupContent(backupId: string) {
     const backup = this.backupStorage.get(backupId);
-    
+
     if (!backup) {
       throw new Error(`Backup ${backupId} not found`);
     }
-    
+
     if (backup.type === 'postgresql' && backup.data.postgresql.sql) {
       return {
         content: backup.data.postgresql.sql,
@@ -2239,7 +2241,7 @@ export class HybridStorage implements IStorage {
         contentType: 'application/sql'
       };
     }
-    
+
     // For MongoDB or other types, return JSON
     return {
       content: JSON.stringify(backup.data, null, 2),
@@ -2247,28 +2249,28 @@ export class HybridStorage implements IStorage {
       contentType: 'application/json'
     };
   }
-  
-  
+
+
   /**
    * Restore from backup
    */
   async restoreFromBackup(backupId: string, type?: string) {
     const backup = this.backupStorage.get(backupId);
-    
+
     if (!backup) {
       throw new Error(`Backup ${backupId} not found`);
     }
-    
+
     if (type && backup.type !== type && backup.type !== 'full') {
       throw new Error(`Backup type mismatch. Expected ${type}, got ${backup.type}`);
     }
-    
+
     try {
       const results: any = {
         restored: [],
         errors: []
       };
-      
+
       if (backup.data.mongodb && (type === 'mongodb' || type === 'full' || !type)) {
         try {
           await this.restoreMongoBackup(backup.data.mongodb);
@@ -2277,7 +2279,7 @@ export class HybridStorage implements IStorage {
           results.errors.push(`MongoDB restore failed: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
-      
+
       if (backup.data.postgresql && (type === 'postgresql' || type === 'full' || !type)) {
         try {
           await this.restorePostgreSQLBackup(backup.data.postgresql);
@@ -2286,7 +2288,7 @@ export class HybridStorage implements IStorage {
           results.errors.push(`PostgreSQL restore failed: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
-      
+
       return {
         backupId,
         timestamp: new Date().toISOString(),
@@ -2297,7 +2299,7 @@ export class HybridStorage implements IStorage {
       throw new Error(`Failed to restore from backup: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  
+
   /**
    * Restore MongoDB backup
    */
@@ -2305,14 +2307,14 @@ export class HybridStorage implements IStorage {
     if (!mongoose.connection.db) {
       throw new Error('MongoDB not connected');
     }
-    
+
     for (const [collectionName, data] of Object.entries(mongoData)) {
       try {
         const collection = mongoose.connection.db.collection(collectionName);
-        
+
         // Clear existing data
         await collection.deleteMany({});
-        
+
         // Insert backup data
         if (Array.isArray(data) && data.length > 0) {
           await collection.insertMany(data as any[]);
@@ -2322,18 +2324,18 @@ export class HybridStorage implements IStorage {
       }
     }
   }
-  
+
   /**
    * Restore PostgreSQL backup
    */
   private async restorePostgreSQLBackup(pgData: any) {
     const db = getPostgresDb();
-    
+
     try {
       if (pgData.users && Array.isArray(pgData.users)) {
         // Clear existing users
         await db.user.deleteMany();
-        
+
         // Insert backup users
         for (const user of pgData.users) {
           try {
@@ -2357,19 +2359,19 @@ export class HybridStorage implements IStorage {
       throw error;
     }
   }
-  
+
   /**
    * Delete backup
    */
   async deleteBackup(backupId: string) {
     const backup = this.backupStorage.get(backupId);
-    
+
     if (!backup) {
       throw new Error(`Backup ${backupId} not found`);
     }
-    
+
     this.backupStorage.delete(backupId);
-    
+
     return {
       deleted: true,
       backupId,
@@ -2380,7 +2382,7 @@ export class HybridStorage implements IStorage {
   // MAINTENANCE NOTICE OPERATIONS (MongoDB)
 
   // COUNTER OPERATIONS (MongoDB)
-  
+
   async getCountersByCanteen(canteenId: string) {
     try {
       const counters = await Counter.find({ canteenId }).sort({ createdAt: -1 });
@@ -2475,7 +2477,7 @@ export class HybridStorage implements IStorage {
   async getPaymentStats(canteenId: string, counterId: string) {
     try {
       const orders = await Order.find({ canteenId, counterId });
-      
+
       const totalAmount = orders.reduce((sum, order) => sum + order.amount, 0);
       const completedPayments = orders.filter(order => order.paymentStatus === 'completed').length;
       const pendingPayments = orders.filter(order => order.paymentStatus === 'pending').length;
@@ -2496,7 +2498,7 @@ export class HybridStorage implements IStorage {
   async getStoreStats(canteenId: string, counterId: string) {
     try {
       const orders = await Order.find({ canteenId, counterId });
-      
+
       const totalOrders = orders.length;
       const completedOrders = orders.filter(order => order.status === 'completed').length;
       const pendingOrders = orders.filter(order => ['preparing', 'ready'].includes(order.status)).length;
@@ -2520,10 +2522,10 @@ export class HybridStorage implements IStorage {
     try {
       const order = await Order.findByIdAndUpdate(
         orderId,
-        { 
+        {
           paymentStatus: 'completed',
           status: 'ready',
-          counterId 
+          counterId
         },
         { new: true }
       );
@@ -2537,13 +2539,13 @@ export class HybridStorage implements IStorage {
   async confirmOfflinePayment(orderId: string, counterId: string) {
     try {
       console.log(`💳 Storage: Confirming offline payment for order ${orderId} with counter ${counterId}`);
-      
+
       // First, let's check the current order state
       const currentOrder = await Order.findById(orderId);
       if (!currentOrder) {
         throw new Error('Order not found');
       }
-      
+
       console.log(`💳 Storage: Current order state:`, {
         id: currentOrder?.id,
         orderNumber: currentOrder?.orderNumber,
@@ -2551,7 +2553,7 @@ export class HybridStorage implements IStorage {
         paymentStatus: currentOrder?.paymentStatus,
         isOffline: currentOrder?.isOffline
       });
-      
+
       // Parse order items to check for markable items
       let orderItems = [];
       try {
@@ -2560,7 +2562,7 @@ export class HybridStorage implements IStorage {
         console.error('Error parsing order items:', error);
         orderItems = [];
       }
-      
+
       // Check if order has markable items (using embedded isMarkable property)
       let hasMarkableItem = false;
       for (const item of orderItems) {
@@ -2570,29 +2572,29 @@ export class HybridStorage implements IStorage {
           break;
         }
       }
-      
+
       // Determine status based on markable items (same logic as order creation)
       // If has markable items, status should be 'pending' (needs manual marking)
       // If no markable items, status should be 'ready' (auto-ready)
       const newStatus = hasMarkableItem ? 'pending' : 'ready';
-      
+
       console.log(`💳 Storage: Order has markable items: ${hasMarkableItem}, setting status to: ${newStatus}`);
-      
+
       // Initialize itemStatusByCounter for auto-ready items (non-markable items)
       // Auto-ready items should be marked as 'ready' by default for their assigned counters
-      const currentItemStatus = currentOrder.itemStatusByCounter 
-        ? (typeof currentOrder.itemStatusByCounter === 'string' 
-          ? JSON.parse(currentOrder.itemStatusByCounter) 
+      const currentItemStatus = currentOrder.itemStatusByCounter
+        ? (typeof currentOrder.itemStatusByCounter === 'string'
+          ? JSON.parse(currentOrder.itemStatusByCounter)
           : currentOrder.itemStatusByCounter)
         : {};
       const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = { ...currentItemStatus };
-      
+
       for (const item of orderItems) {
         // Skip markable items - they will be marked ready manually
         if (item.isMarkable === true) {
           continue;
         }
-        
+
         // Auto-ready items: mark as 'ready' for their assigned counters
         // For store counter items
         if (item.storeCounterId) {
@@ -2601,7 +2603,7 @@ export class HybridStorage implements IStorage {
           }
           itemStatusByCounter[item.storeCounterId][item.id] = 'ready';
         }
-        
+
         // For KOT counter items (if any auto-ready items are assigned to KOT counters)
         if (item.kotCounterId) {
           if (!itemStatusByCounter[item.kotCounterId]) {
@@ -2610,16 +2612,16 @@ export class HybridStorage implements IStorage {
           itemStatusByCounter[item.kotCounterId][item.id] = 'ready';
         }
       }
-      
+
       console.log(`🔍 confirmOfflinePayment - Initialized itemStatusByCounter for auto-ready items:`, {
         autoReadyItemsCount: orderItems.filter((item: any) => item.isMarkable !== true).length,
         itemStatusByCounterKeys: Object.keys(itemStatusByCounter),
         itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : 'none'
       });
-      
+
       const order = await Order.findByIdAndUpdate(
         orderId,
-        { 
+        {
           paymentStatus: 'completed',
           status: newStatus, // Set status based on markable items
           paymentConfirmedBy: counterId, // Track which payment counter confirmed the payment
@@ -2628,7 +2630,7 @@ export class HybridStorage implements IStorage {
         },
         { new: true }
       );
-      
+
       console.log(`💳 Storage: Updated order state:`, {
         id: order?.id,
         orderNumber: order?.orderNumber,
@@ -2637,7 +2639,7 @@ export class HybridStorage implements IStorage {
         isOffline: order?.isOffline,
         hasMarkableItems: hasMarkableItem
       });
-      
+
       return order;
     } catch (error) {
       console.error('Error confirming offline payment:', error);
@@ -2648,14 +2650,14 @@ export class HybridStorage implements IStorage {
   async rejectOfflineOrder(orderId: string, counterId: string) {
     try {
       console.log(`💳 Storage: Rejecting offline order ${orderId} with counter ${counterId}`);
-      
+
       // First, let's check the current order state
       const currentOrder = await Order.findById(orderId);
       if (!currentOrder) {
         console.log(`💳 Storage: Order ${orderId} not found`);
         return null;
       }
-      
+
       console.log(`💳 Storage: Current order state:`, {
         id: currentOrder.id,
         orderNumber: currentOrder.orderNumber,
@@ -2663,27 +2665,27 @@ export class HybridStorage implements IStorage {
         paymentStatus: currentOrder.paymentStatus,
         isOffline: currentOrder.isOffline
       });
-      
-      const updateData = { 
+
+      const updateData = {
         paymentStatus: 'rejected',
         status: 'rejected', // Change to rejected status
         rejectedBy: counterId, // Track which payment counter rejected the order
-        counterId 
+        counterId
       };
-      
+
       console.log(`💳 Storage: Updating order with data:`, updateData);
-      
+
       const order = await Order.findByIdAndUpdate(
         orderId,
         updateData,
         { new: true, runValidators: true }
       );
-      
+
       if (!order) {
         console.log(`💳 Storage: Failed to update order ${orderId}`);
         return null;
       }
-      
+
       console.log(`💳 Storage: Updated order state:`, {
         id: order.id,
         orderNumber: order.orderNumber,
@@ -2692,7 +2694,7 @@ export class HybridStorage implements IStorage {
         isOffline: order.isOffline,
         rejectedBy: order.rejectedBy
       });
-      
+
       return order;
     } catch (error) {
       console.error('Error rejecting offline order:', error);
@@ -2710,24 +2712,24 @@ export class HybridStorage implements IStorage {
 
       // Parse order items
       const orderItems = JSON.parse(currentOrder.items);
-      
+
       // Initialize itemStatusByCounter if it doesn't exist
-      const currentItemStatus = currentOrder.itemStatusByCounter 
-        ? (typeof currentOrder.itemStatusByCounter === 'string' 
-          ? JSON.parse(currentOrder.itemStatusByCounter) 
+      const currentItemStatus = currentOrder.itemStatusByCounter
+        ? (typeof currentOrder.itemStatusByCounter === 'string'
+          ? JSON.parse(currentOrder.itemStatusByCounter)
           : currentOrder.itemStatusByCounter)
         : {};
-      
+
       // If counterId is provided, mark items for that specific counter
       // Otherwise, mark all markable items as ready (for orders without counter assignment)
       if (counterId) {
         if (!currentItemStatus[counterId]) {
           currentItemStatus[counterId] = {};
         }
-        
+
         // Check if this is a KOT counter by checking if any items have this as kotCounterId
         const isKotCounter = orderItems.some((item: any) => item.kotCounterId === counterId);
-        
+
         // Filter items that belong to this counter
         // For KOT counters: use kotCounterId
         // For store counters: use storeCounterId
@@ -2768,7 +2770,7 @@ export class HybridStorage implements IStorage {
         // No counterId provided - mark all markable items as ready
         // This handles cases where orders don't have specific counter assignments
         const allMarkableItems = orderItems.filter((item: any) => item.isMarkable === true);
-        
+
         // Group items by their storeCounterId
         const itemsByCounter: { [counterId: string]: any[] } = {};
         allMarkableItems.forEach((item: any) => {
@@ -2778,7 +2780,7 @@ export class HybridStorage implements IStorage {
           }
           itemsByCounter[itemCounterId].push(item);
         });
-        
+
         // Mark all markable items as ready in their respective counters
         Object.keys(itemsByCounter).forEach((itemCounterId) => {
           if (!currentItemStatus[itemCounterId]) {
@@ -2829,7 +2831,7 @@ export class HybridStorage implements IStorage {
       if (counterId) {
         // Check if this was a KOT counter
         const isKotCounter = orderItems.some((item: any) => item.kotCounterId === counterId);
-        
+
         if (isKotCounter) {
           // KOT counter: get items that were marked ready
           const kotItems = orderItems.filter((item: any) => {
@@ -2837,7 +2839,7 @@ export class HybridStorage implements IStorage {
             const isMarkable = item.isMarkable === true;
             return belongsToKotCounter && isMarkable;
           });
-          
+
           // Get store counters that should receive these items
           const storeCounterIds = new Set<string>();
           kotItems.forEach((item: any) => {
@@ -2845,14 +2847,14 @@ export class HybridStorage implements IStorage {
               storeCounterIds.add(item.storeCounterId);
             }
           });
-          
+
           console.log(`🍳 Marked items ready from KOT counter ${counterId} in order ${orderId}:`, {
             kotItems: kotItems.map((item: any) => item.name),
             storeCountersToNotify: Array.from(storeCounterIds),
             allItemsReady,
             newOrderStatus: order?.status
           });
-          
+
           // Return store counter IDs that need to be notified
           // Convert to plain object first to ensure proper serialization
           const plainOrder = mongoToPlain(order);
@@ -2909,10 +2911,10 @@ export class HybridStorage implements IStorage {
     try {
       const order = await Order.findByIdAndUpdate(
         orderId,
-        { 
+        {
           status: 'completed',
           deliveredAt: new Date(),
-          counterId 
+          counterId
         },
         { new: true }
       );
@@ -2926,7 +2928,7 @@ export class HybridStorage implements IStorage {
   async markOrderOutForDelivery(orderId: string, counterId: string, deliveryPersonId: string) {
     try {
       console.log(`🚚 Storage: Marking order ${orderId} as out for delivery for counter ${counterId} with delivery person ${deliveryPersonId}`);
-      
+
       // Get the current order to access items and existing status
       const currentOrder = await Order.findById(orderId);
       if (!currentOrder) {
@@ -2935,11 +2937,11 @@ export class HybridStorage implements IStorage {
 
       // Parse order items
       const orderItems = JSON.parse(currentOrder.items);
-      
+
       // Initialize itemStatusByCounter if it doesn't exist
-      const currentItemStatus = currentOrder.itemStatusByCounter 
-        ? (typeof currentOrder.itemStatusByCounter === 'string' 
-          ? JSON.parse(currentOrder.itemStatusByCounter) 
+      const currentItemStatus = currentOrder.itemStatusByCounter
+        ? (typeof currentOrder.itemStatusByCounter === 'string'
+          ? JSON.parse(currentOrder.itemStatusByCounter)
           : currentOrder.itemStatusByCounter)
         : {};
       if (!currentItemStatus[counterId]) {
@@ -2951,8 +2953,8 @@ export class HybridStorage implements IStorage {
         const belongsToCounter = item.storeCounterId === counterId;
         // Only mark items that are already ready (either markable items marked as ready, or auto-ready items)
         const itemStatus = currentItemStatus[counterId]?.[item.id];
-        const isReady = itemStatus === 'ready' || 
-                       (item.isMarkable !== true && (currentOrder.status === 'ready' || currentOrder.status === 'preparing'));
+        const isReady = itemStatus === 'ready' ||
+          (item.isMarkable !== true && (currentOrder.status === 'ready' || currentOrder.status === 'preparing'));
         return belongsToCounter && isReady;
       });
 
@@ -2972,11 +2974,11 @@ export class HybridStorage implements IStorage {
       for (const item of allItems) {
         const itemCounterId = item.storeCounterId || 'default';
         const itemStatus = currentItemStatus[itemCounterId]?.[item.id];
-        
+
         // Determine if item is ready
-        const isReady = itemStatus === 'ready' || 
-                       (item.isMarkable !== true && (currentOrder.status === 'ready' || currentOrder.status === 'preparing'));
-        
+        const isReady = itemStatus === 'ready' ||
+          (item.isMarkable !== true && (currentOrder.status === 'ready' || currentOrder.status === 'preparing'));
+
         // Only check items that are ready
         if (isReady) {
           const currentStatus = currentItemStatus[itemCounterId]?.[item.id];
@@ -3022,7 +3024,7 @@ export class HybridStorage implements IStorage {
   async deliverOrder(orderId: string, counterId: string) {
     try {
       console.log(`🚚 Storage: Delivering order ${orderId} with counterId ${counterId}`);
-      
+
       // Get the current order to access items and existing status
       const currentOrder = await Order.findById(orderId);
       if (!currentOrder) {
@@ -3031,10 +3033,10 @@ export class HybridStorage implements IStorage {
 
       // Parse order items
       const orderItems = JSON.parse(currentOrder.items);
-      
+
       // Get menu items to find which items belong to this counter
       const menuItems = await MenuItem.find({ canteenId: currentOrder.canteenId });
-      
+
       // Filter items that belong to this counter
       const counterItems = orderItems.filter((item: any) => {
         const menuItem = menuItems.find((mi: any) => mi.id === item.id || mi._id === item.id);
@@ -3042,9 +3044,9 @@ export class HybridStorage implements IStorage {
       });
 
       // Initialize itemStatusByCounter if it doesn't exist
-      const currentItemStatus = currentOrder.itemStatusByCounter 
-        ? (typeof currentOrder.itemStatusByCounter === 'string' 
-          ? JSON.parse(currentOrder.itemStatusByCounter) 
+      const currentItemStatus = currentOrder.itemStatusByCounter
+        ? (typeof currentOrder.itemStatusByCounter === 'string'
+          ? JSON.parse(currentOrder.itemStatusByCounter)
           : currentOrder.itemStatusByCounter)
         : {};
       if (!currentItemStatus[counterId]) {
@@ -3080,18 +3082,18 @@ export class HybridStorage implements IStorage {
       if (allItemsCompleted) {
         updateData.status = 'delivered';
         updateData.deliveredAt = new Date();
-        
+
         // Increment totalOrderDelivered for the delivery person if assigned
         if (currentOrder.deliveryPersonId) {
           try {
             const { db } = await import('./db');
             const database = db();
-            
+
             // Find delivery person by deliveryPersonId (not the database id)
             const deliveryPerson = await database.deliveryPerson.findUnique({
               where: { deliveryPersonId: currentOrder.deliveryPersonId }
             });
-            
+
             if (deliveryPerson) {
               await database.deliveryPerson.update({
                 where: { id: deliveryPerson.id },
@@ -3132,7 +3134,7 @@ export class HybridStorage implements IStorage {
   async deliverOrderByDeliveryPerson(orderId: string, deliveryPersonId: string) {
     try {
       console.log(`🚚 Storage: Delivering order ${orderId} by delivery person ${deliveryPersonId}`);
-      
+
       // Get the current order
       const currentOrder = await Order.findById(orderId);
       if (!currentOrder) {
@@ -3156,13 +3158,13 @@ export class HybridStorage implements IStorage {
       if (currentOrder.itemStatusByCounter) {
         const itemStatusByCounter = currentOrder.itemStatusByCounter;
         const orderItems = JSON.parse(currentOrder.items);
-        
+
         // Mark all items as completed for all counters
         for (const item of orderItems) {
           // Find which counter this item belongs to
           const menuItems = await MenuItem.find({ canteenId: currentOrder.canteenId });
           const menuItem = menuItems.find((mi: any) => mi.id === item.id || mi._id === item.id);
-          
+
           if (menuItem && menuItem.storeCounterId) {
             const counterId = menuItem.storeCounterId;
             if (!itemStatusByCounter[counterId]) {
@@ -3171,7 +3173,7 @@ export class HybridStorage implements IStorage {
             itemStatusByCounter[counterId][item.id] = 'completed';
           }
         }
-        
+
         updateData.itemStatusByCounter = itemStatusByCounter;
       }
 
@@ -3187,12 +3189,12 @@ export class HybridStorage implements IStorage {
         try {
           const { db } = await import('./db');
           const database = db();
-          
+
           // Find delivery person by deliveryPersonId (not the database id)
           const deliveryPerson = await database.deliveryPerson.findUnique({
             where: { deliveryPersonId: deliveryPersonId }
           });
-          
+
           if (deliveryPerson) {
             await database.deliveryPerson.update({
               where: { id: deliveryPerson.id },

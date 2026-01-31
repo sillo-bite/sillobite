@@ -19,6 +19,7 @@ import { Mail, Lock, Eye, EyeOff, XCircle, User } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { setPWAAuth } from "@/utils/pwaAuth";
 import { updateStatusBarColor } from "@/utils/statusBar";
+import { UserRole } from "@shared/schema";
 
 interface QRTableData {
   restaurantId: string;
@@ -221,7 +222,7 @@ export default function LoginScreen() {
               id: existingUser.id,
               name: existingUser.name,
               email: existingUser.email,
-              role: existingUser.role || 'guest',
+              role: existingUser.role || UserRole.GUEST,
               phoneNumber: existingUser.phoneNumber || '',
               ...(existingUser.organizationId && {
                 organization: existingUser.organizationId,
@@ -295,7 +296,7 @@ export default function LoginScreen() {
         }
 
         // Check if user came from organization QR and needs profile completion
-        if (orgQRData && (userData.role === 'guest' || !userData.phoneNumber || !userData.organizationId)) {
+        if (orgQRData && (userData.role === UserRole.GUEST || !userData.phoneNumber || !userData.organizationId)) {
           // Validate QR code first
           const validateResponse = await fetch(
             `/api/system-settings/qr-codes/validate/${orgQRData.organizationId}/${orgQRData.hash}?address=${encodeURIComponent(orgQRData.address)}`
@@ -327,20 +328,20 @@ export default function LoginScreen() {
           id: userData.id,
           name: userData.name,
           email: userData.email,
-          role: userData.role || 'student', // Ensure role is always set
+          role: userData.role || UserRole.STUDENT, // Ensure role is always set
           phoneNumber: userData.phoneNumber || '',
           // Use organizationId from database
           ...(organizationId && {
             organization: organizationId,
             organizationId: organizationId,
           }),
-          ...((userData.role === "student" || userData.role === "employee" || userData.role === "contractor" || userData.role === "visitor" || userData.role === "guest") && {
+          ...((userData.role === UserRole.STUDENT || userData.role === UserRole.EMPLOYEE || userData.role === UserRole.CONTRACTOR || userData.role === UserRole.VISITOR || userData.role === UserRole.GUEST) && {
             registerNumber: userData.registerNumber || '',
             department: userData.department || '',
             currentStudyYear: userData.currentStudyYear?.toString() || '1',
             isPassed: userData.isPassed || false,
           }),
-          ...(userData.role === "staff" && {
+          ...(userData.role === UserRole.STAFF && {
             staffId: userData.staffId || '',
           }),
         };
@@ -390,9 +391,9 @@ export default function LoginScreen() {
         // Add a small delay to ensure login state is persisted before redirect
         setTimeout(async () => {
           // Redirect based on role (handle both naming conventions)
-          if (userData.role === 'super_admin' || userData.role === 'admin') {
+          if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.ADMIN) {
             setLocation("/admin");
-          } else if (userData.role === 'canteen_owner' || userData.role === 'canteen-owner') {
+          } else if (userData.role === UserRole.CANTEEN_OWNER || userData.role === 'canteen-owner') {
             // For canteen owners, fetch canteen ID first
             try {
               const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`);
@@ -406,7 +407,7 @@ export default function LoginScreen() {
               console.error('Error fetching canteen:', error);
               setLocation('/login?error=canteen_fetch_failed');
             }
-          } else if (userData.role === 'delivery_person') {
+          } else if (userData.role === UserRole.DELIVERY_PERSON) {
             setLocation("/delivery-portal");
           } else {
             setLocation("/app");
@@ -420,7 +421,7 @@ export default function LoginScreen() {
             email: user.email,
             name: user.displayName || 'Super Admin',
             phoneNumber: '',
-            role: 'super_admin',
+            role: UserRole.SUPER_ADMIN,
             isProfileComplete: true,
           };
 
@@ -446,7 +447,7 @@ export default function LoginScreen() {
             email: user.email,
             name: user.displayName || 'Canteen Owner',
             phoneNumber: '',
-            role: 'canteen_owner',
+            role: UserRole.CANTEEN_OWNER,
             isProfileComplete: true,
           };
 
@@ -499,7 +500,7 @@ export default function LoginScreen() {
               email: user.email,
               name: user.displayName || user.name || '',
               phoneNumber: '', // Will be collected in profile setup
-              role: 'guest',
+              role: UserRole.GUEST,
               college: organization.name, // Store organization name in college field
               isProfileComplete: false, // Need to collect phone number
             };
@@ -528,7 +529,7 @@ export default function LoginScreen() {
                 id: newUser.id,
                 name: newUser.name,
                 email: newUser.email,
-                role: newUser.role || 'guest',
+                role: newUser.role || UserRole.GUEST,
                 phoneNumber: newUser.phoneNumber || '',
                 organization: organization.id,
                 organizationId: organization.id,
@@ -576,7 +577,7 @@ export default function LoginScreen() {
                   id: existingUser.id,
                   name: existingUser.name,
                   email: existingUser.email,
-                  role: existingUser.role || 'guest',
+                  role: existingUser.role || UserRole.GUEST,
                   phoneNumber: existingUser.phoneNumber || '',
                   ...(organizationId && {
                     organization: organizationId,
@@ -600,7 +601,7 @@ export default function LoginScreen() {
             const minimalUser = {
               email: user.email,
               name: user.displayName || user.name || '',
-              role: 'guest',
+              role: UserRole.GUEST,
               isProfileComplete: false,
             };
             const createResponse = await fetch('/api/users', {
@@ -614,7 +615,7 @@ export default function LoginScreen() {
                 id: created.id,
                 name: created.name,
                 email: created.email,
-                role: created.role || 'guest',
+                role: created.role || UserRole.GUEST,
                 phoneNumber: created.phoneNumber || '',
               };
               login(userDisplayData as any);
@@ -629,7 +630,7 @@ export default function LoginScreen() {
                   id: existingUser.id,
                   name: existingUser.name,
                   email: existingUser.email,
-                  role: existingUser.role || 'guest',
+                  role: existingUser.role || UserRole.GUEST,
                   phoneNumber: existingUser.phoneNumber || '',
                 };
                 login(userDisplayData as any);
@@ -670,7 +671,7 @@ export default function LoginScreen() {
           email: devEmail,
           name: 'Dev Test User',
           phoneNumber: '+91-9876543210',
-          role: 'student',
+          role: UserRole.STUDENT,
           registerNumber: `DEV${timestamp}`,
           department: 'Computer Science',
           joiningYear: 2022,
@@ -794,7 +795,7 @@ export default function LoginScreen() {
           role: data.user.role,
           phoneNumber: data.user.phoneNumber || '',
           college: data.user.college || '',
-          ...((data.user.role === "student" || data.user.role === "employee" || data.user.role === "contractor" || data.user.role === "visitor" || data.user.role === "guest") && {
+          ...((data.user.role === UserRole.STUDENT || data.user.role === UserRole.EMPLOYEE || data.user.role === UserRole.CONTRACTOR || data.user.role === UserRole.VISITOR || data.user.role === UserRole.GUEST) && {
             registerNumber: data.user.registerNumber || '',
             department: data.user.department || '',
             currentStudyYear: data.user.currentStudyYear?.toString() || '1',

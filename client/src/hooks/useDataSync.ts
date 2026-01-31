@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import type { MenuItem, Category, Order, User } from "@shared/schema";
+import { UserRole } from "@shared/schema";
 
 /**
  * Custom hook for synchronized data fetching across all dashboards
@@ -10,7 +11,7 @@ import type { MenuItem, Category, Order, User } from "@shared/schema";
  */
 export function useDataSync() {
   const { canteenId } = useParams();
-  
+
   // Fetch categories
   const categoriesQuery = useQuery<{
     items: Category[];
@@ -18,7 +19,7 @@ export function useDataSync() {
   }>({
     queryKey: ["/api/categories", canteenId],
     queryFn: async () => {
-      const url = canteenId 
+      const url = canteenId
         ? `/api/categories?canteenId=${canteenId}&limit=1000`
         : '/api/categories?limit=1000';
       return await apiRequest(url);
@@ -34,7 +35,7 @@ export function useDataSync() {
   }>({
     queryKey: ["/api/menu", canteenId],
     queryFn: async () => {
-      const url = canteenId 
+      const url = canteenId
         ? `/api/menu?canteenId=${canteenId}&limit=1000`
         : '/api/menu?limit=1000';
       return await apiRequest(url);
@@ -51,7 +52,7 @@ export function useDataSync() {
   }>({
     queryKey: ["/api/orders/paginated", canteenId],
     queryFn: async () => {
-      const url = canteenId 
+      const url = canteenId
         ? `/api/orders/paginated?canteenId=${canteenId}&page=1&limit=1`
         : '/api/orders/paginated?page=1&limit=1';
       return await apiRequest(url);
@@ -96,14 +97,14 @@ export function useDataSync() {
     menuItems,
     orders,
     analytics: analyticsQuery.data,
-    
+
     // Computed stats
     stats,
-    
+
     // Loading and error states
     isLoading,
     hasError,
-    
+
     // Refetch functions for manual sync
     refetch: {
       categories: categoriesQuery.refetch,
@@ -119,7 +120,7 @@ export function useDataSync() {
         analyticsQuery.refetch();
       }
     },
-    
+
     // Individual query states for granular control
     queries: {
       categories: categoriesQuery,
@@ -140,9 +141,9 @@ export function useAuthSync() {
       const tempUserSession = localStorage.getItem('temp_user_session');
       if (tempUserSession) {
         const parsed = JSON.parse(tempUserSession);
-        return { ...parsed, isTemporary: true, role: 'guest' };
+        return { ...parsed, isTemporary: true, role: UserRole.GUEST };
       }
-      
+
       // Fall back to regular user
       return JSON.parse(localStorage.getItem('user') || 'null');
     } catch {
@@ -158,10 +159,10 @@ export function useAuthSync() {
         const tempUserSession = localStorage.getItem('temp_user_session');
         if (tempUserSession) {
           const parsed = JSON.parse(tempUserSession);
-          setUser({ ...parsed, isTemporary: true, role: 'guest' });
+          setUser({ ...parsed, isTemporary: true, role: UserRole.GUEST });
           return;
         }
-        
+
         // Fall back to regular user
         const newUser = JSON.parse(localStorage.getItem('user') || 'null');
         setUser(newUser);
@@ -172,7 +173,7 @@ export function useAuthSync() {
 
     // Listen for storage events (from other tabs)
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also listen for custom events (from same tab)
     window.addEventListener('userAuthChange', handleStorageChange);
 
@@ -195,19 +196,19 @@ export function useAuthSync() {
       isTemporary: user?.isTemporary
     });
   }
-  
+
   return {
     user,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin' || user?.role === 'super_admin',
-    isSuperAdmin: user?.role === 'super_admin',
-    isCanteenOwner: user?.role === 'canteen_owner',
-    isStudent: user?.role === 'student',
-    isStaff: user?.role === 'staff',
-    isEmployee: user?.role === 'employee',
-    isGuest: user?.role === 'guest',
-    isContractor: user?.role === 'contractor',
-    isVisitor: user?.role === 'visitor',
+    isAdmin: user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN,
+    isSuperAdmin: user?.role === UserRole.SUPER_ADMIN,
+    isCanteenOwner: user?.role === UserRole.CANTEEN_OWNER,
+    isStudent: user?.role === UserRole.STUDENT,
+    isStaff: user?.role === UserRole.STAFF,
+    isEmployee: user?.role === UserRole.EMPLOYEE,
+    isGuest: user?.role === UserRole.GUEST,
+    isContractor: user?.role === UserRole.CONTRACTOR,
+    isVisitor: user?.role === UserRole.VISITOR,
     hasRole: (role: string) => user?.role === role,
   };
 }

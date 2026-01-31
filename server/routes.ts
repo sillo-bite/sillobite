@@ -13,7 +13,8 @@ import {
   insertPaymentSchema,
   insertComplaintSchema,
   type Coupon,
-  type InsertCoupon
+  type InsertCoupon,
+  UserRole
 } from "@shared/schema";
 import { generateOrderNumber } from "@shared/utils";
 import {
@@ -328,8 +329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent creating multiple super admins
-      if (validatedData.role === 'super_admin') {
-        const existingSuperAdmin = await storage.getUserByRole('super_admin');
+      if (validatedData.role === UserRole.SUPER_ADMIN) {
+        const existingSuperAdmin = await storage.getUserByRole(UserRole.SUPER_ADMIN);
         if (existingSuperAdmin) {
           console.log(`❌ Cannot create super admin - one already exists`);
           return res.status(403).json({
@@ -339,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for duplicate register number if student, employee, contractor, visitor, or guest (case-insensitive)
-      if ((validatedData.role === "student" || validatedData.role === "employee" || validatedData.role === "contractor" || validatedData.role === "visitor" || validatedData.role === "guest") && validatedData.registerNumber) {
+      if ((validatedData.role === UserRole.STUDENT || validatedData.role === UserRole.EMPLOYEE || validatedData.role === UserRole.CONTRACTOR || validatedData.role === UserRole.VISITOR || validatedData.role === UserRole.GUEST) && validatedData.registerNumber) {
         const normalizedRegisterNumber = validatedData.registerNumber.toUpperCase();
         const existingRegisterUser = await storage.getUserByRegisterNumber(normalizedRegisterNumber);
         if (existingRegisterUser) {
@@ -349,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for duplicate staff ID if staff (case-insensitive)
-      if (validatedData.role === "staff" && validatedData.staffId) {
+      if (validatedData.role === UserRole.STAFF && validatedData.staffId) {
         const normalizedStaffId = validatedData.staffId.toUpperCase();
         const existingStaffUser = await storage.getUserByStaffId(normalizedStaffId);
         if (existingStaffUser) {
@@ -479,8 +480,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent changing super admin role if it's the only super admin
-      if (existingUser.role === 'super_admin' && req.body.role && req.body.role !== 'super_admin') {
-        const existingSuperAdmin = await storage.getUserByRole('super_admin');
+      if (existingUser.role === UserRole.SUPER_ADMIN && req.body.role && req.body.role !== UserRole.SUPER_ADMIN) {
+        const existingSuperAdmin = await storage.getUserByRole(UserRole.SUPER_ADMIN);
         if (existingSuperAdmin && existingSuperAdmin.id === userId) {
           console.log(`🚫 Cannot change super admin role: ${existingUser.name} is the only super admin`);
           return res.status(403).json({
@@ -595,7 +596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent deletion of super admin
-      if (existingUser.role === 'super_admin') {
+      if (existingUser.role === UserRole.SUPER_ADMIN) {
         console.log(`🚫 Cannot delete super admin: ${existingUser.name} (${existingUser.email})`);
         return res.status(403).json({
           message: "Super admin cannot be deleted. There must always be at least one super admin in the system."
@@ -655,7 +656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // For canteen owners, include canteen data to avoid additional API call
-      if (user.role === 'canteen_owner' || user.role === 'canteen-owner') {
+      if (user.role === UserRole.CANTEEN_OWNER || user.role === 'canteen-owner') {
         try {
           // Import SystemSettings model
           const { default: mongoose } = await import('mongoose');

@@ -3,6 +3,8 @@ import { useCanteens, useCanteensByCollege, useCanteensByOrganization, useCantee
 import { useCanteensByInstitution } from '@/hooks/useCanteensByInstitution';
 import { useCanteensLazyLoad } from '@/hooks/useCanteensLazyLoad';
 import { useColleges, type College } from '@/hooks/useColleges';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { UserRole } from "@shared/schema";
 import { useCart } from './CartContext';
 import { useAuthSync } from '@/hooks/useDataSync';
 import { useUserFromCache } from '@/hooks/useUserFromCache';
@@ -45,7 +47,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     const userToCheck = cachedUser || user;
     // Only attempt to repair regular users who are missing organization data
     // Do NOT attempt to repair temporary users as they draw organization data from their session
-    if (userToCheck && userToCheck.role === 'guest' && !userToCheck.organization && userToCheck.id && !userToCheck.isTemporary) {
+    if (userToCheck && userToCheck.role === UserRole.GUEST && !userToCheck.organization && userToCheck.id && !userToCheck.isTemporary) {
       // Fetch user from database to get organizationId
       (async () => {
         try {
@@ -87,7 +89,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const serverTempUser = isTemporaryUser ? getServerTempUserSession() : null;
 
   // Determine which query to use based on user role, college, organization, or restaurant
-  const isAdmin = effectiveUser?.role === 'admin' || effectiveUser?.role === 'super_admin';
+  const isAdmin = effectiveUser?.role === UserRole.ADMIN || effectiveUser?.role === UserRole.SUPER_ADMIN;
 
   // Check for restaurant context in user data (for authenticated users)
   const hasRestaurantContext = effectiveUser?.restaurantId && effectiveUser?.restaurantName && effectiveUser?.tableNumber;

@@ -1,6 +1,6 @@
 import express from 'express';
-import { storage } from '../storage-hybrid';
-import { insertSystemSettingsSchema, type SystemSettings, type InsertSystemSettings } from '@shared/schema';
+import { storage } from "../storage-hybrid";
+import { UserRole, insertSystemSettingsSchema, type SystemSettings, type InsertSystemSettings } from '@shared/schema';
 import mongoose from 'mongoose';
 
 const router = express.Router();
@@ -170,6 +170,7 @@ const SystemSettingsSchema = new mongoose.Schema({
       name: { type: String, required: true },
       code: { type: String, required: true },
       isActive: { type: Boolean, default: true },
+      adminEmail: { type: String }, // Admin email for college-specific notifications
       activeRoles: {
         student: { type: Boolean, default: true },
         staff: { type: Boolean, default: true },
@@ -315,24 +316,24 @@ const SystemSettingsSchema = new mongoose.Schema({
       codingChallengesEnabled: { type: Boolean, default: false },
       payAtCounterEnabled: { type: Boolean, default: true },
       deliveryEnabled: { type: Boolean, default: true },
-    ownerSidebarConfig: {
-      type: Map,
-      of: Boolean,
-      default: {
-        overview: true,
-        counters: true,
-        orders: true,
-        "payment-counter": true,
-        "pos-billing": true,
-        menu: true,
-        content: true,
-        analytics: true,
-        "delivery-management": true,
-        payout: true,
-        "position-bidding": true,
-        "store-mode": true
-      }
-    },
+      ownerSidebarConfig: {
+        type: Map,
+        of: Boolean,
+        default: {
+          overview: true,
+          counters: true,
+          orders: true,
+          "payment-counter": true,
+          "pos-billing": true,
+          menu: true,
+          content: true,
+          analytics: true,
+          "delivery-management": true,
+          payout: true,
+          "position-bidding": true,
+          "store-mode": true
+        }
+      },
       priority: { type: Number, default: 0 }, // Priority for ordering (lower number = higher priority)
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now }
@@ -354,15 +355,15 @@ router.get('/test-storage', async (req, res) => {
     console.log('🔍 Testing storage connectivity...');
     const users = await storage.getAllUsers();
     console.log(`✅ Storage test successful: ${users.length} users found`);
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       message: 'Storage connectivity test passed',
-      userCount: users.length 
+      userCount: users.length
     });
   } catch (error) {
     console.error('❌ Storage test failed:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Storage connectivity test failed',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -375,7 +376,7 @@ router.get('/test-storage', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     // If no settings exist, create default settings
     if (!settings) {
       const defaultSettings: InsertSystemSettings = {
@@ -419,14 +420,14 @@ router.get('/', async (req, res) => {
                 { code: 'EEE', name: 'Electrical and Electronics Engineering', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'VLSI', name: 'Electronics Engineering (VLSI Design and Technology)', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'MECH', name: 'Mechanical Engineering', isActive: true, createdAt: new Date(), updatedAt: new Date() },
-                
+
                 // M.E./M.Tech Programs
                 { code: 'MCSE', name: 'Computer Science and Engineering (M.E./M.Tech)', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'EDSN', name: 'Engineering Design (M.E./M.Tech)', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'PWS', name: 'Power System (M.E./M.Tech)', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'AE', name: 'Applied Electronics (M.E./M.Tech)', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'MVLSI', name: 'VLSI Design (M.E./M.Tech)', isActive: true, createdAt: new Date(), updatedAt: new Date() },
-                
+
                 // Other Programs
                 { code: 'MBA', name: 'Master of Business Administration', isActive: true, createdAt: new Date(), updatedAt: new Date() },
                 { code: 'MCA', name: 'Master of Computer Applications', isActive: true, createdAt: new Date(), updatedAt: new Date() }
@@ -459,11 +460,11 @@ router.get('/', async (req, res) => {
           ]
         }
       };
-      
+
       settings = new SystemSettingsModel(defaultSettings);
       await settings.save();
     }
-    
+
     res.json(settings);
   } catch (error) {
     console.error('Error fetching system settings:', error);
@@ -478,7 +479,7 @@ router.put('/', async (req, res) => {
   try {
     // Validate request body
     const validatedData = insertSystemSettingsSchema.parse(req.body);
-    
+
     // Add update metadata
     const updateData = {
       ...validatedData,
@@ -508,9 +509,9 @@ router.put('/', async (req, res) => {
         updateData.appVersion.lastUpdatedBy = req.body.updatedBy;
       }
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (settings) {
       // Update existing settings
       Object.assign(settings, updateData);
@@ -520,13 +521,13 @@ router.put('/', async (req, res) => {
       settings = new SystemSettingsModel(updateData);
       await settings.save();
     }
-    
+
     console.log('📝 System settings updated:', {
       maintenanceMode: settings.maintenanceMode?.isActive,
       notifications: settings.notifications?.isEnabled,
       updatedBy: req.body.updatedBy || 'unknown'
     });
-    
+
     res.json(settings);
   } catch (error) {
     console.error('Error updating system settings:', error);
@@ -544,7 +545,7 @@ router.put('/', async (req, res) => {
 router.get('/maintenance-status', async (req, res) => {
   try {
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Return default maintenance status if no settings exist
       return res.json({
@@ -553,7 +554,7 @@ router.get('/maintenance-status', async (req, res) => {
         message: 'We are currently performing system maintenance. Please check back later.'
       });
     }
-    
+
     res.json({
       isActive: settings.maintenanceMode?.isActive || false,
       title: settings.maintenanceMode?.title || 'System Maintenance',
@@ -591,19 +592,19 @@ router.get('/maintenance-status/:userId', async (req, res) => {
 
     // Get maintenance settings
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.maintenanceMode?.isActive) {
-      return res.json({ 
+      return res.json({
         showMaintenance: false,
         reason: 'Maintenance mode is not active'
       });
     }
 
     const maintenanceMode = settings.maintenanceMode;
-    
+
     // Check if user is admin, super admin, or canteen owner (they bypass maintenance)
-    if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'canteen_owner' || user.role === 'canteen-owner') {
-      return res.json({ 
+    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.CANTEEN_OWNER || user.role === 'canteen-owner') {
+      return res.json({
         showMaintenance: false,
         reason: 'User has admin/canteen owner privileges'
       });
@@ -618,30 +619,30 @@ router.get('/maintenance-status/:userId', async (req, res) => {
         shouldShowMaintenance = true;
         reason = 'Maintenance applies to all users';
         break;
-        
+
       case 'specific':
         // Check if user's registerNumber or staffId is in the specific list
-        const userIdentifier = user.role === 'student' ? user.registerNumber : user.staffId;
+        const userIdentifier = user.role === UserRole.STUDENT ? user.registerNumber : user.staffId;
         shouldShowMaintenance = maintenanceMode.specificUsers.includes(userIdentifier || '');
-        reason = shouldShowMaintenance 
+        reason = shouldShowMaintenance
           ? `User ${userIdentifier} is specifically targeted`
           : `User ${userIdentifier} is not specifically targeted`;
         break;
-        
+
       case 'college':
         shouldShowMaintenance = maintenanceMode.targetColleges.includes((user as any).college || '');
-        reason = shouldShowMaintenance 
+        reason = shouldShowMaintenance
           ? `College '${(user as any).college}' is targeted`
           : `College '${(user as any).college}' is not targeted`;
         break;
-        
+
       case 'department':
         shouldShowMaintenance = maintenanceMode.targetDepartments.includes(user.department || '');
-        reason = shouldShowMaintenance 
+        reason = shouldShowMaintenance
           ? `Department '${user.department}' is targeted`
           : `Department '${user.department}' is not targeted`;
         break;
-        
+
       case 'year':
         let userYear: number | null = null;
         if (maintenanceMode.yearType === 'joining') {
@@ -652,17 +653,17 @@ router.get('/maintenance-status/:userId', async (req, res) => {
           userYear = user.currentStudyYear;
         }
         shouldShowMaintenance = userYear ? maintenanceMode.targetYears.includes(userYear) : false;
-        reason = shouldShowMaintenance 
+        reason = shouldShowMaintenance
           ? `User's ${maintenanceMode.yearType} year (${userYear}) is targeted`
           : `User's ${maintenanceMode.yearType} year (${userYear}) is not targeted`;
         break;
-        
+
       case 'year_college':
         // Both college AND year must match
         const collegeMatch = maintenanceMode.targetColleges.includes((user as any).college || '');
         let yearMatchCollege = false;
         let yearValueCollege: number | null = null;
-        
+
         if (maintenanceMode.yearType === 'joining') {
           yearValueCollege = user.joiningYear;
         } else if (maintenanceMode.yearType === 'passing') {
@@ -670,20 +671,20 @@ router.get('/maintenance-status/:userId', async (req, res) => {
         } else if (maintenanceMode.yearType === 'current') {
           yearValueCollege = user.currentStudyYear;
         }
-        
+
         yearMatchCollege = yearValueCollege ? maintenanceMode.targetYears.includes(yearValueCollege) : false;
         shouldShowMaintenance = collegeMatch && yearMatchCollege;
-        reason = shouldShowMaintenance 
+        reason = shouldShowMaintenance
           ? `Both college '${(user as any).college}' and ${maintenanceMode.yearType} year (${yearValueCollege}) match`
           : `College match: ${collegeMatch}, Year match: ${yearMatchCollege}`;
         break;
-        
+
       case 'year_department':
         // Both department AND year must match
         const deptMatch = maintenanceMode.targetDepartments.includes(user.department || '');
         let yearMatch = false;
         let yearValue: number | null = null;
-        
+
         if (maintenanceMode.yearType === 'joining') {
           yearValue = user.joiningYear;
         } else if (maintenanceMode.yearType === 'passing') {
@@ -691,14 +692,14 @@ router.get('/maintenance-status/:userId', async (req, res) => {
         } else if (maintenanceMode.yearType === 'current') {
           yearValue = user.currentStudyYear;
         }
-        
+
         yearMatch = yearValue ? maintenanceMode.targetYears.includes(yearValue) : false;
         shouldShowMaintenance = deptMatch && yearMatch;
-        reason = shouldShowMaintenance 
+        reason = shouldShowMaintenance
           ? `Both department '${user.department}' and ${maintenanceMode.yearType} year (${yearValue}) match`
           : `Department match: ${deptMatch}, Year match: ${yearMatch}`;
         break;
-        
+
       default:
         shouldShowMaintenance = false;
         reason = 'Unknown targeting type';
@@ -714,7 +715,7 @@ router.get('/maintenance-status/:userId', async (req, res) => {
         contactInfo: maintenanceMode.contactInfo
       } : null
     });
-    
+
   } catch (error) {
     console.error('Error checking maintenance status for user:', error);
     res.status(500).json({ error: 'Failed to check maintenance status' });
@@ -727,7 +728,7 @@ router.get('/maintenance-status/:userId', async (req, res) => {
 router.get('/app-version', async (req, res) => {
   try {
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Return default version info if no settings exist
       return res.json({
@@ -735,7 +736,7 @@ router.get('/app-version', async (req, res) => {
         buildTimestamp: Date.now()
       });
     }
-    
+
     res.json({
       version: settings.appVersion?.version || '1.0.0',
       buildTimestamp: settings.appVersion?.buildTimestamp || Date.now()
@@ -752,14 +753,14 @@ router.get('/app-version', async (req, res) => {
 router.get('/notification-status', async (req, res) => {
   try {
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Return default notification status if no settings exist
       return res.json({
         isEnabled: true
       });
     }
-    
+
     res.json({
       isEnabled: settings.notifications?.isEnabled || true
     });
@@ -774,23 +775,23 @@ router.get('/notification-status', async (req, res) => {
  */
 router.patch('/maintenance', async (req, res) => {
   try {
-    const { 
-      isActive, 
-      title, 
-      message, 
-      estimatedTime, 
-      contactInfo, 
+    const {
+      isActive,
+      title,
+      message,
+      estimatedTime,
+      contactInfo,
       targetingType,
       specificUsers,
       targetColleges,
       targetDepartments,
       targetYears,
       yearType,
-      updatedBy 
+      updatedBy
     } = req.body;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Create default settings if none exist
       const defaultSettings: InsertSystemSettings = {
@@ -821,10 +822,10 @@ router.patch('/maintenance', async (req, res) => {
           list: []
         }
       };
-      
+
       settings = new SystemSettingsModel(defaultSettings);
     }
-    
+
     // Update maintenance mode settings
     if (!settings.maintenanceMode) {
       settings.maintenanceMode = {
@@ -841,7 +842,7 @@ router.patch('/maintenance', async (req, res) => {
         yearType: 'current'
       };
     }
-    
+
     if (typeof isActive === 'boolean') {
       settings.maintenanceMode.isActive = isActive;
     }
@@ -875,17 +876,17 @@ router.patch('/maintenance', async (req, res) => {
     if (yearType) {
       settings.maintenanceMode.yearType = yearType;
     }
-    
+
     settings.maintenanceMode.lastUpdatedAt = new Date();
     if (updatedBy) {
       settings.maintenanceMode.lastUpdatedBy = updatedBy;
     }
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`🔧 Maintenance mode ${isActive ? 'ENABLED' : 'DISABLED'} by user ${updatedBy || 'unknown'}`);
-    
+
     res.json({
       success: true,
       maintenanceMode: settings.maintenanceMode
@@ -902,7 +903,7 @@ router.patch('/maintenance', async (req, res) => {
 router.get('/colleges', async (req, res) => {
   try {
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       // Return default college with departments if none exist
       const defaultColleges = [
@@ -941,7 +942,7 @@ router.get('/colleges', async (req, res) => {
       ];
       return res.json({ colleges: defaultColleges });
     }
-    
+
     // Ensure all colleges have activeRoles field and migrate if needed
     let needsMigration = false;
     const collegesWithRoles = settings.colleges.list.map((college: any) => {
@@ -959,7 +960,7 @@ router.get('/colleges', async (req, res) => {
       }
       return college;
     });
-    
+
     // If migration is needed, save the updated colleges to database
     if (needsMigration) {
       console.log('🔄 Migrating colleges to add activeRoles field...');
@@ -969,7 +970,7 @@ router.get('/colleges', async (req, res) => {
       await settings.save();
       console.log('✅ Migration completed - activeRoles added to all colleges');
     }
-    
+
     res.json({ colleges: collegesWithRoles });
   } catch (error) {
     console.error('Error fetching colleges:', error);
@@ -985,7 +986,7 @@ router.get('/colleges', async (req, res) => {
 router.get('/departments/all', async (req, res) => {
   try {
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       // Return default departments if none exist
       const defaultDepartments = [
@@ -1010,12 +1011,12 @@ router.get('/departments/all', async (req, res) => {
       ];
       return res.json({ departments: defaultDepartments });
     }
-    
+
     // Flatten all departments from all colleges
     const allDepartments = settings.colleges.list
       .filter(college => college.isActive)
       .flatMap(college => college.departments.filter(dept => dept.isActive));
-    
+
     res.json({ departments: allDepartments });
   } catch (error) {
     console.error('Error fetching departments:', error);
@@ -1029,13 +1030,13 @@ router.get('/departments/all', async (req, res) => {
 router.post('/colleges', async (req, res) => {
   try {
     const { name, code, isActive = true, activeRoles = { student: true, staff: true, employee: true, guest: true }, updatedBy } = req.body;
-    
+
     if (!name || !code) {
       return res.status(400).json({ error: 'College name and code are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Create default settings if none exist
       const defaultSettings: InsertSystemSettings = {
@@ -1075,7 +1076,7 @@ router.post('/colleges', async (req, res) => {
           list: []
         }
       };
-      
+
       settings = new SystemSettingsModel(defaultSettings);
     } else {
       // Check if college code already exists
@@ -1086,12 +1087,12 @@ router.post('/colleges', async (req, res) => {
           lastUpdatedAt: new Date()
         };
       }
-      
+
       const existingCollege = settings.colleges.list.find((college: any) => college.code === code);
       if (existingCollege) {
         return res.status(409).json({ error: 'College code already exists' });
       }
-      
+
       // Add new college
       settings.colleges.list.push({
         id: `college-${Date.now()}`,
@@ -1103,16 +1104,16 @@ router.post('/colleges', async (req, res) => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      
+
       settings.colleges.lastUpdatedBy = updatedBy;
       settings.colleges.lastUpdatedAt = new Date();
     }
-    
+
     settings.updatedAt = new Date();
     await settings.save();
-    
+
     console.log(`➕ New college added by user ${updatedBy || 'unknown'}: ${code} - ${name}`);
-    
+
     res.json({
       success: true,
       college: { id: `college-${Date.now()}`, name, code, isActive },
@@ -1131,22 +1132,22 @@ router.put('/colleges/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, code, isActive, updatedBy } = req.body;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'College ID is required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === id);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     // Update college
     if (name !== undefined) {
       settings.colleges.list[collegeIndex].name = name;
@@ -1158,15 +1159,15 @@ router.put('/colleges/:id', async (req, res) => {
       settings.colleges.list[collegeIndex].isActive = isActive;
     }
     settings.colleges.list[collegeIndex].updatedAt = new Date();
-    
+
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✏️ College updated by user ${updatedBy || 'unknown'}: ${id}`);
-    
+
     res.json({
       success: true,
       college: settings.colleges.list[collegeIndex],
@@ -1185,26 +1186,26 @@ router.put('/colleges/:id/roles', async (req, res) => {
   try {
     const { id } = req.params;
     const { activeRoles, updatedBy } = req.body;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'College ID is required' });
     }
-    
+
     if (!activeRoles || typeof activeRoles !== 'object') {
       return res.status(400).json({ error: 'Active roles object is required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === id);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     // Update active roles
     const newActiveRoles = {
       student: activeRoles.student !== undefined ? activeRoles.student : true,
@@ -1212,23 +1213,23 @@ router.put('/colleges/:id/roles', async (req, res) => {
       employee: activeRoles.employee !== undefined ? activeRoles.employee : true,
       guest: activeRoles.guest !== undefined ? activeRoles.guest : true
     };
-    
+
     console.log(`🔧 Updating roles for college ${id}:`, {
       oldRoles: settings.colleges.list[collegeIndex].activeRoles,
       newRoles: newActiveRoles
     });
-    
+
     settings.colleges.list[collegeIndex].activeRoles = newActiveRoles;
     settings.colleges.list[collegeIndex].updatedAt = new Date();
-    
+
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✅ College roles saved to database for college ${id}:`, newActiveRoles);
-    
+
     res.json({
       success: true,
       college: settings.colleges.list[collegeIndex],
@@ -1246,36 +1247,36 @@ router.put('/colleges/:id/roles', async (req, res) => {
 router.get('/colleges/:id/name', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'College ID is required' });
     }
-    
+
     // SCALABILITY FIX: Use cache service for college names
     const { CollegeCacheService } = await import('../services/cacheService');
-    
+
     const collegeData = await CollegeCacheService.getCollegeName(
       id,
       async () => {
         const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-        
+
         if (!settings || !settings.colleges?.list) {
           throw new Error('No colleges found');
         }
-        
+
         const college = settings.colleges.list.find((college: any) => college.id === id);
         if (!college) {
           throw new Error('College not found');
         }
-        
+
         return college.name;
       }
     );
-    
+
     // Get college code (not cached, but less frequently accessed)
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
     const college = settings?.colleges?.list.find((college: any) => college.id === id);
-    
+
     res.json({
       id: id,
       name: collegeData,
@@ -1298,12 +1299,12 @@ router.delete('/colleges/:id', async (req, res) => {
     console.log('🗑️ College deletion request received:', req.params.id);
     const { id } = req.params;
     const { updatedBy } = req.body;
-    
+
     if (!id) {
       console.log('❌ No college ID provided');
       return res.status(400).json({ error: 'College ID is required' });
     }
-    
+
     console.log('🔍 Fetching system settings...');
     let settings;
     try {
@@ -1313,25 +1314,25 @@ router.delete('/colleges/:id', async (req, res) => {
       console.error('❌ Error fetching system settings:', error);
       throw new Error(`Failed to fetch system settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
+
     if (!settings || !settings.colleges?.list) {
       console.log('❌ No colleges found in system settings');
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     console.log(`🔍 Found ${settings.colleges.list.length} colleges in system`);
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === id);
     if (collegeIndex === -1) {
       console.log(`❌ College with ID ${id} not found`);
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const deletedCollege = settings.colleges.list[collegeIndex];
     console.log(`🗑️ Starting cascade deletion for college: ${deletedCollege.name} (${deletedCollege.code}) - ID: ${id}`);
-    
+
     // Use the already imported storage instance
     console.log('🔍 Storage instance available:', !!storage);
-    
+
     // Step 1: Get all users from this college
     console.log('🔍 Step 1: Fetching users from college...');
     let allUsers: any[] = [];
@@ -1350,11 +1351,11 @@ router.delete('/colleges/:id', async (req, res) => {
       });
       throw new Error(`Failed to fetch users: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-    
+
     // Step 2: Get all canteens from this college
     const collegeCanteens = settings.canteens?.list?.filter((canteen: any) => canteen.collegeId === id) || [];
     console.log(`📊 Found ${collegeCanteens.length} canteens in college ${deletedCollege.name}`);
-    
+
     // Step 3: Preserve order and payment data before deleting users
     const preservedData: {
       orders: any[];
@@ -1365,13 +1366,13 @@ router.delete('/colleges/:id', async (req, res) => {
       payments: [],
       userDetails: []
     };
-    
+
     for (const user of collegeUsers) {
       try {
         // Get user's orders and payments
         const userOrders = await storage.getUserOrders(user.id);
         const userPayments = await storage.getUserPayments(user.id);
-        
+
         // Preserve essential user details for historical records
         const userDetails = {
           id: user.id,
@@ -1387,17 +1388,17 @@ router.delete('/colleges/:id', async (req, res) => {
           deletedAt: new Date(),
           deletedBy: updatedBy
         };
-        
+
         preservedData.userDetails.push(userDetails);
         preservedData.orders.push(...userOrders);
         preservedData.payments.push(...userPayments);
-        
+
         console.log(`📋 Preserved data for user ${user.name}: ${userOrders.length} orders, ${userPayments.length} payments`);
       } catch (error) {
         console.error(`❌ Error preserving data for user ${user.id}:`, error);
       }
     }
-    
+
     // Step 4: Delete all users from this college
     let deletedUsersCount = 0;
     for (const user of collegeUsers) {
@@ -1410,36 +1411,36 @@ router.delete('/colleges/:id', async (req, res) => {
         // Continue with other users even if one fails
       }
     }
-    
+
     // Step 5: Delete all canteens from this college
     let deletedCanteensCount = 0;
     if (settings.canteens?.list) {
       // Remove canteens from the list
       settings.canteens.list = settings.canteens.list.filter((canteen: any) => canteen.collegeId !== id) as any;
       deletedCanteensCount = collegeCanteens.length;
-      
+
       for (const canteen of collegeCanteens) {
         console.log(`✅ Deleted canteen: ${canteen.name} (${canteen.code})`);
       }
     }
-    
+
     // Step 6: Remove the college from the list
     settings.colleges.list.splice(collegeIndex, 1);
-    
+
     // Step 7: Update system settings
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`🎉 College cascade deletion completed:`);
     console.log(`   - College: ${deletedCollege.name} (${deletedCollege.code})`);
     console.log(`   - Users deleted: ${deletedUsersCount}`);
     console.log(`   - Canteens deleted: ${deletedCanteensCount}`);
     console.log(`   - Orders preserved: ${preservedData.orders.length}`);
     console.log(`   - Payments preserved: ${preservedData.payments.length}`);
-    
+
     res.json({
       success: true,
       deletedCollege: deletedCollege,
@@ -1460,7 +1461,7 @@ router.delete('/colleges/:id', async (req, res) => {
       stack: error instanceof Error ? error.stack : undefined,
       collegeId: req.params.id
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to delete college with cascade deletion',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -1474,33 +1475,33 @@ router.post('/colleges/:collegeId/departments', async (req, res) => {
   try {
     const { collegeId } = req.params;
     const { code, name, isActive = true, studyDuration = 4, registrationFormats, updatedBy } = req.body;
-    
+
     if (!collegeId || !code || !name) {
       return res.status(400).json({ error: 'College ID, department code and name are required' });
     }
-    
+
     // Validate that registration formats are provided for all years
     if (!registrationFormats || !Array.isArray(registrationFormats) || registrationFormats.length === 0) {
       return res.status(400).json({ error: 'Registration formats are required for all years of study' });
     }
-    
+
     // Validate that formats are provided for each year (1 to studyDuration)
     const expectedYears = Array.from({ length: studyDuration }, (_, i) => i + 1);
     const providedYears = registrationFormats.map((format: any) => format.year).sort();
-    
+
     if (JSON.stringify(expectedYears) !== JSON.stringify(providedYears)) {
-      return res.status(400).json({ 
-        error: `Registration formats must be provided for all years (1 to ${studyDuration}). Expected years: ${expectedYears.join(', ')}, Provided years: ${providedYears.join(', ')}` 
+      return res.status(400).json({
+        error: `Registration formats must be provided for all years (1 to ${studyDuration}). Expected years: ${expectedYears.join(', ')}, Provided years: ${providedYears.join(', ')}`
       });
     }
-    
+
     // Validate each format
     const requiredTypes = ['student', 'staff', 'employee', 'guest'];
     for (const format of registrationFormats) {
       if (!format.year || !format.formats) {
         return res.status(400).json({ error: `Format for year ${format.year} is missing required fields` });
       }
-      
+
       for (const type of requiredTypes) {
         if (!format.formats[type]) {
           return res.status(400).json({ error: `Format for ${type} is required for year ${format.year}` });
@@ -1510,26 +1511,26 @@ router.post('/colleges/:collegeId/departments', async (req, res) => {
         }
       }
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
-    
+
     // Check if department code already exists in this college
     const existingDept = college.departments.find((dept: any) => dept.code === code);
     if (existingDept) {
       return res.status(409).json({ error: 'Department code already exists in this college' });
     }
-    
+
     // Add new department with registration formats
     college.departments.push({
       code,
@@ -1544,16 +1545,16 @@ router.post('/colleges/:collegeId/departments', async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    
+
     college.updatedAt = new Date();
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`➕ New department added to college ${collegeId} by user ${updatedBy || 'unknown'}: ${code} - ${name} with ${registrationFormats.length} registration formats`);
-    
+
     res.json({
       success: true,
       department: { code, name, isActive, studyDuration, registrationFormats },
@@ -1573,28 +1574,28 @@ router.put('/colleges/:collegeId/departments/:deptCode', async (req, res) => {
   try {
     const { collegeId, deptCode } = req.params;
     const { name, isActive, studyDuration, updatedBy } = req.body;
-    
+
     if (!collegeId || !deptCode) {
       return res.status(400).json({ error: 'College ID and department code are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
     const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
-    
+
     // Update department
     if (name !== undefined) {
       college.departments[deptIndex].name = name;
@@ -1607,15 +1608,15 @@ router.put('/colleges/:collegeId/departments/:deptCode', async (req, res) => {
     }
     college.departments[deptIndex].updatedAt = new Date();
     college.updatedAt = new Date();
-    
+
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✏️ Department updated in college ${collegeId} by user ${updatedBy || 'unknown'}: ${deptCode}`);
-    
+
     res.json({
       success: true,
       department: college.departments[deptIndex],
@@ -1635,40 +1636,40 @@ router.delete('/colleges/:collegeId/departments/:deptCode', async (req, res) => 
   try {
     const { collegeId, deptCode } = req.params;
     const { updatedBy } = req.body;
-    
+
     if (!collegeId || !deptCode) {
       return res.status(400).json({ error: 'College ID and department code are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
     const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
-    
+
     // Remove department
     const deletedDept = college.departments.splice(deptIndex, 1)[0];
     college.updatedAt = new Date();
-    
+
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`🗑️ Department deleted from college ${collegeId} by user ${updatedBy || 'unknown'}: ${deptCode} - ${deletedDept.name}`);
-    
+
     res.json({
       success: true,
       deletedDepartment: deletedDept,
@@ -1688,45 +1689,45 @@ router.delete('/colleges/:collegeId/departments/:deptCode', async (req, res) => 
 router.get('/institutions', async (req, res) => {
   try {
     const { type } = req.query;
-    
+
     if (!type || (type !== 'college' && type !== 'organization')) {
       return res.status(400).json({ error: 'Type parameter is required and must be "college" or "organization"' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       console.log(`❌ No system settings found in database`);
       return res.status(404).json({ error: 'System settings not found' });
     }
-    
+
     console.log(`📊 System settings found:`, {
       hasColleges: !!settings.colleges?.list,
       collegesCount: settings.colleges?.list?.length || 0,
       hasOrganizations: !!settings.organizations?.list,
       organizationsCount: settings.organizations?.list?.length || 0
     });
-    
+
     let institutions = [];
-    
+
     if (type === 'college') {
       institutions = settings.colleges?.list || [];
       console.log(`📚 Found ${institutions.length} colleges:`, institutions.map((c: any) => ({ id: c.id, name: c.name, code: c.code, isActive: c.isActive })));
-      
+
       // Filter only active colleges
       institutions = institutions.filter((college: any) => college.isActive !== false);
       console.log(`📚 Active colleges: ${institutions.length}`, institutions.map((c: any) => ({ id: c.id, name: c.name, code: c.code })));
     } else if (type === 'organization') {
       institutions = settings.organizations?.list || [];
       console.log(`🏢 Found ${institutions.length} organizations:`, institutions.map((o: any) => ({ id: o.id, name: o.name, code: o.code, isActive: o.isActive })));
-      
+
       // Filter only active organizations
       institutions = institutions.filter((org: any) => org.isActive !== false);
       console.log(`🏢 Active organizations: ${institutions.length}`, institutions.map((o: any) => ({ id: o.id, name: o.name, code: o.code })));
     }
-    
+
     console.log(`📋 Returning institutions for type "${type}":`, { success: true, institutions: institutions.length, type });
-    
+
     res.json({
       success: true,
       institutions,
@@ -1745,19 +1746,19 @@ router.get('/institutions', async (req, res) => {
 router.get('/departments', async (req, res) => {
   try {
     const { institutionType, institutionId } = req.query;
-    
+
     if (!institutionType || !institutionId) {
       return res.status(400).json({ error: 'institutionType and institutionId parameters are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.status(404).json({ error: 'System settings not found' });
     }
-    
+
     let departments = [];
-    
+
     if (institutionType === 'college') {
       const college = settings.colleges?.list?.find((col: any) => col.id === institutionId);
       console.log(`🏫 Looking for college with ID: ${institutionId}`);
@@ -1766,7 +1767,7 @@ router.get('/departments', async (req, res) => {
         departments = college.departments || [];
         console.log(`🏫 Found college "${college.name}" with ${departments.length} departments`);
         console.log(`🏫 All departments:`, departments.map((d: any) => ({ code: d.code, name: d.name, isActive: d.isActive })));
-        
+
         // Filter only active departments
         const activeDepartments = departments.filter((dept: any) => dept.isActive !== false);
         console.log(`🏫 Active departments: ${activeDepartments.length}`, activeDepartments.map((d: any) => ({ code: d.code, name: d.name })));
@@ -1782,7 +1783,7 @@ router.get('/departments', async (req, res) => {
         departments = organization.departments || [];
         console.log(`🏢 Found organization "${organization.name}" with ${departments.length} departments`);
         console.log(`🏢 All departments:`, departments.map((d: any) => ({ code: d.code, name: d.name, isActive: d.isActive })));
-        
+
         // Filter only active departments
         const activeDepartments = departments.filter((dept: any) => dept.isActive !== false);
         console.log(`🏢 Active departments: ${activeDepartments.length}`, activeDepartments.map((d: any) => ({ code: d.code, name: d.name })));
@@ -1791,7 +1792,7 @@ router.get('/departments', async (req, res) => {
         console.log(`🏢 Organization not found with ID: ${institutionId}`);
       }
     }
-    
+
     res.json({
       success: true,
       departments,
@@ -1813,7 +1814,7 @@ router.get('/departments', async (req, res) => {
 router.get('/registration-formats', async (req, res) => {
   try {
     const { institutionType, institutionId, departmentCode, passingOutYear, joiningYear, role } = req.query;
-    
+
     console.log(`📋 Registration formats API called with:`, {
       institutionType,
       institutionId,
@@ -1823,16 +1824,16 @@ router.get('/registration-formats', async (req, res) => {
       role,
       fullUrl: req.url
     });
-    
+
     if (!institutionType || !institutionId || !departmentCode || !role) {
       console.log(`❌ Missing required parameters:`, { institutionType, institutionId, departmentCode, passingOutYear, joiningYear, role });
       return res.status(400).json({ error: 'All parameters are required: institutionType, institutionId, departmentCode, role, and either passingOutYear (for colleges) or joiningYear (for organizations)' });
     }
-    
+
     // Determine the year to use based on institution type
     let yearToUse: number;
     let yearType: string;
-    
+
     if (institutionType === 'college') {
       if (!passingOutYear) {
         return res.status(400).json({ error: 'passingOutYear is required for colleges' });
@@ -1842,15 +1843,15 @@ router.get('/registration-formats', async (req, res) => {
       const currentDate = new Date();
       const currentYear = currentDate.getFullYear();
       const currentMonth = currentDate.getMonth(); // 0-11
-      
+
       // Calculate current academic year (starts in June)
       const currentAcademicYear = currentMonth >= 5 ? currentYear : currentYear - 1;
-      
+
       // Calculate study year from passing out year
       const yearsRemaining = passingOutYearNum - currentAcademicYear;
       yearToUse = yearsRemaining + 1;
       yearType = 'studyYear';
-      
+
       console.log(`📋 College year conversion:`, {
         passingOutYear: passingOutYearNum,
         currentYear,
@@ -1865,36 +1866,36 @@ router.get('/registration-formats', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Invalid institutionType. Must be "college" or "organization"' });
     }
-    
+
     console.log(`📋 Will filter for ${yearType}: ${yearToUse} and role: ${role}`);
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.status(404).json({ error: 'System settings not found' });
     }
-    
+
     let formats = [];
-    
+
     if (institutionType === 'college') {
       // Handle college
       if (!settings.colleges?.list) {
         return res.status(404).json({ error: 'No colleges found' });
       }
-      
+
       const college = settings.colleges.list.find((col: any) => col.id === institutionId);
       if (!college) {
         return res.status(404).json({ error: 'College not found' });
       }
-      
+
       const department = college.departments.find((dept: any) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this college' });
       }
-      
+
       // Use MongoDB query to filter at database level
       console.log(`📋 Querying college formats with MongoDB filter: year=${yearToUse}, role=${role}`);
-      
+
       const filteredFormats = await SystemSettingsModel.aggregate([
         { $match: { _id: settings._id } },
         { $unwind: "$colleges.list" },
@@ -1902,8 +1903,8 @@ router.get('/registration-formats', async (req, res) => {
         { $unwind: "$colleges.list.departments" },
         { $match: { "colleges.list.departments.code": departmentCode } },
         { $unwind: "$colleges.list.departments.registrationFormats" },
-        { 
-          $match: { 
+        {
+          $match: {
             "colleges.list.departments.registrationFormats.year": yearToUse,
             [`colleges.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
           }
@@ -1922,33 +1923,33 @@ router.get('/registration-formats', async (req, res) => {
           }
         }
       ]);
-      
+
       console.log(`📋 MongoDB query returned ${filteredFormats.length} matching formats`);
       formats = filteredFormats;
-      
+
     } else if (institutionType === 'organization') {
       // Handle organization
       if (!settings.organizations?.list) {
         return res.status(404).json({ error: 'No organizations found' });
       }
-      
+
       const organization = settings.organizations.list.find((org: any) => org.id === institutionId);
       if (!organization) {
         return res.status(404).json({ error: 'Organization not found' });
       }
-      
+
       const department = organization.departments.find((dept: any) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this organization' });
       }
-      
+
       // Use MongoDB query to filter at database level
       if (yearToUse !== null) {
         console.log(`📋 Querying organization formats with MongoDB filter: year=${yearToUse}, role=${role}`);
       } else {
         console.log(`📋 Querying organization formats with MongoDB filter: no year filtering, role=${role}`);
       }
-      
+
       // Build the aggregation pipeline based on whether year filtering is needed
       const aggregationPipeline = [
         { $match: { _id: settings._id } },
@@ -1958,23 +1959,23 @@ router.get('/registration-formats', async (req, res) => {
         { $match: { "organizations.list.departments.code": departmentCode } },
         { $unwind: "$organizations.list.departments.registrationFormats" }
       ];
-      
+
       // Add year filtering only if yearToUse is not null
       if (yearToUse !== null) {
         aggregationPipeline.push({
-          $match: { 
+          $match: {
             "organizations.list.departments.registrationFormats.year": yearToUse,
             [`organizations.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
           }
         });
       } else {
         aggregationPipeline.push({
-          $match: { 
+          $match: {
             [`organizations.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
           }
         });
       }
-      
+
       aggregationPipeline.push({
         $project: {
           _id: "$organizations.list.departments.registrationFormats._id",
@@ -1988,25 +1989,25 @@ router.get('/registration-formats', async (req, res) => {
           updatedAt: "$organizations.list.departments.registrationFormats.updatedAt"
         }
       });
-      
+
       const filteredFormats = await SystemSettingsModel.aggregate(aggregationPipeline);
       console.log(`📋 MongoDB query returned ${filteredFormats.length} matching formats`);
       formats = filteredFormats;
     } else {
       return res.status(400).json({ error: 'Invalid institution type. Must be "college" or "organization"' });
     }
-    
+
     console.log(`📋 Database-level filtering complete: ${formats.length} matching formats found`);
-    console.log(`📋 Final filtered formats:`, formats.map((f: any) => ({ 
-      id: f.id, 
-      name: f.name, 
+    console.log(`📋 Final filtered formats:`, formats.map((f: any) => ({
+      id: f.id,
+      name: f.name,
       year: f.year,
       hasStudentFormat: !!f.formats?.student,
       hasStaffFormat: !!f.formats?.staff,
       hasEmployeeFormat: !!f.formats?.employee,
       hasGuestFormat: !!f.formats?.guest
     })));
-    
+
     // Log complete format details being sent from server
     console.log(`📋 SERVER SENDING ${formats.length} FORMATS TO CLIENT:`);
     formats.forEach((format: any, index: number) => {
@@ -2016,10 +2017,10 @@ router.get('/registration-formats', async (req, res) => {
       console.log(`📋 Format Year: ${format.year}`);
       console.log(`📋 Format Created: ${format.createdAt}`);
       console.log(`📋 Format Updated: ${format.updatedAt}`);
-      
+
       // Log complete formats object
       console.log(`📋 Complete formats object:`, format.formats);
-      
+
       // Log each role format in detail
       Object.keys(format.formats || {}).forEach(roleKey => {
         const roleFormat = format.formats[roleKey];
@@ -2029,11 +2030,11 @@ router.get('/registration-formats', async (req, res) => {
         console.log(`📋   Example: "${roleFormat.example}"`);
         console.log(`📋   Description: "${roleFormat.description}"`);
         console.log(`📋   Special Characters:`, roleFormat.specialCharacters);
-        
+
         // Log complete structure array
         if (roleFormat.structure) {
           console.log(`📋   Complete Structure Array:`, roleFormat.structure);
-          
+
           // Log each position in detail (only relevant data)
           roleFormat.structure.forEach((position: any, posIndex: number) => {
             const positionData: any = {
@@ -2042,30 +2043,30 @@ router.get('/registration-formats', async (req, res) => {
               description: position.description,
               range: position.range
             };
-            
+
             // Only include yearType if it's defined and relevant
             if (position.yearType && position.type === 'year') {
               positionData.yearType = position.yearType;
             }
-            
+
             // Only include value if it's defined and relevant
             if (position.value && position.type === 'fixed') {
               positionData.value = position.value;
             }
-            
+
             // Only include _id if needed for debugging
             if (position._id) {
               positionData._id = position._id;
             }
-            
+
             console.log(`📋     Position ${posIndex + 1}:`, positionData);
           });
         }
       });
-      
+
       console.log(`📋 ===== END FORMAT ${index + 1} =====`);
     });
-    
+
     const responseData = {
       success: true,
       formats: formats,
@@ -2095,7 +2096,7 @@ router.get('/registration-formats', async (req, res) => {
         role: role
       }
     };
-    
+
     console.log(`📋 ===== COMPLETE API RESPONSE BEING SENT =====`);
     console.log(`📋 Response Success: ${responseData.success}`);
     console.log(`📋 Institution Type: ${responseData.institutionType}`);
@@ -2107,7 +2108,7 @@ router.get('/registration-formats', async (req, res) => {
     console.log(`📋 Total Formats Found: ${responseData.totalFormatsFound}`);
     console.log(`📋 Filtered Formats Count: ${responseData.filteredFormatsCount}`);
     console.log(`📋 Filtering Criteria:`, responseData.filteringCriteria);
-    
+
     console.log(`📋 ===== FORMATS ARRAY IN RESPONSE =====`);
     responseData.formats.forEach((format: any, index: number) => {
       console.log(`📋 Response Format ${index + 1}:`, {
@@ -2118,7 +2119,7 @@ router.get('/registration-formats', async (req, res) => {
         createdAt: format.createdAt,
         updatedAt: format.updatedAt
       });
-      
+
       // Log only the requested role format details
       const requestedRoleFormat = format.formats?.[role];
       if (requestedRoleFormat) {
@@ -2130,13 +2131,13 @@ router.get('/registration-formats', async (req, res) => {
         });
       }
     });
-    
+
     console.log(`📋 ===== RESPONSE METADATA =====`);
     console.log(`📋 Response Size: ${JSON.stringify(responseData).length} characters`);
     console.log(`📋 Number of Formats: ${responseData.formats.length}`);
     console.log(`📋 Complete Response Object:`, responseData);
     console.log(`📋 ===== END API RESPONSE =====`);
-    
+
     res.json(responseData);
   } catch (error: any) {
     console.error('Error fetching registration formats:', error);
@@ -2150,31 +2151,31 @@ router.get('/registration-formats', async (req, res) => {
 router.get('/colleges/:collegeId/departments/:deptCode/registration-formats', async (req, res) => {
   try {
     const { collegeId, deptCode } = req.params;
-    
+
     if (!collegeId || !deptCode) {
       return res.status(400).json({ error: 'College ID and department code are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((col: any) => col.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
     const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
-    
+
     const department = college.departments[deptIndex];
     const registrationFormats = department.registrationFormats || [];
-    
+
     res.json({
       success: true,
       registrationFormats,
@@ -2201,14 +2202,14 @@ router.post('/colleges/:collegeId/departments/:deptCode/registration-formats', a
   try {
     const { collegeId, deptCode } = req.params;
     const { year, formats, name, updatedBy } = req.body;
-    
+
     // Debug: Log the incoming data
     console.log('Incoming registration format data:', JSON.stringify({ year, formats, name }, null, 2));
-    
+
     if (!collegeId || !deptCode || !year || !formats || !name) {
       return res.status(400).json({ error: 'College ID, department code, year, formats, and name are required' });
     }
-    
+
     // Validate that all required user types are present
     const requiredTypes = ['student', 'staff', 'employee', 'guest'];
     for (const type of requiredTypes) {
@@ -2219,46 +2220,46 @@ router.post('/colleges/:collegeId/departments/:deptCode/registration-formats', a
         return res.status(400).json({ error: `totalLength and structure are required for ${type}` });
       }
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
     const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
-    
+
     const department = college.departments[deptIndex];
-    
+
     // Check if format with this name already exists for this department (across all years)
-    const existingFormatIndex = department.registrationFormats.findIndex((format: any) => 
+    const existingFormatIndex = department.registrationFormats.findIndex((format: any) =>
       format.name && format.name.toLowerCase().trim() === name.toLowerCase().trim()
     );
-    
+
     if (existingFormatIndex !== -1) {
       const existingFormat = department.registrationFormats[existingFormatIndex];
-      return res.status(409).json({ 
-        error: `Registration format with name "${name}" already exists for year ${existingFormat.year} in this department. Please choose a different name.` 
+      return res.status(409).json({
+        error: `Registration format with name "${name}" already exists for year ${existingFormat.year} in this department. Please choose a different name.`
       });
     }
-    
+
     // Validate name is not empty or just whitespace
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Format name is required and cannot be empty' });
     }
-    
+
     // Generate unique ID for the format
     const formatId = `format_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Add new registration format
     department.registrationFormats.push({
       id: formatId,
@@ -2268,17 +2269,17 @@ router.post('/colleges/:collegeId/departments/:deptCode/registration-formats', a
       createdAt: new Date(),
       updatedAt: new Date()
     });
-    
+
     console.log(`➕ Added new registration format "${name}" for department ${deptCode} year ${year} by user ${updatedBy || 'unknown'}`);
-    
+
     department.updatedAt = new Date();
     college.updatedAt = new Date();
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     res.json({
       success: true,
       registrationFormat: { id: formatId, name, year, formats },
@@ -2299,43 +2300,43 @@ router.put('/colleges/:collegeId/departments/:deptCode/registration-formats/:for
   try {
     const { collegeId, deptCode, formatId } = req.params;
     const { formats, name, updatedBy } = req.body;
-    
+
     console.log('🔍 Update registration format request:');
     console.log('  - Params:', { collegeId, deptCode, formatId });
     console.log('  - Body:', { formats: !!formats, name, updatedBy });
-    
+
     if (!collegeId || !deptCode || !formatId) {
       return res.status(400).json({ error: 'College ID, department code, and format ID are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
     const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
-    
+
     const department = college.departments[deptIndex];
     console.log('  - Department found:', deptCode);
     console.log('  - Existing formats:', department.registrationFormats.map(f => ({ id: f.id, name: f.name, year: f.year })));
-    
+
     const formatIndex = department.registrationFormats.findIndex((format: any) => format.id === formatId);
     console.log('  - Format index found:', formatIndex);
-    
+
     if (formatIndex === -1) {
       return res.status(404).json({ error: 'Registration format not found' });
     }
-    
+
     // Update registration format
     if (formats !== undefined) {
       department.registrationFormats[formatIndex].formats = formats;
@@ -2345,17 +2346,17 @@ router.put('/colleges/:collegeId/departments/:deptCode/registration-formats/:for
     //   department.registrationFormats[formatIndex].name = name;
     // }
     department.registrationFormats[formatIndex].updatedAt = new Date();
-    
+
     department.updatedAt = new Date();
     college.updatedAt = new Date();
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✏️ Registration format updated for department ${deptCode} by user ${updatedBy || 'unknown'}`);
-    
+
     res.json({
       success: true,
       registrationFormat: department.registrationFormats[formatIndex],
@@ -2381,47 +2382,47 @@ router.delete('/colleges/:collegeId/departments/:deptCode/registration-formats/:
   try {
     const { collegeId, deptCode, formatId } = req.params;
     const { updatedBy } = req.body;
-    
+
     if (!collegeId || !deptCode || !formatId) {
       return res.status(400).json({ error: 'College ID, department code, and format ID are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.colleges?.list) {
       return res.status(404).json({ error: 'No colleges found' });
     }
-    
+
     const collegeIndex = settings.colleges.list.findIndex((college: any) => college.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
-    
+
     const college = settings.colleges.list[collegeIndex];
     const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
-    
+
     const department = college.departments[deptIndex];
     const formatIndex = department.registrationFormats.findIndex((format: any) => format.id === formatId);
     if (formatIndex === -1) {
       return res.status(404).json({ error: 'Registration format not found' });
     }
-    
+
     // Remove registration format
     const deletedFormat = department.registrationFormats.splice(formatIndex, 1)[0];
     department.updatedAt = new Date();
     college.updatedAt = new Date();
-    
+
     settings.colleges.lastUpdatedBy = updatedBy;
     settings.colleges.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`🗑️ Registration format "${deletedFormat.name}" deleted for department ${deptCode} by user ${updatedBy || 'unknown'}`);
-    
+
     res.json({
       success: true,
       deletedRegistrationFormat: deletedFormat,
@@ -2443,11 +2444,11 @@ router.delete('/colleges/:collegeId/departments/:deptCode/registration-formats/:
 router.get('/canteens', async (req, res) => {
   try {
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.json({ canteens: [] });
     }
-    
+
     res.json({ canteens: settings.canteens?.list || [] });
   } catch (error) {
     console.error('Error fetching canteens:', error);
@@ -2461,13 +2462,13 @@ router.get('/canteens', async (req, res) => {
 router.get('/canteens/by-college/:collegeId', async (req, res) => {
   try {
     const { collegeId } = req.params;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.json({ canteens: [] });
     }
-    
+
     // Filter canteens by college ID - check both legacy field and array
     const collegeCanteens = settings.canteens?.list?.filter(canteen => {
       // Check if collegeId is in the array (new way) or matches legacy field (backward compatibility)
@@ -2475,7 +2476,7 @@ router.get('/canteens/by-college/:collegeId', async (req, res) => {
       const matchesLegacy = canteen.collegeId === collegeId;
       return (inArray || matchesLegacy) && canteen.isActive !== false;
     }) || [];
-    
+
     // Sort by priority (lower number = higher priority), then by name
     collegeCanteens.sort((a, b) => {
       const priorityA = a.priority ?? 0;
@@ -2485,7 +2486,7 @@ router.get('/canteens/by-college/:collegeId', async (req, res) => {
       }
       return (a.name || '').localeCompare(b.name || '');
     });
-    
+
     console.log(`🏫 Fetched ${collegeCanteens.length} canteens for college ${collegeId}`);
     res.json({ canteens: collegeCanteens });
   } catch (error) {
@@ -2500,13 +2501,13 @@ router.get('/canteens/by-college/:collegeId', async (req, res) => {
 router.get('/canteens/by-organization/:organizationId', async (req, res) => {
   try {
     const { organizationId } = req.params;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.json({ canteens: [] });
     }
-    
+
     // Filter canteens by organization ID - check both legacy field and array
     const organizationCanteens = settings.canteens?.list?.filter(canteen => {
       // Check if organizationId is in the array (new way) or matches legacy field (backward compatibility)
@@ -2514,7 +2515,7 @@ router.get('/canteens/by-organization/:organizationId', async (req, res) => {
       const matchesLegacy = canteen.organizationId === organizationId;
       return (inArray || matchesLegacy) && canteen.isActive !== false;
     }) || [];
-    
+
     // Sort by priority (lower number = higher priority), then by name
     organizationCanteens.sort((a, b) => {
       const priorityA = a.priority ?? 0;
@@ -2524,7 +2525,7 @@ router.get('/canteens/by-organization/:organizationId', async (req, res) => {
       }
       return (a.name || '').localeCompare(b.name || '');
     });
-    
+
     console.log(`🏢 Fetched ${organizationCanteens.length} canteens for organization ${organizationId}`);
     res.json({ canteens: organizationCanteens });
   } catch (error) {
@@ -2539,18 +2540,18 @@ router.get('/canteens/by-organization/:organizationId', async (req, res) => {
 router.get('/canteens/by-restaurant/:restaurantId', async (req, res) => {
   try {
     const { restaurantId } = req.params;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.json({ canteens: [] });
     }
-    
+
     // Filter canteens by restaurant ID
-    const restaurantCanteens = settings.canteens?.list?.filter(canteen => 
+    const restaurantCanteens = settings.canteens?.list?.filter(canteen =>
       canteen.restaurantId === restaurantId && canteen.isActive
     ) || [];
-    
+
     // Sort by priority (lower number = higher priority), then by name
     restaurantCanteens.sort((a, b) => {
       const priorityA = a.priority ?? 0;
@@ -2560,7 +2561,7 @@ router.get('/canteens/by-restaurant/:restaurantId', async (req, res) => {
       }
       return (a.name || '').localeCompare(b.name || '');
     });
-    
+
     console.log(`🍽️ Fetched ${restaurantCanteens.length} canteens for restaurant ${restaurantId}`);
     res.json({ canteens: restaurantCanteens });
   } catch (error) {
@@ -2576,16 +2577,16 @@ router.get('/canteens/by-restaurant/:restaurantId', async (req, res) => {
 router.get('/canteens/by-institution', async (req, res) => {
   try {
     const { institutionType, institutionId, limit = 5, offset = 0 } = req.query;
-    
+
     console.log(`🏪 Fetching canteens for ${institutionType} ${institutionId} (limit: ${limit}, offset: ${offset})`);
-    
+
     if (!institutionType || !institutionId) {
       return res.status(400).json({ error: 'institutionType and institutionId are required' });
     }
-    
+
     const limitNum = parseInt(limit as string) || 5;
     const offsetNum = parseInt(offset as string) || 0;
-    
+
     // Build the match condition based on institution type
     // Support both array-based (new) and single value (legacy) matching
     let matchCondition = {};
@@ -2613,19 +2614,19 @@ router.get('/canteens/by-institution', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Invalid institutionType. Must be "college", "organization", or "restaurant"' });
     }
-    
+
     // Use MongoDB aggregation for efficient database-level filtering and pagination
     const pipeline = [
       // Match the latest system settings document
       { $sort: { createdAt: -1 } },
       { $limit: 1 },
-      
+
       // Unwind the canteens array
       { $unwind: '$canteens.list' },
-      
+
       // Match canteens by institution type and active status
       { $match: matchCondition },
-      
+
       // Project only the canteen fields we need
       {
         $project: {
@@ -2651,10 +2652,10 @@ router.get('/canteens/by-institution', async (req, res) => {
           updatedAt: '$canteens.list.updatedAt'
         }
       },
-      
+
       // Sort by priority (lower number = higher priority), then by name
       { $sort: { priority: 1, name: 1 } },
-      
+
       // Group to get total count and paginated results
       {
         $facet: {
@@ -2666,22 +2667,22 @@ router.get('/canteens/by-institution', async (req, res) => {
         }
       }
     ];
-    
+
     console.log(`🏪 Executing MongoDB aggregation pipeline for ${institutionType} ${institutionId}`);
-    
+
     const result = await SystemSettingsModel.aggregate(pipeline);
-    
+
     if (!result || result.length === 0) {
       return res.json({ canteens: [], total: 0, hasMore: false, limit: limitNum, offset: offsetNum });
     }
-    
+
     const total = result[0].totalCount[0]?.count || 0;
     const canteens = result[0].canteens || [];
     const hasMore = offsetNum + limitNum < total;
-    
+
     console.log(`🏪 MongoDB aggregation result: ${total} total canteens, returning ${canteens.length} canteens (hasMore: ${hasMore})`);
-    
-    res.json({ 
+
+    res.json({
       canteens,
       total,
       hasMore,
@@ -2700,19 +2701,19 @@ router.get('/canteens/by-institution', async (req, res) => {
 router.get('/canteens/by-owner/:email', async (req, res) => {
   try {
     const { email } = req.params;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.canteens?.list) {
       return res.status(404).json({ error: 'No canteens found' });
     }
-    
+
     const canteen = settings.canteens.list.find(c => c.canteenOwnerEmail === email);
-    
+
     if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found for this owner' });
     }
-    
+
     res.json({ canteen });
   } catch (error) {
     console.error('Error fetching canteen by owner email:', error);
@@ -2726,19 +2727,19 @@ router.get('/canteens/by-owner/:email', async (req, res) => {
 router.get('/canteens/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.canteens?.list) {
       return res.status(404).json({ error: 'No canteens found' });
     }
-    
+
     const canteen = settings.canteens.list.find(c => c.id === id);
-    
+
     if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     console.log('🏪 Server: Returning canteen data for ID:', id, canteen);
     res.json(canteen);
   } catch (error) {
@@ -2754,13 +2755,13 @@ router.post('/canteens', async (req, res) => {
   try {
     const { name, code, description, location, contactNumber, email, canteenOwnerEmail, collegeId, organizationId, collegeIds, organizationIds, restaurantId, type, operatingHours, isActive = true, priority = 0 } = req.body;
     const updatedBy = req.body.updatedBy;
-    
+
     console.log('Received canteen data:', { name, code, collegeId, organizationId, collegeIds, organizationIds, updatedBy }); // Debug log
-    
+
     if (!name || !code) {
       return res.status(400).json({ error: 'Name and code are required' });
     }
-    
+
     // Handle backward compatibility: if collegeId/organizationId provided, convert to arrays
     const finalCollegeIds = collegeIds || (collegeId ? [collegeId] : []);
     const finalOrganizationIds = organizationIds || (organizationId ? [organizationId] : []);
@@ -2778,9 +2779,9 @@ router.post('/canteens', async (req, res) => {
       "position-bidding": true,
       "store-mode": true
     };
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Create default settings if none exist
       const defaultSettings: InsertSystemSettings = {
@@ -2832,7 +2833,7 @@ router.post('/canteens', async (req, res) => {
           }]
         }
       };
-      
+
       settings = new SystemSettingsModel(defaultSettings);
       await settings.save();
     } else {
@@ -2841,12 +2842,12 @@ router.post('/canteens', async (req, res) => {
       if (existingCanteen) {
         return res.status(409).json({ error: 'Canteen code already exists' });
       }
-      
+
       // Initialize canteens if it doesn't exist
       if (!settings.canteens) {
         settings.canteens = { list: [] as any };
       }
-      
+
       settings.canteens.list.push({
         id: `canteen-${Date.now()}`,
         name,
@@ -2869,16 +2870,16 @@ router.post('/canteens', async (req, res) => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      
+
       settings.canteens!.lastUpdatedBy = updatedBy;
       settings.canteens!.lastUpdatedAt = new Date();
     }
-    
+
     settings.updatedAt = new Date();
     await settings.save();
-    
+
     console.log(`➕ New canteen added by user ${updatedBy || 'unknown'}: ${code} - ${name} - Colleges: ${finalCollegeIds.join(', ')} - Organizations: ${finalOrganizationIds.join(', ')}`);
-    
+
     res.json({
       success: true,
       canteen: { id: `canteen-${Date.now()}`, name, code, isActive, collegeIds: finalCollegeIds, organizationIds: finalOrganizationIds },
@@ -2898,20 +2899,20 @@ router.put('/canteens/:id', async (req, res) => {
     const { id } = req.params;
     const { name, code, description, location, contactNumber, email, canteenOwnerEmail, collegeId, organizationId, collegeIds, organizationIds, restaurantId, type, operatingHours, isActive, priority } = req.body;
     const updatedBy = req.body.updatedBy;
-    
+
     console.log('Updating canteen:', { id, name, code, collegeId, organizationId, collegeIds, organizationIds, updatedBy, priority }); // Debug log
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.canteens?.list) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     const canteenIndex = settings.canteens.list.findIndex((canteen: any) => canteen.id === id);
     if (canteenIndex === -1) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     // Update canteen
     if (name !== undefined) {
       settings.canteens.list[canteenIndex].name = name;
@@ -2982,18 +2983,18 @@ router.put('/canteens/:id', async (req, res) => {
       console.log(`✏️ Updating canteen ${id} priority to: ${priority}`);
     }
     settings.canteens.list[canteenIndex].updatedAt = new Date();
-    
+
     settings.canteens!.lastUpdatedBy = updatedBy;
     settings.canteens!.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     // Mark the canteens array as modified to ensure Mongoose saves nested changes
     settings.markModified('canteens.list');
-    
+
     await settings.save();
-    
+
     console.log(`✏️ Canteen updated by user ${updatedBy || 'unknown'}: ${id} - Priority: ${settings.canteens.list[canteenIndex].priority} - Colleges: ${settings.canteens.list[canteenIndex].collegeIds?.join(', ') || 'none'} - Organizations: ${settings.canteens.list[canteenIndex].organizationIds?.join(', ') || 'none'}`);
-    
+
     res.json({
       success: true,
       canteen: settings.canteens.list[canteenIndex],
@@ -3012,20 +3013,20 @@ router.put('/canteens/:id/content-settings', async (req, res) => {
   try {
     const { id } = req.params;
     const { codingChallengesEnabled, ownerSidebarConfig, payAtCounterEnabled, deliveryEnabled, updatedBy } = req.body;
-    
+
     console.log('Updating canteen content settings:', { id, codingChallengesEnabled, payAtCounterEnabled, deliveryEnabled, updatedBy });
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.canteens?.list) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     const canteenIndex = settings.canteens.list.findIndex((canteen: any) => canteen.id === id);
     if (canteenIndex === -1) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     // Update content settings
     if (codingChallengesEnabled !== undefined) {
       settings.canteens.list[canteenIndex].codingChallengesEnabled = codingChallengesEnabled;
@@ -3057,16 +3058,16 @@ router.put('/canteens/:id/content-settings', async (req, res) => {
         ...ownerSidebarConfig
       };
     }
-    
+
     settings.canteens.list[canteenIndex].updatedAt = new Date();
     settings.canteens!.lastUpdatedBy = updatedBy;
     settings.canteens!.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✏️ Canteen content settings updated by user ${updatedBy || 'unknown'}: ${id} - Coding Challenges: ${codingChallengesEnabled ? 'enabled' : 'disabled'}`);
-    
+
     res.json({
       success: true,
       canteen: settings.canteens.list[canteenIndex],
@@ -3085,29 +3086,29 @@ router.delete('/canteens/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updatedBy = req.body.updatedBy;
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.canteens?.list) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     const canteenIndex = settings.canteens.list.findIndex((canteen: any) => canteen.id === id);
     if (canteenIndex === -1) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
-    
+
     // Remove canteen
     const deletedCanteen = settings.canteens.list.splice(canteenIndex, 1)[0];
-    
+
     settings.canteens!.lastUpdatedBy = updatedBy;
     settings.canteens!.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`🗑️ Canteen deleted by user ${updatedBy || 'unknown'}: ${id} - ${deletedCanteen.name}`);
-    
+
     res.json({
       success: true,
       deletedCanteen,
@@ -3124,21 +3125,21 @@ router.post('/migrate-canteen-ids', async (req, res) => {
   try {
     const OLD_CANTEEN_ID = '68cbd4d516f0e1a512cb6504';
     const NEW_CANTEEN_ID = 'canteen-1758205071111';
-    
+
     console.log('🔄 Starting canteen ID migration...');
     console.log(`📝 Updating from ${OLD_CANTEEN_ID} to ${NEW_CANTEEN_ID}`);
-    
+
     // Use the same mongoose connection that the models use
     if (!mongoose.connection.db) {
       throw new Error('MongoDB not connected');
     }
-    
+
     const db = mongoose.connection.db;
-    
+
     // Collections to update
     const collections = [
       'categories',
-      'menuitems', 
+      'menuitems',
       'orders',
       'notifications',
       'quickorders',
@@ -3146,80 +3147,80 @@ router.post('/migrate-canteen-ids', async (req, res) => {
       'coupons',
       'payments'
     ];
-    
+
     const results = {};
-    
+
     for (const collectionName of collections) {
       const collection = db.collection(collectionName);
-      
+
       // Debug: Show total documents in collection
       const totalCount = await collection.countDocuments();
       console.log(`📊 Total documents in ${collectionName}: ${totalCount}`);
-      
+
       // Debug: Show sample documents
       const sampleDocs = await collection.find({}).limit(2).toArray();
       console.log(`📋 Sample documents in ${collectionName}:`, sampleDocs.map(doc => ({ id: doc._id, canteenId: doc.canteenId })));
-      
+
       // Count documents with old canteen ID
       const count = await collection.countDocuments({ canteenId: OLD_CANTEEN_ID });
       console.log(`📊 Found ${count} documents in ${collectionName} with old canteen ID`);
-      
+
       if (count > 0) {
         // Update all documents with old canteen ID to new canteen ID
         const result = await collection.updateMany(
           { canteenId: OLD_CANTEEN_ID },
           { $set: { canteenId: NEW_CANTEEN_ID } }
         );
-        
+
         console.log(`✅ Updated ${result.modifiedCount} documents in ${collectionName}`);
         results[collectionName] = { updated: result.modifiedCount };
       } else {
         results[collectionName] = { updated: 0 };
       }
     }
-    
+
     // Also update documents that don't have canteenId at all
     for (const collectionName of collections) {
       const collection = db.collection(collectionName);
-      
+
       // Count documents without canteenId
       const count = await collection.countDocuments({ canteenId: { $exists: false } });
       console.log(`📊 Found ${count} documents in ${collectionName} without canteenId`);
-      
+
       if (count > 0) {
         // Add canteenId to documents that don't have it
         const result = await collection.updateMany(
           { canteenId: { $exists: false } },
           { $set: { canteenId: NEW_CANTEEN_ID } }
         );
-        
+
         console.log(`✅ Added canteenId to ${result.modifiedCount} documents in ${collectionName}`);
-        results[collectionName] = { 
-          ...results[collectionName], 
-          added: result.modifiedCount 
+        results[collectionName] = {
+          ...results[collectionName],
+          added: result.modifiedCount
         };
       } else {
-        results[collectionName] = { 
-          ...results[collectionName], 
-          added: 0 
+        results[collectionName] = {
+          ...results[collectionName],
+          added: 0
         };
       }
     }
-    
+
     console.log('🎉 Migration completed successfully!');
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Canteen ID migration completed successfully',
-      results 
+      results
     });
-    
+
   } catch (error) {
     console.error('❌ Migration failed:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Migration failed', 
-      details: error instanceof Error ? error.message : 'Unknown error' 
+    res.status(500).json({
+      success: false,
+      error: 'Migration failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -3230,18 +3231,18 @@ router.post('/migrate-canteen-ids', async (req, res) => {
 router.post('/migrate-user-colleges', async (req, res) => {
   try {
     const { defaultCollegeCode = 'DEFAULT', updatedBy } = req.body;
-    
+
     console.log(`🔄 Starting user college migration with default college: ${defaultCollegeCode}`);
-    
+
     // Use the already imported storage instance
-    
+
     const allUsers = await storage.getAllUsers();
     console.log(`📊 Found ${allUsers.length} total users`);
-    
+
     // Filter users without college information
     const usersWithoutCollege = allUsers.filter((user: any) => !user.college || user.college.trim() === '');
     console.log(`📋 Found ${usersWithoutCollege.length} users without college information`);
-    
+
     if (usersWithoutCollege.length === 0) {
       return res.json({
         success: true,
@@ -3250,15 +3251,15 @@ router.post('/migrate-user-colleges', async (req, res) => {
         usersUpdated: 0
       });
     }
-    
+
     // Update users with default college
     let updatedCount = 0;
     const updateResults = [];
-    
+
     for (const user of usersWithoutCollege) {
       try {
         console.log(`🔄 Updating user ${user.id} (${user.email}) with college: ${defaultCollegeCode}`);
-        
+
         const updatedUser = await storage.updateUser(user.id, { college: defaultCollegeCode });
         updatedCount++;
         updateResults.push({
@@ -3270,7 +3271,7 @@ router.post('/migrate-user-colleges', async (req, res) => {
           newCollege: defaultCollegeCode,
           success: true
         });
-        
+
         console.log(`✅ User ${user.id} updated successfully`);
       } catch (error) {
         console.error(`❌ Failed to update user ${user.id}:`, error);
@@ -3286,9 +3287,9 @@ router.post('/migrate-user-colleges', async (req, res) => {
         });
       }
     }
-    
+
     console.log(`🎉 User college migration completed! Updated ${updatedCount} out of ${usersWithoutCollege.length} users`);
-    
+
     res.json({
       success: true,
       message: `User college migration completed successfully`,
@@ -3299,7 +3300,7 @@ router.post('/migrate-user-colleges', async (req, res) => {
       defaultCollegeCode,
       results: updateResults
     });
-    
+
   } catch (error) {
     console.error('❌ User college migration failed:', error);
     res.status(500).json({
@@ -3314,22 +3315,22 @@ router.post('/migrate-user-colleges', async (req, res) => {
 router.get('/debug-db', async (req, res) => {
   try {
     const db = mongoose.connection.db;
-    
+
     if (!db) {
       return res.json({ error: 'MongoDB not connected' });
     }
-    
+
     // Get database name
     const dbName = db.databaseName;
-    
+
     // Get collections
     const collections = await db.listCollections().toArray();
-    
+
     // Get sample data from orders collection
     const ordersCollection = db.collection('orders');
     const orderCount = await ordersCollection.countDocuments();
     const sampleOrder = await ordersCollection.findOne({});
-    
+
     res.json({
       databaseName: dbName,
       collections: collections.map(c => c.name),
@@ -3340,7 +3341,7 @@ router.get('/debug-db', async (req, res) => {
         canteenId: sampleOrder.canteenId
       } : null
     });
-    
+
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
@@ -3351,30 +3352,30 @@ router.post('/test-update-order', async (req, res) => {
   try {
     const OLD_CANTEEN_ID = '68cbd4d516f0e1a512cb6504';
     const NEW_CANTEEN_ID = 'canteen-1758205071111';
-    
+
     const db = mongoose.connection.db;
     const ordersCollection = db.collection('orders');
-    
+
     // Find one order with old canteen ID
     const order = await ordersCollection.findOne({ canteenId: OLD_CANTEEN_ID });
-    
+
     if (!order) {
       return res.json({ error: 'No order found with old canteen ID' });
     }
-    
+
     // Update that order
     const result = await ordersCollection.updateOne(
       { _id: order._id },
       { $set: { canteenId: NEW_CANTEEN_ID } }
     );
-    
+
     res.json({
       success: true,
       originalOrder: { id: order._id, orderNumber: order.orderNumber, canteenId: order.canteenId },
       updateResult: result,
       newCanteenId: NEW_CANTEEN_ID
     });
-    
+
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
   }
@@ -3393,16 +3394,16 @@ router.get('/organizations', async (req, res) => {
   try {
     console.log('🏢 Fetching organizations...');
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     console.log('🏢 Settings found:', settings ? 'Yes' : 'No');
     console.log('🏢 Organizations list:', settings?.organizations?.list ? `Found ${settings.organizations.list.length} organizations` : 'No organizations list');
-    
+
     if (!settings || !settings.organizations?.list) {
       // Return empty list if no organizations exist
       console.log('🏢 Returning empty organizations list');
       return res.json({ organizations: [] });
     }
-    
+
     // Ensure all organizations have activeRoles field and migrate if needed
     let needsMigration = false;
     const organizationsWithRoles = settings.organizations.list.map((org: any) => {
@@ -3420,7 +3421,7 @@ router.get('/organizations', async (req, res) => {
       }
       return org;
     });
-    
+
     // If migration is needed, save the updated organizations to database
     if (needsMigration) {
       console.log('🔄 Migrating organizations to add activeRoles field...');
@@ -3430,7 +3431,7 @@ router.get('/organizations', async (req, res) => {
       await settings.save();
       console.log('✅ Migration completed - activeRoles added to all organizations');
     }
-    
+
     res.json({ organizations: organizationsWithRoles });
   } catch (error) {
     console.error('Error fetching organizations:', error);
@@ -3444,27 +3445,27 @@ router.get('/organizations', async (req, res) => {
 router.post('/organizations', async (req, res) => {
   try {
     console.log('🏢 Creating new organization with data:', req.body);
-    const { 
-      name, 
-      code, 
-      description, 
+    const {
+      name,
+      code,
+      description,
       companyType = 'Other',
       industry,
       location,
       contactEmail,
       contactPhone,
-      isActive = true, 
-      activeRoles = { employee: true, contractor: true, visitor: true, guest: true }, 
-      updatedBy 
+      isActive = true,
+      activeRoles = { employee: true, contractor: true, visitor: true, guest: true },
+      updatedBy
     } = req.body;
-    
+
     if (!name || !code) {
       console.log('🏢 Missing required fields:', { name: !!name, code: !!code });
       return res.status(400).json({ error: 'Organization name and code are required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       // Create default settings if none exist
       const defaultSettings: InsertSystemSettings = {
@@ -3513,7 +3514,7 @@ router.post('/organizations', async (req, res) => {
           list: []
         }
       };
-      
+
       settings = new SystemSettingsModel(defaultSettings);
     } else {
       // Check if organization code already exists
@@ -3524,12 +3525,12 @@ router.post('/organizations', async (req, res) => {
           lastUpdatedAt: new Date()
         };
       }
-      
+
       const existingOrganization = settings.organizations.list.find((org: any) => org.code === code);
       if (existingOrganization) {
         return res.status(409).json({ error: 'Organization code already exists' });
       }
-      
+
       // Add new organization
       settings.organizations.list.push({
         id: `org-${Date.now()}`,
@@ -3547,17 +3548,17 @@ router.post('/organizations', async (req, res) => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      
+
       settings.organizations.lastUpdatedBy = updatedBy;
       settings.organizations.lastUpdatedAt = new Date();
     }
-    
+
     settings.updatedAt = new Date();
     await settings.save();
-    
+
     console.log(`➕ New organization added by user ${updatedBy || 'unknown'}: ${code} - ${name}`);
     console.log('🏢 Organizations after save:', settings.organizations?.list?.length || 0);
-    
+
     res.json({
       success: true,
       organization: { id: `org-${Date.now()}`, name, code, description, isActive },
@@ -3575,23 +3576,23 @@ router.post('/organizations', async (req, res) => {
 router.get('/organizations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Organization ID is required' });
     }
-    
+
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.organizations?.list) {
       return res.status(404).json({ error: 'No organizations found' });
     }
-    
+
     const organization = settings.organizations.list.find((org: any) => org.id === id);
-    
+
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
     }
-    
+
     res.json({ organization });
   } catch (error) {
     console.error('Error fetching organization:', error);
@@ -3606,22 +3607,22 @@ router.put('/organizations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, code, description, isActive, updatedBy } = req.body;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Organization ID is required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.organizations?.list) {
       return res.status(404).json({ error: 'No organizations found' });
     }
-    
+
     const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === id);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
-    
+
     // Update organization
     if (name !== undefined) {
       settings.organizations.list[orgIndex].name = name;
@@ -3636,15 +3637,15 @@ router.put('/organizations/:id', async (req, res) => {
       settings.organizations.list[orgIndex].isActive = isActive;
     }
     settings.organizations.list[orgIndex].updatedAt = new Date();
-    
+
     settings.organizations.lastUpdatedBy = updatedBy;
     settings.organizations.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✏️ Organization updated by user ${updatedBy || 'unknown'}: ${id}`);
-    
+
     res.json({
       success: true,
       organization: settings.organizations.list[orgIndex],
@@ -3663,35 +3664,35 @@ router.delete('/organizations/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { updatedBy } = req.body;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Organization ID is required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.organizations?.list) {
       return res.status(404).json({ error: 'No organizations found' });
     }
-    
+
     const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === id);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
-    
+
     const organization = settings.organizations.list[orgIndex];
-    
+
     // Remove organization
     settings.organizations.list.splice(orgIndex, 1);
-    
+
     settings.organizations.lastUpdatedBy = updatedBy;
     settings.organizations.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`🗑️ Organization deleted by user ${updatedBy || 'unknown'}: ${organization.code} - ${organization.name}`);
-    
+
     res.json({
       success: true,
       organizations: settings.organizations.list
@@ -3709,26 +3710,26 @@ router.put('/organizations/:id/roles', async (req, res) => {
   try {
     const { id } = req.params;
     const { activeRoles, updatedBy } = req.body;
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Organization ID is required' });
     }
-    
+
     if (!activeRoles || typeof activeRoles !== 'object') {
       return res.status(400).json({ error: 'Active roles object is required' });
     }
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings || !settings.organizations?.list) {
       return res.status(404).json({ error: 'No organizations found' });
     }
-    
+
     const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === id);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
-    
+
     // Update active roles
     const newActiveRoles = {
       employee: activeRoles.employee !== undefined ? activeRoles.employee : true,
@@ -3736,23 +3737,23 @@ router.put('/organizations/:id/roles', async (req, res) => {
       visitor: activeRoles.visitor !== undefined ? activeRoles.visitor : true,
       guest: activeRoles.guest !== undefined ? activeRoles.guest : true
     };
-    
+
     console.log(`🔧 Updating roles for organization ${id}:`, {
       oldRoles: settings.organizations.list[orgIndex].activeRoles,
       newRoles: newActiveRoles
     });
-    
+
     settings.organizations.list[orgIndex].activeRoles = newActiveRoles;
     settings.organizations.list[orgIndex].updatedAt = new Date();
-    
+
     settings.organizations.lastUpdatedBy = updatedBy;
     settings.organizations.lastUpdatedAt = new Date();
     settings.updatedAt = new Date();
-    
+
     await settings.save();
-    
+
     console.log(`✅ Organization roles saved to database for organization ${id}:`, newActiveRoles);
-    
+
     res.json({
       success: true,
       organization: settings.organizations.list[orgIndex],
@@ -3770,15 +3771,15 @@ router.put('/organizations/:id/roles', async (req, res) => {
 router.post('/organizations/:orgId/departments', async (req, res) => {
   try {
     console.log('🏢 Creating new department with data:', req.body);
-    const { 
-      name, 
-      code, 
+    const {
+      name,
+      code,
       description,
       departmentType = 'Other',
       isActive = true,
-      updatedBy 
+      updatedBy
     } = req.body;
-    
+
     if (!name || !code) {
       console.log('🏢 Missing required fields:', { name: !!name, code: !!code });
       return res.status(400).json({ error: 'Department name and code are required' });
@@ -3812,7 +3813,7 @@ router.post('/organizations/:orgId/departments', async (req, res) => {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     console.log('🏢 Adding new department:', newDepartment);
     settings.organizations.list[orgIndex].departments.push(newDepartment);
 
@@ -3826,8 +3827,8 @@ router.post('/organizations/:orgId/departments', async (req, res) => {
     console.log(`➕ New department added by user ${updatedBy || 'unknown'}: ${code} - ${name}`);
     console.log('🏢 Organizations after save:', settings.organizations?.list?.length || 0);
     console.log('🏢 Departments in organization after save:', settings.organizations.list[orgIndex].departments.length);
-    
-    res.status(201).json({ 
+
+    res.status(201).json({
       message: 'Department added successfully',
       department: newDepartment
     });
@@ -3843,13 +3844,13 @@ router.post('/organizations/:orgId/departments', async (req, res) => {
 router.put('/organizations/:orgId/departments/:deptId', async (req, res) => {
   try {
     console.log('🏢 Updating department with data:', req.body);
-    const { 
-      name, 
-      code, 
+    const {
+      name,
+      code,
       description,
       departmentType,
       isActive,
-      updatedBy 
+      updatedBy
     } = req.body;
 
     const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
@@ -4022,7 +4023,7 @@ router.post('/organizations/:orgId/departments/:deptId/registration-formats', as
   try {
     console.log('🏢 Creating new registration format with data:', req.body);
     const { name, formats, updatedBy } = req.body;
-    
+
     if (!name || !formats) {
       console.log('🏢 Missing required fields:', { name: !!name, formats: !!formats });
       return res.status(400).json({ error: 'Format name and formats are required' });
@@ -4058,13 +4059,13 @@ router.post('/organizations/:orgId/departments/:deptId/registration-formats', as
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     console.log('🏢 Adding new registration format:', newFormat);
-    
+
     if (!settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats) {
       settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats = [];
     }
-    
+
     settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats.push(newFormat);
     settings.organizations.list[orgIndex].departments[deptIndex].updatedAt = new Date();
     settings.organizations.list[orgIndex].updatedAt = new Date();
@@ -4075,7 +4076,7 @@ router.post('/organizations/:orgId/departments/:deptId/registration-formats', as
     await settings.save();
 
     console.log(`➕ New registration format added by user ${updatedBy || 'unknown'}: ${name}`);
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Registration format added successfully',
       format: newFormat
     });
@@ -4198,7 +4199,7 @@ router.delete('/organizations/:orgId/departments/:deptId/registration-formats/:f
 router.get('/registration-formats/no-year', async (req, res) => {
   try {
     const { institutionType, institutionId, departmentCode, role } = req.query;
-    
+
     console.log(`📋 Registration formats (no year) API called with:`, {
       institutionType,
       institutionId,
@@ -4206,41 +4207,41 @@ router.get('/registration-formats/no-year', async (req, res) => {
       role,
       fullUrl: req.url
     });
-    
+
     if (!institutionType || !institutionId || !departmentCode || !role) {
       console.log(`❌ Missing required parameters:`, { institutionType, institutionId, departmentCode, role });
       return res.status(400).json({ error: 'All parameters are required: institutionType, institutionId, departmentCode, role' });
     }
-    
+
     // Only allow non-student roles for this endpoint
-    if (role === 'student') {
+    if (role === UserRole.STUDENT) {
       return res.status(400).json({ error: 'This endpoint is for non-student roles only. Use /registration-formats for student roles.' });
     }
-    
+
     console.log(`📋 Will filter for role: ${role} (no year filtering)`);
-    
+
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-    
+
     if (!settings) {
       return res.status(404).json({ error: 'System settings not found' });
     }
-    
+
     let formats = [];
-    
+
     if (institutionType === 'college') {
       const college = settings.colleges?.list?.find((col: any) => col.id === institutionId);
       if (!college) {
         return res.status(404).json({ error: 'College not found' });
       }
-      
+
       const department = college.departments.find((dept: any) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this college' });
       }
-      
+
       // Use MongoDB query to filter at database level (no year filtering)
       console.log(`📋 Querying college formats with MongoDB filter: role=${role} (no year filtering)`);
-      
+
       const filteredFormats = await SystemSettingsModel.aggregate([
         { $match: { _id: settings._id } },
         { $unwind: "$colleges.list" },
@@ -4248,8 +4249,8 @@ router.get('/registration-formats/no-year', async (req, res) => {
         { $unwind: "$colleges.list.departments" },
         { $match: { "colleges.list.departments.code": departmentCode } },
         { $unwind: "$colleges.list.departments.registrationFormats" },
-        { 
-          $match: { 
+        {
+          $match: {
             [`colleges.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
           }
         },
@@ -4267,24 +4268,24 @@ router.get('/registration-formats/no-year', async (req, res) => {
           }
         }
       ]);
-      
+
       console.log(`📋 MongoDB query returned ${filteredFormats.length} matching formats`);
       formats = filteredFormats;
-      
+
     } else if (institutionType === 'organization') {
       const organization = settings.organizations?.list?.find((org: any) => org.id === institutionId);
       if (!organization) {
         return res.status(404).json({ error: 'Organization not found' });
       }
-      
+
       const department = organization.departments.find((dept: any) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this organization' });
       }
-      
+
       // Use MongoDB query to filter at database level (no year filtering)
       console.log(`📋 Querying organization formats with MongoDB filter: role=${role} (no year filtering)`);
-      
+
       const filteredFormats = await SystemSettingsModel.aggregate([
         { $match: { _id: settings._id } },
         { $unwind: "$organizations.list" },
@@ -4292,8 +4293,8 @@ router.get('/registration-formats/no-year', async (req, res) => {
         { $unwind: "$organizations.list.departments" },
         { $match: { "organizations.list.departments.code": departmentCode } },
         { $unwind: "$organizations.list.departments.registrationFormats" },
-        { 
-          $match: { 
+        {
+          $match: {
             [`organizations.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
           }
         },
@@ -4311,15 +4312,15 @@ router.get('/registration-formats/no-year', async (req, res) => {
           }
         }
       ]);
-      
+
       console.log(`📋 MongoDB query returned ${filteredFormats.length} matching formats`);
       formats = filteredFormats;
     } else {
       return res.status(400).json({ error: 'Invalid institution type. Must be "college" or "organization"' });
     }
-    
+
     console.log(`📋 Database-level filtering complete: ${formats.length} matching formats found`);
-    
+
     const responseData = {
       success: true,
       formats: formats,
@@ -4334,7 +4335,7 @@ router.get('/registration-formats/no-year', async (req, res) => {
         role: role
       }
     };
-    
+
     console.log(`📋 ===== COMPLETE API RESPONSE BEING SENT =====`);
     console.log(`📋 Response Success: ${responseData.success}`);
     console.log(`📋 Institution Type: ${responseData.institutionType}`);
@@ -4345,7 +4346,7 @@ router.get('/registration-formats/no-year', async (req, res) => {
     console.log(`📋 Filtered Formats Count: ${responseData.filteredFormatsCount}`);
     console.log(`📋 Filtering Criteria:`, responseData.filteringCriteria);
     console.log(`📋 Complete API Response Object:`, responseData);
-    
+
     res.json(responseData);
   } catch (error) {
     console.error('Error fetching registration formats (no year):', error);
@@ -4365,7 +4366,7 @@ router.get('/registration-formats/no-year', async (req, res) => {
 router.get('/organizations/:organizationId/qr-codes', async (req, res) => {
   try {
     const { organizationId } = req.params;
-    
+
     if (!organizationId) {
       return res.status(400).json({ error: 'Organization ID is required' });
     }
@@ -4389,7 +4390,7 @@ router.post('/organizations/:organizationId/qr-codes', async (req, res) => {
   try {
     const { organizationId } = req.params;
     const { address, fullAddress } = req.body;
-    
+
     // Support both legacy (address string) and new (fullAddress object) formats
     if (!organizationId || (!address && !fullAddress)) {
       return res.status(400).json({ error: 'Organization ID and address are required' });
@@ -4400,7 +4401,7 @@ router.post('/organizations/:organizationId/qr-codes', async (req, res) => {
     if (!settings || !settings.organizations?.list) {
       return res.status(404).json({ error: 'No organizations found' });
     }
-    
+
     const organization = settings.organizations.list.find((org: any) => org.id === organizationId);
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
@@ -4408,19 +4409,19 @@ router.post('/organizations/:organizationId/qr-codes', async (req, res) => {
 
     const { OrganizationQRCode } = await import('../models/mongodb-models');
     const { generateOrganizationQRCodeUrl } = await import('@shared/qrCodeUtils');
-    
+
     // Use address string for QR URL (backward compatibility)
     // If fullAddress is provided, use addressLine1 as the address string, otherwise use provided address
     const addressString = fullAddress?.addressLine1 || address;
-    
+
     // Generate QR code
     const baseUrl = process.env.BASE_URL || req.protocol + '://' + req.get('host');
     const qrCodeUrl = generateOrganizationQRCodeUrl(baseUrl, organizationId, addressString);
     const hash = qrCodeUrl.split('/').pop() || '';
-    
+
     // Create unique QR ID
     const qrId = `qr_${organizationId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const qrCode = new OrganizationQRCode({
       qrId,
       organizationId,
@@ -4433,7 +4434,7 @@ router.post('/organizations/:organizationId/qr-codes', async (req, res) => {
 
     await qrCode.save();
 
-    res.json({ 
+    res.json({
       success: true,
       qrCode: {
         qrId: qrCode.qrId,
@@ -4456,14 +4457,14 @@ router.post('/organizations/:organizationId/qr-codes', async (req, res) => {
 router.delete('/organizations/:organizationId/qr-codes/:qrId', async (req, res) => {
   try {
     const { organizationId, qrId } = req.params;
-    
+
     if (!organizationId || !qrId) {
       return res.status(400).json({ error: 'Organization ID and QR ID are required' });
     }
 
     const { OrganizationQRCode } = await import('../models/mongodb-models');
     const qrCode = await OrganizationQRCode.findOne({ qrId, organizationId });
-    
+
     if (!qrCode) {
       return res.status(404).json({ error: 'QR code not found' });
     }
@@ -4486,14 +4487,14 @@ router.get('/qr-codes/validate/:organizationId/:hash', async (req, res) => {
   try {
     const { organizationId, hash } = req.params;
     const address = req.query.address as string;
-    
+
     if (!organizationId || !hash || !address) {
       return res.status(400).json({ error: 'Organization ID, hash, and address are required' });
     }
 
     const { OrganizationQRCode } = await import('../models/mongodb-models');
     const { validateOrganizationQRCodeHash } = await import('@shared/qrCodeUtils');
-    
+
     // Validate hash
     const validation = validateOrganizationQRCodeHash(organizationId, decodeURIComponent(address), hash);
     if (!validation.isValid) {
@@ -4501,13 +4502,13 @@ router.get('/qr-codes/validate/:organizationId/:hash', async (req, res) => {
     }
 
     // Find QR code in database
-    const qrCode = await OrganizationQRCode.findOne({ 
-      organizationId, 
+    const qrCode = await OrganizationQRCode.findOne({
+      organizationId,
       hash,
       address: decodeURIComponent(address),
-      isActive: true 
+      isActive: true
     });
-    
+
     if (!qrCode) {
       return res.status(404).json({ error: 'QR code not found or inactive' });
     }
@@ -4517,13 +4518,13 @@ router.get('/qr-codes/validate/:organizationId/:hash', async (req, res) => {
     if (!settings || !settings.organizations?.list) {
       return res.status(404).json({ error: 'Organization not found' });
     }
-    
+
     const organization = settings.organizations.list.find((org: any) => org.id === organizationId);
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    res.json({ 
+    res.json({
       success: true,
       organization: {
         id: organization.id,

@@ -15,7 +15,7 @@ model User {
   email               String   @unique
   name                String
   phoneNumber         String?  @map("phone_number")
-  role                String   // "student", "staff", "employee", or "guest"
+  role                UserRole   // "student", "staff", "employee", or "guest"
   
   // For students
   registerNumber      String?  @unique @map("register_number")
@@ -81,3 +81,16 @@ model DeliveryPerson {
 
 // All other models have been migrated to MongoDB
 // Only User and DeliveryPerson models remain in PostgreSQL
+
+enum UserRole {
+  STUDENT         @map("student")
+  STAFF           @map("staff")
+  EMPLOYEE        @map("employee")
+  GUEST           @map("guest")
+  CONTRACTOR      @map("contractor")
+  VISITOR         @map("visitor")
+  ADMIN           @map("admin")
+  SUPER_ADMIN     @map("super_admin")
+  CANTEEN_OWNER   @map("canteen_owner")
+  DELIVERY_PERSON @map("delivery_person")
+}

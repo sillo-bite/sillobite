@@ -107,6 +107,7 @@ export interface College {
   name: string;
   code: string;
   isActive: boolean;
+  adminEmail?: string;
   activeRoles: {
     student: boolean;
     staff: boolean;
@@ -135,7 +136,7 @@ export function useColleges() {
 
 export function useActiveColleges() {
   const { data, ...rest } = useColleges();
-  
+
   return {
     ...rest,
     data: data ? {
@@ -146,7 +147,7 @@ export function useActiveColleges() {
 
 export function useDepartmentsByCollege(collegeId?: string) {
   const { data: collegesData, ...rest } = useColleges();
-  
+
   return {
     ...rest,
     data: collegeId && collegesData ? {

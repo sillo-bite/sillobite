@@ -4,6 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { UserRole } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +19,9 @@ import { securelyUpdateUserData } from "@/utils/sessionConflictResolver";
 import { getDepartmentFullName, calculateCurrentStudyYear, isStudentPassed, validateRegisterNumber, validateStaffId } from "@shared/utils";
 import { useActiveDepartments } from "@/hooks/useDepartments";
 import { useActiveColleges, useDepartmentsByCollege } from "@/hooks/useColleges";
-import { 
-  useInstitutionsByType, 
-  useDepartmentsByInstitution, 
+import {
+  useInstitutionsByType,
+  useDepartmentsByInstitution,
   useRegistrationFormatsByInstitutionAndDepartment,
   useRegistrationFormatsNoYear
 } from "@/hooks/useProfileSetup";
@@ -38,39 +40,39 @@ const profileSetupSchema = z.object({
     .max(15, "Phone number must be less than 15 digits")
     .regex(/^[+]?[0-9\s\-()]+$/, "Phone number can only contain numbers, spaces, hyphens, parentheses, and plus sign"),
   role: z.enum(["student", "staff", "employee", "guest", "contractor", "visitor"], { required_error: "Please select your role" }),
-  
+
   // Student fields
   registerNumber: z.string().optional(),
   college: z.string().optional(),
   department: z.string().optional(),
   passingOutYear: z.number().optional(),
-  
+
   // Staff/Employee/Contractor fields
   staffId: z.string().optional(),
   joiningYear: z.number().optional(),
 }).refine((data) => {
-  if (data.role === "student") {
+  if (data.role === UserRole.STUDENT) {
     if (!data.registerNumber || !data.college || !data.department || !data.passingOutYear) {
       return false;
     }
     // Dynamic validation will be handled in the component, not in schema
     return true;
   }
-  if (data.role === "staff") {
+  if (data.role === UserRole.STAFF) {
     if (!data.staffId || !data.college || !data.joiningYear) {
       return false;
     }
     const validation = validateStaffId(data.staffId);
     return validation.isValid;
   }
-  if (data.role === "employee" || data.role === "contractor") {
+  if (data.role === UserRole.EMPLOYEE || data.role === UserRole.CONTRACTOR) {
     if (!data.registerNumber || !data.college || !data.department || !data.joiningYear) {
       return false;
     }
     // Dynamic validation will be handled in the component, not in schema
     return true;
   }
-  if (data.role === "visitor" || data.role === "guest") {
+  if (data.role === UserRole.VISITOR || data.role === UserRole.GUEST) {
     if (!data.registerNumber || !data.college || !data.department) {
       return false;
     }
@@ -110,10 +112,10 @@ function ProfileSetupScreenWrapper() {
     const urlParams = new URLSearchParams(window.location.search);
     const email = urlParams.get('email') || '';
     const name = urlParams.get('name') || '';
-    
+
     setUserEmail(email);
     setUserName(name);
-    
+
     // If no email is provided, redirect to login (only once)
     if (!email && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
@@ -147,7 +149,7 @@ function ProfileSetupScreenWrapper() {
   }
 
   return (
-    <ProfileSetupScreen 
+    <ProfileSetupScreen
       userEmail={userEmail}
       userName={userName}
       onComplete={handleComplete}
@@ -203,7 +205,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   const [registerNumberCheckResult, setRegisterNumberCheckResult] = useState<{ exists: boolean; message: string } | null>(null);
   const [hasCheckedRegisterNumber, setHasCheckedRegisterNumber] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  
+
   // Check for QR code context - check synchronously on mount
   const orgContextData = typeof window !== 'undefined' ? sessionStorage.getItem('orgContext') : null;
   const initialOrgContext = orgContextData ? (() => {
@@ -213,10 +215,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       return null;
     }
   })() : null;
-  
+
   const [orgContext, setOrgContext] = useState<{ organizationId: string; organizationName: string; fullAddress?: any } | null>(initialOrgContext);
   const [isOrgGuestUser, setIsOrgGuestUser] = useState(!!initialOrgContext);
-  
+
   const pendingQRData = typeof window !== 'undefined' ? sessionStorage.getItem('pendingQRTableData') : null;
   const initialQRData = pendingQRData ? (() => {
     try {
@@ -230,10 +232,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       return null;
     }
   })() : null;
-  
+
   const [qrTableData, setQrTableData] = useState<QRTableData | null>(initialQRData);
   const [isQRUser, setIsQRUser] = useState(!!(initialOrgContext || initialQRData));
-  
+
   // Helper function to clear React Query cache
   const clearProfileSetupCache = () => {
     queryClient.removeQueries({ queryKey: ['institutions'] });
@@ -284,13 +286,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     resetAllState();
     clearProfileSetupCache();
     console.log('🧹 Cleared all state and cache on component mount');
-    
+
     // Log organization context detection
     if (initialOrgContext) {
       console.log('🏢 Organization context detected in profile setup (synchronous):', initialOrgContext);
     }
   }, []); // Only run on mount
-  
+
   // Reset form when component mounts (after form is initialized)
   useEffect(() => {
     resetFormToDefaults();
@@ -310,7 +312,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   // Watch QR form values to enable/disable button (different names to avoid conflict with regular form)
   const qrWatchedName = qrForm.watch("name");
   const qrWatchedPhoneNumber = qrForm.watch("phoneNumber");
-  
+
   // Check if QR form is valid based on field values
   const isFormValid = useMemo(() => {
     const nameValid = qrWatchedName && qrWatchedName.trim().length >= 2 && /^[a-zA-Z\s.'-]+$/.test(qrWatchedName);
@@ -345,7 +347,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
   // Helper functions for role checking
   const needsRegisterNumber = (role: string | undefined = watchedRole): boolean => {
-    return role === "student" || role === "employee" || role === "guest" || role === "contractor" || role === "visitor";
+    return role === UserRole.STUDENT || role === UserRole.EMPLOYEE || role === UserRole.GUEST || role === UserRole.CONTRACTOR || role === UserRole.VISITOR;
   };
 
   // Step definitions - Reorganized into 4 steps
@@ -355,7 +357,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     { id: 3, title: "Registration Details", description: "Enter your registration number" },
     { id: 4, title: "Complete Profile", description: "Finalize your profile information" }
   ];
-  
+
   // State to control when API calls should be made
   const [apiCallsEnabled, setApiCallsEnabled] = useState({
     institutions: false,
@@ -378,11 +380,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       setApiCallsEnabled(prev => ({ ...prev, departments: true }));
     }
   }, [watchedCollege]);
-  
+
   // OPTIMIZED: Step-specific API calls with lazy loading
   // Step 2: Get institutions by type (only when institutionType is selected and enabled)
   const { data: institutionsData, isLoading: institutionsLoading } = useInstitutionsByType(institutionType, apiCallsEnabled.institutions);
-  
+
   // Debug logging for institutions data
   useEffect(() => {
     console.log(`🏫 ProfileSetupScreen - Institution type: ${institutionType}`);
@@ -394,14 +396,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       console.log(`🏫 ProfileSetupScreen - Institutions count:`, institutionsData?.institutions?.length || 0);
     }
   }, [institutionType, institutionsData, institutionsLoading, apiCallsEnabled]);
-  
+
   // Step 4: Get departments by institution (only when both institutionType and college are selected and enabled)
   const { data: departmentsData, isLoading: departmentsLoading } = useDepartmentsByInstitution(
-    institutionType, 
+    institutionType,
     watchedCollege || null,
     apiCallsEnabled.departments
   );
-  
+
   // Debug logging for departments data
   useEffect(() => {
     if (institutionType && watchedCollege && departmentsData) {
@@ -412,18 +414,18 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       console.log(`🏫 ProfileSetupScreen - Departments count:`, departmentsData?.departments?.length || 0);
     }
   }, [institutionType, watchedCollege, departmentsData]);
-  
+
   // Step 6: Get registration formats (only when institution, department, and role are selected and enabled)
   // Use different hooks based on role requirements:
   // - Student roles: use useRegistrationFormatsByInstitutionAndDepartment (with year filtering)
   // - Employee/Staff/Contractor roles: use useRegistrationFormatsNoYear (no year filtering, but still collect joining year)
   // - Guest/Visitor roles: use useRegistrationFormatsNoYear (no year filtering, no year collection)
-  
+
   // Helper functions for role checking (used for API hooks)
   const isStudentRole = watchedRole === 'student';
   const isEmployeeRole = watchedRole === 'employee' || watchedRole === 'staff' || watchedRole === 'contractor';
   const isGuestRole = watchedRole === 'guest' || watchedRole === 'visitor';
-  
+
   // Hook for student roles (with year filtering) - only for colleges
   const { data: studentFormatsData, isLoading: studentFormatsLoading } = useRegistrationFormatsByInstitutionAndDepartment(
     institutionType,
@@ -433,7 +435,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     watchedRole || null,
     apiCallsEnabled.registrationFormats && isStudentRole && institutionType === 'college'
   );
-  
+
   // Hook for employee/staff/contractor roles (no year filtering, but still collect joining year for storage)
   const { data: employeeFormatsData, isLoading: employeeFormatsLoading } = useRegistrationFormatsNoYear(
     institutionType,
@@ -442,7 +444,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     watchedRole || null,
     apiCallsEnabled.registrationFormats && isEmployeeRole
   );
-  
+
   // Hook for guest/visitor roles (no year filtering, no year collection)
   const { data: guestFormatsData, isLoading: guestFormatsLoading } = useRegistrationFormatsNoYear(
     institutionType,
@@ -451,30 +453,30 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     watchedRole || null,
     apiCallsEnabled.registrationFormats && isGuestRole
   );
-  
+
   // Combine the data from all hooks
-  const registrationFormatsData = (isStudentRole && institutionType === 'college') ? studentFormatsData : 
-                                 isEmployeeRole ? employeeFormatsData : 
-                                 guestFormatsData;
-  const registrationFormatsLoading = (isStudentRole && institutionType === 'college') ? studentFormatsLoading : 
-                                    isEmployeeRole ? employeeFormatsLoading : 
-                                    guestFormatsLoading;
-  
+  const registrationFormatsData = (isStudentRole && institutionType === 'college') ? studentFormatsData :
+    isEmployeeRole ? employeeFormatsData :
+      guestFormatsData;
+  const registrationFormatsLoading = (isStudentRole && institutionType === 'college') ? studentFormatsLoading :
+    isEmployeeRole ? employeeFormatsLoading :
+      guestFormatsLoading;
+
   // Debug logging for registration formats data
   useEffect(() => {
     // Log based on which hook is being used
-    
+
     if (institutionType && watchedCollege && form.watch("department") && watchedRole && registrationFormatsData) {
-      const hookType = (isStudentRole && institutionType === 'college') ? 'STUDENT (with year filtering)' : 
-                      isEmployeeRole ? 'EMPLOYEE (no year filtering, but collect joining year)' : 
-                      'GUEST (no year filtering, no year collection)';
-      
+      const hookType = (isStudentRole && institutionType === 'college') ? 'STUDENT (with year filtering)' :
+        isEmployeeRole ? 'EMPLOYEE (no year filtering, but collect joining year)' :
+          'GUEST (no year filtering, no year collection)';
+
       console.log(`📋 ProfileSetupScreen - Using ${hookType} hook for ${watchedRole} role in ${institutionType}`);
       console.log(`📋 ProfileSetupScreen - Registration formats data:`, registrationFormatsData);
       console.log(`📋 ProfileSetupScreen - Formats count: ${registrationFormatsData?.formats?.length || 0}`);
       console.log(`📋 ProfileSetupScreen - Total formats found: ${registrationFormatsData?.totalFormatsFound || 0}`);
       console.log(`📋 ProfileSetupScreen - Filtered formats count: ${registrationFormatsData?.filteredFormatsCount || 0}`);
-      
+
       if (isStudentRole && institutionType === 'college') {
         console.log(`📋 ProfileSetupScreen - Requested passing out year: ${registrationFormatsData?.passingOutYear}`);
       } else if (isEmployeeRole) {
@@ -485,7 +487,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       console.log(`📋 ProfileSetupScreen - Converted ${watchedRole === "student" ? "study year" : "joining year"}: ${registrationFormatsData?.studyYear || registrationFormatsData?.joiningYear}`);
       console.log(`📋 ProfileSetupScreen - Requested role: ${registrationFormatsData?.role}`);
       console.log(`📋 ProfileSetupScreen - Filtering criteria:`, registrationFormatsData?.filteringCriteria);
-      
+
       // Log complete API response structure
       console.log(`📋 ===== PROFILE SETUP SCREEN - COMPLETE API DATA =====`);
       console.log(`📋 Response Success: ${registrationFormatsData?.success}`);
@@ -499,12 +501,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       console.log(`📋 Filtered Formats Count: ${registrationFormatsData?.filteredFormatsCount}`);
       console.log(`📋 Filtering Criteria:`, registrationFormatsData?.filteringCriteria);
       console.log(`📋 Complete API Response Object:`, registrationFormatsData);
-      
+
       // Log only the requested role format details
       if (registrationFormatsData?.formats) {
         registrationFormatsData.formats.forEach((format: any, index: number) => {
           console.log(`📋 ProfileSetupScreen - Format ${index + 1}: "${format.name}" (Year: ${format.year})`);
-          
+
           // Only log the requested role format
           const requestedRoleFormat = format.formats?.[watchedRole];
           if (requestedRoleFormat) {
@@ -519,29 +521,29 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       }
     }
   }, [institutionType, watchedCollege, form.watch("department"), watchedPassingOutYear, watchedJoiningYear, watchedRole, registrationFormatsData]);
-  
-  
+
+
   // REMOVED: Old API calls replaced with optimized step-specific APIs
-  
+
   // REMOVED: Old organization departments API call
-  
+
   // OPTIMIZED: Use the new optimized departments data
   const currentDepartmentsData = departmentsData;
   const currentDepartmentsLoading = departmentsLoading;
   const watchedStaffId = form.watch("staffId");
   const watchedDepartment = form.watch("department");
-  
+
   // Calculate progress based on filled fields
   // Only count fields that user has actively filled, not pre-filled values
   const progressPercentage = useMemo(() => {
     let progress = 0;
     const stepWeight = 100 / steps.length; // 25% per step
-    
+
     // Step 1: Institution & Role (25%)
     if (institutionType) progress += stepWeight / 3; // 8.33%
     if (watchedCollege) progress += stepWeight / 3; // 8.33%
     if (watchedRole) progress += stepWeight / 3; // 8.33%
-    
+
     // Step 2: Department & Year (25%)
     if (watchedDepartment) progress += stepWeight / 2; // 12.5%
     if (watchedRole === "student" && watchedPassingOutYear) {
@@ -552,14 +554,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       // Visitor/Guest don't need year, so department completion gives full step weight
       if (watchedDepartment) progress += stepWeight / 2; // 12.5%
     }
-    
+
     // Step 3: Registration Details (25%)
     if (watchedRole === "staff" && watchedStaffId) {
       progress += stepWeight; // 25%
     } else if (needsRegisterNumber() && watchedRegisterNumber) {
       progress += stepWeight; // 25%
     }
-    
+
     // Step 4: Complete Profile (25%)
     // Only count if user has completed at least Step 1 (institution type selected)
     // This prevents counting pre-filled name from showing progress before user starts
@@ -574,7 +576,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         progress += stepWeight / 2; // 12.5%
       }
     }
-    
+
     return Math.min(Math.round(progress), 100);
   }, [
     institutionType,
@@ -590,26 +592,26 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     userName,
     steps.length
   ]);
-  
+
   // Get active roles for the selected institution
   const selectedInstitutionData = institutionsData?.institutions?.find((institution: any) => institution.id === watchedCollege);
   // OPTIMIZED: Use unified institution data
-  const activeRoles = institutionType === 'college' 
+  const activeRoles = institutionType === 'college'
     ? (selectedInstitutionData?.activeRoles || {
-        student: true,
-        staff: true,
-        employee: true,
-        guest: true,
-        contractor: true,
-        visitor: true
-      })
+      student: true,
+      staff: true,
+      employee: true,
+      guest: true,
+      contractor: true,
+      visitor: true
+    })
     : (selectedInstitutionData?.activeRoles || {
-        employee: true,
-        contractor: true,
-        visitor: true,
-        guest: true
-      });
-  
+      employee: true,
+      contractor: true,
+      visitor: true,
+      guest: true
+    });
+
   // Debug logging for department loading
   useEffect(() => {
     console.log('🔍 Department Debug Info:', {
@@ -620,32 +622,32 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       departmentsCount: currentDepartmentsData?.departments?.length || 0
     });
   }, [watchedCollege, institutionType, currentDepartmentsLoading, currentDepartmentsData]);
-  
+
   // Trigger validation when prerequisites change to show errors immediately
   useEffect(() => {
     if (institutionType && !watchedCollege) {
       form.trigger("college");
     }
   }, [institutionType, watchedCollege, form]);
-  
+
   useEffect(() => {
     if (watchedCollege && !watchedDepartment && needsRegisterNumber()) {
       form.trigger("department");
     }
   }, [watchedCollege, watchedDepartment, watchedRole, form]);
-  
+
   useEffect(() => {
     if (watchedDepartment && !watchedPassingOutYear && watchedRole === "student") {
       form.trigger("passingOutYear");
     }
   }, [watchedDepartment, watchedPassingOutYear, watchedRole, form]);
-  
+
   useEffect(() => {
     if (watchedDepartment && !watchedJoiningYear && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor")) {
       form.trigger("joiningYear");
     }
   }, [watchedDepartment, watchedJoiningYear, watchedRole, form]);
-  
+
   // REMOVED: Old debug logging for college data
 
   // Helper function to calculate academic year and study year
@@ -653,7 +655,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth(); // 0-11
-    
+
     // Test: Log the actual date to verify it's correct
     console.log('Current Date Info:', {
       fullDate: currentDate.toString(),
@@ -662,12 +664,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       monthName: currentDate.toLocaleString('default', { month: 'long' }),
       day: currentDate.getDate()
     });
-    
+
     // Academic year runs from June to June
     // If current month is June or later, we're in the academic year that started in current year
     // If current month is before June, we're still in the academic year that started in previous year
     const currentAcademicYear = currentMonth >= 5 ? currentYear : currentYear - 1; // 5 = June (0-indexed)
-    
+
     // Calculate study year based on academic year
     // For 4-year degree: 
     // - Year 1 students pass out in 4 years (currentAcademicYear + 3)
@@ -682,7 +684,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     // But you said it should be Year 3, so let me try: studyYear = years remaining + 1
     const yearsRemaining = passingOutYear - currentAcademicYear;
     const studyYear = yearsRemaining + 1;
-    
+
     // Debug logging
     console.log('Academic Year Calculation:', {
       currentYear,
@@ -696,7 +698,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       isJuneOrLater: currentMonth >= 5,
       academicYearLogic: currentMonth >= 5 ? `${currentYear} (June or later)` : `${currentYear - 1} (before June)`
     });
-    
+
     return {
       currentAcademicYear,
       studyYear
@@ -725,11 +727,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   // OPTIMIZED: Use the new optimized registration formats API
   const fetchAvailableFormats = async (institutionId: string, deptCode: string, year: number) => {
     console.log('🔍 Using optimized formats API for:', { institutionType, institutionId, deptCode, year, role: watchedRole });
-    
+
     // Use the optimized API data that's already being fetched
     if (registrationFormatsData?.formats) {
       console.log('📋 Using cached format data:', registrationFormatsData.formats);
-      
+
       // API now returns an array of relevant formats
       setAvailableFormats(registrationFormatsData.formats);
     } else {
@@ -784,25 +786,25 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   const validateComplexTypes = (registerNumber: string, structure: any[]) => {
     console.log('🔍 validateComplexTypes called for:', registerNumber);
     console.log('📋 Structure:', structure);
-    
+
     for (const position of structure) {
       if (position.type === 'numbers_range' && position.range) {
         // Validate number range
         const startPos = position.range.positions[0];
         const endPos = position.range.positions[position.range.positions.length - 1];
         const rangeValue = registerNumber.slice(startPos - 1, endPos);
-        
+
         // Create dynamic pattern based on expected digit count
         const expectedDigitCount = position.range.positions.length;
         const digitPattern = new RegExp(`^\\d{${expectedDigitCount}}$`);
-        
+
         if (!digitPattern.test(rangeValue)) {
           return {
             isValid: false,
             error: `Position ${startPos}-${endPos} should be a ${expectedDigitCount}-digit number but got "${rangeValue}"`
           };
         }
-        
+
         const numValue = parseInt(rangeValue);
         if (numValue < position.range.min || numValue > position.range.max) {
           return {
@@ -815,11 +817,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         const startPos = position.range.positions[0];
         const endPos = position.range.positions[position.range.positions.length - 1];
         const yearValue = registerNumber.slice(startPos - 1, endPos);
-        
+
         // Create dynamic pattern based on expected digit count
         const expectedDigitCount = position.range.positions.length;
         const digitPattern = new RegExp(`^\\d{${expectedDigitCount}}$`);
-        
+
         if (!digitPattern.test(yearValue)) {
           return {
             isValid: false,
@@ -833,7 +835,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         const endPos = position.range.positions[position.range.positions.length - 1];
         const actualValue = registerNumber.slice(startPos - 1, endPos);
         const expectedValue = position.value || '';
-        
+
         if (actualValue !== expectedValue) {
           return {
             isValid: false,
@@ -842,7 +844,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         }
       }
     }
-    
+
     return { isValid: true, message: "" };
   };
 
@@ -851,12 +853,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth(); // 0-11
-    
+
     // Calculate current academic year (starts in June)
     const currentAcademicYear = currentMonth >= 5 ? currentYear : currentYear - 1;
-    
+
     console.log(`🔍 calculateYearValue: positionYearType=${position.yearType}, userYearValue=${yearValue}, yearType=${yearType}`);
-    
+
     // Handle college year types (starting, passing_out)
     if (position.yearType === 'starting') {
       // For colleges: Calculate starting year based on passing out year and study duration
@@ -882,7 +884,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         return yearValue;
       }
     }
-    
+
     // Handle organization year types (joining, current)
     else if (position.yearType === 'joining') {
       // For organizations: joining year
@@ -919,7 +921,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   const getRegisterNumberValidation = (registerNumber: string) => {
     if (!registerNumber && needsRegisterNumber()) return { isValid: false, message: "Registration number is required" };
     if (!registerNumber) return { isValid: null, message: "" };
-    
+
     // If we have available formats, validate against them dynamically
     if (availableFormats.length > 0) {
       console.log(`🔍 ===== VALIDATION START =====`);
@@ -932,70 +934,70 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         totalLength: f.formats?.[watchedRole]?.totalLength,
         example: f.formats?.[watchedRole]?.example
       })));
-      
+
       // For employee roles in organizations, we need to validate against ALL formats
       // For student roles in colleges, we validate against year-filtered formats
       const isEmployeeRole = institutionType === 'organization' && (watchedRole === 'employee' || watchedRole === 'staff' || watchedRole === 'contractor');
       const isStudentRole = institutionType === 'college' && watchedRole === 'student';
-      
+
       console.log(`🔍 Validation approach: ${isEmployeeRole ? 'EMPLOYEE (validate against all formats)' : isStudentRole ? 'STUDENT (validate against year-filtered formats)' : 'OTHER'}`);
-      
+
       const normalizedRegisterNumber = registerNumber.toUpperCase();
-      
+
       // Check if the registration number matches any of the available formats
       let lastError = '';
-      
+
       for (const format of availableFormats) {
         console.log(`🔍 ===== VALIDATING AGAINST FORMAT: ${format.name} (Year: ${format.year}) =====`);
-        
+
         // Get the role-specific format structure
         const roleFormat = format.formats?.[watchedRole];
         if (!roleFormat || !roleFormat.structure) {
           console.log(`🔍 ❌ No ${watchedRole} format structure found`);
           continue;
         }
-        
+
         // For employee roles, we validate against ALL formats (no year filtering)
         // The API already returns all formats for the role, so we don't need to filter by year
         if (isEmployeeRole) {
           console.log(`🔍 ✅ Validating employee format "${format.name}" - no year filtering needed`);
         }
-        
+
         // For student roles in colleges, the API already filters by year, so we validate all returned formats
         if (isStudentRole) {
           console.log(`🔍 ✅ Validating student format "${format.name}" - year ${format.year} matches expected year`);
         }
-        
+
         console.log(`🔍 Role format structure:`, roleFormat.structure);
         console.log(`🔍 Expected total length: ${roleFormat.totalLength}`);
         console.log(`🔍 Actual input length: ${normalizedRegisterNumber.length}`);
-        
+
         // Check total length first
         if (normalizedRegisterNumber.length !== roleFormat.totalLength) {
           console.log(`🔍 ❌ Length mismatch: expected ${roleFormat.totalLength}, got ${normalizedRegisterNumber.length}`);
           lastError = `Registration number length should be ${roleFormat.totalLength} characters (format: ${format.name})`;
           continue;
         }
-        
+
         // Validate against structure
         const sortedStructure = roleFormat.structure.sort((a: any, b: any) => a.position - b.position);
         let currentPosition = 0;
         let isValid = true;
         let validationDetails: any[] = [];
-        
+
         console.log(`🔍 ===== POSITION-BY-POSITION VALIDATION =====`);
-        
+
         for (const position of sortedStructure) {
           const positionLength = getPositionLength(position);
           const startPos = currentPosition;
           const endPos = currentPosition + positionLength;
           const extractedValue = normalizedRegisterNumber.substring(startPos, endPos);
-          
+
           console.log(`🔍 Position ${position.position}: type="${position.type}", length=${positionLength}, extracted="${extractedValue}"`);
-          
+
           let positionValid = true;
           let positionError = '';
-          
+
           switch (position.type) {
             case 'fixed':
               if (extractedValue !== position.value) {
@@ -1003,12 +1005,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 positionError = `Expected "${position.value}", got "${extractedValue}"`;
               }
               break;
-              
+
             case 'year':
               // Calculate expected year value based on institution type and role
               let expectedYear: number;
               let yearType: 'passingOutYear' | 'joiningYear';
-              
+
               if (institutionType === 'college') {
                 // Colleges use passing out year for students
                 expectedYear = calculateYearValue(position, watchedPassingOutYear || 2027, 'passingOutYear');
@@ -1028,18 +1030,18 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 expectedYear = calculateYearValue(position, new Date().getFullYear(), 'passingOutYear');
                 yearType = 'passingOutYear';
               }
-              
+
               const isTwoDigit = positionLength === 2;
               const expectedYearStr = isTwoDigit ? expectedYear.toString().slice(-2) : expectedYear.toString();
-              
+
               console.log(`🔍 Year validation: institutionType="${institutionType}", role="${watchedRole}", positionYearType="${position.yearType}", userYearValue="${yearType === 'passingOutYear' ? watchedPassingOutYear : watchedJoiningYear}", expectedYear=${expectedYear}, expectedStr="${expectedYearStr}"`);
-              
+
               if (extractedValue !== expectedYearStr) {
                 positionValid = false;
                 positionError = `Expected year "${expectedYearStr}" (${position.yearType}), got "${extractedValue}"`;
               }
               break;
-              
+
             case 'numbers_range':
               if (position.range) {
                 const number = parseInt(extractedValue, 10);
@@ -1049,28 +1051,28 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 }
               }
               break;
-              
+
             case 'digit':
               if (!/^\d$/.test(extractedValue)) {
                 positionValid = false;
                 positionError = `Expected single digit, got "${extractedValue}"`;
               }
               break;
-              
+
             case 'alphabet':
               if (!/^[A-Z]$/.test(extractedValue)) {
                 positionValid = false;
                 positionError = `Expected single letter, got "${extractedValue}"`;
               }
               break;
-              
+
             case 'alphanumeric':
               if (!/^[A-Z0-9]$/.test(extractedValue)) {
                 positionValid = false;
                 positionError = `Expected letter or digit, got "${extractedValue}"`;
               }
               break;
-              
+
             case 'department':
               // Department validation - could be enhanced with actual department codes
               if (!/^[A-Z0-9]+$/.test(extractedValue)) {
@@ -1078,12 +1080,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 positionError = `Invalid department code format: "${extractedValue}"`;
               }
               break;
-              
+
             default:
               console.log(`🔍 ⚠️ Unknown position type: ${position.type}`);
               break;
           }
-          
+
           validationDetails.push({
             position: position.position,
             type: position.type,
@@ -1091,7 +1093,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
             valid: positionValid,
             error: positionError
           });
-          
+
           if (!positionValid) {
             isValid = false;
             console.log(`🔍 ❌ Position ${position.position} failed: ${positionError}`);
@@ -1099,14 +1101,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           } else {
             console.log(`🔍 ✅ Position ${position.position} passed`);
           }
-          
+
           currentPosition += positionLength;
         }
-        
+
         console.log(`🔍 ===== VALIDATION RESULT FOR ${format.name} =====`);
         console.log(`🔍 Overall valid: ${isValid}`);
         console.log(`🔍 Validation details:`, validationDetails);
-        
+
         if (isValid) {
           console.log(`🔍 ✅ VALIDATION SUCCESS: Registration number matches format "${format.name}"`);
           return { isValid: true, message: "" };
@@ -1115,17 +1117,17 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           lastError = `Registration number doesn't match format "${format.name}": ${failedPosition?.error || 'Invalid format'}`;
         }
       }
-      
+
       console.log(`🔍 ===== VALIDATION COMPLETE =====`);
       console.log(`🔍 Final result: ${lastError ? 'FAILED' : 'SUCCESS'}`);
-      
+
       // If we get here, no format matched
       return {
         isValid: false,
         message: lastError || `Registration number doesn't match any available format for this department/year. Available formats: ${availableFormats.map(f => f.name).join(', ')}`
       };
     }
-    
+
     // No fallback - require dynamic format validation
     return {
       isValid: false,
@@ -1154,12 +1156,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     }
     if (!college && watchedRole === "student") return { isValid: false, message: "College is required" };
     if (!college) return { isValid: null, message: "" };
-    
+
     // Check for special values that are not actual institutions
     if (college === "loading" || college === "no-colleges" || college === "no-organizations") {
       return { isValid: false, message: `Please select a valid ${institutionType === 'college' ? 'college' : 'organization'}` };
     }
-    
+
     // Check if institution exists in the appropriate list
     const isValidInstitution = institutionsData?.institutions?.some((institution: any) => institution.id === college);
     if (isValidInstitution) {
@@ -1174,7 +1176,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     if (watchedRole === "staff" && institutionType === 'college') {
       return { isValid: null, message: "" };
     }
-    
+
     // If college/organization is selected but department is not, show error
     if (watchedCollege && !department) {
       // Staff in organizations need department
@@ -1188,12 +1190,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     }
     if (!department && watchedRole === "student") return { isValid: false, message: "Department is required" };
     if (!department) return { isValid: null, message: "" };
-    
+
     // Check for special values that are not actual departments
     if (department === "select-college-first" || department === "loading-departments" || department === "no-departments") {
       return { isValid: false, message: "Please select a valid department" };
     }
-    
+
     // Check if department exists in the selected institution's departments
     const isValidDepartment = currentDepartmentsData?.departments?.some((dept: any) => dept.code === department);
     if (isValidDepartment) {
@@ -1273,11 +1275,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         if (collegeValidation.isValid !== true) return false;
         if (!watchedRole) return false;
         return true;
-        
+
       case 2: // Department & Year
         // For staff in colleges: no department/year needed, can proceed
         if (watchedRole === "staff" && institutionType === 'college') return true;
-        
+
         // Department requirements
         if (institutionType === 'organization') {
           // Staff in organizations need department
@@ -1295,7 +1297,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
             if (departmentValidation.isValid !== true) return false;
           }
         }
-        
+
         // Year requirements based on role and institution type
         if (institutionType === 'college') {
           // Students need passing out year
@@ -1311,7 +1313,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           // Guests and visitors in organizations don't need year
         }
         return true;
-        
+
       case 3: // Registration Details
         // For students, employees, guests, contractors, visitors: need register number
         if (needsRegisterNumber()) {
@@ -1322,11 +1324,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           return staffIdValidation.isValid === true;
         }
         return false;
-        
+
       case 4: // Complete Profile
         // Must have both name and phone number
         return nameValidation.isValid === true && phoneValidation.isValid === true;
-        
+
       default:
         return false;
     }
@@ -1346,13 +1348,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           return "Please select your role";
         }
         return null;
-        
+
       case 2: // Department & Year
         // For staff in colleges: no department/year needed
         if (watchedRole === "staff" && institutionType === 'college') {
           return null;
         }
-        
+
         // Department requirements
         if (institutionType === 'organization') {
           if (watchedRole === "staff" && departmentValidation.isValid !== true) {
@@ -1366,7 +1368,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
             return departmentValidation.message || "Please select a department";
           }
         }
-        
+
         // Year requirements
         if (institutionType === 'college' && watchedRole === "student") {
           if (passingOutYearValidation.isValid !== true) {
@@ -1378,7 +1380,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           }
         }
         return null;
-        
+
       case 3: // Registration Details
         if (watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") {
           if (!watchedRegisterNumber || watchedRegisterNumber.trim().length === 0) {
@@ -1400,7 +1402,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           }
         }
         return null;
-        
+
       case 4: // Complete Profile
         if (nameValidation.isValid !== true) {
           return nameValidation.message || "Please enter a valid name";
@@ -1409,7 +1411,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           return phoneValidation.message || "Please enter a valid phone number";
         }
         return null;
-        
+
       default:
         return "Please complete all required fields";
     }
@@ -1417,14 +1419,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
   const canProceedToNextStep = () => {
     const isValid = isStepValid(currentStep);
-    
+
     // On step 3 (Registration Details), require register number check if register number is needed
     if (currentStep === 3) {
       if (needsRegisterNumber() && watchedRegisterNumber && watchedRegisterNumber.trim().length > 0) {
         // Must have checked the register number before proceeding
         if (!hasCheckedRegisterNumber) {
-          console.log('🔍 Step validation check: Register number check required', { 
-            currentStep, 
+          console.log('🔍 Step validation check: Register number check required', {
+            currentStep,
             hasCheckedRegisterNumber,
             watchedRegisterNumber
           });
@@ -1432,19 +1434,19 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         }
         // Cannot proceed if register number is already registered (error shown inline, not in alert)
         if (registerNumberCheckResult?.exists === true) {
-          console.log('🔍 Step validation check: Register number already registered', { 
-            currentStep, 
+          console.log('🔍 Step validation check: Register number already registered', {
+            currentStep,
             registerNumberCheckResult
           });
           return false;
         }
       }
     }
-    
-    console.log('🔍 Step validation check:', { 
-      currentStep, 
-      isValid, 
-      watchedRole, 
+
+    console.log('🔍 Step validation check:', {
+      currentStep,
+      isValid,
+      watchedRole,
       registerNumberValidation: registerNumberValidation.isValid,
       nameValidation: nameValidation.isValid,
       phoneValidation: phoneValidation.isValid,
@@ -1462,10 +1464,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     // Normalize to uppercase for consistency
     const normalizedValue = value.toUpperCase();
     form.setValue("registerNumber", normalizedValue);
-    
+
     // Reset check result and check status when register number changes
     resetRegisterNumberCheckState();
-    
+
     // Auto-fill logic will be handled by dynamic validation
     // No longer using old hardcoded validation for auto-fill
   };
@@ -1483,29 +1485,29 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
     try {
       const response = await fetch(`/api/users/by-register/${encodeURIComponent(registerNumber)}`);
-      
+
       if (response.ok) {
         // User exists - don't reveal personal information
-        setRegisterNumberCheckResult({ 
-          exists: true, 
-          message: "This registration number is already registered." 
+        setRegisterNumberCheckResult({
+          exists: true,
+          message: "This registration number is already registered."
         });
       } else if (response.status === 404) {
-        setRegisterNumberCheckResult({ 
-          exists: false, 
-          message: "This registration number is available. You can proceed with registration." 
+        setRegisterNumberCheckResult({
+          exists: false,
+          message: "This registration number is available. You can proceed with registration."
         });
       } else {
-        setRegisterNumberCheckResult({ 
-          exists: false, 
-          message: "Unable to check registration number. Please try again." 
+        setRegisterNumberCheckResult({
+          exists: false,
+          message: "Unable to check registration number. Please try again."
         });
       }
     } catch (error) {
       console.error("Error checking register number:", error);
-      setRegisterNumberCheckResult({ 
-        exists: false, 
-        message: "Error checking registration number. Please try again." 
+      setRegisterNumberCheckResult({
+        exists: false,
+        message: "Error checking registration number. Please try again."
       });
     } finally {
       setIsCheckingRegisterNumber(false);
@@ -1526,12 +1528,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     form.setValue("college", value);
     form.setValue("role", "" as any); // Reset role when college changes
     form.setValue("department", ""); // Reset department when college changes
-    
+
     // Clear cached data when college changes
     queryClient.removeQueries({ queryKey: ['departments'] });
     queryClient.removeQueries({ queryKey: ['registrationFormats'] });
     queryClient.removeQueries({ queryKey: ['registration-formats'] });
-    
+
     // Reset related state
     setAvailableFormats([]);
     resetRegisterNumberCheckState();
@@ -1542,13 +1544,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     if (canProceedToNextStep()) {
       // Clear any validation errors
       setValidationError(null);
-      
+
       // Enable registration formats API when moving to step 3
       if (currentStep === 2) {
         console.log('🔌 Enabling registration formats API call');
         setApiCallsEnabled(prev => ({ ...prev, registrationFormats: true }));
       }
-      
+
       console.log('➡️ Moving to next step');
       nextStep();
     } else {
@@ -1557,7 +1559,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       console.log('❌ Validation failed - Error message:', errorMessage);
       setValidationError(errorMessage || "Please complete all required fields correctly before proceeding.");
       console.log('✅ Validation error state set:', errorMessage || "Please complete all required fields correctly before proceeding.");
-      
+
       // Scroll to top to show the error message
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1583,27 +1585,27 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       // Check if this is an organization guest user
       if (isOrgGuestUser && orgContext) {
         console.log('✅ Processing organization guest user profile completion');
-        
+
         if (!userEmail) {
           console.error('❌ No user email found');
           alert("Email not found. Please try logging in again.");
           setIsSubmitting(false);
           return;
         }
-        
+
         // User was already created in LoginScreen/OAuthCallback with name and email from Google
         // Just update with phone number
         console.log('🔍 Fetching user by email:', userEmail);
         const userResponse = await fetch(`/api/users/by-email/${encodeURIComponent(userEmail)}`);
-        
+
         if (userResponse.ok) {
           const existingUser = await userResponse.json();
           console.log('✅ User found:', existingUser);
-          
+
           // Use name from form (user can edit it), fallback to Google name if empty
           const finalName = (data.name && data.name.trim()) || userName || existingUser.name;
           console.log('👤 Final name to use:', finalName, '(from form:', data.name, ', from Google:', userName, ', from DB:', existingUser.name, ')');
-          
+
           // Update user with phone number, name, and organizationId, mark profile as complete (guest users don't need registerNumber, department, joiningYear)
           console.log('📝 Updating user with phone number:', data.phoneNumber, 'name:', finalName, 'organizationId:', orgContext.organizationId);
           const updateResponse = await fetch(`/api/users/${existingUser.id}`, {
@@ -1637,14 +1639,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
             console.log('💾 Storing user data with organization:', userDisplayData);
             console.log('💾 Organization ID from orgContext:', orgContext.organizationId);
             console.log('💾 Organization field in userDisplayData:', userDisplayData.organization);
-            
+
             // Explicitly verify organization field is set
             if (!userDisplayData.organization) {
               console.error('❌ ERROR: Organization field is missing from userDisplayData!');
               console.error('❌ orgContext:', orgContext);
               console.error('❌ userDisplayData:', userDisplayData);
             }
-            
+
             localStorage.setItem('user', JSON.stringify(userDisplayData));
             localStorage.setItem('session_timestamp', Date.now().toString());
 
@@ -1719,7 +1721,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
             // This ensures the user data is properly available to all components
             // IMPORTANT: Pass the full userDisplayData including organization field
             login(userDisplayData as any);
-            
+
             // After login, verify again that organization is still there
             setTimeout(() => {
               const afterLoginUser = localStorage.getItem('user');
@@ -1739,7 +1741,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 }
               }
             }, 200);
-            
+
             // Ensure organization field is preserved after login
             // setPWAAuth should preserve it now, but double-check
             setTimeout(() => {
@@ -1765,12 +1767,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 }
               }
             }, 100);
-            
+
             // Dispatch custom event to notify other components of user change
             window.dispatchEvent(new CustomEvent('userAuthChange'));
 
             onComplete(userDisplayData);
-            
+
             // Redirect to /app
             console.log('🔄 Redirecting to /app');
             window.location.href = '/app';
@@ -1845,17 +1847,17 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         queryClient.setQueryData(['user'], userDisplayData);
 
         onComplete(userDisplayData);
-        
+
         // Redirect to home
         window.location.href = '/app';
       } else {
         const error = await response.json();
         let errorMessage = error.message || "Failed to complete profile setup. Please try again.";
-        
+
         if (error.message === "Email is already registered") {
           errorMessage = "This email is already registered with another account. Please use 'Back to Login' to sign in.";
         }
-        
+
         alert(errorMessage);
         setIsSubmitting(false);
       }
@@ -1869,10 +1871,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   const onSubmit = async (data: ProfileSetupForm) => {
     console.log('🚀 Form submission started:', data);
     setIsSubmitting(true);
-    
+
     try {
       // Check if register number or staff ID already exists (case-insensitive)
-      if ((data.role === "student" || data.role === "employee" || data.role === "guest" || data.role === "contractor" || data.role === "visitor") && data.registerNumber) {
+      if ((data.role === UserRole.STUDENT || data.role === UserRole.EMPLOYEE || data.role === UserRole.GUEST || data.role === UserRole.CONTRACTOR || data.role === UserRole.VISITOR) && data.registerNumber) {
         const normalizedRegisterNumber = data.registerNumber.toUpperCase();
         console.log('🔍 Checking for existing user with register number:', normalizedRegisterNumber);
         const existingUser = await fetch(`/api/users/by-register/${normalizedRegisterNumber}`);
@@ -1883,8 +1885,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           return;
         }
       }
-      
-      if (data.role === "staff" && data.staffId) {
+
+      if (data.role === UserRole.STAFF && data.staffId) {
         const normalizedStaffId = data.staffId.toUpperCase();
         console.log('🔍 Checking for existing user with staff ID:', normalizedStaffId);
         const existingUser = await fetch(`/api/users/by-staff/${normalizedStaffId}`);
@@ -1906,15 +1908,15 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       };
 
       // Handle student data (with passing out year)
-      if (data.role === "student" && data.registerNumber && data.college && data.department && data.passingOutYear && 
-          data.college !== "loading" && data.college !== "no-colleges" &&
-          data.department !== "select-college-first" && data.department !== "loading-departments" && data.department !== "no-departments") {
+      if (data.role === UserRole.STUDENT && data.registerNumber && data.college && data.department && data.passingOutYear &&
+        data.college !== "loading" && data.college !== "no-colleges" &&
+        data.department !== "select-college-first" && data.department !== "loading-departments" && data.department !== "no-departments") {
         // Calculate joining year from passing out year and study year
         const { currentAcademicYear, studyYear } = getAcademicYearInfo(data.passingOutYear);
         const joiningYear = currentAcademicYear - (studyYear - 1);
         const currentStudyYear = calculateCurrentStudyYear(joiningYear, data.passingOutYear);
         const isPassed = isStudentPassed(joiningYear, data.passingOutYear);
-          
+
         userData = {
           ...userData,
           registerNumber: data.registerNumber,
@@ -1926,26 +1928,26 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           isPassed,
         };
       }
-      
+
       // Handle organization employee/contractor/visitor/guest data
-      if ((data.role === "employee" || data.role === "contractor" || data.role === "visitor" || data.role === "guest") && 
-          data.registerNumber && data.college && data.department &&
-          data.college !== "loading" && data.college !== "no-colleges" &&
-          data.department !== "select-college-first" && data.department !== "loading-departments" && data.department !== "no-departments") {
+      if ((data.role === UserRole.EMPLOYEE || data.role === UserRole.CONTRACTOR || data.role === UserRole.VISITOR || data.role === UserRole.GUEST) &&
+        data.registerNumber && data.college && data.department &&
+        data.college !== "loading" && data.college !== "no-colleges" &&
+        data.department !== "select-college-first" && data.department !== "loading-departments" && data.department !== "no-departments") {
         userData = {
           ...userData,
           registerNumber: data.registerNumber,
           college: data.college, // This will be the organization ID for organization users
           department: data.department,
         };
-        
+
         // Add joining year for employee and contractor roles
-        if ((data.role === "employee" || data.role === "contractor") && data.joiningYear) {
+        if ((data.role === UserRole.EMPLOYEE || data.role === UserRole.CONTRACTOR) && data.joiningYear) {
           userData.joiningYear = data.joiningYear;
         }
       }
 
-      if (data.role === "staff" && data.staffId) {
+      if (data.role === UserRole.STAFF && data.staffId) {
         userData.staffId = data.staffId;
         // Include college for staff users as well
         if (data.college && data.college !== "loading" && data.college !== "no-colleges") {
@@ -1960,14 +1962,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       // Check if user exists first to decide between create (POST) or update (PUT)
       console.log('🔍 Checking if user exists by email:', userEmail);
       let response;
-      
+
       try {
         const userCheckResponse = await fetch(`/api/users/by-email/${encodeURIComponent(userEmail)}`);
-        
+
         if (userCheckResponse.ok) {
           const existingUser = await userCheckResponse.json();
           console.log('✅ User exists, updating profile:', existingUser.id);
-          
+
           // Use PUT to update existing user
           response = await fetch(`/api/users/${existingUser.id}`, {
             method: 'PUT',
@@ -1995,7 +1997,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
       if (response.ok) {
         const newUser = await response.json();
-        
+
         // Store user data in localStorage
         const userDisplayData = {
           id: newUser.id,
@@ -2003,38 +2005,38 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           email: newUser.email,
           role: newUser.role,
           phoneNumber: newUser.phoneNumber,
-          ...(newUser.role === "student" && {
+          ...(newUser.role === UserRole.STUDENT && {
             registerNumber: newUser.registerNumber,
             college: newUser.college,
             department: newUser.department,
             currentStudyYear: newUser.currentStudyYear,
             isPassed: newUser.isPassed,
           }),
-          ...(newUser.role === "staff" && {
+          ...(newUser.role === UserRole.STAFF && {
             staffId: newUser.staffId,
             college: newUser.college,
           }),
-          ...((newUser.role === "employee" || newUser.role === "contractor" || newUser.role === "visitor" || newUser.role === "guest") && {
+          ...((newUser.role === UserRole.EMPLOYEE || newUser.role === UserRole.CONTRACTOR || newUser.role === UserRole.VISITOR || newUser.role === UserRole.GUEST) && {
             registerNumber: newUser.registerNumber,
             college: newUser.college, // This will be the organization ID
             department: newUser.department,
           }),
         };
-        
+
         localStorage.setItem('user', JSON.stringify(userDisplayData));
         localStorage.setItem('session_timestamp', Date.now().toString());
-        
+
         // Store user details in cache for home screen to use
         console.log('💾 Profile completed - storing user details in cache for home screen');
         queryClient.setQueryData(['user'], userData);
         console.log('💾 User details stored in cache:', userData);
-        
+
         onComplete(userDisplayData);
         setLocation("/app");
       } else {
         const error = await response.json();
         let errorMessage = error.message || "Failed to complete profile setup. Please try again.";
-        
+
         // Handle specific duplicate errors with better messaging
         if (error.message === "Register number is already registered") {
           errorMessage = "This register number is already registered with another account. Please check your register number or use 'Back to Login' to sign in.";
@@ -2043,7 +2045,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         } else if (error.message === "Email is already registered") {
           errorMessage = "This email is already registered with another account. Please use 'Back to Login' to sign in.";
         }
-        
+
         alert(errorMessage);
       }
     } catch (error) {
@@ -2093,7 +2095,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
             <CardContent>
               <Form {...qrForm}>
-                <form 
+                <form
                   onSubmit={async (e) => {
                     e.preventDefault();
                     console.log('📝 Form submit event triggered');
@@ -2104,7 +2106,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                     } else {
                       console.error('❌ Form validation failed:', qrForm.formState.errors);
                     }
-                  }} 
+                  }}
                   className="space-y-4"
                 >
                   {/* Name Field - Show for all QR users, pre-filled from Google for org guest users */}
@@ -2170,11 +2172,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                       console.log('✅ Form valid (manual check):', isFormValid);
                       console.log('✅ Form valid (formState):', qrForm.formState.isValid);
                       console.log('❌ Form errors:', qrForm.formState.errors);
-                      
+
                       // Trigger validation
                       const isValid = await qrForm.trigger();
                       console.log('🔍 Validation result:', isValid);
-                      
+
                       if (isValid) {
                         console.log('✅ Form is valid, submitting...');
                         qrForm.handleSubmit(onSubmitQR)();
@@ -2247,7 +2249,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
               </div>
               <Progress value={progressPercentage} className="h-2 shadow-sm" />
             </div>
-            
+
             <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl flex items-center justify-center mx-auto shadow-md ring-2 ring-primary/10">
               {currentStep === 1 && <Building className="w-6 h-6 text-primary" />}
               {currentStep === 2 && <School className="w-6 h-6 text-primary" />}
@@ -2261,7 +2263,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
               {steps[currentStep - 1].description}
             </p>
           </CardHeader>
-          
+
           <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
             <Form {...form}>
               <form onSubmit={(e) => {
@@ -2277,17 +2279,16 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                     <AlertDescription className="mt-1.5 text-xs leading-relaxed">{validationError}</AlertDescription>
                   </Alert>
                 )}
-                
+
                 {/* Step 1: Institution & Role Selection (combines old steps 1, 2, and 3) */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto">
                       <div
-                        className={`group p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[110px] flex items-center justify-center ${
-                          institutionType === "college"
+                        className={`group p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[110px] flex items-center justify-center ${institutionType === "college"
                             ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
                             : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-md hover:ring-1 hover:ring-primary/10"
-                        }`}
+                          }`}
                         onClick={() => {
                           console.log('🏫 User clicked College - setting institutionType to college');
                           setInstitutionType("college");
@@ -2296,26 +2297,23 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         }}
                       >
                         <div className="text-center space-y-2">
-                          <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center transition-all ${
-                            institutionType === "college" 
-                              ? "bg-primary/20 ring-2 ring-primary/30" 
+                          <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center transition-all ${institutionType === "college"
+                              ? "bg-primary/20 ring-2 ring-primary/30"
                               : "bg-primary/5 group-hover:bg-primary/10"
-                          }`}>
-                            <GraduationCap className={`w-6 h-6 transition-all ${
-                              institutionType === "college" ? "text-primary" : "text-primary/70 group-hover:text-primary"
-                            }`} />
+                            }`}>
+                            <GraduationCap className={`w-6 h-6 transition-all ${institutionType === "college" ? "text-primary" : "text-primary/70 group-hover:text-primary"
+                              }`} />
                           </div>
                           <h4 className="font-bold text-sm text-foreground">College</h4>
                           <p className="text-[10px] text-muted-foreground">Academic institution</p>
                         </div>
                       </div>
-                      
+
                       <div
-                        className={`group p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[110px] flex items-center justify-center ${
-                          institutionType === "organization"
+                        className={`group p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[110px] flex items-center justify-center ${institutionType === "organization"
                             ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
                             : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-md hover:ring-1 hover:ring-primary/10"
-                        }`}
+                          }`}
                         onClick={() => {
                           console.log('🏢 User clicked Organization - setting institutionType to organization');
                           setInstitutionType("organization");
@@ -2324,14 +2322,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         }}
                       >
                         <div className="text-center space-y-2">
-                          <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center transition-all ${
-                            institutionType === "organization" 
-                              ? "bg-primary/20 ring-2 ring-primary/30" 
+                          <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center transition-all ${institutionType === "organization"
+                              ? "bg-primary/20 ring-2 ring-primary/30"
                               : "bg-primary/5 group-hover:bg-primary/10"
-                          }`}>
-                            <Building2 className={`w-6 h-6 transition-all ${
-                              institutionType === "organization" ? "text-primary" : "text-primary/70 group-hover:text-primary"
-                            }`} />
+                            }`}>
+                            <Building2 className={`w-6 h-6 transition-all ${institutionType === "organization" ? "text-primary" : "text-primary/70 group-hover:text-primary"
+                              }`} />
                           </div>
                           <h4 className="font-bold text-sm text-foreground">Organization</h4>
                           <p className="text-[10px] text-muted-foreground">Corporate/Company</p>
@@ -2344,7 +2340,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 {/* Institution Selection (shown in step 1) */}
                 {currentStep === 1 && institutionType && (
                   <div className="space-y-6">
-                    
+
                     <FormField
                       control={form.control}
                       name="college"
@@ -2355,8 +2351,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                             {institutionType === 'college' ? 'Select Your College' : 'Select Your Organization'}
                           </FormLabel>
                           <div className="relative">
-                            <Select 
-                              onValueChange={handleCollegeChange} 
+                            <Select
+                              onValueChange={handleCollegeChange}
                               value={field.value}
                               onOpenChange={(open) => {
                                 // Trigger validation when dropdown opens if not selected
@@ -2377,12 +2373,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                   </SelectItem>
                                 ) : institutionsData?.institutions?.length ? (
                                   institutionsData.institutions.map((institution: any, index: number) => (
-                                    <SelectItem 
-                                      key={institution.id} 
+                                    <SelectItem
+                                      key={institution.id}
                                       value={institution.id}
-                                      className={`dropdown-item ${
-                                        prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                                      }`}
+                                      className={`dropdown-item ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
+                                        }`}
                                       style={{
                                         animationDelay: prefersReducedMotion ? '0ms' : `${index * 30}ms`
                                       }}
@@ -2416,7 +2411,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         </FormItem>
                       )}
                     />
-                </div>
+                  </div>
                 )}
 
                 {/* Role Selection (shown in step 1) */}
@@ -2427,19 +2422,17 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         <>
                           {activeRoles.student && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                                watchedRole === "student"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "student"
                                   ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
                                   : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
-                              }`}
+                                }`}
                               onClick={() => form.setValue("role", "student")}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${
-                                  watchedRole === "student" 
-                                    ? "bg-primary/20 ring-2 ring-primary/30" 
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "student"
+                                    ? "bg-primary/20 ring-2 ring-primary/30"
                                     : "bg-primary/5 group-hover:bg-primary/10"
-                                }`}>
+                                  }`}>
                                   <School className={`w-5 h-5 ${watchedRole === "student" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Student</h4>
@@ -2447,22 +2440,20 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               </div>
                             </div>
                           )}
-                          
+
                           {activeRoles.staff && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                                watchedRole === "staff"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "staff"
                                   ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
                                   : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
-                              }`}
+                                }`}
                               onClick={() => form.setValue("role", "staff")}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${
-                                  watchedRole === "staff" 
-                                    ? "bg-primary/20 ring-2 ring-primary/30" 
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "staff"
+                                    ? "bg-primary/20 ring-2 ring-primary/30"
                                     : "bg-primary/5 group-hover:bg-primary/10"
-                                }`}>
+                                  }`}>
                                   <Briefcase className={`w-5 h-5 ${watchedRole === "staff" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Staff</h4>
@@ -2475,19 +2466,17 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         <>
                           {activeRoles.employee && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                                watchedRole === "employee"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "employee"
                                   ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
                                   : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
-                              }`}
+                                }`}
                               onClick={() => form.setValue("role", "employee")}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${
-                                  watchedRole === "employee" 
-                                    ? "bg-primary/20 ring-2 ring-primary/30" 
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "employee"
+                                    ? "bg-primary/20 ring-2 ring-primary/30"
                                     : "bg-primary/5 group-hover:bg-primary/10"
-                                }`}>
+                                  }`}>
                                   <User className={`w-5 h-5 ${watchedRole === "employee" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Employee</h4>
@@ -2495,55 +2484,51 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               </div>
                             </div>
                           )}
-                          
+
                           {activeRoles.contractor && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                                watchedRole === "contractor"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "contractor"
                                   ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
                                   : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
-                              }`}
+                                }`}
                               onClick={() => form.setValue("role", "contractor")}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${
-                                  watchedRole === "contractor" 
-                                    ? "bg-primary/20 ring-2 ring-primary/30" 
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "contractor"
+                                    ? "bg-primary/20 ring-2 ring-primary/30"
                                     : "bg-primary/5 group-hover:bg-primary/10"
-                                }`}>
+                                  }`}>
                                   <Briefcase className={`w-5 h-5 ${watchedRole === "contractor" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Contractor</h4>
                                 <p className="text-[10px] text-muted-foreground">Contract worker</p>
                               </div>
                             </div>
-                            )}
-                          
+                          )}
+
                           {activeRoles.visitor && (
                             <div
-                              className={`p-2 border-2 rounded-lg cursor-pointer transition-all ${
-                                watchedRole === "visitor"
+                              className={`p-2 border-2 rounded-lg cursor-pointer transition-all ${watchedRole === "visitor"
                                   ? "border-primary bg-primary/5"
                                   : "border-border hover:border-primary/50 hover:bg-accent"
-                              }`}
+                                }`}
                               onClick={() => form.setValue("role", "visitor")}
                             >
                               <div className="text-center">
                                 <User className="w-8 h-8 mx-auto mb-2 text-primary" />
                                 <h4 className="font-semibold text-base mb-1 text-foreground">Visitor</h4>
-                          </div>
-                          </div>
+                              </div>
+                            </div>
                           )}
                         </>
                       )}
-                      
+
                       {activeRoles.guest && (
                         <div
-                          className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                            watchedRole === "guest"
+                          className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${watchedRole === "guest"
                               ? "border-primary bg-primary/5"
                               : "border-border hover:border-primary/50 hover:bg-accent"
-                          }`}
+                            }`}
                           onClick={() => form.setValue("role", "guest")}
                         >
                           <div className="text-center">
@@ -2553,14 +2538,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         </div>
                       )}
                     </div>
-                    
+
                   </div>
                 )}
 
                 {/* Step 2: Department & Year Selection (combines old steps 4 and 5) */}
                 {currentStep === 2 && (watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") && (
                   <div className="space-y-6">
-                    
+
                     <FormField
                       control={form.control}
                       name="department"
@@ -2570,8 +2555,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                             Department
                           </FormLabel>
                           <div className="relative">
-                            <Select 
-                              onValueChange={field.onChange} 
+                            <Select
+                              onValueChange={field.onChange}
                               value={field.value}
                               onOpenChange={(open) => {
                                 // Trigger validation when dropdown opens if not selected
@@ -2596,12 +2581,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                   </SelectItem>
                                 ) : currentDepartmentsData?.departments?.length ? (
                                   currentDepartmentsData.departments.map((dept: any, index: number) => (
-                                    <SelectItem 
-                                      key={dept.code} 
+                                    <SelectItem
+                                      key={dept.code}
                                       value={dept.code}
-                                      className={`dropdown-item ${
-                                        prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                                      }`}
+                                      className={`dropdown-item ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
+                                        }`}
                                       style={{
                                         animationDelay: prefersReducedMotion ? '0ms' : `${index * 30}ms`
                                       }}
@@ -2637,7 +2621,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 {/* Year Selection for Students (shown in step 2) */}
                 {currentStep === 2 && watchedRole === "student" && (
                   <div className="space-y-6">
-                    
+
                     <FormField
                       control={form.control}
                       name="passingOutYear"
@@ -2647,8 +2631,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                             Passing Out Year
                           </FormLabel>
                           <div className="relative">
-                            <Select 
-                              onValueChange={(value) => field.onChange(parseInt(value))} 
+                            <Select
+                              onValueChange={(value) => field.onChange(parseInt(value))}
                               value={field.value?.toString()}
                               onOpenChange={(open) => {
                                 // Trigger validation when dropdown opens if not selected
@@ -2664,12 +2648,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               </FormControl>
                               <SelectContent className={`dropdown-container ${prefersReducedMotion ? '' : 'animate-dropdown-enter'}`}>
                                 {passingOutYears.map((year, index) => (
-                                  <SelectItem 
-                                    key={year} 
+                                  <SelectItem
+                                    key={year}
                                     value={year.toString()}
-                                    className={`dropdown-item ${
-                                      prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                                    }`}
+                                    className={`dropdown-item ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
+                                      }`}
                                     style={{
                                       animationDelay: prefersReducedMotion ? '0ms' : `${index * 30}ms`
                                     }}
@@ -2694,7 +2677,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         </FormItem>
                       )}
                     />
-                    
+
                     {/* Show available formats for this department/year */}
                     {false && availableFormats.length > 0 && (
                       <div className="mt-6 p-4 bg-muted rounded-lg">
@@ -2715,10 +2698,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                 default: return "student";
                               }
                             })();
-                            
+
                             // Generate dynamic example from format structure
                             const generateExample = (format: any) => {
-                              
+
                               if (!format.formats?.[formatType]?.structure) {
                                 return format.formats?.[formatType]?.example || 'No example available';
                               }
@@ -2734,7 +2717,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                               const structure = format.formats[formatType].structure;
                               const specialCharacters = format.formats[formatType].specialCharacters || [];
-                              
+
                               // Check if structure is empty or undefined
                               if (!structure || structure.length === 0) {
                                 console.log('Structure is empty or undefined, falling back to original example');
@@ -2754,14 +2737,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                 range: p.range,
                                 fullPosition: p
                               })));
-                              
+
                               console.log('Raw structure array:', structure);
 
                               for (const position of sortedPositions) {
                                 // Add any special characters that come before this position
-                              const specialCharsBefore = specialCharacters.filter((sc: any) => 
-                                sc.positions.some((pos: any) => pos < position.position && pos > currentPosition)
-                              );
+                                const specialCharsBefore = specialCharacters.filter((sc: any) =>
+                                  sc.positions.some((pos: any) => pos < position.position && pos > currentPosition)
+                                );
 
                                 for (const sc of specialCharsBefore) {
                                   example += sc.character;
@@ -2785,7 +2768,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                   case 'year':
                                     // Determine format based on number of positions (2 = 2-digit, 4 = 4-digit)
                                     const isTwoDigit = position.range?.positions?.length === 2;
-                                    
+
                                     if (position.yearType === 'starting') {
                                       const { currentAcademicYear, studyYear } = getAcademicYearInfo(watchedPassingOutYear || 2027);
                                       const expectedYear = currentAcademicYear - (studyYear - 1);
@@ -2802,7 +2785,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                       let value = position.range.min.toString();
                                       // Check for explicit digits property first, then fall back to range max digits
                                       let digits = position.digits || position.length || position.positions;
-                                      
+
                                       // If no explicit digits, try to determine from position span or use range max digits
                                       if (!digits) {
                                         // Check if there's a position span or end position
@@ -2818,7 +2801,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                           digits = position.range.max.toString().length;
                                         }
                                       }
-                                      
+
                                       // Debug logging for number range
                                       console.log('Number range debug:', {
                                         position,
@@ -2834,7 +2817,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                         positionKeys: Object.keys(position),
                                         fullPosition: JSON.stringify(position, null, 2)
                                       });
-                                      
+
                                       value = value.padStart(digits, '0');
                                       example += value;
                                     } else {
@@ -2849,7 +2832,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               }
 
                               // Add any remaining special characters
-                              const remainingSpecialChars = specialCharacters.filter((sc: any) => 
+                              const remainingSpecialChars = specialCharacters.filter((sc: any) =>
                                 sc.positions.some((pos: any) => pos > currentPosition)
                               );
 
@@ -2880,8 +2863,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         <div className="mt-3 text-xs text-muted-foreground">
                           💡 Your registration number must match one of these formats exactly.
                         </div>
-                  </div>
-                )}
+                      </div>
+                    )}
 
                   </div>
                 )}
@@ -2889,7 +2872,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 {/* Joining Year for Employees (shown in step 2) */}
                 {currentStep === 2 && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor") && (
                   <div className="space-y-6">
-                    
+
                     <FormField
                       control={form.control}
                       name="joiningYear"
@@ -2899,8 +2882,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                             Joining Year
                           </FormLabel>
                           <div className="relative">
-                            <Select 
-                              onValueChange={(value) => field.onChange(parseInt(value))} 
+                            <Select
+                              onValueChange={(value) => field.onChange(parseInt(value))}
                               value={field.value?.toString()}
                               onOpenChange={(open) => {
                                 // Trigger validation when dropdown opens if not selected
@@ -2916,12 +2899,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               </FormControl>
                               <SelectContent className={`dropdown-container ${prefersReducedMotion ? '' : 'animate-dropdown-enter'}`}>
                                 {Array.from({ length: 20 }, (_, i) => new Date().getFullYear() - i).map((year, index) => (
-                                  <SelectItem 
-                                    key={year} 
+                                  <SelectItem
+                                    key={year}
                                     value={year.toString()}
-                                    className={`dropdown-item ${
-                                      prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                                    }`}
+                                    className={`dropdown-item ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
+                                      }`}
                                     style={{
                                       animationDelay: prefersReducedMotion ? '0ms' : `${index * 30}ms`
                                     }}
@@ -2946,7 +2928,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         </FormItem>
                       )}
                     />
-                    
+
                     {/* Show available formats for this department/year */}
                     {false && availableFormats.length > 0 && (
                       <div className="mt-6 p-4 bg-muted rounded-lg">
@@ -2964,17 +2946,17 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                 default: return "employee";
                               }
                             })();
-                            
+
                             // Generate dynamic example from format structure
                             const generateExample = (format: any) => {
                               if (!format.formats?.[formatType]?.structure) {
                                 return format.formats?.[formatType]?.example || 'No example available';
                               }
-                              
+
                               const structure = format.formats[formatType].structure;
                               const totalLength = format.formats[formatType].totalLength;
                               const example = new Array(totalLength).fill('_');
-                              
+
                               structure.forEach((position: any) => {
                                 if (position.range?.positions?.length > 0) {
                                   position.range.positions.forEach((pos: number) => {
@@ -3027,10 +3009,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                   }
                                 }
                               });
-                              
+
                               return example.join('');
                             };
-                            
+
                             return (
                               <div key={index} className="p-3 bg-card rounded border border-border">
                                 <div className="flex items-center justify-between">
@@ -3061,7 +3043,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 {/* Step 3: Registration Details (old step 6) */}
                 {currentStep === 3 && (
                   <div className="space-y-6">
-                    
+
                     {(watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") ? (
                       <FormField
                         control={form.control}
@@ -3072,141 +3054,141 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               Register Number
                             </FormLabel>
                             <div className="relative">
-                               <FormControl>
-                                 <Input 
-                                   {...field} 
-                                   placeholder={
-                                     availableFormats.length > 0 
-                                       ? (() => {
-                                           // Generate dynamic example for placeholder
-                                           const format = availableFormats[0];
-                                           // Get the correct format type based on role
-                                           const formatType = (() => {
-                                             switch (watchedRole as string) {
-                                               case "student": return "student";
-                                               case "staff": return "staff";
-                                               case "employee": return "employee";
-                                               case "contractor": return "contractor";
-                                               case "visitor": return "visitor";
-                                               case "guest": return "guest";
-                                               default: return "student";
-                                             }
-                                           })();
-                                           
-                                           if (!format.formats?.[formatType]?.structure) {
-                                             return format.formats?.[formatType]?.example || "Enter your ID";
-                                           }
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder={
+                                    availableFormats.length > 0
+                                      ? (() => {
+                                        // Generate dynamic example for placeholder
+                                        const format = availableFormats[0];
+                                        // Get the correct format type based on role
+                                        const formatType = (() => {
+                                          switch (watchedRole as string) {
+                                            case "student": return "student";
+                                            case "staff": return "staff";
+                                            case "employee": return "employee";
+                                            case "contractor": return "contractor";
+                                            case "visitor": return "visitor";
+                                            case "guest": return "guest";
+                                            default: return "student";
+                                          }
+                                        })();
 
-                                           const structure = format.formats[formatType].structure;
-                                           const specialCharacters = format.formats[formatType].specialCharacters || [];
-                                           let example = '';
-                                           let currentPosition = 0;
+                                        if (!format.formats?.[formatType]?.structure) {
+                                          return format.formats?.[formatType]?.example || "Enter your ID";
+                                        }
 
-                                           const sortedPositions = [...structure].sort((a, b) => a.position - b.position);
+                                        const structure = format.formats[formatType].structure;
+                                        const specialCharacters = format.formats[formatType].specialCharacters || [];
+                                        let example = '';
+                                        let currentPosition = 0;
 
-                                           for (const position of sortedPositions) {
-                              const specialCharsBefore = specialCharacters.filter((sc: any) => 
-                                sc.positions.some((pos: any) => pos < position.position && pos > currentPosition)
-                              );
+                                        const sortedPositions = [...structure].sort((a, b) => a.position - b.position);
 
-                                             for (const sc of specialCharsBefore) {
-                                               example += sc.character;
-                                             }
+                                        for (const position of sortedPositions) {
+                                          const specialCharsBefore = specialCharacters.filter((sc: any) =>
+                                            sc.positions.some((pos: any) => pos < position.position && pos > currentPosition)
+                                          );
 
-                                             switch (position.type) {
-                                               case 'digit':
-                                                 example += '1';
-                                                 break;
-                                               case 'alphabet':
-                                                 example += 'A';
-                                                 break;
-                                               case 'alphanumeric':
-                                                 example += 'A';
-                                                 break;
-                                               case 'fixed':
-                                                 example += position.value || '';
-                                                 break;
-                                               case 'year':
-                                                 // Determine format based on number of positions (2 = 2-digit, 4 = 4-digit)
-                                                 const isTwoDigitYear = position.range?.positions?.length === 2;
-                                                 
-                                                 if (position.yearType === 'starting') {
-                                                   const { currentAcademicYear, studyYear } = getAcademicYearInfo(watchedPassingOutYear || 2027);
-                                                   const expectedYear = currentAcademicYear - (studyYear - 1);
-                                                   example += isTwoDigitYear ? expectedYear.toString().slice(-2) : expectedYear.toString();
-                                                 } else if (position.yearType === 'passing_out') {
-                                                   const year = watchedPassingOutYear || 2027;
-                                                   example += isTwoDigitYear ? year.toString().slice(-2) : year.toString();
-                                                 } else {
-                                                   example += isTwoDigitYear ? '24' : '2024';
-                                                 }
-                                                 break;
-                                               case 'numbers_range':
-                                                 if (position.range) {
-                                                   let value = position.range.min.toString();
-                                                   // Check for explicit digits property first, then fall back to range max digits
-                                                   let digits = position.digits || position.length || position.positions;
-                                                   
-                                                   // If no explicit digits, try to determine from position span or use range max digits
-                                                   if (!digits) {
-                                                     // Check if there's a position span or end position
-                                                     if (position.endPosition && position.position) {
-                                                       digits = position.endPosition - position.position + 1;
-                                                     } else if (position.span) {
-                                                       digits = position.span;
-                                                     } else if (position.range?.positions?.length) {
-                                                       // Use the number of positions in the range (this is how the format builder stores it)
-                                                       digits = position.range.positions.length;
-                                                     } else {
-                                                       // Fallback to range max digits
-                                                       digits = position.range.max.toString().length;
-                                                     }
-                                                   }
-                                                   
-                                                   // Debug logging for number range
-                                                   console.log('Number range debug (placeholder):', {
-                                                     position,
-                                                     range: position.range,
-                                                     min: position.range.min,
-                                                     max: position.range.max,
-                                                     explicitDigits: position.digits,
-                                                     explicitLength: position.length,
-                                                     explicitPositions: position.positions,
-                                                     calculatedDigits: digits,
-                                                     originalValue: value,
-                                                     paddedValue: value.padStart(digits, '0')
-                                                   });
-                                                   
-                                                   value = value.padStart(digits, '0');
-                                                   example += value;
-                                                 } else {
-                                                   example += '1';
-                                                 }
-                                                 break;
-                                               default:
-                                                 example += '1';
-                                             }
+                                          for (const sc of specialCharsBefore) {
+                                            example += sc.character;
+                                          }
 
-                                             currentPosition = position.position;
-                                           }
+                                          switch (position.type) {
+                                            case 'digit':
+                                              example += '1';
+                                              break;
+                                            case 'alphabet':
+                                              example += 'A';
+                                              break;
+                                            case 'alphanumeric':
+                                              example += 'A';
+                                              break;
+                                            case 'fixed':
+                                              example += position.value || '';
+                                              break;
+                                            case 'year':
+                                              // Determine format based on number of positions (2 = 2-digit, 4 = 4-digit)
+                                              const isTwoDigitYear = position.range?.positions?.length === 2;
 
-                                           const remainingSpecialChars = specialCharacters.filter((sc: any) => 
-                                             sc.positions.some((pos: any) => pos > currentPosition)
-                                           );
+                                              if (position.yearType === 'starting') {
+                                                const { currentAcademicYear, studyYear } = getAcademicYearInfo(watchedPassingOutYear || 2027);
+                                                const expectedYear = currentAcademicYear - (studyYear - 1);
+                                                example += isTwoDigitYear ? expectedYear.toString().slice(-2) : expectedYear.toString();
+                                              } else if (position.yearType === 'passing_out') {
+                                                const year = watchedPassingOutYear || 2027;
+                                                example += isTwoDigitYear ? year.toString().slice(-2) : year.toString();
+                                              } else {
+                                                example += isTwoDigitYear ? '24' : '2024';
+                                              }
+                                              break;
+                                            case 'numbers_range':
+                                              if (position.range) {
+                                                let value = position.range.min.toString();
+                                                // Check for explicit digits property first, then fall back to range max digits
+                                                let digits = position.digits || position.length || position.positions;
 
-                                           for (const sc of remainingSpecialChars) {
-                                             example += sc.character;
-                                           }
+                                                // If no explicit digits, try to determine from position span or use range max digits
+                                                if (!digits) {
+                                                  // Check if there's a position span or end position
+                                                  if (position.endPosition && position.position) {
+                                                    digits = position.endPosition - position.position + 1;
+                                                  } else if (position.span) {
+                                                    digits = position.span;
+                                                  } else if (position.range?.positions?.length) {
+                                                    // Use the number of positions in the range (this is how the format builder stores it)
+                                                    digits = position.range.positions.length;
+                                                  } else {
+                                                    // Fallback to range max digits
+                                                    digits = position.range.max.toString().length;
+                                                  }
+                                                }
 
-                                           return example;
-                                         })()
-                                       : "e.g., 711523CSE055"
-                                   }
-                                   onChange={(e) => handleRegisterNumberChange(e.target.value)}
-                                   className={`font-mono pr-32 ${registerNumberValidation.isValid === false ? "border-destructive focus:border-destructive" : registerNumberValidation.isValid === true ? "border-primary focus:border-primary" : ""}`}
-                                   data-testid="input-register-number"
-                                 />
-                               </FormControl>
+                                                // Debug logging for number range
+                                                console.log('Number range debug (placeholder):', {
+                                                  position,
+                                                  range: position.range,
+                                                  min: position.range.min,
+                                                  max: position.range.max,
+                                                  explicitDigits: position.digits,
+                                                  explicitLength: position.length,
+                                                  explicitPositions: position.positions,
+                                                  calculatedDigits: digits,
+                                                  originalValue: value,
+                                                  paddedValue: value.padStart(digits, '0')
+                                                });
+
+                                                value = value.padStart(digits, '0');
+                                                example += value;
+                                              } else {
+                                                example += '1';
+                                              }
+                                              break;
+                                            default:
+                                              example += '1';
+                                          }
+
+                                          currentPosition = position.position;
+                                        }
+
+                                        const remainingSpecialChars = specialCharacters.filter((sc: any) =>
+                                          sc.positions.some((pos: any) => pos > currentPosition)
+                                        );
+
+                                        for (const sc of remainingSpecialChars) {
+                                          example += sc.character;
+                                        }
+
+                                        return example;
+                                      })()
+                                      : "e.g., 711523CSE055"
+                                  }
+                                  onChange={(e) => handleRegisterNumberChange(e.target.value)}
+                                  className={`font-mono pr-32 ${registerNumberValidation.isValid === false ? "border-destructive focus:border-destructive" : registerNumberValidation.isValid === true ? "border-primary focus:border-primary" : ""}`}
+                                  data-testid="input-register-number"
+                                />
+                              </FormControl>
                               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
                                 {/* Check button - more prominent */}
                                 <button
@@ -3255,44 +3237,44 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         )}
                       />
                     ) : watchedRole === "staff" ? (
-                    <FormField
-                      control={form.control}
-                      name="staffId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-foreground">
-                            Staff ID
-                          </FormLabel>
-                          <div className="relative">
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                placeholder="e.g., ABC123"
-                                onChange={(e) => handleStaffIdChange(e.target.value)}
-                                className={`font-mono pr-10 ${staffIdValidation.isValid === false ? "border-destructive focus:border-destructive" : staffIdValidation.isValid === true ? "border-primary focus:border-primary" : ""}`}
-                                maxLength={6}
-                                data-testid="input-staff-id"
-                              />
-                            </FormControl>
-                            {staffIdValidation.isValid !== null && (
-                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                {staffIdValidation.isValid ? (
-                                  <Check className="w-4 h-4 text-primary" data-testid="icon-staff-id-valid" />
-                                ) : (
-                                  <X className="w-4 h-4 text-destructive" data-testid="icon-staff-id-invalid" />
-                                )}
+                      <FormField
+                        control={form.control}
+                        name="staffId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-foreground">
+                              Staff ID
+                            </FormLabel>
+                            <div className="relative">
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="e.g., ABC123"
+                                  onChange={(e) => handleStaffIdChange(e.target.value)}
+                                  className={`font-mono pr-10 ${staffIdValidation.isValid === false ? "border-destructive focus:border-destructive" : staffIdValidation.isValid === true ? "border-primary focus:border-primary" : ""}`}
+                                  maxLength={6}
+                                  data-testid="input-staff-id"
+                                />
+                              </FormControl>
+                              {staffIdValidation.isValid !== null && (
+                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                  {staffIdValidation.isValid ? (
+                                    <Check className="w-4 h-4 text-primary" data-testid="icon-staff-id-valid" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-destructive" data-testid="icon-staff-id-invalid" />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {staffIdValidation.isValid === false && (
+                              <div className="text-xs mt-1 text-destructive">
+                                {staffIdValidation.message}
                               </div>
                             )}
-                          </div>
-                          {staffIdValidation.isValid === false && (
-                            <div className="text-xs mt-1 text-destructive">
-                              {staffIdValidation.message}
-                            </div>
-                          )}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     ) : null}
                   </div>
                 )}
@@ -3300,7 +3282,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 {/* Step 4: Complete Profile (old step 7) */}
                 {currentStep === 4 && (
                   <div className="space-y-6">
-                    
+
                     <FormField
                       control={form.control}
                       name="name"
@@ -3311,8 +3293,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                           </FormLabel>
                           <div className="relative">
                             <FormControl>
-                              <Input 
-                                {...field} 
+                              <Input
+                                {...field}
                                 placeholder="Your name"
                                 className={`pr-10 ${nameValidation.isValid === false ? "border-destructive focus:border-destructive" : nameValidation.isValid === true ? "border-primary focus:border-primary" : ""}`}
                                 data-testid="input-name"
@@ -3320,14 +3302,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                             </FormControl>
                             {nameValidation.isValid !== null && (
                               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        {nameValidation.isValid ? (
+                                {nameValidation.isValid ? (
                                   <Check className="w-4 h-4 text-primary" data-testid="icon-name-valid" />
-                        ) : (
+                                ) : (
                                   <X className="w-4 h-4 text-destructive" data-testid="icon-name-invalid" />
-                        )}
-                      </div>
-                        )}
-                      </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           {nameValidation.isValid === false && (
                             <div className="text-xs mt-1 text-destructive">
                               {nameValidation.message}
@@ -3337,7 +3319,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="phoneNumber"
@@ -3348,8 +3330,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                           </FormLabel>
                           <div className="relative">
                             <FormControl>
-                              <Input 
-                                {...field} 
+                              <Input
+                                {...field}
                                 placeholder="Your phone number"
                                 className={`pr-10 ${phoneValidation.isValid === false ? "border-destructive focus:border-destructive" : phoneValidation.isValid === true ? "border-primary focus:border-primary" : ""}`}
                                 data-testid="input-phone"
@@ -3361,8 +3343,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                   <Check className="w-4 h-4 text-primary" data-testid="icon-phone-valid" />
                                 ) : (
                                   <X className="w-4 h-4 text-destructive" data-testid="icon-phone-invalid" />
-                            )}
-                          </div>
+                                )}
+                              </div>
                             )}
                           </div>
                           {phoneValidation.isValid === false && (
@@ -3374,13 +3356,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         </FormItem>
                       )}
                     />
-                          </div>
+                  </div>
                 )}
 
                 {/* Navigation Buttons */}
                 <div className="flex justify-between items-center pt-4 mt-4 border-t border-border/50">
                   {currentStep > 1 && (
-                    <Button 
+                    <Button
                       type="button"
                       variant="outline"
                       onClick={handleStepBack}
@@ -3391,9 +3373,9 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                       Previous
                     </Button>
                   )}
-                  
+
                   {currentStep < steps.length ? (
-                    <Button 
+                    <Button
                       type="button"
                       onClick={handleStepNext}
                       disabled={isSubmitting}
@@ -3403,8 +3385,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                       <ArrowRight className="w-4 h-4 ml-1.5" />
                     </Button>
                   ) : (
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={!canProceedToNextStep() || isSubmitting}
                       className="px-8 py-2.5 text-sm font-semibold ml-auto bg-gradient-to-r from-primary via-primary to-primary/90 hover:from-primary/90 hover:via-primary hover:to-primary text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
                       onClick={async (e) => {
@@ -3413,14 +3395,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         console.log('🔘 canProceedToNextStep():', canProceedToNextStep());
                         console.log('🔘 isSubmitting:', isSubmitting);
                         console.log('🔘 Form data:', form.getValues());
-                        
+
                         // Manual form validation
                         const isValid = await form.trigger();
                         console.log('🔘 Form validation result:', isValid);
                         console.log('🔘 Form errors:', form.formState.errors);
                         console.log('🔘 Form errors detailed:', JSON.stringify(form.formState.errors, null, 2));
                         console.log('🔘 Form field errors:', Object.keys(form.formState.errors));
-                        
+
                         if (isValid) {
                           console.log('🔘 Form is valid, triggering submit');
                           form.handleSubmit(onSubmit)();
@@ -3446,7 +3428,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                 {/* Back to Login Button */}
                 <div className="text-center pt-3">
-                  <Button 
+                  <Button
                     type="button"
                     variant="ghost"
                     onClick={onBackToLogin}

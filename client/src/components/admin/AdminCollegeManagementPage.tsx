@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import {
   GraduationCap, Plus, Edit, Trash2, BookOpen, Clock, Hash, Settings, X
 } from "lucide-react";
 import RegistrationFormatBuilder from "./RegistrationFormatBuilder";
@@ -127,17 +127,19 @@ export default function AdminCollegeManagementPage() {
       updatedAt: Date;
     }>;
     createdAt: Date;
+    createdAt: Date;
     updatedAt: Date;
+    adminEmail?: string;
   }>>([]);
   const [isEditingCollege, setIsEditingCollege] = useState<string | null>(null);
-  const [newCollege, setNewCollege] = useState({ name: '', code: '', isActive: true });
+  const [newCollege, setNewCollege] = useState({ name: '', code: '', isActive: true, adminEmail: '' });
   const [showAddCollege, setShowAddCollege] = useState(false);
   const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
   const [isEditingDepartment, setIsEditingDepartment] = useState<string | null>(null);
-  const [newDepartment, setNewDepartment] = useState({ 
-    code: '', 
-    name: '', 
-    isActive: true, 
+  const [newDepartment, setNewDepartment] = useState({
+    code: '',
+    name: '',
+    isActive: true,
     studyDuration: 4,
     registrationFormats: [] as Array<{
       year: number;
@@ -186,113 +188,115 @@ export default function AdminCollegeManagementPage() {
   // Update colleges when data loads
   React.useEffect(() => {
     if (collegesData && typeof collegesData === 'object' && collegesData !== null && 'colleges' in collegesData) {
-      const collegeData = collegesData as { colleges: Array<{
-        id: string;
-        name: string;
-        code: string;
-        isActive: boolean;
-        departments: Array<{ 
-          code: string; 
-          name: string; 
-          isActive: boolean; 
-          studyDuration?: number;
-          registrationFormats?: Array<{
-            year: number;
-            formats: {
-              student: {
-                totalLength: number;
-                structure: Array<{
-                  position: number;
-                  type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
-                  value?: string;
-                  description?: string;
-                  range?: {
-                    min: number;
-                    max: number;
+      const collegeData = collegesData as {
+        colleges: Array<{
+          id: string;
+          name: string;
+          code: string;
+          isActive: boolean;
+          departments: Array<{
+            code: string;
+            name: string;
+            isActive: boolean;
+            studyDuration?: number;
+            registrationFormats?: Array<{
+              year: number;
+              formats: {
+                student: {
+                  totalLength: number;
+                  structure: Array<{
+                    position: number;
+                    type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
+                    value?: string;
+                    description?: string;
+                    range?: {
+                      min: number;
+                      max: number;
+                      positions: number[];
+                    };
+                  }>;
+                  specialCharacters: Array<{
+                    character: string;
                     positions: number[];
-                  };
-                }>;
-                specialCharacters: Array<{
-                  character: string;
-                  positions: number[];
+                    description?: string;
+                  }>;
+                  example?: string;
                   description?: string;
-                }>;
-                example?: string;
-                description?: string;
-              };
-              staff: {
-                totalLength: number;
-                structure: Array<{
-                  position: number;
-                  type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
-                  value?: string;
-                  description?: string;
-                  range?: {
-                    min: number;
-                    max: number;
+                };
+                staff: {
+                  totalLength: number;
+                  structure: Array<{
+                    position: number;
+                    type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
+                    value?: string;
+                    description?: string;
+                    range?: {
+                      min: number;
+                      max: number;
+                      positions: number[];
+                    };
+                  }>;
+                  specialCharacters: Array<{
+                    character: string;
                     positions: number[];
-                  };
-                }>;
-                specialCharacters: Array<{
-                  character: string;
-                  positions: number[];
+                    description?: string;
+                  }>;
+                  example?: string;
                   description?: string;
-                }>;
-                example?: string;
-                description?: string;
-              };
-              employee: {
-                totalLength: number;
-                structure: Array<{
-                  position: number;
-                  type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
-                  value?: string;
-                  description?: string;
-                  range?: {
-                    min: number;
-                    max: number;
+                };
+                employee: {
+                  totalLength: number;
+                  structure: Array<{
+                    position: number;
+                    type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
+                    value?: string;
+                    description?: string;
+                    range?: {
+                      min: number;
+                      max: number;
+                      positions: number[];
+                    };
+                  }>;
+                  specialCharacters: Array<{
+                    character: string;
                     positions: number[];
-                  };
-                }>;
-                specialCharacters: Array<{
-                  character: string;
-                  positions: number[];
+                    description?: string;
+                  }>;
+                  example?: string;
                   description?: string;
-                }>;
-                example?: string;
-                description?: string;
-              };
-              guest: {
-                totalLength: number;
-                structure: Array<{
-                  position: number;
-                  type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
-                  value?: string;
-                  description?: string;
-                  range?: {
-                    min: number;
-                    max: number;
+                };
+                guest: {
+                  totalLength: number;
+                  structure: Array<{
+                    position: number;
+                    type: 'digit' | 'alphabet' | 'alphanumeric' | 'fixed' | 'numbers_range' | 'year';
+                    value?: string;
+                    description?: string;
+                    range?: {
+                      min: number;
+                      max: number;
+                      positions: number[];
+                    };
+                  }>;
+                  specialCharacters: Array<{
+                    character: string;
                     positions: number[];
-                  };
-                }>;
-                specialCharacters: Array<{
-                  character: string;
-                  positions: number[];
+                    description?: string;
+                  }>;
+                  example?: string;
                   description?: string;
-                }>;
-                example?: string;
-                description?: string;
+                };
               };
-            };
+              createdAt: Date;
+              updatedAt: Date;
+            }>;
             createdAt: Date;
             updatedAt: Date;
           }>;
-          createdAt: Date; 
-          updatedAt: Date; 
-        }>;
-        createdAt: Date;
-        updatedAt: Date;
-      }> };
+          createdAt: Date;
+          updatedAt: Date;
+        }>
+      };
       console.log('🏫 Colleges data loaded:', collegeData.colleges?.map(c => ({
         id: c.id,
         name: c.name,
@@ -305,7 +309,7 @@ export default function AdminCollegeManagementPage() {
 
   // College management mutations
   const addCollegeMutation = useMutation({
-    mutationFn: async (collegeData: { name: string; code: string; isActive: boolean }) => {
+    mutationFn: async (collegeData: { name: string; code: string; isActive: boolean; adminEmail?: string }) => {
       return apiRequest('/api/system-settings/colleges', {
         method: 'POST',
         body: JSON.stringify({
@@ -317,16 +321,16 @@ export default function AdminCollegeManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] });
-      setNewCollege({ name: '', code: '', isActive: true });
+      setNewCollege({ name: '', code: '', isActive: true, adminEmail: '' });
       setShowAddCollege(false);
-      },
+    },
     onError: (error: any) => {
       console.error('Error adding college:', error);
-      }
+    }
   });
 
   const updateCollegeMutation = useMutation({
-    mutationFn: async ({ id, ...updateData }: { id: string; name?: string; code?: string; isActive?: boolean }) => {
+    mutationFn: async ({ id, ...updateData }: { id: string; name?: string; code?: string; isActive?: boolean; adminEmail?: string }) => {
       return apiRequest(`/api/system-settings/colleges/${id}`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -339,10 +343,10 @@ export default function AdminCollegeManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] });
       setIsEditingCollege(null);
-      },
+    },
     onError: (error: any) => {
       console.error('Error updating college:', error);
-      }
+    }
   });
 
   const deleteCollegeMutation = useMutation({
@@ -357,10 +361,10 @@ export default function AdminCollegeManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] });
-      },
+    },
     onError: (error: any) => {
       console.error('Error deleting college:', error);
-      }
+    }
   });
 
   const addDepartmentToCollegeMutation = useMutation({
@@ -369,13 +373,13 @@ export default function AdminCollegeManagementPage() {
         ...departmentData,
         updatedBy: user?.id
       };
-      
+
       console.log('Sending department data:', {
         collegeId,
         requestData,
         registrationFormats: requestData.registrationFormats
       });
-      
+
       return apiRequest(`/api/system-settings/colleges/${collegeId}/departments`, {
         method: 'POST',
         body: JSON.stringify(requestData),
@@ -386,10 +390,10 @@ export default function AdminCollegeManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] });
       setNewDepartment({ code: '', name: '', isActive: true, studyDuration: 4, registrationFormats: [] });
       setShowAddDepartment(false);
-      },
+    },
     onError: (error: any) => {
       console.error('Error adding department to college:', error);
-      
+
       // Try to extract the actual error message from the response
       let errorMessage = 'Unknown error';
       if (error.message) {
@@ -399,9 +403,9 @@ export default function AdminCollegeManagementPage() {
       } else if (error.data?.error) {
         errorMessage = error.data.error;
       }
-      
+
       alert(`Failed to add department: ${errorMessage}`);
-      }
+    }
   });
 
   const updateDepartmentInCollegeMutation = useMutation({
@@ -418,10 +422,10 @@ export default function AdminCollegeManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] });
       setIsEditingDepartment(null);
-      },
+    },
     onError: (error: any) => {
       console.error('Error updating department in college:', error);
-      }
+    }
   });
 
   const deleteDepartmentFromCollegeMutation = useMutation({
@@ -436,10 +440,10 @@ export default function AdminCollegeManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] });
-      },
+    },
     onError: (error: any) => {
       console.error('Error deleting department from college:', error);
-      }
+    }
   });
 
   // Registration format management mutations
@@ -504,7 +508,7 @@ export default function AdminCollegeManagementPage() {
     },
     onError: (error: any) => {
       console.error('Error deleting registration format:', error);
-      }
+    }
   });
 
   // Role management mutation
@@ -536,7 +540,7 @@ export default function AdminCollegeManagementPage() {
     addCollegeMutation.mutate(newCollege);
   };
 
-  const handleUpdateCollege = (id: string, updates: { name?: string; code?: string; isActive?: boolean }) => {
+  const handleUpdateCollege = (id: string, updates: { name?: string; code?: string; isActive?: boolean; adminEmail?: string }) => {
     updateCollegeMutation.mutate({ id, ...updates });
   };
 
@@ -552,18 +556,18 @@ export default function AdminCollegeManagementPage() {
 
   const handleAddDepartmentToCollege = (collegeId: string) => {
     console.log('Attempting to add department:', { collegeId, newDepartment });
-    
+
     if (!newDepartment.code.trim() || !newDepartment.name.trim()) {
       alert('Please provide both department code and name.');
       return;
     }
-    
+
     // Validate that registration formats are provided for all years
     if (newDepartment.registrationFormats.length !== newDepartment.studyDuration) {
       alert(`Please provide registration formats for all ${newDepartment.studyDuration} years of study. Currently have ${newDepartment.registrationFormats.length} formats.`);
       return;
     }
-    
+
     console.log('Validation passed, calling mutation...');
     addDepartmentToCollegeMutation.mutate({ collegeId, ...newDepartment });
   };
@@ -572,12 +576,12 @@ export default function AdminCollegeManagementPage() {
     setNewDepartment(prev => {
       const existingFormatIndex = prev.registrationFormats.findIndex(f => f.year === year);
       const newFormats = [...prev.registrationFormats];
-      
+
       // Check if format is a RegistrationFormat object (has id, name, year, formats properties)
       // or just the formats object (has student, staff, employee, guest properties)
-      const isRegistrationFormat = format && typeof format === 'object' && 
+      const isRegistrationFormat = format && typeof format === 'object' &&
         ('id' in format || 'name' in format) && 'formats' in format;
-      
+
       if (existingFormatIndex >= 0) {
         if (isRegistrationFormat) {
           // format is a RegistrationFormat object, use it directly
@@ -595,7 +599,7 @@ export default function AdminCollegeManagementPage() {
           newFormats.push({ year, formats: format });
         }
       }
-      
+
       return { ...prev, registrationFormats: newFormats };
     });
     setShowDepartmentFormatBuilder(false);
@@ -607,7 +611,7 @@ export default function AdminCollegeManagementPage() {
       const yearText = year === 1 ? '1st Year' : year === 2 ? '2nd Year' : year === 3 ? '3rd Year' : `${year}th Year`;
       const formatId = `format_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const formatName = `${newDepartment.code} ${yearText} Standard Format`;
-      
+
       formats.push({
         id: formatId,
         name: formatName,
@@ -625,9 +629,9 @@ export default function AdminCollegeManagementPage() {
               { position: 6, type: 'alphabet', description: 'Department code - first letter' },
               { position: 7, type: 'alphabet', description: 'Department code - second letter' },
               { position: 8, type: 'alphabet', description: 'Department code - third letter' },
-              { 
-                position: 9, 
-                type: 'numbers_range', 
+              {
+                position: 9,
+                type: 'numbers_range',
                 description: 'Serial number range',
                 range: { min: 1, max: 99, positions: [9, 10] }
               }
@@ -651,9 +655,9 @@ export default function AdminCollegeManagementPage() {
               { position: 9, type: 'fixed', value: 'A', description: 'Staff identifier' },
               { position: 10, type: 'fixed', value: 'F', description: 'Staff identifier' },
               { position: 11, type: 'fixed', value: 'F', description: 'Staff identifier' },
-              { 
-                position: 12, 
-                type: 'numbers_range', 
+              {
+                position: 12,
+                type: 'numbers_range',
                 description: 'Serial number range',
                 range: { min: 1, max: 999, positions: [12] }
               }
@@ -675,9 +679,9 @@ export default function AdminCollegeManagementPage() {
               { position: 7, type: 'fixed', value: 'E', description: 'Employee identifier' },
               { position: 8, type: 'fixed', value: 'M', description: 'Employee identifier' },
               { position: 9, type: 'fixed', value: 'P', description: 'Employee identifier' },
-              { 
-                position: 10, 
-                type: 'numbers_range', 
+              {
+                position: 10,
+                type: 'numbers_range',
                 description: 'Serial number range',
                 range: { min: 1, max: 99, positions: [10, 11] }
               }
@@ -697,9 +701,9 @@ export default function AdminCollegeManagementPage() {
               { position: 5, type: 'alphabet', description: 'Department code - second letter' },
               { position: 6, type: 'alphabet', description: 'Department code - third letter' },
               { position: 7, type: 'fixed', value: 'G', description: 'Guest identifier' },
-              { 
-                position: 8, 
-                type: 'numbers_range', 
+              {
+                position: 8,
+                type: 'numbers_range',
                 description: 'Serial number range',
                 range: { min: 1, max: 99, positions: [8, 9] }
               }
@@ -742,20 +746,20 @@ export default function AdminCollegeManagementPage() {
   const handleSaveRegistrationFormat = (format: any) => {
     if (isEditingFormat && editingFormat && editingFormat.id) {
       // Update existing format (only if it has an ID)
-      updateRegistrationFormatMutation.mutate({ 
-        collegeId: formatBuilderCollege, 
-        deptCode: formatBuilderDept, 
-        formatId: editingFormat.id, 
-        formats: format.formats 
+      updateRegistrationFormatMutation.mutate({
+        collegeId: formatBuilderCollege,
+        deptCode: formatBuilderDept,
+        formatId: editingFormat.id,
+        formats: format.formats
       });
     } else {
       // Create new format (either new format or legacy format without ID)
-      addRegistrationFormatMutation.mutate({ 
-        collegeId: formatBuilderCollege, 
-        deptCode: formatBuilderDept, 
-        year: format.year, 
+      addRegistrationFormatMutation.mutate({
+        collegeId: formatBuilderCollege,
+        deptCode: formatBuilderDept,
+        year: format.year,
         name: format.name,
-        formats: format.formats 
+        formats: format.formats
       });
     }
   };
@@ -769,7 +773,7 @@ export default function AdminCollegeManagementPage() {
       alert('This is a legacy format that cannot be deleted. Please contact support to remove it.');
       return;
     }
-    
+
     if (window.confirm(`Are you sure you want to delete the registration format "${formatName}"? This action cannot be undone.`)) {
       deleteRegistrationFormatMutation.mutate({ collegeId, deptCode, formatId });
     }
@@ -857,7 +861,7 @@ export default function AdminCollegeManagementPage() {
                   {showAddCollege ? 'Cancel' : 'Add College'}
                 </Button>
               </div>
-              
+
               {showAddCollege && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -880,6 +884,16 @@ export default function AdminCollegeManagementPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="adminEmail">Admin Email</Label>
+                    <Input
+                      id="adminEmail"
+                      type="email"
+                      placeholder="e.g., admin@college.edu"
+                      value={newCollege.adminEmail}
+                      onChange={(e) => setNewCollege(prev => ({ ...prev, adminEmail: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Status</Label>
                     <div className="flex items-center space-x-2">
                       <Switch
@@ -891,7 +905,7 @@ export default function AdminCollegeManagementPage() {
                   </div>
                 </div>
               )}
-              
+
               {showAddCollege && (
                 <div className="flex justify-end mt-4">
                   <Button
@@ -957,7 +971,7 @@ export default function AdminCollegeManagementPage() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* College Controls */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2">
@@ -970,7 +984,7 @@ export default function AdminCollegeManagementPage() {
                             {college.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="outline"
@@ -990,7 +1004,7 @@ export default function AdminCollegeManagementPage() {
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* Edit College Mode */}
                       {isEditingCollege === college.id && (
                         <div className="mb-4 pt-4 border-t space-y-3">
@@ -1039,6 +1053,29 @@ export default function AdminCollegeManagementPage() {
                                 }}
                               />
                             </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-dept-email-${college.id}`}>Admin Email</Label>
+                              <Input
+                                id={`edit-dept-email-${college.id}`}
+                                type="email"
+                                defaultValue={college.adminEmail || ''}
+                                onBlur={(e) => {
+                                  const newEmail = e.target.value.trim();
+                                  if (newEmail !== (college.adminEmail || '')) {
+                                    handleUpdateCollege(college.id, { adminEmail: newEmail });
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const newEmail = e.currentTarget.value.trim();
+                                    if (newEmail !== (college.adminEmail || '')) {
+                                      handleUpdateCollege(college.id, { adminEmail: newEmail });
+                                    }
+                                    e.currentTarget.blur();
+                                  }
+                                }}
+                              />
+                            </div>
                           </div>
                           <div className="flex justify-end">
                             <Button
@@ -1051,7 +1088,7 @@ export default function AdminCollegeManagementPage() {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Role Management Section */}
                       {showRoleManagement === college.id && (
                         <div className="mb-4 pt-4 border-t space-y-4">
@@ -1074,7 +1111,7 @@ export default function AdminCollegeManagementPage() {
                               </Button>
                             </div>
                           </div>
-                          
+
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div className="flex items-center space-x-2">
                               <Switch
@@ -1105,13 +1142,13 @@ export default function AdminCollegeManagementPage() {
                               <Label className="text-sm">Guest</Label>
                             </div>
                           </div>
-                          
+
                           <div className="text-xs text-muted-foreground">
                             Only enabled roles will be available for selection during user registration.
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Departments Section */}
                       {selectedCollege === college.id && (
                         <div className="pt-4 border-t">
@@ -1131,7 +1168,7 @@ export default function AdminCollegeManagementPage() {
                               {showAddDepartment ? 'Cancel' : 'Add Department'}
                             </Button>
                           </div>
-                          
+
                           {/* Add Department Form */}
                           {showAddDepartment && (
                             <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -1166,8 +1203,8 @@ export default function AdminCollegeManagementPage() {
                                     value={newDepartment.studyDuration}
                                     onChange={(e) => {
                                       const duration = parseInt(e.target.value) || 4;
-                                      setNewDepartment(prev => ({ 
-                                        ...prev, 
+                                      setNewDepartment(prev => ({
+                                        ...prev,
                                         studyDuration: duration,
                                         registrationFormats: [] // Reset formats when duration changes
                                       }));
@@ -1185,7 +1222,7 @@ export default function AdminCollegeManagementPage() {
                                   </div>
                                 </div>
                               </div>
-                              
+
                               {/* Registration Formats Section */}
                               <div className="mt-6 border-t pt-4">
                                 <div className="flex items-center justify-between mb-4">
@@ -1207,15 +1244,15 @@ export default function AdminCollegeManagementPage() {
                                     </Button>
                                   </div>
                                 </div>
-                                
+
                                 {/* Format Status */}
                                 <div className="mb-4">
                                   <div className="flex flex-wrap gap-2">
                                     {Array.from({ length: newDepartment.studyDuration }, (_, i) => i + 1).map(year => {
                                       const hasFormat = newDepartment.registrationFormats.some(f => f.year === year);
                                       return (
-                                        <Badge 
-                                          key={year} 
+                                        <Badge
+                                          key={year}
                                           variant={hasFormat ? "default" : "destructive"}
                                           className="text-xs"
                                         >
@@ -1225,7 +1262,7 @@ export default function AdminCollegeManagementPage() {
                                     })}
                                   </div>
                                 </div>
-                                
+
                                 {/* Format Builder Buttons */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                   {Array.from({ length: newDepartment.studyDuration }, (_, i) => i + 1).map(year => (
@@ -1245,7 +1282,7 @@ export default function AdminCollegeManagementPage() {
                                   ))}
                                 </div>
                               </div>
-                              
+
                               <div className="flex justify-end mt-4">
                                 <div className="flex flex-col items-end space-y-2">
                                   {newDepartment.registrationFormats.length !== newDepartment.studyDuration && (
@@ -1264,7 +1301,7 @@ export default function AdminCollegeManagementPage() {
                               </div>
                             </div>
                           )}
-                          
+
                           {/* Departments List */}
                           {college.departments.length === 0 ? (
                             <div className="text-center py-6 text-muted-foreground">
@@ -1326,7 +1363,7 @@ export default function AdminCollegeManagementPage() {
                                       </Button>
                                     </div>
                                   </div>
-                                  
+
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
                                       <Switch
@@ -1339,33 +1376,33 @@ export default function AdminCollegeManagementPage() {
                                       </span>
                                     </div>
                                   </div>
-                                  
+
                                   {/* Edit Department Mode */}
                                   {isEditingDepartment === `${college.id}-${dept.code}` && (
                                     <div className="mt-3 pt-3 border-t space-y-3">
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                      <div className="space-y-2">
-                                        <Label htmlFor={`edit-dept-name-${college.id}-${dept.code}`} className="text-xs">Department Name</Label>
-                                        <Input
-                                          id={`edit-dept-name-${college.id}-${dept.code}`}
-                                          defaultValue={dept.name}
-                                          onBlur={(e) => {
-                                            const newName = e.target.value.trim();
-                                            if (newName && newName !== dept.name) {
-                                              handleUpdateDepartmentInCollege(college.id, dept.code, { name: newName });
-                                            }
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                              const newName = e.currentTarget.value.trim();
+                                        <div className="space-y-2">
+                                          <Label htmlFor={`edit-dept-name-${college.id}-${dept.code}`} className="text-xs">Department Name</Label>
+                                          <Input
+                                            id={`edit-dept-name-${college.id}-${dept.code}`}
+                                            defaultValue={dept.name}
+                                            onBlur={(e) => {
+                                              const newName = e.target.value.trim();
                                               if (newName && newName !== dept.name) {
                                                 handleUpdateDepartmentInCollege(college.id, dept.code, { name: newName });
                                               }
-                                              e.currentTarget.blur();
-                                            }
-                                          }}
-                                          className="text-sm"
-                                        />
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                const newName = e.currentTarget.value.trim();
+                                                if (newName && newName !== dept.name) {
+                                                  handleUpdateDepartmentInCollege(college.id, dept.code, { name: newName });
+                                                }
+                                                e.currentTarget.blur();
+                                              }
+                                            }}
+                                            className="text-sm"
+                                          />
                                         </div>
                                         <div className="space-y-2">
                                           <Label htmlFor={`edit-dept-duration-${college.id}-${dept.code}`} className="text-xs">Study Duration (Years)</Label>
@@ -1421,7 +1458,7 @@ export default function AdminCollegeManagementPage() {
                                         >
                                           {showAddRegistrationFormat ? 'Cancel' : 'Add Format'}
                                         </Button>
-                                </div>
+                                      </div>
 
                                       {/* Add Registration Format Form */}
                                       {showAddRegistrationFormat && (
@@ -1432,7 +1469,7 @@ export default function AdminCollegeManagementPage() {
                                                 Create detailed registration number formats with position-based validation rules
                                               </p>
                                             </div>
-                                            
+
                                             <div className="space-y-3">
                                               <div className="space-y-2">
                                                 <Label htmlFor={`year-${college.id}-${dept.code}`} className="text-sm font-medium">
@@ -1457,7 +1494,7 @@ export default function AdminCollegeManagementPage() {
                                                   This will create a new format for the selected academic year. Each academic year can have different registration number formats.
                                                 </p>
                                               </div>
-                                              
+
                                               <div className="flex items-center justify-between pt-2">
                                                 <Button
                                                   variant="outline"
