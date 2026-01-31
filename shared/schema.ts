@@ -9,7 +9,8 @@ export type InsertUser = Prisma.UserCreateInput;
 
 // MongoDB types (defined in mongodb-models.ts)
 // MongoDB types (defined in mongodb-models.ts)
-export { UserRole } from '@prisma/client';
+import { UserRole } from '@prisma/client';
+export { UserRole };
 
 export type Category = {
   id: string;

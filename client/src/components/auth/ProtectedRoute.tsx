@@ -31,6 +31,7 @@ export default function ProtectedRoute({
 
     // Check specific role requirements
     if (requiredRole && !hasRole(requiredRole)) {
+      console.log(`🔐 ProtectedRoute: Access denied. Required: ${requiredRole}, User Has: ${user?.role}`);
       setLocation("/login");
       return;
     }

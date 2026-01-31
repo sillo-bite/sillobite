@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcrypt';
 import { storage } from '../storage-hybrid';
-import { insertUserSchema } from '@shared/schema';
+import { insertUserSchema, UserRole } from '@shared/schema';
 import { db as getPostgresDb } from '../db';
 
 const router = Router();
@@ -23,30 +23,30 @@ router.post('/register', async (req, res) => {
 
     // Validate required fields - need identifier (email or phone) and password
     if (!loginIdentifier || !password) {
-      return res.status(400).json({ 
-        error: 'Email/phone and password are required' 
+      return res.status(400).json({
+        error: 'Email/phone and password are required'
       });
     }
 
     // Validate identifier format
     if (isEmail) {
       if (!emailRegex.test(loginIdentifier)) {
-        return res.status(400).json({ 
-          error: 'Invalid email format' 
+        return res.status(400).json({
+          error: 'Invalid email format'
         });
       }
     } else {
       if (!normalizedPhone || normalizedPhone.length < 8) {
-        return res.status(400).json({ 
-          error: 'Invalid phone number' 
+        return res.status(400).json({
+          error: 'Invalid phone number'
         });
       }
     }
 
     // Validate password strength (minimum 6 characters)
     if (password.length < 6) {
-      return res.status(400).json({ 
-        error: 'Password must be at least 6 characters long' 
+      return res.status(400).json({
+        error: 'Password must be at least 6 characters long'
       });
     }
 
@@ -57,16 +57,16 @@ router.post('/register', async (req, res) => {
     // Check if user already exists by email or phone
     const existingEmailUser = await storage.getUserByEmail(finalEmail);
     if (existingEmailUser) {
-      return res.status(409).json({ 
-        error: 'Email is already registered' 
+      return res.status(409).json({
+        error: 'Email is already registered'
       });
     }
 
     if (finalPhone) {
       const existingPhoneUser = await storage.getUserByPhoneNumber(finalPhone);
       if (existingPhoneUser) {
-        return res.status(409).json({ 
-          error: 'Phone number is already registered' 
+        return res.status(409).json({
+          error: 'Phone number is already registered'
         });
       }
     }
@@ -78,13 +78,13 @@ router.post('/register', async (req, res) => {
     // Create user with minimal data - name will be collected in profile setup
     // Use email/phone username as temporary name
     const tempName = name?.trim() || (isEmail ? finalEmail.split('@')[0] : `user_${finalPhone}`);
-    
+
     // Prepare user data for validation (phoneNumber optional)
     const userDataForValidation = {
       email: finalEmail,
       ...(finalPhone ? { phoneNumber: finalPhone } : {}),
       name: tempName, // Temporary name, will be updated in profile setup
-      role: 'student', // Default role, will be updated in profile setup
+      role: UserRole.STUDENT, // Default role, will be updated in profile setup
       isProfileComplete: false,
     };
 
@@ -110,12 +110,12 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     if (error instanceof Error && error.message.includes('zod')) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid user data',
-        details: error.message 
+        details: error.message
       });
     }
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to register user',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -130,8 +130,8 @@ router.post('/login', async (req, res) => {
 
     // Validate required fields
     if (!loginIdentifier || !password) {
-      return res.status(400).json({ 
-        error: 'Email/phone and password are required' 
+      return res.status(400).json({
+        error: 'Email/phone and password are required'
       });
     }
 
@@ -147,30 +147,30 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user) {
-      return res.status(401).json({ 
-        error: 'Invalid login credentials' 
+      return res.status(401).json({
+        error: 'Invalid login credentials'
       });
     }
 
     // Check if user has a password (might be Google OAuth only user)
     if (!user.passwordHash) {
-      return res.status(401).json({ 
-        error: 'This account uses Google sign-in. Please sign in with Google.' 
+      return res.status(401).json({
+        error: 'This account uses Google sign-in. Please sign in with Google.'
       });
     }
 
     // Check if user is blocked
     if (user.role && user.role.startsWith('blocked_')) {
-      return res.status(403).json({ 
-        error: 'Your account has been blocked. Please contact support.' 
+      return res.status(403).json({
+        error: 'Your account has been blocked. Please contact support.'
       });
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      return res.status(401).json({ 
-        error: 'Invalid login credentials' 
+      return res.status(401).json({
+        error: 'Invalid login credentials'
       });
     }
 
@@ -183,7 +183,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to login',
       details: error instanceof Error ? error.message : 'Unknown error'
     });

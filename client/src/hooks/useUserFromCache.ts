@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { UserRole } from "@shared/schema";
 
 interface User {
   id: number;
   name: string;
   email: string;
   phoneNumber: string;
-  role: string;
+  role: UserRole | string;
   college?: string;
   organization?: string;
   department?: string;
@@ -22,14 +23,14 @@ export function useUserFromCache() {
       if (tempUserSession) {
         try {
           const parsed = JSON.parse(tempUserSession);
-          const tempUser = { ...parsed, isTemporary: true, role: 'guest' };
+          const tempUser = { ...parsed, isTemporary: true, role: UserRole.GUEST };
           console.log('💾 useUserFromCache: Found temp user session:', tempUser);
           return tempUser;
         } catch (error) {
           console.log('💾 useUserFromCache: Error parsing temp user session:', error);
         }
       }
-      
+
       // Try to get user from React Query cache first
       const cachedUser = localStorage.getItem('user');
       if (cachedUser) {
@@ -42,12 +43,12 @@ export function useUserFromCache() {
           return null;
         }
       }
-      
+
       console.log('💾 useUserFromCache: No user found in localStorage');
       return null;
     },
     enabled: true, // Always enabled to check for cached user
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 }

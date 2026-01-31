@@ -12,6 +12,7 @@ import NotificationPanel from "@/components/common/NotificationPanel";
 import { useNotificationContext } from "@/contexts/NotificationContext";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { UserRole } from "@shared/schema";
 
 interface CanteenAdminLayoutProps {
   children: React.ReactNode;
@@ -21,7 +22,7 @@ interface CanteenAdminLayoutProps {
 // Enhanced Sidebar Toggle Component
 function EnhancedSidebarToggle() {
   const { open, toggleSidebar, isMobile } = useSidebar();
-  
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -52,7 +53,7 @@ function EnhancedSidebarToggle() {
 export default function CanteenAdminLayout({ children, canteenId }: CanteenAdminLayoutProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuthSync();
-  
+
   // Notification state
   const [showNotifications, setShowNotifications] = useState(false);
   // Use real notification context
@@ -96,13 +97,13 @@ export default function CanteenAdminLayout({ children, canteenId }: CanteenAdmin
       // Clear any stored authentication data
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      
+
       // Redirect to login
       setLocation('/admin/login');
-      
-      } catch (error) {
+
+    } catch (error) {
       console.error('Logout error:', error);
-      }
+    }
   };
 
   // Redirect to login if not authenticated
@@ -127,7 +128,7 @@ export default function CanteenAdminLayout({ children, canteenId }: CanteenAdmin
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <CanteenAdminSidebar canteenName={canteenName} />
-        
+
         <div className="flex-1 flex flex-col">
           {/* Enhanced Header with Sync Status */}
           <header className="h-14 flex items-center justify-between border-b bg-card px-4">
@@ -150,7 +151,7 @@ export default function CanteenAdminLayout({ children, canteenId }: CanteenAdmin
               />
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-muted-foreground">
-                  {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'} - {user?.email}
+                  {user?.role === UserRole.SUPER_ADMIN ? 'Super Admin' : 'Admin'} - {user?.email}
                 </span>
               </div>
               <Button

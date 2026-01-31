@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@shared/schema";
 import { isPWAInstalled, getPWAAuthState } from "@/utils/pwaAuth";
 import { serverRestartDetector } from "@/utils/devUpdateDetector";
 import { AppUpdater } from "@/utils/appUpdater";
@@ -308,11 +309,11 @@ export default function SplashScreen() {
           const userForRedirect = user || cachedUserData || pwaAuthState.user;
 
           if (userForRedirect) {
-            if (userForRedirect.role === 'super_admin') {
+            if (userForRedirect.role === UserRole.SUPER_ADMIN) {
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/admin") : "/admin";
               setLocation(redirectUrl);
               return;
-            } else if (userForRedirect.role === 'canteen_owner' || userForRedirect.role === 'canteen-owner') {
+            } else if (userForRedirect.role === UserRole.CANTEEN_OWNER || userForRedirect.role === 'canteen-owner') {
               // Handle canteen owner redirect - fetch canteen ID and redirect to counter selection
               const redirectCanteenOwner = async () => {
                 try {
@@ -348,7 +349,7 @@ export default function SplashScreen() {
 
               redirectCanteenOwner();
               return;
-            } else if (userForRedirect.role === 'delivery_person') {
+            } else if (userForRedirect.role === UserRole.DELIVERY_PERSON) {
               // Handle delivery person redirect
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/delivery-portal") : "/delivery-portal";
               setLocation(redirectUrl);

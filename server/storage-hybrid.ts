@@ -1,10 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { connectToMongoDB } from './mongodb';
 import {
-  User, InsertUser, MenuItem, Category, MediaBanner, CodingChallenge, CanteenCharge, UserRole
+  User, InsertUser, UserRole
 } from "@shared/schema";
 import {
   Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter,
+  MenuItem, Category, MediaBanner, CodingChallenge, CanteenCharge,
   type ICategory, type IMenuItem, type IOrder, type IOrderItem,
   type INotification, type ILoginIssue, type IPayment, type IComplaint, type ICoupon, type ICounter
 } from './models/mongodb-models';
@@ -428,6 +429,14 @@ export class HybridStorage implements IStorage {
       staffId: insertUser.staffId?.toUpperCase()
     };
 
+    // Ensure role is correctly cast to UserRole enum if it's a string
+    if (normalizedUser.role && typeof normalizedUser.role === 'string') {
+      const roleStr = (normalizedUser.role as string).toUpperCase();
+      if (Object.prototype.hasOwnProperty.call(UserRole, roleStr)) {
+        normalizedUser.role = UserRole[roleStr as keyof typeof UserRole];
+      }
+    }
+
     // For guest users, ensure we don't include unnecessary fields
     if (insertUser.role === UserRole.GUEST) {
       delete normalizedUser.registerNumber;
@@ -448,6 +457,18 @@ export class HybridStorage implements IStorage {
 
   async updateUser(id: number, updateData: Partial<InsertUser>): Promise<User> {
     const db = getPostgresDb();
+
+    // Ensure role is correctly cast to UserRole enum if it's a string
+    // Prisma Client expects the Enum Value (e.g. "ADMIN"), not the mapped DB string (e.g. "admin")
+    if (updateData.role && typeof updateData.role === 'string') {
+      const roleStr = (updateData.role as string).toUpperCase();
+      // Check if the uppercase string is a valid key in UserRole
+      if (Object.prototype.hasOwnProperty.call(UserRole, roleStr)) {
+        // Cast to any to assign, then valid usage
+        (updateData as any).role = UserRole[roleStr as keyof typeof UserRole];
+      }
+    }
+
     const user = await db.user.update({
       where: { id },
       data: updateData

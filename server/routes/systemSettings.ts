@@ -70,7 +70,7 @@ const SystemSettingsSchema = new mongoose.Schema({
                 type: { type: String, enum: ['digit', 'alphabet', 'alphanumeric', 'fixed', 'numbers_range', 'year'], required: true },
                 value: { type: String }, // For fixed characters
                 description: { type: String },
-                yearType: { type: String, enum: ['joining', 'current'] }, // For year type
+                yearType: { type: String, enum: ['joining', 'current', 'starting', 'passing_out'] }, // For year type
                 range: {
                   min: { type: Number },
                   max: { type: Number },
@@ -92,7 +92,7 @@ const SystemSettingsSchema = new mongoose.Schema({
                 type: { type: String, enum: ['digit', 'alphabet', 'alphanumeric', 'fixed', 'numbers_range', 'year'], required: true },
                 value: { type: String }, // For fixed characters
                 description: { type: String },
-                yearType: { type: String, enum: ['joining', 'current'] }, // For year type
+                yearType: { type: String, enum: ['joining', 'current', 'starting', 'passing_out'] }, // For year type
                 range: {
                   min: { type: Number },
                   max: { type: Number },
@@ -114,7 +114,7 @@ const SystemSettingsSchema = new mongoose.Schema({
                 type: { type: String, enum: ['digit', 'alphabet', 'alphanumeric', 'fixed', 'numbers_range', 'year'], required: true },
                 value: { type: String }, // For fixed characters
                 description: { type: String },
-                yearType: { type: String, enum: ['joining', 'current'] }, // For year type
+                yearType: { type: String, enum: ['joining', 'current', 'starting', 'passing_out'] }, // For year type
                 range: {
                   min: { type: Number },
                   max: { type: Number },
@@ -136,7 +136,7 @@ const SystemSettingsSchema = new mongoose.Schema({
                 type: { type: String, enum: ['digit', 'alphabet', 'alphanumeric', 'fixed', 'numbers_range', 'year'], required: true },
                 value: { type: String }, // For fixed characters
                 description: { type: String },
-                yearType: { type: String, enum: ['joining', 'current'] }, // For year type
+                yearType: { type: String, enum: ['joining', 'current', 'starting', 'passing_out'] }, // For year type
                 range: {
                   min: { type: Number },
                   max: { type: Number },
@@ -194,14 +194,9 @@ const SystemSettingsSchema = new mongoose.Schema({
                 type: { type: String, enum: ['digit', 'alphabet', 'alphanumeric', 'fixed', 'numbers_range', 'year'], required: true },
                 value: { type: String }, // For fixed characters
                 description: { type: String },
-                yearType: { type: String, enum: ['joining', 'current'] }, // For year type
-                range: {
-                  min: { type: Number },
-                  max: { type: Number },
-                  positions: [{ type: Number }] // Array of positions this range occupies
-                },
-                yearType: { type: String, enum: ['starting', 'passing_out'] }, // For year type
-              }],
+                yearType: { type: String, enum: ['joining', 'current', 'starting', 'passing_out'] }, // For year type
+              },
+              ],
               specialCharacters: [{
                 character: { type: String, required: true },
                 positions: [{ type: Number }], // Allowed positions
@@ -1029,7 +1024,7 @@ router.get('/departments/all', async (req, res) => {
  */
 router.post('/colleges', async (req, res) => {
   try {
-    const { name, code, isActive = true, activeRoles = { student: true, staff: true, employee: true, guest: true }, updatedBy } = req.body;
+    const { name, code, isActive = true, adminEmail, activeRoles = { student: true, staff: true, employee: true, guest: true }, updatedBy } = req.body;
 
     if (!name || !code) {
       return res.status(400).json({ error: 'College name and code are required' });
@@ -1066,6 +1061,7 @@ router.post('/colleges', async (req, res) => {
             name,
             code,
             isActive,
+            adminEmail,
             activeRoles,
             departments: [],
             createdAt: new Date(),
@@ -1099,6 +1095,7 @@ router.post('/colleges', async (req, res) => {
         name,
         code,
         isActive,
+        adminEmail,
         activeRoles,
         departments: [],
         createdAt: new Date(),
@@ -1131,7 +1128,7 @@ router.post('/colleges', async (req, res) => {
 router.put('/colleges/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, code, isActive, updatedBy } = req.body;
+    const { name, code, isActive, adminEmail, updatedBy } = req.body;
 
     if (!id) {
       return res.status(400).json({ error: 'College ID is required' });
@@ -1157,6 +1154,9 @@ router.put('/colleges/:id', async (req, res) => {
     }
     if (isActive !== undefined) {
       settings.colleges.list[collegeIndex].isActive = isActive;
+    }
+    if (adminEmail !== undefined) {
+      settings.colleges.list[collegeIndex].adminEmail = adminEmail;
     }
     settings.colleges.list[collegeIndex].updatedAt = new Date();
 
@@ -1465,6 +1465,52 @@ router.delete('/colleges/:id', async (req, res) => {
       error: 'Failed to delete college with cascade deletion',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+/**
+ * Get college for logged-in admin
+ */
+router.get('/admin/my-college', async (req, res) => {
+  try {
+    // Check for user in session or Passport-style user object
+    const user = (req as any).session?.user || (req as any).user;
+
+    if (!user) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    if (!user.email) {
+      return res.status(400).json({ error: 'User has no email' });
+    }
+
+    const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.colleges?.list) {
+      return res.status(404).json({ error: 'No colleges found' });
+    }
+
+    // Find college where adminEmail matches user email
+    const college = settings.colleges.list.find((c: any) =>
+      c.adminEmail && c.adminEmail.toLowerCase() === user.email.toLowerCase()
+    );
+
+    if (!college) {
+      return res.json({ college: null });
+    }
+
+    res.json({
+      college: {
+        id: college.id,
+        name: college.name,
+        code: college.code,
+        adminEmail: college.adminEmail
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching admin college:', error);
+    res.status(500).json({ error: 'Failed to fetch admin college' });
   }
 });
 
@@ -4537,6 +4583,45 @@ router.get('/qr-codes/validate/:organizationId/:hash', async (req, res) => {
   } catch (error) {
     console.error('Error validating QR code:', error);
     res.status(500).json({ error: 'Failed to validate QR code' });
+  }
+});
+
+/**
+ * Get all canteens (public or protected based on usage)
+ */
+router.get('/canteens', async (req, res) => {
+  try {
+    const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+    const canteens = settings?.canteens?.list || [];
+    res.json({ canteens });
+  } catch (error) {
+    console.error('Error fetching canteens:', error);
+    res.status(500).json({ error: 'Failed to fetch canteens' });
+  }
+});
+
+/**
+ * Get canteens by college ID
+ */
+router.get('/canteens/by-college/:collegeId', async (req, res) => {
+  try {
+    const { collegeId } = req.params;
+    console.log(`📋 GET /api/system-settings/canteens/by-college/${collegeId}`);
+
+    const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+    const allCanteens = settings?.canteens?.list || [];
+
+    // Filter canteens associated with this college
+    const collegeCanteens = allCanteens.filter(canteen =>
+      (canteen.collegeIds && canteen.collegeIds.includes(collegeId)) ||
+      canteen.collegeId === collegeId
+    );
+
+    console.log(`✅ Found ${collegeCanteens.length} canteens for college ${collegeId}`);
+    res.json({ canteens: collegeCanteens });
+  } catch (error) {
+    console.error(`❌ Error fetching canteens for college ${req.params.collegeId}:`, error);
+    res.status(500).json({ error: 'Failed to fetch canteens by college' });
   }
 });
 

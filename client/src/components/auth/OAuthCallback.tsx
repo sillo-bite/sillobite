@@ -90,6 +90,9 @@ export default function OAuthCallback() {
           return;
         }
 
+        // Debug logs removed
+
+
         // Check if user came from organization QR; apply context but do not force profile setup
         if (orgQRData && (userData.role === UserRole.GUEST || !userData.organizationId)) {
           // Validate QR code first
@@ -153,7 +156,7 @@ export default function OAuthCallback() {
         // Redirect based on role
         if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.ADMIN) {
           setLocation('/admin');
-        } else if (userData.role === 'canteen_owner' || userData.role === 'canteen-owner') {
+        } else if (userData.role === UserRole.CANTEEN_OWNER) {
           // For canteen owners, we need to get their canteen ID first
           try {
             console.log('Fetching canteen for owner:', userData.email);
@@ -175,7 +178,7 @@ export default function OAuthCallback() {
             console.error('Error fetching canteen for owner:', error);
             setLocation('/login?error=canteen_fetch_failed');
           }
-        } else if (userData.role === 'delivery_person') {
+        } else if (userData.role === UserRole.DELIVERY_PERSON) {
           console.log('✅ Login successful, redirecting delivery person to portal');
           setTimeout(() => {
             setLocation('/delivery-portal');
@@ -213,7 +216,7 @@ export default function OAuthCallback() {
             email: user.email,
             name: user.name || '',
             phoneNumber: '', // Will be collected in profile setup
-            role: 'guest',
+            role: UserRole.GUEST,
             college: organization.name, // Store organization name in college field
             isProfileComplete: false, // Need to collect phone number
           };
@@ -285,7 +288,7 @@ export default function OAuthCallback() {
                   id: existingUser.id,
                   name: existingUser.name,
                   email: existingUser.email,
-                  role: existingUser.role || 'guest',
+                  role: existingUser.role || UserRole.GUEST,
                   phoneNumber: existingUser.phoneNumber || '',
                   ...(organizationId && {
                     organization: organizationId,
@@ -315,7 +318,7 @@ export default function OAuthCallback() {
           const minimalUser = {
             email: user.email,
             name: user.name || '',
-            role: 'guest',
+            role: UserRole.GUEST,
             isProfileComplete: false,
           };
           const createResponse = await fetch('/api/users', {
@@ -329,7 +332,7 @@ export default function OAuthCallback() {
               id: created.id,
               name: created.name,
               email: created.email,
-              role: created.role || 'guest',
+              role: created.role || UserRole.GUEST,
               phoneNumber: created.phoneNumber || '',
             };
             login(userDisplayData);

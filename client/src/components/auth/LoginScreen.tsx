@@ -389,10 +389,13 @@ export default function LoginScreen() {
         }
 
         // Add a small delay to ensure login state is persisted before redirect
+        // Add a small delay to ensure login state is persisted before redirect
         setTimeout(async () => {
           // Redirect based on role (handle both naming conventions)
-          if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.ADMIN) {
+          if (userData.role === UserRole.SUPER_ADMIN) {
             setLocation("/admin");
+          } else if (userData.role === UserRole.ADMIN) {
+            setLocation("/college-admin");
           } else if (userData.role === UserRole.CANTEEN_OWNER || userData.role === 'canteen-owner') {
             // For canteen owners, fetch canteen ID first
             try {
@@ -801,7 +804,7 @@ export default function LoginScreen() {
             currentStudyYear: data.user.currentStudyYear?.toString() || '1',
             isPassed: data.user.isPassed || false,
           }),
-          ...(data.user.role === "staff" && {
+          ...(data.user.role === UserRole.STAFF && {
             staffId: data.user.staffId || '',
           }),
         };
@@ -834,9 +837,11 @@ export default function LoginScreen() {
         }
 
         // Redirect based on role
-        if (data.user.role === 'super_admin' || data.user.role === 'admin') {
+        if (data.user.role === UserRole.SUPER_ADMIN) {
           setLocation("/admin");
-        } else if (data.user.role === 'canteen_owner' || data.user.role === 'canteen-owner') {
+        } else if (data.user.role === UserRole.ADMIN) {
+          setLocation("/college-admin");
+        } else if (data.user.role === UserRole.CANTEEN_OWNER || data.user.role === 'canteen-owner') {
           // For canteen owners, fetch canteen ID first
           try {
             const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${data.user.email}`);
@@ -907,7 +912,7 @@ export default function LoginScreen() {
           id: data.user.id,
           name: emailPasswordForm.name?.trim() || data.user.name || (isEmail ? trimmedIdentifier.split('@')[0] : trimmedIdentifier),
           email: data.user.email,
-          role: data.user.role || 'student',
+          role: data.user.role || UserRole.STUDENT,
           phoneNumber: data.user.phoneNumber || '',
           college: data.user.college || '',
         };

@@ -39,7 +39,7 @@ const profileSetupSchema = z.object({
     .min(10, "Phone number must be at least 10 digits")
     .max(15, "Phone number must be less than 15 digits")
     .regex(/^[+]?[0-9\s\-()]+$/, "Phone number can only contain numbers, spaces, hyphens, parentheses, and plus sign"),
-  role: z.enum(["student", "staff", "employee", "guest", "contractor", "visitor"], { required_error: "Please select your role" }),
+  role: z.enum([UserRole.STUDENT, UserRole.STAFF, UserRole.EMPLOYEE, UserRole.GUEST, UserRole.CONTRACTOR, UserRole.VISITOR], { required_error: "Please select your role" }),
 
   // Student fields
   registerNumber: z.string().optional(),
@@ -422,9 +422,9 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   // - Guest/Visitor roles: use useRegistrationFormatsNoYear (no year filtering, no year collection)
 
   // Helper functions for role checking (used for API hooks)
-  const isStudentRole = watchedRole === 'student';
-  const isEmployeeRole = watchedRole === 'employee' || watchedRole === 'staff' || watchedRole === 'contractor';
-  const isGuestRole = watchedRole === 'guest' || watchedRole === 'visitor';
+  const isStudentRole = watchedRole === UserRole.STUDENT;
+  const isEmployeeRole = watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR;
+  const isGuestRole = watchedRole === UserRole.GUEST || watchedRole === UserRole.VISITOR;
 
   // Hook for student roles (with year filtering) - only for colleges
   const { data: studentFormatsData, isLoading: studentFormatsLoading } = useRegistrationFormatsByInstitutionAndDepartment(
@@ -484,7 +484,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       } else {
         console.log(`📋 ProfileSetupScreen - No year filtering for ${watchedRole} role`);
       }
-      console.log(`📋 ProfileSetupScreen - Converted ${watchedRole === "student" ? "study year" : "joining year"}: ${registrationFormatsData?.studyYear || registrationFormatsData?.joiningYear}`);
+      console.log(`📋 ProfileSetupScreen - Converted ${watchedRole === UserRole.STUDENT ? "study year" : "joining year"}: ${registrationFormatsData?.studyYear || registrationFormatsData?.joiningYear}`);
       console.log(`📋 ProfileSetupScreen - Requested role: ${registrationFormatsData?.role}`);
       console.log(`📋 ProfileSetupScreen - Filtering criteria:`, registrationFormatsData?.filteringCriteria);
 
@@ -546,17 +546,17 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
     // Step 2: Department & Year (25%)
     if (watchedDepartment) progress += stepWeight / 2; // 12.5%
-    if (watchedRole === "student" && watchedPassingOutYear) {
+    if (watchedRole === UserRole.STUDENT && watchedPassingOutYear) {
       progress += stepWeight / 2; // 12.5%
-    } else if ((watchedRole === "staff" || watchedRole === "employee" || watchedRole === "contractor") && watchedJoiningYear) {
+    } else if ((watchedRole === UserRole.STAFF || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.CONTRACTOR) && watchedJoiningYear) {
       progress += stepWeight / 2; // 12.5%
-    } else if ((watchedRole === "visitor" || watchedRole === "guest")) {
+    } else if ((watchedRole === UserRole.VISITOR || watchedRole === UserRole.GUEST)) {
       // Visitor/Guest don't need year, so department completion gives full step weight
       if (watchedDepartment) progress += stepWeight / 2; // 12.5%
     }
 
     // Step 3: Registration Details (25%)
-    if (watchedRole === "staff" && watchedStaffId) {
+    if (watchedRole === UserRole.STAFF && watchedStaffId) {
       progress += stepWeight; // 25%
     } else if (needsRegisterNumber() && watchedRegisterNumber) {
       progress += stepWeight; // 25%
@@ -637,13 +637,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   }, [watchedCollege, watchedDepartment, watchedRole, form]);
 
   useEffect(() => {
-    if (watchedDepartment && !watchedPassingOutYear && watchedRole === "student") {
+    if (watchedDepartment && !watchedPassingOutYear && watchedRole === UserRole.STUDENT) {
       form.trigger("passingOutYear");
     }
   }, [watchedDepartment, watchedPassingOutYear, watchedRole, form]);
 
   useEffect(() => {
-    if (watchedDepartment && !watchedJoiningYear && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor")) {
+    if (watchedDepartment && !watchedJoiningYear && (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR)) {
       form.trigger("joiningYear");
     }
   }, [watchedDepartment, watchedJoiningYear, watchedRole, form]);
@@ -743,10 +743,10 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   // OPTIMIZED: Auto-fetch formats when department, year, and role are selected using optimized API
   useEffect(() => {
     if (watchedCollege && watchedDepartment && watchedRole && institutionType && registrationFormatsData?.formats) {
-      if (watchedRole === "student" && watchedPassingOutYear) {
+      if (watchedRole === UserRole.STUDENT && watchedPassingOutYear) {
         const { studyYear } = getAcademicYearInfo(watchedPassingOutYear);
         fetchAvailableFormats(watchedCollege, watchedDepartment, studyYear);
-      } else if (watchedRole === "staff" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") {
+      } else if (watchedRole === UserRole.STAFF || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.GUEST || watchedRole === UserRole.CONTRACTOR || watchedRole === UserRole.VISITOR) {
         // For staff/employee/guest/contractor/visitor, we don't need year, but we still need to fetch formats
         fetchAvailableFormats(watchedCollege, watchedDepartment, 0);
       } else {
@@ -931,14 +931,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       console.log(`🔍 Available formats:`, availableFormats.map(f => ({
         name: f.name,
         year: f.year,
-        totalLength: f.formats?.[watchedRole]?.totalLength,
-        example: f.formats?.[watchedRole]?.example
+        totalLength: f.formats?.[(watchedRole as string)?.toLowerCase()]?.totalLength,
+        example: f.formats?.[(watchedRole as string)?.toLowerCase()]?.example
       })));
 
       // For employee roles in organizations, we need to validate against ALL formats
       // For student roles in colleges, we validate against year-filtered formats
-      const isEmployeeRole = institutionType === 'organization' && (watchedRole === 'employee' || watchedRole === 'staff' || watchedRole === 'contractor');
-      const isStudentRole = institutionType === 'college' && watchedRole === 'student';
+      const isEmployeeRole = institutionType === 'organization' && (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR);
+      const isStudentRole = institutionType === 'college' && watchedRole === UserRole.STUDENT;
 
       console.log(`🔍 Validation approach: ${isEmployeeRole ? 'EMPLOYEE (validate against all formats)' : isStudentRole ? 'STUDENT (validate against year-filtered formats)' : 'OTHER'}`);
 
@@ -951,7 +951,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         console.log(`🔍 ===== VALIDATING AGAINST FORMAT: ${format.name} (Year: ${format.year}) =====`);
 
         // Get the role-specific format structure
-        const roleFormat = format.formats?.[watchedRole];
+        const roleFormat = format.formats?.[(watchedRole as string)?.toLowerCase()];
         if (!roleFormat || !roleFormat.structure) {
           console.log(`🔍 ❌ No ${watchedRole} format structure found`);
           continue;
@@ -1017,7 +1017,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 yearType = 'passingOutYear';
               } else if (institutionType === 'organization') {
                 // Organizations use joining year for employees, staff, contractors
-                if (watchedRole === 'employee' || watchedRole === 'staff' || watchedRole === 'contractor') {
+                if (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR) {
                   expectedYear = calculateYearValue(position, watchedJoiningYear || 2020, 'joiningYear');
                   yearType = 'joiningYear';
                 } else {
@@ -1136,7 +1136,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
   };
 
   const getStaffIdValidation = (staffId: string) => {
-    if (!staffId && watchedRole === "staff") return { isValid: false, message: "Staff ID is required" };
+    if (!staffId && watchedRole === UserRole.STAFF) return { isValid: false, message: "Staff ID is required" };
     if (!staffId) return { isValid: null, message: "" };
     const validation = validateStaffId(staffId);
     return {
@@ -1154,7 +1154,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
     if (watchedRole && !college) {
       return { isValid: false, message: `Please select a ${institutionType === 'college' ? 'college' : 'organization'}` };
     }
-    if (!college && watchedRole === "student") return { isValid: false, message: "College is required" };
+    if (!college && watchedRole === UserRole.STUDENT) return { isValid: false, message: "College is required" };
     if (!college) return { isValid: null, message: "" };
 
     // Check for special values that are not actual institutions
@@ -1173,22 +1173,22 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
   const getDepartmentValidation = (department: string) => {
     // Staff in colleges don't need department
-    if (watchedRole === "staff" && institutionType === 'college') {
+    if (watchedRole === UserRole.STAFF && institutionType === 'college') {
       return { isValid: null, message: "" };
     }
 
     // If college/organization is selected but department is not, show error
     if (watchedCollege && !department) {
       // Staff in organizations need department
-      if (watchedRole === "staff" && institutionType === 'organization') {
+      if (watchedRole === UserRole.STAFF && institutionType === 'organization') {
         return { isValid: false, message: "Please select a department" };
       }
       // Students, employees, guests, contractors, visitors need department
-      if (watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") {
+      if (watchedRole === UserRole.STUDENT || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.GUEST || watchedRole === UserRole.CONTRACTOR || watchedRole === UserRole.VISITOR) {
         return { isValid: false, message: "Please select a department" };
       }
     }
-    if (!department && watchedRole === "student") return { isValid: false, message: "Department is required" };
+    if (!department && watchedRole === UserRole.STUDENT) return { isValid: false, message: "Department is required" };
     if (!department) return { isValid: null, message: "" };
 
     // Check for special values that are not actual departments
@@ -1207,20 +1207,20 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
   const getPassingOutYearValidation = (year: number | undefined) => {
     // If department is selected but year is not, show error
-    if (watchedDepartment && !year && watchedRole === "student") {
+    if (watchedDepartment && !year && watchedRole === UserRole.STUDENT) {
       return { isValid: false, message: "Please select a passing out year" };
     }
-    if (!year && watchedRole === "student") return { isValid: false, message: "Passing out year is required" };
+    if (!year && watchedRole === UserRole.STUDENT) return { isValid: false, message: "Passing out year is required" };
     if (!year) return { isValid: null, message: "" };
     return { isValid: true, message: "" };
   };
 
   const getJoiningYearValidation = (year: number | undefined) => {
     // If department is selected but year is not, show error
-    if (watchedDepartment && !year && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor")) {
+    if (watchedDepartment && !year && (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR)) {
       return { isValid: false, message: "Please select a joining year" };
     }
-    if (!year && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor")) return { isValid: false, message: "Joining year is required" };
+    if (!year && (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR)) return { isValid: false, message: "Joining year is required" };
     if (!year) return { isValid: null, message: "" };
     return { isValid: true, message: "" };
   };
@@ -1253,7 +1253,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
       const isValid = isStepValid(currentStep);
       // Check additional step 3 requirements
       if (currentStep === 3) {
-        const needsRegisterNumber = watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor";
+        const needsRegisterNumber = watchedRole === UserRole.STUDENT || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.GUEST || watchedRole === UserRole.CONTRACTOR || watchedRole === UserRole.VISITOR;
         if (needsRegisterNumber && watchedRegisterNumber && watchedRegisterNumber.trim().length > 0) {
           if (!hasCheckedRegisterNumber || registerNumberCheckResult?.exists === true) {
             return; // Don't clear error yet
@@ -1278,12 +1278,12 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
       case 2: // Department & Year
         // For staff in colleges: no department/year needed, can proceed
-        if (watchedRole === "staff" && institutionType === 'college') return true;
+        if (watchedRole === UserRole.STAFF && institutionType === 'college') return true;
 
         // Department requirements
         if (institutionType === 'organization') {
           // Staff in organizations need department
-          if (watchedRole === "staff") {
+          if (watchedRole === UserRole.STAFF) {
             if (departmentValidation.isValid !== true) return false;
           } else {
             // Students, employees, guests, contractors, visitors in organizations need department
@@ -1301,13 +1301,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         // Year requirements based on role and institution type
         if (institutionType === 'college') {
           // Students need passing out year
-          if (watchedRole === "student") {
+          if (watchedRole === UserRole.STUDENT) {
             if (passingOutYearValidation.isValid !== true) return false;
           }
           // Other roles in colleges don't need year (staff already handled above)
         } else if (institutionType === 'organization') {
           // Employees, staff, and contractors need joining year
-          if (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor") {
+          if (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR) {
             if (joiningYearValidation.isValid !== true) return false;
           }
           // Guests and visitors in organizations don't need year
@@ -1320,7 +1320,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
           return registerNumberValidation.isValid === true;
         }
         // For staff: need staff ID
-        if (watchedRole === "staff") {
+        if (watchedRole === UserRole.STAFF) {
           return staffIdValidation.isValid === true;
         }
         return false;
@@ -1351,13 +1351,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
       case 2: // Department & Year
         // For staff in colleges: no department/year needed
-        if (watchedRole === "staff" && institutionType === 'college') {
+        if (watchedRole === UserRole.STAFF && institutionType === 'college') {
           return null;
         }
 
         // Department requirements
         if (institutionType === 'organization') {
-          if (watchedRole === "staff" && departmentValidation.isValid !== true) {
+          if (watchedRole === UserRole.STAFF && departmentValidation.isValid !== true) {
             return departmentValidation.message || "Please select a department";
           }
           if (needsRegisterNumber() && departmentValidation.isValid !== true) {
@@ -1370,19 +1370,19 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
         }
 
         // Year requirements
-        if (institutionType === 'college' && watchedRole === "student") {
+        if (institutionType === 'college' && watchedRole === UserRole.STUDENT) {
           if (passingOutYearValidation.isValid !== true) {
             return passingOutYearValidation.message || "Please select a passing out year";
           }
         } else if (institutionType === 'organization') {
-          if ((watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor") && joiningYearValidation.isValid !== true) {
+          if ((watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR) && joiningYearValidation.isValid !== true) {
             return joiningYearValidation.message || "Please select a joining year";
           }
         }
         return null;
 
       case 3: // Registration Details
-        if (watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") {
+        if (watchedRole === UserRole.STUDENT || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.GUEST || watchedRole === UserRole.CONTRACTOR || watchedRole === UserRole.VISITOR) {
           if (!watchedRegisterNumber || watchedRegisterNumber.trim().length === 0) {
             return "Please enter your registration number";
           }
@@ -1393,7 +1393,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
             return "Please click the 'Check' button to verify your registration number";
           }
           // Don't show "already registered" error here - it's shown inline when check button is clicked
-        } else if (watchedRole === "staff") {
+        } else if (watchedRole === UserRole.STAFF) {
           if (!watchedStaffId || watchedStaffId.trim().length === 0) {
             return "Please enter your staff ID";
           }
@@ -2286,8 +2286,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                     <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto">
                       <div
                         className={`group p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[110px] flex items-center justify-center ${institutionType === "college"
-                            ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
-                            : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-md hover:ring-1 hover:ring-primary/10"
+                          ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
+                          : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-md hover:ring-1 hover:ring-primary/10"
                           }`}
                         onClick={() => {
                           console.log('🏫 User clicked College - setting institutionType to college');
@@ -2298,8 +2298,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                       >
                         <div className="text-center space-y-2">
                           <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center transition-all ${institutionType === "college"
-                              ? "bg-primary/20 ring-2 ring-primary/30"
-                              : "bg-primary/5 group-hover:bg-primary/10"
+                            ? "bg-primary/20 ring-2 ring-primary/30"
+                            : "bg-primary/5 group-hover:bg-primary/10"
                             }`}>
                             <GraduationCap className={`w-6 h-6 transition-all ${institutionType === "college" ? "text-primary" : "text-primary/70 group-hover:text-primary"
                               }`} />
@@ -2311,8 +2311,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                       <div
                         className={`group p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[110px] flex items-center justify-center ${institutionType === "organization"
-                            ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
-                            : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-md hover:ring-1 hover:ring-primary/10"
+                          ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg ring-2 ring-primary/20"
+                          : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-md hover:ring-1 hover:ring-primary/10"
                           }`}
                         onClick={() => {
                           console.log('🏢 User clicked Organization - setting institutionType to organization');
@@ -2323,8 +2323,8 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                       >
                         <div className="text-center space-y-2">
                           <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center transition-all ${institutionType === "organization"
-                              ? "bg-primary/20 ring-2 ring-primary/30"
-                              : "bg-primary/5 group-hover:bg-primary/10"
+                            ? "bg-primary/20 ring-2 ring-primary/30"
+                            : "bg-primary/5 group-hover:bg-primary/10"
                             }`}>
                             <Building2 className={`w-6 h-6 transition-all ${institutionType === "organization" ? "text-primary" : "text-primary/70 group-hover:text-primary"
                               }`} />
@@ -2422,18 +2422,18 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         <>
                           {activeRoles.student && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "student"
-                                  ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
-                                  : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === UserRole.STUDENT
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
+                                : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
                                 }`}
-                              onClick={() => form.setValue("role", "student")}
+                              onClick={() => form.setValue("role", UserRole.STUDENT)}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "student"
-                                    ? "bg-primary/20 ring-2 ring-primary/30"
-                                    : "bg-primary/5 group-hover:bg-primary/10"
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === UserRole.STUDENT
+                                  ? "bg-primary/20 ring-2 ring-primary/30"
+                                  : "bg-primary/5 group-hover:bg-primary/10"
                                   }`}>
-                                  <School className={`w-5 h-5 ${watchedRole === "student" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
+                                  <School className={`w-5 h-5 ${watchedRole === UserRole.STUDENT ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Student</h4>
                                 <p className="text-[10px] text-muted-foreground">Academic learner</p>
@@ -2443,18 +2443,18 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                           {activeRoles.staff && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "staff"
-                                  ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
-                                  : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === UserRole.STAFF
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
+                                : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
                                 }`}
-                              onClick={() => form.setValue("role", "staff")}
+                              onClick={() => form.setValue("role", UserRole.STAFF)}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "staff"
-                                    ? "bg-primary/20 ring-2 ring-primary/30"
-                                    : "bg-primary/5 group-hover:bg-primary/10"
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === UserRole.STAFF
+                                  ? "bg-primary/20 ring-2 ring-primary/30"
+                                  : "bg-primary/5 group-hover:bg-primary/10"
                                   }`}>
-                                  <Briefcase className={`w-5 h-5 ${watchedRole === "staff" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
+                                  <Briefcase className={`w-5 h-5 ${watchedRole === UserRole.STAFF ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Staff</h4>
                                 <p className="text-[10px] text-muted-foreground">Faculty member</p>
@@ -2466,18 +2466,18 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                         <>
                           {activeRoles.employee && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "employee"
-                                  ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
-                                  : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === UserRole.EMPLOYEE
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
+                                : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
                                 }`}
-                              onClick={() => form.setValue("role", "employee")}
+                              onClick={() => form.setValue("role", UserRole.EMPLOYEE)}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "employee"
-                                    ? "bg-primary/20 ring-2 ring-primary/30"
-                                    : "bg-primary/5 group-hover:bg-primary/10"
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === UserRole.EMPLOYEE
+                                  ? "bg-primary/20 ring-2 ring-primary/30"
+                                  : "bg-primary/5 group-hover:bg-primary/10"
                                   }`}>
-                                  <User className={`w-5 h-5 ${watchedRole === "employee" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
+                                  <User className={`w-5 h-5 ${watchedRole === UserRole.EMPLOYEE ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Employee</h4>
                                 <p className="text-[10px] text-muted-foreground">Full-time staff</p>
@@ -2487,18 +2487,18 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                           {activeRoles.contractor && (
                             <div
-                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === "contractor"
-                                  ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
-                                  : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
+                              className={`group p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${watchedRole === UserRole.CONTRACTOR
+                                ? "border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-md ring-2 ring-primary/20"
+                                : "border-border/60 hover:border-primary/60 hover:bg-accent/50 hover:shadow-sm hover:ring-1 hover:ring-primary/10"
                                 }`}
-                              onClick={() => form.setValue("role", "contractor")}
+                              onClick={() => form.setValue("role", UserRole.CONTRACTOR)}
                             >
                               <div className="text-center space-y-1.5">
-                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === "contractor"
-                                    ? "bg-primary/20 ring-2 ring-primary/30"
-                                    : "bg-primary/5 group-hover:bg-primary/10"
+                                <div className={`w-10 h-10 mx-auto rounded-lg flex items-center justify-center transition-all ${watchedRole === UserRole.CONTRACTOR
+                                  ? "bg-primary/20 ring-2 ring-primary/30"
+                                  : "bg-primary/5 group-hover:bg-primary/10"
                                   }`}>
-                                  <Briefcase className={`w-5 h-5 ${watchedRole === "contractor" ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
+                                  <Briefcase className={`w-5 h-5 ${watchedRole === UserRole.CONTRACTOR ? "text-primary" : "text-primary/70 group-hover:text-primary"}`} />
                                 </div>
                                 <h4 className="font-bold text-sm text-foreground">Contractor</h4>
                                 <p className="text-[10px] text-muted-foreground">Contract worker</p>
@@ -2508,11 +2508,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                           {activeRoles.visitor && (
                             <div
-                              className={`p-2 border-2 rounded-lg cursor-pointer transition-all ${watchedRole === "visitor"
-                                  ? "border-primary bg-primary/5"
-                                  : "border-border hover:border-primary/50 hover:bg-accent"
+                              className={`p-2 border-2 rounded-lg cursor-pointer transition-all ${watchedRole === UserRole.VISITOR
+                                ? "border-primary bg-primary/5"
+                                : "border-border hover:border-primary/50 hover:bg-accent"
                                 }`}
-                              onClick={() => form.setValue("role", "visitor")}
+                              onClick={() => form.setValue("role", UserRole.VISITOR)}
                             >
                               <div className="text-center">
                                 <User className="w-8 h-8 mx-auto mb-2 text-primary" />
@@ -2525,11 +2525,11 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
 
                       {activeRoles.guest && (
                         <div
-                          className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${watchedRole === "guest"
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover:border-primary/50 hover:bg-accent"
+                          className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${watchedRole === UserRole.GUEST
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50 hover:bg-accent"
                             }`}
-                          onClick={() => form.setValue("role", "guest")}
+                          onClick={() => form.setValue("role", UserRole.GUEST)}
                         >
                           <div className="text-center">
                             <User className="w-8 h-8 mx-auto mb-2 text-primary" />
@@ -2543,7 +2543,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 )}
 
                 {/* Step 2: Department & Year Selection (combines old steps 4 and 5) */}
-                {currentStep === 2 && (watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") && (
+                {currentStep === 2 && (watchedRole === UserRole.STUDENT || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.GUEST || watchedRole === UserRole.CONTRACTOR || watchedRole === UserRole.VISITOR) && (
                   <div className="space-y-6">
 
                     <FormField
@@ -2619,7 +2619,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 )}
 
                 {/* Year Selection for Students (shown in step 2) */}
-                {currentStep === 2 && watchedRole === "student" && (
+                {currentStep === 2 && watchedRole === UserRole.STUDENT && (
                   <div className="space-y-6">
 
                     <FormField
@@ -2636,7 +2636,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               value={field.value?.toString()}
                               onOpenChange={(open) => {
                                 // Trigger validation when dropdown opens if not selected
-                                if (!open && !field.value && watchedDepartment && watchedRole === "student") {
+                                if (!open && !field.value && watchedDepartment && watchedRole === UserRole.STUDENT) {
                                   form.trigger("passingOutYear");
                                 }
                               }}
@@ -2688,13 +2688,14 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                           {availableFormats.map((format, index) => {
                             // Get the correct format type based on role
                             const formatType = (() => {
-                              switch (watchedRole as string) {
-                                case "student": return "student";
-                                case "staff": return "staff";
-                                case "employee": return "employee";
-                                case "contractor": return "contractor";
-                                case "visitor": return "visitor";
-                                case "guest": return "guest";
+                              // Map Enum to lowercase string for format lookup
+                              switch (watchedRole) {
+                                case UserRole.STUDENT: return "student";
+                                case UserRole.STAFF: return "staff";
+                                case UserRole.EMPLOYEE: return "employee";
+                                case UserRole.CONTRACTOR: return "contractor";
+                                case UserRole.VISITOR: return "visitor";
+                                case UserRole.GUEST: return "guest";
                                 default: return "student";
                               }
                             })();
@@ -2870,7 +2871,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 )}
 
                 {/* Joining Year for Employees (shown in step 2) */}
-                {currentStep === 2 && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor") && (
+                {currentStep === 2 && (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR) && (
                   <div className="space-y-6">
 
                     <FormField
@@ -2887,7 +2888,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                               value={field.value?.toString()}
                               onOpenChange={(open) => {
                                 // Trigger validation when dropdown opens if not selected
-                                if (!open && !field.value && watchedDepartment && (watchedRole === "employee" || watchedRole === "staff" || watchedRole === "contractor")) {
+                                if (!open && !field.value && watchedDepartment && (watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.STAFF || watchedRole === UserRole.CONTRACTOR)) {
                                   form.trigger("joiningYear");
                                 }
                               }}
@@ -3044,7 +3045,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                 {currentStep === 3 && (
                   <div className="space-y-6">
 
-                    {(watchedRole === "student" || watchedRole === "employee" || watchedRole === "guest" || watchedRole === "contractor" || watchedRole === "visitor") ? (
+                    {(watchedRole === UserRole.STUDENT || watchedRole === UserRole.EMPLOYEE || watchedRole === UserRole.GUEST || watchedRole === UserRole.CONTRACTOR || watchedRole === UserRole.VISITOR) ? (
                       <FormField
                         control={form.control}
                         name="registerNumber"
@@ -3064,13 +3065,13 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                         const format = availableFormats[0];
                                         // Get the correct format type based on role
                                         const formatType = (() => {
-                                          switch (watchedRole as string) {
-                                            case "student": return "student";
-                                            case "staff": return "staff";
-                                            case "employee": return "employee";
-                                            case "contractor": return "contractor";
-                                            case "visitor": return "visitor";
-                                            case "guest": return "guest";
+                                          switch (watchedRole) {
+                                            case UserRole.STUDENT: return "student";
+                                            case UserRole.STAFF: return "staff";
+                                            case UserRole.EMPLOYEE: return "employee";
+                                            case UserRole.CONTRACTOR: return "contractor";
+                                            case UserRole.VISITOR: return "visitor";
+                                            case UserRole.GUEST: return "guest";
                                             default: return "student";
                                           }
                                         })();
@@ -3236,7 +3237,7 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                           </FormItem>
                         )}
                       />
-                    ) : watchedRole === "staff" ? (
+                    ) : watchedRole === UserRole.STAFF ? (
                       <FormField
                         control={form.control}
                         name="staffId"

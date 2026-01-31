@@ -313,7 +313,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     isLoading,
     error: error?.message || null,
     userCollege: effectiveUser?.college || (effectiveUser as any)?.collegeId,
-    isFiltered: effectiveIsAuthenticated && (userCollege || userOrganization) && effectiveUser?.role !== 'admin' && effectiveUser?.role !== 'super_admin',
+    isFiltered: effectiveIsAuthenticated && (userCollege || userOrganization) && effectiveUser?.role !== UserRole.ADMIN && effectiveUser?.role !== UserRole.SUPER_ADMIN,
     // Lazy loading functions
     hasNextPage: institutionType ? hasNextPage : false,
     isFetchingNextPage: institutionType ? isFetchingNextPage : false,
