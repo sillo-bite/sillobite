@@ -43,6 +43,7 @@ import AdminUserManagementPage from "./components/admin/AdminUserManagementPage"
 import AdminOrganizationManagementPage from "./components/admin/AdminOrganizationManagementPage";
 import OrganizationAdminPanel from "./components/admin/OrganizationAdminPanel";
 import AdminCollegeManagementPage from "./components/admin/AdminCollegeManagementPage";
+import AdminCollegeDetailsPage from "./components/admin/AdminCollegeDetailsPage";
 import AdminSystemSettingsPage from "./components/admin/AdminSystemSettingsPage";
 import CollegeAdminDashboard from "./components/college-admin/CollegeAdminDashboard";
 import StudentsPage from "./components/college-admin/StudentsPage";
@@ -101,6 +102,7 @@ import PerformanceOptimizer from "./components/common/PerformanceOptimizer";
 import { initAnalytics } from "./utils/analytics";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import QRHandlerPage from "./pages/QRHandlerPage";
 
 
 
@@ -419,6 +421,13 @@ const App = () => {
                             </ProtectedRoute>
                           </MaintenanceWrapper>
                         </Route>
+                        <Route path="/admin/college-management/:collegeId">
+                          <MaintenanceWrapper allowAdminAccess={true}>
+                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                              <AdminLayout><AdminCollegeDetailsPage /></AdminLayout>
+                            </ProtectedRoute>
+                          </MaintenanceWrapper>
+                        </Route>
                         <Route path="/admin/system-settings">
                           <MaintenanceWrapper allowAdminAccess={true}>
                             <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
@@ -609,6 +618,7 @@ const App = () => {
                             </ProtectedRoute>
                           </MaintenanceWrapper>
                         </Route>
+                        <Route path="/qr/:type/:qrId" component={QRHandlerPage} />
                         <Route path="/index" component={Index} />
                         <Route path="/test" component={TestPage} />
                         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

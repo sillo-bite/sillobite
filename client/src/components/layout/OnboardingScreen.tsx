@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { 
-  UtensilsCrossed, 
-  ShoppingBag, 
-  Clock, 
-  MapPin, 
-  Heart, 
+import {
+  UtensilsCrossed,
+  ShoppingBag,
+  Clock,
+  MapPin,
+  Heart,
   Star,
   ArrowRight,
   ChefHat
@@ -109,9 +109,9 @@ export default function OnboardingScreen() {
         setPrimaryColor(color);
       }
     };
-    
+
     updatePrimaryColor();
-    
+
     const observer = new MutationObserver(updatePrimaryColor);
     if (typeof window !== 'undefined') {
       observer.observe(document.documentElement, {
@@ -119,7 +119,7 @@ export default function OnboardingScreen() {
         attributeFilter: ['class']
       });
     }
-    
+
     return () => observer.disconnect();
   }, []);
 
@@ -148,7 +148,8 @@ export default function OnboardingScreen() {
     localStorage.setItem('onboarding_completed', 'true');
     // Set flag to indicate we're coming from onboarding
     sessionStorage.setItem('fromOnboarding', 'true');
-    setLocation("/login");
+    const searchParams = window.location.search;
+    setLocation(`/login${searchParams}`);
   };
 
   // Calculate positions for icons in a circle
@@ -187,7 +188,7 @@ export default function OnboardingScreen() {
 
       {/* Main Content */}
       <div className="relative z-10 w-full max-w-md space-y-8 flex flex-col items-center">
-        
+
         {/* Feature Icons Circle - Center Section */}
         <div className="relative w-56 h-56 flex items-center justify-center">
           {/* Center Logo/Icon */}

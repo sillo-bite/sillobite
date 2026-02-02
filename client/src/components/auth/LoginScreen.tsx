@@ -112,7 +112,8 @@ export default function LoginScreen() {
       if (!fromQR && !skipOnboarding && !pendingQRData && !fromOnboarding) {
         // This ensures users go through the proper flow: Splash → Onboarding → Login
         console.log('🔄 Redirecting to onboarding - user accessed login directly');
-        setLocation('/onboarding');
+        const searchParams = window.location.search;
+        setLocation(`/onboarding${searchParams}`);
         return;
       }
     }
@@ -392,7 +393,12 @@ export default function LoginScreen() {
         // Add a small delay to ensure login state is persisted before redirect
         setTimeout(async () => {
           // Redirect based on role (handle both naming conventions)
-          if (userData.role === UserRole.SUPER_ADMIN) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirectUrl = urlParams.get('redirect');
+
+          if (redirectUrl) {
+            setLocation(decodeURIComponent(redirectUrl));
+          } else if (userData.role === UserRole.SUPER_ADMIN) {
             setLocation("/admin");
           } else if (userData.role === UserRole.ADMIN) {
             setLocation("/college-admin");
@@ -837,7 +843,12 @@ export default function LoginScreen() {
         }
 
         // Redirect based on role
-        if (data.user.role === UserRole.SUPER_ADMIN) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectUrl = urlParams.get('redirect');
+
+        if (redirectUrl) {
+          setLocation(decodeURIComponent(redirectUrl));
+        } else if (data.user.role === UserRole.SUPER_ADMIN) {
           setLocation("/admin");
         } else if (data.user.role === UserRole.ADMIN) {
           setLocation("/college-admin");
@@ -855,6 +866,8 @@ export default function LoginScreen() {
             console.error('Error fetching canteen:', error);
             setLocation('/login?error=canteen_fetch_failed');
           }
+        } else if (data.user.role === UserRole.DELIVERY_PERSON) {
+          setLocation("/delivery-portal");
         } else {
           setLocation("/app");
         }

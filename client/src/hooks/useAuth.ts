@@ -182,6 +182,10 @@ export function useAuth() {
         try {
           const validatedUser = await validationPromise;
           setUser(validatedUser);
+          if (validatedUser) {
+            // Persist validated user to storage to ensure useAuthSync and other hooks reading localStorage are in sync
+            setPWAAuth(validatedUser);
+          }
         } catch (error) {
           console.warn("⚠️ Validation promise error:", error);
           setUser(authState.user);

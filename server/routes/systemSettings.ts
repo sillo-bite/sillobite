@@ -177,6 +177,26 @@ const SystemSettingsSchema = new mongoose.Schema({
         employee: { type: Boolean, default: true },
         guest: { type: Boolean, default: true }
       },
+      qrCodes: [{
+        qrId: { type: String, required: true },
+        address: { type: String, required: true }, // Legacy/Simple
+        fullAddress: {
+          label: { type: String },
+          fullName: { type: String },
+          phoneNumber: { type: String },
+          addressLine1: { type: String },
+          addressLine2: { type: String },
+          city: { type: String },
+          state: { type: String },
+          pincode: { type: String },
+          landmark: { type: String }
+        },
+        qrCodeUrl: { type: String, required: true },
+        hash: { type: String, required: true },
+        isActive: { type: Boolean, default: true },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now }
+      }],
       departments: [{
         code: { type: String, required: true },
         name: { type: String, required: true },
@@ -2198,6 +2218,148 @@ router.get('/registration-formats', async (req, res) => {
   } catch (error: any) {
     console.error('Error fetching registration formats:', error);
     res.status(500).json({ error: 'Failed to fetch registration formats' });
+  }
+});
+
+/**
+ * Get college QR codes
+ */
+router.get('/colleges/:collegeId/qr-codes', async (req, res) => {
+  try {
+    const { collegeId } = req.params;
+
+    if (!collegeId) {
+      return res.status(400).json({ error: 'College ID is required' });
+    }
+
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.colleges?.list) {
+      return res.status(404).json({ error: 'No colleges found' });
+    }
+
+    const college = settings.colleges.list.find((col: any) => col.id === collegeId);
+    if (!college) {
+      return res.status(404).json({ error: 'College not found' });
+    }
+
+    res.json({
+      success: true,
+      qrCodes: college.qrCodes || []
+    });
+  } catch (error: any) {
+    console.error('Error fetching college QR codes:', error);
+    res.status(500).json({ error: 'Failed to fetch QR codes' });
+  }
+});
+
+/**
+ * Create college QR code
+ */
+router.post('/colleges/:collegeId/qr-codes', async (req, res) => {
+  try {
+    const { collegeId } = req.params;
+    const { address, fullAddress } = req.body;
+
+    if (!collegeId) {
+      return res.status(400).json({ error: 'College ID is required' });
+    }
+
+    if (!address && !fullAddress) {
+      return res.status(400).json({ error: 'Address details are required' });
+    }
+
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.colleges?.list) {
+      return res.status(404).json({ error: 'No colleges found' });
+    }
+
+    const collegeIndex = settings.colleges.list.findIndex((col: any) => col.id === collegeId);
+    if (collegeIndex === -1) {
+      return res.status(404).json({ error: 'College not found' });
+    }
+
+    const qrId = 'QR' + Date.now().toString(36).toUpperCase();
+    const hash = Buffer.from(`${collegeId}-${qrId}-${Date.now()}`).toString('base64');
+    // Using a simpler URL structure for now, can be updated to actual frontend route
+    const qrCodeUrl = `${process.env.APP_URL || 'http://localhost:5000'}/qr/college/${qrId}`;
+
+    const newQrCode = {
+      qrId,
+      address: address || fullAddress?.addressLine1 || '',
+      fullAddress: fullAddress || {
+        label: 'Default Label', // Should come from frontend
+        addressLine1: address
+      },
+      qrCodeUrl,
+      hash,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    if (!settings.colleges.list[collegeIndex].qrCodes) {
+      settings.colleges.list[collegeIndex].qrCodes = [];
+    }
+
+    settings.colleges.list[collegeIndex].qrCodes.push(newQrCode);
+    settings.markModified('colleges.list');
+    await settings.save();
+
+    res.json({
+      success: true,
+      qrCode: newQrCode
+    });
+  } catch (error: any) {
+    console.error('Error creating college QR code:', error);
+    res.status(500).json({ error: 'Failed to create QR code' });
+  }
+});
+
+/**
+ * Delete college QR code
+ */
+router.delete('/colleges/:collegeId/qr-codes/:qrId', async (req, res) => {
+  try {
+    const { collegeId, qrId } = req.params;
+
+    if (!collegeId || !qrId) {
+      return res.status(400).json({ error: 'College ID and QR ID are required' });
+    }
+
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.colleges?.list) {
+      return res.status(404).json({ error: 'No colleges found' });
+    }
+
+    const collegeIndex = settings.colleges.list.findIndex((col: any) => col.id === collegeId);
+    if (collegeIndex === -1) {
+      return res.status(404).json({ error: 'College not found' });
+    }
+
+    const college = settings.colleges.list[collegeIndex];
+    if (!college.qrCodes) {
+      return res.status(404).json({ error: 'QR Code not found' });
+    }
+
+    const qrIndex = college.qrCodes.findIndex((qr: any) => qr.qrId === qrId);
+    if (qrIndex === -1) {
+      return res.status(404).json({ error: 'QR Code not found' });
+    }
+
+    college.qrCodes.splice(qrIndex, 1);
+    settings.markModified('colleges.list');
+    await settings.save();
+
+    res.json({
+      success: true,
+      message: 'QR Code deleted successfully'
+    });
+  } catch (error: any) {
+    console.error('Error deleting college QR code:', error);
+    res.status(500).json({ error: 'Failed to delete QR code' });
   }
 });
 

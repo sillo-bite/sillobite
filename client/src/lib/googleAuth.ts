@@ -4,6 +4,12 @@
  */
 
 export const signInWithGoogle = (): void => {
+  // Save redirect parameter to session storage so we can restore it after callback
+  const urlParams = new URLSearchParams(window.location.search);
+  const redirect = urlParams.get('redirect');
+  if (redirect) {
+    sessionStorage.setItem('authRedirect', redirect);
+  }
   window.location.href = '/api/auth/google';
 };
 
@@ -36,7 +42,7 @@ export const handleGoogleRedirect = async (): Promise<{
   try {
     console.log('Starting OAuth token exchange...');
     console.log('Authorization code:', code ? 'present' : 'missing');
-    
+
     const tokenResponse = await fetch('/api/auth/google/token', {
       method: 'POST',
       headers: {
@@ -156,7 +162,7 @@ export const signOutGoogle = (): void => {
 export const isAuthenticated = (): boolean => {
   const user = localStorage.getItem('user');
   const sessionTimestamp = localStorage.getItem('session_timestamp');
-  
+
   if (!user || !sessionTimestamp) {
     return false;
   }

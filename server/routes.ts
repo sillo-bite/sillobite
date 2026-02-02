@@ -143,6 +143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount Canteen Analytics Routes
   app.use("/api/canteen-analytics", canteenAnalyticsRoutes);
 
+  // Mount System Settings Routes
+  app.use("/api/system-settings", systemSettingsRoutes);
+
   // Database schema health check endpoint
   app.get("/api/schema-status", async (req, res) => {
     try {
@@ -583,6 +586,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedUser);
     } catch (error) {
       console.error(`❌ Error updating user location:`, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Apply QR Context to User (Location + Address)
+  app.post("/api/users/:id/apply-qr-context", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { qrId } = req.body;
+
+      console.log(`📱 POST /api/users/${userId}/apply-qr-context - QR ID: ${qrId}`);
+
+      if (!qrId) {
+        return res.status(400).json({ message: "qrId is required" });
+      }
+
+      // 1. Find the QR Code in SystemSettings
+      const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
+      const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
+      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
+
+      let targetCollege: any = null;
+      let targetQrCode: any = null;
+
+      // Search in colleges list
+      if (settings?.colleges?.list) {
+        for (const college of settings.colleges.list) {
+          if (college.qrCodes) {
+            const foundQr = college.qrCodes.find((qr: any) => qr.qrId === qrId);
+            if (foundQr) {
+              targetCollege = college;
+              targetQrCode = foundQr;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!targetCollege || !targetQrCode) {
+        console.log(`❌ QR Code ${qrId} not found in any college`);
+        return res.status(404).json({ message: "Invalid QR Code" });
+      }
+
+      const collegeId = targetCollege.id;
+      const addressDetails = targetQrCode.fullAddress;
+
+      console.log(`✅ Found QR belonging to College: ${targetCollege.name} (${collegeId})`);
+
+      // 2. Update User Location
+      await storage.updateUser(userId, {
+        selectedLocationType: 'college',
+        selectedLocationId: collegeId
+      });
+      console.log(`📍 User ${userId} location updated to College: ${collegeId}`);
+
+      // 3. Add Address (De-duplication Logic)
+      if (addressDetails) {
+        // Fetch user details for the address
+        const user = await storage.getUser(userId);
+        if (user) {
+          // Normalize address for comparison
+          const normalize = (str: string) => str?.toLowerCase().trim().replace(/\s+/g, ' ') || '';
+
+          const newAddressLine1 = normalize(addressDetails.addressLine1);
+          const newPincode = normalize(addressDetails.pincode);
+
+          // Get user's existing addresses
+          const userAddresses = await storage.getUserAddresses(userId);
+
+          let duplicateExists = false;
+          for (const addr of userAddresses) {
+            if (normalize(addr.addressLine1) === newAddressLine1 &&
+              normalize(addr.pincode) === newPincode) {
+              duplicateExists = true;
+              break;
+            }
+          }
+
+          if (!duplicateExists) {
+            await storage.createUserAddress({
+              userId: userId,
+              label: addressDetails.label || 'College Address',
+              addressLine1: addressDetails.addressLine1,
+              addressLine2: addressDetails.addressLine2,
+              city: addressDetails.city,
+              state: addressDetails.state,
+              pincode: addressDetails.pincode,
+              landmark: addressDetails.landmark,
+              fullName: user.name, // Use user's name
+              phoneNumber: user.phoneNumber || '0000000000', // Use user's phone or dummy fallback if missing
+              isDefault: false
+            });
+            console.log(`🏠 added new address for user ${userId}`);
+          } else {
+            console.log(`ℹ️ Address already exists for user ${userId}, skipping addition`);
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Context applied successfully",
+        collegeId: collegeId,
+        collegeName: targetCollege.name
+      });
+
+    } catch (error) {
+      console.error(`❌ Error applying QR context:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

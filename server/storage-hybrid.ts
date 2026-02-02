@@ -4,10 +4,10 @@ import {
   User, InsertUser, UserRole
 } from "@shared/schema";
 import {
-  Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter,
+  Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter, UserAddress,
   MenuItem, Category, MediaBanner, CodingChallenge, CanteenCharge,
   type ICategory, type IMenuItem, type IOrder, type IOrderItem,
-  type INotification, type ILoginIssue, type IPayment, type IComplaint, type ICoupon, type ICounter
+  type INotification, type ILoginIssue, type IPayment, type IComplaint, type ICoupon, type ICounter, type IUserAddress
 } from './models/mongodb-models';
 import { db as getPostgresDb } from "./db";
 import mongoose from 'mongoose';
@@ -112,6 +112,20 @@ export type InsertCoupon = {
   createdBy: number;
 };
 
+export type InsertUserAddress = {
+  userId: number;
+  label: string;
+  fullName?: string;
+  phoneNumber?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  isDefault?: boolean;
+};
+
 // Convert MongoDB document to plain object
 function mongoToPlain<T>(doc: any): T {
   if (!doc) return doc;
@@ -151,7 +165,12 @@ export interface IStorage {
   // User-specific data methods for admin panel
   getUserOrders(userId: number): Promise<any[]>;
   getUserPayments(userId: number): Promise<any[]>;
+
   getComplaintsByUser(userId: number): Promise<any[]>;
+
+  // User Address Operations (MongoDB)
+  getUserAddresses(userId: number): Promise<any[]>;
+  createUserAddress(address: InsertUserAddress): Promise<any>;
 
   // Categories (MongoDB)
   getCategories(): Promise<any[]>;
@@ -499,6 +518,29 @@ export class HybridStorage implements IStorage {
   async deleteAllUsers(): Promise<void> {
     const db = getPostgresDb();
     await db.user.deleteMany();
+  }
+
+  // USER ADDRESS OPERATIONS (MongoDB)
+  async getUserAddresses(userId: number): Promise<any[]> {
+    const addresses = await UserAddress.find({ userId }).sort({ isDefault: -1, createdAt: -1 });
+    return mongoToPlain(addresses);
+  }
+
+  async createUserAddress(address: InsertUserAddress): Promise<any> {
+    // If setting as default, unset other defaults for this user
+    if (address.isDefault) {
+      await UserAddress.updateMany({ userId: address.userId }, { isDefault: false });
+    }
+
+    // If this is the first address, make it default automatically
+    const count = await UserAddress.countDocuments({ userId: address.userId });
+    if (count === 0) {
+      address.isDefault = true;
+    }
+
+    const newAddress = new UserAddress(address);
+    const saved = await newAddress.save();
+    return mongoToPlain(saved);
   }
 
   // CATEGORY OPERATIONS (MongoDB)

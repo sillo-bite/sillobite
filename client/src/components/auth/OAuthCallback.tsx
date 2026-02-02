@@ -160,6 +160,15 @@ export default function OAuthCallback() {
         login(userDisplayData);
 
         // Keep loading state true until redirect completes
+        // Check for stored redirect (from QR code etc)
+        const authRedirect = sessionStorage.getItem('authRedirect');
+        if (authRedirect) {
+          sessionStorage.removeItem('authRedirect');
+          console.log('🔄 Restoring redirect from session:', authRedirect);
+          setLocation(decodeURIComponent(authRedirect));
+          return;
+        }
+
         // Redirect based on role
         if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.ADMIN) {
           setLocation('/admin');
