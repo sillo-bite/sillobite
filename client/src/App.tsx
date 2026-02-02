@@ -51,6 +51,7 @@ import CollegeUsersPage from "./components/college-admin/CollegeUsersPage";
 import CollegeReportsPage from "./components/college-admin/CollegeReportsPage";
 import CollegeSettingsPage from "./components/college-admin/CollegeSettingsPage";
 import CollegeCanteensPage from "./components/college-admin/CollegeCanteensPage";
+import CollegeCanteenMonitor from "./components/college-admin/CollegeCanteenMonitor";
 import CanteenManagementPage from "./components/canteen/CanteenManagementPage";
 import CanteenAdminWrapper from "./components/canteen/CanteenAdminWrapper";
 import CounterInterfaceWrapper from "./components/canteen/CounterInterfaceWrapper";
@@ -338,6 +339,13 @@ const App = () => {
                           <MaintenanceWrapper allowAdminAccess={true}>
                             <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
                               <CollegeCanteensPage />
+                            </ProtectedRoute>
+                          </MaintenanceWrapper>
+                        </Route>
+                        <Route path="/college-admin/canteen/:id/monitor">
+                          <MaintenanceWrapper allowAdminAccess={true}>
+                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                              <CollegeCanteenMonitor />
                             </ProtectedRoute>
                           </MaintenanceWrapper>
                         </Route>

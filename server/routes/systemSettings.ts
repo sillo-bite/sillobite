@@ -1473,8 +1473,8 @@ router.delete('/colleges/:id', async (req, res) => {
  */
 router.get('/admin/my-college', async (req, res) => {
   try {
-    // Check for user in session or Passport-style user object
-    const user = (req as any).session?.user || (req as any).user;
+    // Check for user in session (standardized) or Passport-style user object
+    const user = (req as any).session?.user || (req as any).session?.googleUser || (req as any).user;
 
     if (!user) {
       return res.status(401).json({ error: 'Not authenticated' });
@@ -1491,9 +1491,19 @@ router.get('/admin/my-college', async (req, res) => {
     }
 
     // Find college where adminEmail matches user email
-    const college = settings.colleges.list.find((c: any) =>
+    let college = settings.colleges.list.find((c: any) =>
       c.adminEmail && c.adminEmail.toLowerCase() === user.email.toLowerCase()
     );
+
+    // Fallback: Check if user has a college assigned in their profile
+    if (!college && user.college) {
+      // flexible match: check if user.college matches college code OR college name
+      college = settings.colleges.list.find((c: any) =>
+        (c.code && c.code === user.college) ||
+        (c.name && c.name === user.college) ||
+        (c.id === user.college) // strict id match just in case
+      );
+    }
 
     if (!college) {
       return res.json({ college: null });

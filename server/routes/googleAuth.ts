@@ -78,8 +78,11 @@ router.get('/callback', async (req, res) => {
 
     console.log('User authenticated:', { email: userData.email });
 
+    // Set session (standardized)
     if (req.session) {
-      req.session.googleUser = userData;
+      (req.session as any).user = userData;
+      (req.session as any).googleUser = userData;
+      (req as any).session.save();
     }
 
     const params = new URLSearchParams({
@@ -104,8 +107,8 @@ router.post('/token', async (req, res) => {
     const { code } = req.body;
     const redirect_uri = process.env.GOOGLE_REDIRECT_URI!;
 
-    console.log('Token exchange request received:', { 
-      code: code ? 'present' : 'missing', 
+    console.log('Token exchange request received:', {
+      code: code ? 'present' : 'missing',
       redirect_uri
     });
 
@@ -129,7 +132,7 @@ router.post('/token', async (req, res) => {
   } catch (error: any) {
     console.error('Token exchange error:', error);
     const errorMessage = error?.message || 'Unknown error';
-    
+
     let userFriendlyError = 'Failed to exchange authorization code';
     if (errorMessage.includes('unauthorized_client')) {
       userFriendlyError = 'Redirect URI mismatch. Please check your Google Cloud Console configuration.';
@@ -168,7 +171,7 @@ router.post('/verify', async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    
+
     res.json({
       valid: true,
       user: {
@@ -180,7 +183,7 @@ router.post('/verify', async (req, res) => {
     });
   } catch (error) {
     console.error('Token verification error:', error);
-    res.status(400).json({ 
+    res.status(400).json({
       error: 'Invalid token',
       details: error instanceof Error ? error.message : 'Unknown error'
     });

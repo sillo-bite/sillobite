@@ -96,13 +96,40 @@ export default function CollegeAdminLayout({ children }: CollegeAdminLayoutProps
     }, [markAllAsRead]);
 
     // Fetch college details for the admin
-    const { data: collegeData, isLoading: isLoadingCollege } = useQuery({
+    // Fetch college details for the admin
+    const {
+        data: collegeData,
+        isLoading: isLoadingCollege,
+        isError,
+        error,
+        status,
+        fetchStatus
+    } = useQuery({
         queryKey: ['/api/system-settings/admin/my-college'],
         queryFn: async () => {
-            const res = await apiRequest('/api/system-settings/admin/my-college');
-            return res.json();
+            console.log("🚀 Initiating API fetch for my-college...");
+            try {
+                // Force cache bypass with timestamp
+                const data = await apiRequest(`/api/system-settings/admin/my-college?_t=${Date.now()}`);
+                console.log("🚀 College Admin Layout - Fetched Data:", data);
+                return data;
+            } catch (err) {
+                console.error("🚀 API Fetch Error:", err);
+                throw err;
+            }
         },
         enabled: !!user?.email && (isAdmin || isSuperAdmin)
+    });
+
+    console.log("🚀 College Admin Layout - Render State:", {
+        isLoadingCollege,
+        collegeData,
+        userEmail: user?.email,
+        isAdmin,
+        isError,
+        error: error ? String(error) : null,
+        status,
+        fetchStatus
     });
 
     const handleLogout = async () => {

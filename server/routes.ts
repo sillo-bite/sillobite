@@ -49,6 +49,7 @@ import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 import printAgentRoutes from "./routes/printAgent.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
 import biddingRoutes from "./routes/bidding.js";
+import canteenAnalyticsRoutes from "./routes/canteenAnalytics.js";
 import { mediaService } from "./services/mediaService.js";
 import multer from "multer";
 import axios from "axios";
@@ -138,6 +139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // SSE removed - using WebSocket and trigger-based updates instead
+
+  // Mount Canteen Analytics Routes
+  app.use("/api/canteen-analytics", canteenAnalyticsRoutes);
 
   // Database schema health check endpoint
   app.get("/api/schema-status", async (req, res) => {

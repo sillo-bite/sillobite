@@ -96,6 +96,7 @@ router.post('/register', async (req, res) => {
     const newUser = await db.user.create({
       data: {
         ...validatedData,
+        role: validatedData.role as UserRole,
         passwordHash,
       }
     });
@@ -177,6 +178,12 @@ router.post('/login', async (req, res) => {
     // Return user data (without password hash)
     const { passwordHash: _, ...userResponse } = user;
 
+    // Set session
+    if (req.session) {
+      (req.session as any).user = userResponse;
+      (req as any).session.save();
+    }
+
     res.json({
       message: 'Login successful',
       user: userResponse
@@ -187,6 +194,29 @@ router.post('/login', async (req, res) => {
       error: 'Failed to login',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+});
+
+// Get current session user
+router.get('/session', (req, res) => {
+  const user = (req.session as any)?.user;
+  if (!user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  res.json({ user });
+});
+
+// Logout
+router.post('/logout', (req, res) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to logout' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
+  } else {
+    res.json({ message: 'Logged out successfully' });
   }
 });
 

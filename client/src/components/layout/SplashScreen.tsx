@@ -313,6 +313,10 @@ export default function SplashScreen() {
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/admin") : "/admin";
               setLocation(redirectUrl);
               return;
+            } else if (userForRedirect.role === UserRole.ADMIN) {
+              const redirectUrl = isPWALaunch ? formatRedirectUrl("/college-admin") : "/college-admin";
+              setLocation(redirectUrl);
+              return;
             } else if (userForRedirect.role === UserRole.CANTEEN_OWNER || userForRedirect.role === 'canteen-owner') {
               // Handle canteen owner redirect - fetch canteen ID and redirect to counter selection
               const redirectCanteenOwner = async () => {

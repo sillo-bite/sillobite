@@ -131,7 +131,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const shouldUseCollegeFilter = effectiveIsAuthenticated && !isAdmin && !shouldUseRestaurantFilter && !isTemporaryUser && hasRealCollege && !hasRealOrganization; // Only use college if no organization
 
   // Check if we're on an admin page - disable API calls for admin pages
-  const isAdminPage = window.location.pathname.startsWith('/admin');
+  const isAdminPage = window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/college-admin');
 
   // Sequential flow: Only fetch canteens after user data is available
   const shouldFetchCanteens = (effectiveIsAuthenticated || isTemporaryUser) && !isAdminPage && !userLoading && !locationLoading;

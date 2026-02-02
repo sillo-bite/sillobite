@@ -67,6 +67,15 @@ export function useCanteens(enabled: boolean = true) {
   });
 }
 
+export function useCanteen(id: string | undefined, enabled: boolean = true) {
+  return useQuery<Canteen>({
+    queryKey: ['/api/system-settings/canteens', id],
+    queryFn: () => apiRequest(`/api/system-settings/canteens/${id}`),
+    enabled: !!id && enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
 export function useCanteensByCollege(collegeId: string | undefined, enabled: boolean = true) {
   return useQuery<CanteensResponse>({
     queryKey: ['/api/system-settings/canteens/by-college', collegeId],
@@ -96,7 +105,7 @@ export function useCanteensByRestaurant(restaurantId: string | undefined, enable
 
 export function useActiveCanteens() {
   const { data, ...rest } = useCanteens();
-  
+
   return {
     ...rest,
     data: data ? {
@@ -107,9 +116,9 @@ export function useActiveCanteens() {
 
 export function useAddCanteen() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (canteenData: AddCanteenRequest) => 
+    mutationFn: (canteenData: AddCanteenRequest) =>
       apiRequest('/api/system-settings/canteens', {
         method: 'POST',
         body: JSON.stringify(canteenData),
@@ -122,9 +131,9 @@ export function useAddCanteen() {
 
 export function useUpdateCanteen() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: ({ id, ...canteenData }: UpdateCanteenRequest) => 
+    mutationFn: ({ id, ...canteenData }: UpdateCanteenRequest) =>
       apiRequest(`/api/system-settings/canteens/${id}`, {
         method: 'PUT',
         body: JSON.stringify(canteenData),
@@ -137,9 +146,9 @@ export function useUpdateCanteen() {
 
 export function useDeleteCanteen() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (id: string) => 
+    mutationFn: (id: string) =>
       apiRequest(`/api/system-settings/canteens/${id}`, {
         method: 'DELETE',
       }),
