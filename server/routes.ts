@@ -656,7 +656,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         department: user.department,
         currentStudyYear: user.currentStudyYear,
         isPassed: user.isPassed,
-        staffId: user.staffId
+        staffId: user.staffId,
+        // Include location data for context persistence
+        selectedLocationType: user.selectedLocationType,
+        selectedLocationId: user.selectedLocationId,
+        college: user.college,
+        collegeId: user.collegeId,
+        collegeName: user.collegeName,
+        organization: user.organization,
+        organizationId: user.organizationId,
+        organizationName: user.organizationName,
+        // Include restaurant context if present
+        restaurantId: user.restaurantId,
+        restaurantName: user.restaurantName,
+        tableNumber: user.tableNumber
       };
 
       // For canteen owners, include canteen data to avoid additional API call

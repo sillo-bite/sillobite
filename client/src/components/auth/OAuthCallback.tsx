@@ -144,6 +144,13 @@ export default function OAuthCallback() {
           ...(userData.role === UserRole.STAFF && {
             staffId: userData.staffId || '',
           }),
+          // Include location preferences
+          selectedLocationType: userData.selectedLocationType,
+          selectedLocationId: userData.selectedLocationId,
+          // Include restaurant context if present
+          restaurantId: userData.restaurantId,
+          restaurantName: userData.restaurantName,
+          tableNumber: userData.tableNumber
         };
 
         console.log('Logging in user with data:', userDisplayData);
