@@ -310,7 +310,16 @@ data class User(
 )
 
 enum class UserRole {
-    STUDENT, STAFF, EMPLOYEE, GUEST, CONTRACTOR, VISITOR
+    @SerializedName("student") STUDENT,
+    @SerializedName("staff") STAFF,
+    @SerializedName("employee") EMPLOYEE,
+    @SerializedName("guest") GUEST,
+    @SerializedName("contractor") CONTRACTOR,
+    @SerializedName("visitor") VISITOR,
+    @SerializedName("admin") ADMIN,
+    @SerializedName("super_admin") SUPER_ADMIN,
+    @SerializedName("canteen_owner") CANTEEN_OWNER,
+    @SerializedName("delivery_person") DELIVERY_PERSON
 }
 ```
 

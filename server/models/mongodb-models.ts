@@ -735,6 +735,8 @@ CounterSchema.index({ code: 1, canteenId: 1 }, { unique: true });
 
 export const Counter = mongoose.model<ICounter>('Counter', CounterSchema);
 
+
+
 // Coding Challenge Model
 export interface ICodingChallenge extends Document {
   name: string;

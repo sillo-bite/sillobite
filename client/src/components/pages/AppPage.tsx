@@ -10,6 +10,7 @@ import CodingChallengesPage from "./CodingChallengesPage";
 import FloatingCart from "@/components/cart/FloatingCart";
 import { useNavigationHistory, type NavigationView } from "@/hooks/useNavigationHistory";
 import { useAuth } from "@/hooks/useAuth";
+import { UserRole } from "@shared/schema";
 
 type ViewType = "home" | "cart" | "favorites" | "menu" | "profile" | "orders" | "challenges";
 
@@ -74,7 +75,7 @@ export default function AppPage() {
 
   // Redirect delivery persons to their portal (immediate check)
   useEffect(() => {
-    if (user && user.role === 'delivery_person') {
+    if (user && user.role === UserRole.DELIVERY_PERSON) {
       console.log('🚚 Delivery person detected in AppPage, redirecting to delivery portal');
       console.log('   User data:', { id: user.id, email: user.email, role: user.role });
       setLocation('/delivery-portal');
@@ -89,7 +90,7 @@ export default function AppPage() {
       if (cachedUserStr) {
         try {
           const cachedUser = JSON.parse(cachedUserStr);
-          if (cachedUser && cachedUser.role === 'delivery_person') {
+          if (cachedUser && cachedUser.role === UserRole.DELIVERY_PERSON) {
             console.log('🚚 Delivery person detected from cache in AppPage, redirecting to delivery portal');
             setLocation('/delivery-portal');
           }

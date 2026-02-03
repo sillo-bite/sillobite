@@ -2,18 +2,20 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuthSync } from "@/hooks/useDataSync";
 import { Button } from "@/components/ui/button";
+import { UserRole } from "@shared/schema";
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: string;
-  requiredRoles?: string[];
+  requiredRole?: UserRole | string;
+  requiredRoles?: (UserRole | string)[];
   requireAuth?: boolean;
 }
 
-export default function ProtectedRoute({ 
-  children, 
-  requiredRole, 
-  requiredRoles = [], 
-  requireAuth = true 
+export default function ProtectedRoute({
+  children,
+  requiredRole,
+  requiredRoles = [],
+  requireAuth = true
 }: ProtectedRouteProps) {
   const [, setLocation] = useLocation();
   const { user, isAuthenticated, hasRole } = useAuthSync();
@@ -29,6 +31,7 @@ export default function ProtectedRoute({
 
     // Check specific role requirements
     if (requiredRole && !hasRole(requiredRole)) {
+      console.log(`🔐 ProtectedRoute: Access denied. Required: ${requiredRole}, User Has: ${user?.role}`);
       setLocation("/login");
       return;
     }

@@ -36,12 +36,12 @@ router.get('/callback', async (req, res) => {
 
     if (error) {
       console.error('OAuth error:', error);
-      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error as string)}`);
+      return res.redirect(`/auth/callback?error=${encodeURIComponent(error as string)}`);
     }
 
     if (!code || typeof code !== 'string') {
       console.error('No authorization code provided');
-      return res.redirect(`${frontendUrl}/auth/callback?error=no_code`);
+      return res.redirect(`/auth/callback?error=no_code`);
     }
 
     console.log('OAuth callback - exchanging code for tokens');
@@ -53,7 +53,7 @@ router.get('/callback', async (req, res) => {
 
     if (!tokens.id_token) {
       console.error('No ID token received');
-      return res.redirect(`${frontendUrl}/auth/callback?error=no_id_token`);
+      return res.redirect(`/auth/callback?error=no_id_token`);
     }
 
     const ticket = await oauth2Client.verifyIdToken({
@@ -65,7 +65,7 @@ router.get('/callback', async (req, res) => {
 
     if (!payload) {
       console.error('No payload in ID token');
-      return res.redirect(`${frontendUrl}/auth/callback?error=invalid_token`);
+      return res.redirect(`/auth/callback?error=invalid_token`);
     }
 
     const userData = {
@@ -78,8 +78,11 @@ router.get('/callback', async (req, res) => {
 
     console.log('User authenticated:', { email: userData.email });
 
+    // Set session (standardized)
     if (req.session) {
-      req.session.googleUser = userData;
+      (req.session as any).user = userData;
+      (req.session as any).googleUser = userData;
+      (req as any).session.save();
     }
 
     const params = new URLSearchParams({
@@ -89,12 +92,11 @@ router.get('/callback', async (req, res) => {
       id: userData.id || ''
     });
 
-    res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+    res.redirect(`/auth/callback?${params.toString()}`);
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     const errorMessage = error?.message || 'authentication_failed';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
-    res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+    res.redirect(`/auth/callback?error=${encodeURIComponent(errorMessage)}`);
   }
 });
 
@@ -104,8 +106,8 @@ router.post('/token', async (req, res) => {
     const { code } = req.body;
     const redirect_uri = process.env.GOOGLE_REDIRECT_URI!;
 
-    console.log('Token exchange request received:', { 
-      code: code ? 'present' : 'missing', 
+    console.log('Token exchange request received:', {
+      code: code ? 'present' : 'missing',
       redirect_uri
     });
 
@@ -129,7 +131,7 @@ router.post('/token', async (req, res) => {
   } catch (error: any) {
     console.error('Token exchange error:', error);
     const errorMessage = error?.message || 'Unknown error';
-    
+
     let userFriendlyError = 'Failed to exchange authorization code';
     if (errorMessage.includes('unauthorized_client')) {
       userFriendlyError = 'Redirect URI mismatch. Please check your Google Cloud Console configuration.';
@@ -168,7 +170,7 @@ router.post('/verify', async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    
+
     res.json({
       valid: true,
       user: {
@@ -180,7 +182,7 @@ router.post('/verify', async (req, res) => {
     });
   } catch (error) {
     console.error('Token verification error:', error);
-    res.status(400).json({ 
+    res.status(400).json({
       error: 'Invalid token',
       details: error instanceof Error ? error.message : 'Unknown error'
     });

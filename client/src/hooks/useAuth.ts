@@ -3,12 +3,13 @@ import { getPWAAuthState, setPWAAuth, clearPWAAuth, isPWAInstalled } from '@/uti
 import { signOutGoogle } from '@/lib/googleAuth';
 import { CacheManager } from '@/utils/cacheManager';
 import { isTempUser, clearTempUserData, getServerTempUserSession, validateServerSession, clearServerTempUserSession } from '@/utils/tempUser';
+import { UserRole } from '@shared/schema';
 
 interface User {
   id: string | number;
   name: string;
   email: string;
-  role: string;
+  role: UserRole | string;
   phoneNumber?: string;
   registerNumber?: string;
   department?: string;
@@ -76,7 +77,8 @@ export function useAuth() {
 
         // Skip database validation for temporary/guest users
         // IMPORTANT: Preserve all fields from localStorage including organization
-        if (authState.user.isTemporary || authState.user.role === 'guest') {
+        // IMPORTANT: Preserve all fields from localStorage including organization
+        if (authState.user.isTemporary || authState.user.role === UserRole.GUEST) {
           console.log("✅ Guest/temporary user detected, skipping database validation");
           console.log("✅ Guest user data from localStorage:", authState.user);
           console.log("✅ Guest user organization field:", authState.user.organization);
@@ -180,6 +182,10 @@ export function useAuth() {
         try {
           const validatedUser = await validationPromise;
           setUser(validatedUser);
+          if (validatedUser) {
+            // Persist validated user to storage to ensure useAuthSync and other hooks reading localStorage are in sync
+            setPWAAuth(validatedUser);
+          }
         } catch (error) {
           console.warn("⚠️ Validation promise error:", error);
           setUser(authState.user);
@@ -301,39 +307,39 @@ export function useAuth() {
   };
 
   const isAdmin = () => {
-    return user?.role === 'admin' || user?.role === 'super_admin';
+    return user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
   };
 
   const isSuperAdmin = () => {
-    return user?.role === 'super_admin';
+    return user?.role === UserRole.SUPER_ADMIN;
   };
 
   const isCanteenOwner = () => {
-    return user?.role === 'canteen_owner';
+    return user?.role === UserRole.CANTEEN_OWNER;
   };
 
   const isStudent = () => {
-    return user?.role === 'student';
+    return user?.role === UserRole.STUDENT;
   };
 
   const isStaff = () => {
-    return user?.role === 'staff';
+    return user?.role === UserRole.STAFF;
   };
 
   const isEmployee = () => {
-    return user?.role === 'employee';
+    return user?.role === UserRole.EMPLOYEE;
   };
 
   const isGuest = () => {
-    return user?.role === 'guest';
+    return user?.role === UserRole.GUEST;
   };
 
   const isContractor = () => {
-    return user?.role === 'contractor';
+    return user?.role === UserRole.CONTRACTOR;
   };
 
   const isVisitor = () => {
-    return user?.role === 'visitor';
+    return user?.role === UserRole.VISITOR;
   };
 
   const isTemporaryUser = () => {

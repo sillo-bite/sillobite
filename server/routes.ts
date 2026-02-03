@@ -13,7 +13,8 @@ import {
   insertPaymentSchema,
   insertComplaintSchema,
   type Coupon,
-  type InsertCoupon
+  type InsertCoupon,
+  UserRole
 } from "@shared/schema";
 import { generateOrderNumber } from "@shared/utils";
 import {
@@ -48,6 +49,7 @@ import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 import printAgentRoutes from "./routes/printAgent.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
 import biddingRoutes from "./routes/bidding.js";
+import canteenAnalyticsRoutes from "./routes/canteenAnalytics.js";
 import { mediaService } from "./services/mediaService.js";
 import multer from "multer";
 import axios from "axios";
@@ -137,6 +139,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // SSE removed - using WebSocket and trigger-based updates instead
+
+  // Mount Canteen Analytics Routes
+  app.use("/api/canteen-analytics", canteenAnalyticsRoutes);
+
+  // Mount System Settings Routes
+  app.use("/api/system-settings", systemSettingsRoutes);
 
   // Database schema health check endpoint
   app.get("/api/schema-status", async (req, res) => {
@@ -328,8 +336,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent creating multiple super admins
-      if (validatedData.role === 'super_admin') {
-        const existingSuperAdmin = await storage.getUserByRole('super_admin');
+      if (validatedData.role === UserRole.SUPER_ADMIN) {
+        const existingSuperAdmin = await storage.getUserByRole(UserRole.SUPER_ADMIN);
         if (existingSuperAdmin) {
           console.log(`❌ Cannot create super admin - one already exists`);
           return res.status(403).json({
@@ -339,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for duplicate register number if student, employee, contractor, visitor, or guest (case-insensitive)
-      if ((validatedData.role === "student" || validatedData.role === "employee" || validatedData.role === "contractor" || validatedData.role === "visitor" || validatedData.role === "guest") && validatedData.registerNumber) {
+      if ((validatedData.role === UserRole.STUDENT || validatedData.role === UserRole.EMPLOYEE || validatedData.role === UserRole.CONTRACTOR || validatedData.role === UserRole.VISITOR || validatedData.role === UserRole.GUEST) && validatedData.registerNumber) {
         const normalizedRegisterNumber = validatedData.registerNumber.toUpperCase();
         const existingRegisterUser = await storage.getUserByRegisterNumber(normalizedRegisterNumber);
         if (existingRegisterUser) {
@@ -349,7 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for duplicate staff ID if staff (case-insensitive)
-      if (validatedData.role === "staff" && validatedData.staffId) {
+      if (validatedData.role === UserRole.STAFF && validatedData.staffId) {
         const normalizedStaffId = validatedData.staffId.toUpperCase();
         const existingStaffUser = await storage.getUserByStaffId(normalizedStaffId);
         if (existingStaffUser) {
@@ -479,8 +487,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent changing super admin role if it's the only super admin
-      if (existingUser.role === 'super_admin' && req.body.role && req.body.role !== 'super_admin') {
-        const existingSuperAdmin = await storage.getUserByRole('super_admin');
+      if (existingUser.role === UserRole.SUPER_ADMIN && req.body.role && req.body.role !== UserRole.SUPER_ADMIN) {
+        const existingSuperAdmin = await storage.getUserByRole(UserRole.SUPER_ADMIN);
         if (existingSuperAdmin && existingSuperAdmin.id === userId) {
           console.log(`🚫 Cannot change super admin role: ${existingUser.name} is the only super admin`);
           return res.status(403).json({
@@ -582,6 +590,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply QR Context to User (Location + Address)
+  app.post("/api/users/:id/apply-qr-context", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { qrId } = req.body;
+
+      console.log(`📱 POST /api/users/${userId}/apply-qr-context - QR ID: ${qrId}`);
+
+      if (!qrId) {
+        return res.status(400).json({ message: "qrId is required" });
+      }
+
+      // 1. Find the QR Code in SystemSettings
+      const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
+      const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
+      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
+
+      let targetCollege: any = null;
+      let targetQrCode: any = null;
+
+      // Search in colleges list
+      if (settings?.colleges?.list) {
+        for (const college of settings.colleges.list) {
+          if (college.qrCodes) {
+            const foundQr = college.qrCodes.find((qr: any) => qr.qrId === qrId);
+            if (foundQr) {
+              targetCollege = college;
+              targetQrCode = foundQr;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!targetCollege || !targetQrCode) {
+        console.log(`❌ QR Code ${qrId} not found in any college`);
+        return res.status(404).json({ message: "Invalid QR Code" });
+      }
+
+      const collegeId = targetCollege.id;
+      const addressDetails = targetQrCode.fullAddress;
+
+      console.log(`✅ Found QR belonging to College: ${targetCollege.name} (${collegeId})`);
+
+      // 2. Update User Location
+      await storage.updateUser(userId, {
+        selectedLocationType: 'college',
+        selectedLocationId: collegeId
+      });
+      console.log(`📍 User ${userId} location updated to College: ${collegeId}`);
+
+      // 3. Add Address (De-duplication Logic)
+      if (addressDetails && addressDetails.addressLine1) {
+        // Fetch user details for the address
+        const user = await storage.getUser(userId);
+        if (user) {
+          // Normalize address for comparison
+          const normalize = (str: string) => str?.toLowerCase().trim().replace(/\s+/g, ' ') || '';
+
+          const newAddressLine1 = normalize(addressDetails.addressLine1);
+          const newPincode = normalize(addressDetails.pincode);
+
+          // Get user's existing addresses
+          const userAddresses = await storage.getUserAddresses(userId);
+
+          let duplicateExists = false;
+          for (const addr of userAddresses) {
+            if (normalize(addr.addressLine1) === newAddressLine1 &&
+              normalize(addr.pincode) === newPincode) {
+              duplicateExists = true;
+              break;
+            }
+          }
+
+          if (!duplicateExists) {
+            await storage.createUserAddress({
+              userId: userId,
+              label: addressDetails.label || 'College Address',
+              addressLine1: addressDetails.addressLine1,
+              addressLine2: addressDetails.addressLine2,
+              city: addressDetails.city,
+              state: addressDetails.state,
+              pincode: addressDetails.pincode,
+              landmark: addressDetails.landmark,
+              fullName: user.name, // Use user's name
+              phoneNumber: user.phoneNumber || '0000000000', // Use user's phone or dummy fallback if missing
+              isDefault: false
+            });
+            console.log(`🏠 added new address for user ${userId}`);
+          } else {
+            console.log(`ℹ️ Address already exists for user ${userId}, skipping addition`);
+          }
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Context applied successfully",
+        collegeId: collegeId,
+        collegeName: targetCollege.name
+      });
+
+    } catch (error) {
+      console.error(`❌ Error applying QR context:`, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.delete("/api/users/:id", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
@@ -595,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent deletion of super admin
-      if (existingUser.role === 'super_admin') {
+      if (existingUser.role === UserRole.SUPER_ADMIN) {
         console.log(`🚫 Cannot delete super admin: ${existingUser.name} (${existingUser.email})`);
         return res.status(403).json({
           message: "Super admin cannot be deleted. There must always be at least one super admin in the system."
@@ -651,11 +767,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         department: user.department,
         currentStudyYear: user.currentStudyYear,
         isPassed: user.isPassed,
-        staffId: user.staffId
+        staffId: user.staffId,
+        // Include location data for context persistence
+        selectedLocationType: user.selectedLocationType,
+        selectedLocationId: user.selectedLocationId,
+        college: user.college,
+        collegeId: user.collegeId,
+        collegeName: user.collegeName,
+        organization: user.organization,
+        organizationId: user.organizationId,
+        organizationName: user.organizationName,
+        // Include restaurant context if present
+        restaurantId: user.restaurantId,
+        restaurantName: user.restaurantName,
+        tableNumber: user.tableNumber
       };
 
       // For canteen owners, include canteen data to avoid additional API call
-      if (user.role === 'canteen_owner' || user.role === 'canteen-owner') {
+      if (user.role === UserRole.CANTEEN_OWNER || user.role === 'canteen-owner') {
         try {
           // Import SystemSettings model
           const { default: mongoose } = await import('mongoose');

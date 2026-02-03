@@ -1,5 +1,6 @@
 import webPush from 'web-push';
 import crypto from 'crypto';
+import { UserRole } from '@shared/schema';
 import { NotificationTemplate, INotificationTemplate, CustomNotificationTemplate, ICustomNotificationTemplate, WebPushSubscription } from '../models/mongodb-models.js';
 import { db } from '../db.js';
 
@@ -324,7 +325,7 @@ export class WebPushService {
   async addSubscription(
     subscription: PushSubscription,
     userId: string,
-    userRole: string = 'student',
+    userRole: string = UserRole.STUDENT,
     canteenId?: string,
     deviceInfo?: string
   ): Promise<string> {
@@ -470,7 +471,7 @@ export class WebPushService {
     // We also include 'admin' role regardless of canteen ID for oversight if needed (optional)
     const canteenSubscriptions = Array.from(this.subscriptions.values())
       .filter(sub => {
-        const isMatch = sub.canteenId === canteenId && (sub.userRole === 'canteen_owner' || sub.userRole === 'admin');
+        const isMatch = sub.canteenId === canteenId && (sub.userRole === UserRole.CANTEEN_OWNER || sub.userRole === UserRole.ADMIN);
         console.log(`🔍 Checking sub: User=${sub.userId}, Role=${sub.userRole}, Canteen=${sub.canteenId} vs Target=${canteenId} -> Match? ${isMatch}`);
         return isMatch;
       });

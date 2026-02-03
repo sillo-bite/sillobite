@@ -16,11 +16,11 @@ export const queryClient = new QueryClient({
         const apiBaseUrl = getApiBaseUrl();
         const fullUrl = url.startsWith('http') ? url : `${apiBaseUrl}${url}`;
         const response = await fetch(fullUrl);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         return response.json();
       },
     },
@@ -35,21 +35,21 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
   // Create AbortController for timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-  
+
   try {
     // Get the API base URL
     const apiBaseUrl = getApiBaseUrl();
     // Construct full URL - if url already starts with http, use it as-is, otherwise prepend base URL
     const fullUrl = url.startsWith('http') ? url : `${apiBaseUrl}${url}`;
-    
+
     // Don't set Content-Type for FormData - let the browser set it with boundary
     const headers: Record<string, string> = {};
-    
+
     // Only set Content-Type to application/json if body is not FormData
     if (!(options?.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
     }
-    
+
     const response = await fetch(fullUrl, {
       headers: {
         ...headers,
@@ -62,6 +62,25 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      // Handle 401 Unauthorized global redirect
+      if (response.status === 401) {
+        // Clear local auth state
+        localStorage.removeItem('user');
+        localStorage.removeItem('pwa_auth');
+        localStorage.removeItem('temp_user_session'); // Clear temp session if any
+
+        // Dispatch event for components to react
+        window.dispatchEvent(new CustomEvent('userAuthChange'));
+
+        // Redirect to login if not already there
+        if (!window.location.pathname.includes('/login')) {
+          console.warn('🔒 Session expired or invalid (401), redirecting to login...');
+          window.location.href = '/login';
+        }
+
+        throw new Error('Session expired. Please login again.');
+      }
+
       // Try to get the error message from the response
       let errorMessage = `HTTP error! status: ${response.status}`;
       try {
@@ -97,7 +116,7 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
 
 // Enhanced mutation helper with automatic cache invalidation
 export const createMutationWithSync = (
-  url: string, 
+  url: string,
   method: 'POST' | 'PUT' | 'DELETE' = 'POST',
   invalidateKeys: string[] = []
 ) => {
@@ -107,11 +126,11 @@ export const createMutationWithSync = (
         method,
         headers: { 'Content-Type': 'application/json' },
       };
-      
+
       if (data && method !== 'DELETE') {
         options.body = JSON.stringify(data);
       }
-      
+
       const result = await apiRequest(url, options);
       return result;
     },
