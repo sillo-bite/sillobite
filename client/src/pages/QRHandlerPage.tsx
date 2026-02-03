@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
+import { setPWAAuth } from '@/utils/pwaAuth';
 import { QrCode, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,17 +41,21 @@ export default function QRHandlerPage() {
     });
 
     useEffect(() => {
+        console.log('📌 QRHandlerPage Debug:', { authLoading, user: user?.id, qrId, qrType, isPending: applyContextMutation.isPending, isSuccess: applyContextMutation.isSuccess, error });
+
         if (authLoading) return;
 
         if (!user) {
+            console.log('👤 User not authenticated, redirecting to login');
             // Redirect to login with return URL
             // Using window.location.href for current full URL to ensure PWA/deep link context is kept if possible
             const returnUrl = encodeURIComponent(window.location.pathname);
-            setLocation(`/login?redirect=${returnUrl}`);
+            setLocation(`/login?redirect=${returnUrl}&fromQR=true`);
             return;
         }
 
         if (user && qrId && !applyContextMutation.isPending && !applyContextMutation.isSuccess && !error) {
+            console.log('🚀 Triggering QR context application...');
             applyContextMutation.mutate();
         }
     }, [user, authLoading, qrId, setLocation, applyContextMutation, error]);

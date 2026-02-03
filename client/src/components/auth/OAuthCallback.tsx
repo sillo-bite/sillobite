@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
 import { setPWAAuth } from '@/utils/pwaAuth';
@@ -10,9 +10,13 @@ export default function OAuthCallback() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const processedRef = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      if (processedRef.current) return;
+      processedRef.current = true;
+
       try {
         console.log('🔄 OAuthCallback component mounted');
         console.log('📍 Current URL:', window.location.href);

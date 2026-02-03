@@ -748,8 +748,13 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSignInLoading(true);
     try {
+      // Get redirect param from URL to ensure it is preserved
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirect = urlParams.get('redirect');
+      console.log('🔄 Initiating Google Sign In with redirect:', redirect);
+
       // signInWithGoogle() redirects the page, so we don't need to handle the result here
-      signInWithGoogle();
+      signInWithGoogle(redirect);
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       setIsGoogleSignInLoading(false);

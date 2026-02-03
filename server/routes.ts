@@ -642,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`📍 User ${userId} location updated to College: ${collegeId}`);
 
       // 3. Add Address (De-duplication Logic)
-      if (addressDetails) {
+      if (addressDetails && addressDetails.addressLine1) {
         // Fetch user details for the address
         const user = await storage.getUser(userId);
         if (user) {

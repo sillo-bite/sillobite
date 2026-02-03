@@ -36,12 +36,12 @@ router.get('/callback', async (req, res) => {
 
     if (error) {
       console.error('OAuth error:', error);
-      return res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(error as string)}`);
+      return res.redirect(`/auth/callback?error=${encodeURIComponent(error as string)}`);
     }
 
     if (!code || typeof code !== 'string') {
       console.error('No authorization code provided');
-      return res.redirect(`${frontendUrl}/auth/callback?error=no_code`);
+      return res.redirect(`/auth/callback?error=no_code`);
     }
 
     console.log('OAuth callback - exchanging code for tokens');
@@ -53,7 +53,7 @@ router.get('/callback', async (req, res) => {
 
     if (!tokens.id_token) {
       console.error('No ID token received');
-      return res.redirect(`${frontendUrl}/auth/callback?error=no_id_token`);
+      return res.redirect(`/auth/callback?error=no_id_token`);
     }
 
     const ticket = await oauth2Client.verifyIdToken({
@@ -65,7 +65,7 @@ router.get('/callback', async (req, res) => {
 
     if (!payload) {
       console.error('No payload in ID token');
-      return res.redirect(`${frontendUrl}/auth/callback?error=invalid_token`);
+      return res.redirect(`/auth/callback?error=invalid_token`);
     }
 
     const userData = {
@@ -92,12 +92,11 @@ router.get('/callback', async (req, res) => {
       id: userData.id || ''
     });
 
-    res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
+    res.redirect(`/auth/callback?${params.toString()}`);
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     const errorMessage = error?.message || 'authentication_failed';
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5000';
-    res.redirect(`${frontendUrl}/auth/callback?error=${encodeURIComponent(errorMessage)}`);
+    res.redirect(`/auth/callback?error=${encodeURIComponent(errorMessage)}`);
   }
 });
 

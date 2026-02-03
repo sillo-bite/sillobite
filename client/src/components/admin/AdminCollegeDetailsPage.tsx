@@ -669,22 +669,10 @@ export default function AdminCollegeDetailsPage() {
                             <TabsTrigger value="location">Location QR</TabsTrigger>
                         </TabsList>
                         <TabsContent value="address" className="p-4 border rounded-md mt-4 bg-muted/20">
-                            <CollegeAddressQRManagement collegeId={collegeId || ''} />
+                            <CollegeAddressQRManagement collegeId={collegeId || ''} mode="address" />
                         </TabsContent>
                         <TabsContent value="location" className="p-4 border rounded-md mt-4 bg-muted/20">
-                            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-                                <div className="p-4 bg-white rounded-lg shadow-sm border">
-                                    <MapPin className="w-32 h-32 text-slate-800" strokeWidth={1} />
-                                </div>
-                                <div>
-                                    <h3 className="font-medium text-lg">Location QR Code</h3>
-                                    <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1">
-                                        Scan this QR code to view the college location on maps.
-                                        This feature will link to the geographical coordinates.
-                                    </p>
-                                </div>
-                                <Button variant="outline" disabled>Download QR</Button>
-                            </div>
+                            <CollegeAddressQRManagement collegeId={collegeId || ''} mode="location" />
                         </TabsContent>
                     </Tabs>
                 </CardContent>

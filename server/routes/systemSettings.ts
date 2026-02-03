@@ -179,7 +179,8 @@ const SystemSettingsSchema = new mongoose.Schema({
       },
       qrCodes: [{
         qrId: { type: String, required: true },
-        address: { type: String, required: true }, // Legacy/Simple
+        type: { type: String, enum: ['address', 'location'], default: 'address' },
+        address: { type: String }, // Legacy/Simple
         fullAddress: {
           label: { type: String },
           fullName: { type: String },
@@ -2259,14 +2260,18 @@ router.get('/colleges/:collegeId/qr-codes', async (req, res) => {
 router.post('/colleges/:collegeId/qr-codes', async (req, res) => {
   try {
     const { collegeId } = req.params;
-    const { address, fullAddress } = req.body;
+    const { address, fullAddress, type = 'address', label } = req.body;
 
     if (!collegeId) {
       return res.status(400).json({ error: 'College ID is required' });
     }
 
-    if (!address && !fullAddress) {
+    if (type === 'address' && !address && !fullAddress) {
       return res.status(400).json({ error: 'Address details are required' });
+    }
+
+    if (type === 'location' && !label) {
+      return res.status(400).json({ error: 'Label is required for Location QR' });
     }
 
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
@@ -2285,19 +2290,29 @@ router.post('/colleges/:collegeId/qr-codes', async (req, res) => {
     // Using a simpler URL structure for now, can be updated to actual frontend route
     const qrCodeUrl = `${process.env.APP_URL || 'http://localhost:5000'}/qr/college/${qrId}`;
 
-    const newQrCode = {
+    // Construct new QR object based on type
+    const newQrCode: any = {
       qrId,
-      address: address || fullAddress?.addressLine1 || '',
-      fullAddress: fullAddress || {
-        label: 'Default Label', // Should come from frontend
-        addressLine1: address
-      },
+      type,
       qrCodeUrl,
       hash,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    if (type === 'address') {
+      newQrCode.address = address || fullAddress?.addressLine1 || '';
+      newQrCode.fullAddress = fullAddress || {
+        label: 'Default Label', // Should come from frontend
+        addressLine1: address
+      };
+    } else if (type === 'location') {
+      // distinct structure for location QR if needed, or just minimal fields
+      newQrCode.address = label; // Use label as address for display purposes list
+      newQrCode.fullAddress = { label: label };
+    }
+
 
     if (!settings.colleges.list[collegeIndex].qrCodes) {
       settings.colleges.list[collegeIndex].qrCodes = [];

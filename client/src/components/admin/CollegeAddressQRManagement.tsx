@@ -30,9 +30,10 @@ interface QRCodeAddress {
 
 interface CollegeAddressQRManagementProps {
     collegeId: string;
+    mode?: 'address' | 'location';
 }
 
-export default function CollegeAddressQRManagement({ collegeId }: CollegeAddressQRManagementProps) {
+export default function CollegeAddressQRManagement({ collegeId, mode = 'address' }: CollegeAddressQRManagementProps) {
     const { toast } = useToast();
     const [isCreating, setIsCreating] = useState(false);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -61,19 +62,25 @@ export default function CollegeAddressQRManagement({ collegeId }: CollegeAddress
         enabled: !!collegeId,
     });
 
-    const qrCodes = qrCodesData?.qrCodes || [];
+    // Filter QR codes based on mode
+    const qrCodes = (qrCodesData?.qrCodes || []).filter((qr: any) => {
+        if (mode === 'location') {
+            return qr.type === 'location'; // Or check if missing fullAddress details if type field migration is lagging
+        }
+        return qr.type === 'address' || (!qr.type && qr.fullAddress?.addressLine1); // Default/Legacy
+    });
 
     // Create QR code mutation
     const createQRCodeMutation = useMutation({
-        mutationFn: async (fullAddress: QRCodeAddress) => {
+        mutationFn: async (data: any) => {
             const response = await fetch(`/api/system-settings/colleges/${collegeId}/qr-codes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    address: fullAddress.addressLine1, // For backward compatibility/simple usage
-                    fullAddress
+                    type: mode,
+                    ...data
                 }),
             });
             if (!response.ok) {
@@ -99,7 +106,7 @@ export default function CollegeAddressQRManagement({ collegeId }: CollegeAddress
             refetchQRCodes();
             toast({
                 title: "Success",
-                description: "QR Code created successfully",
+                description: `${mode === 'location' ? 'Location' : 'Address'} QR Code created successfully`,
             });
         },
         onError: (error) => {
@@ -140,22 +147,42 @@ export default function CollegeAddressQRManagement({ collegeId }: CollegeAddress
     });
 
     const handleCreateQRCode = () => {
-        // Validate required fields
-        if (!addressForm.label.trim() || !addressForm.addressLine1.trim() ||
-            !addressForm.city.trim() || !addressForm.state.trim() || !addressForm.pincode.trim()) {
-            toast({
-                variant: "destructive",
-                title: "Validation Error",
-                description: "Please fill in all required fields (Label, Address Line 1, City, State, Pincode)",
+        // Validate based on mode
+        if (mode === 'location') {
+            if (!addressForm.label.trim()) {
+                toast({
+                    variant: "destructive",
+                    title: "Validation Error",
+                    description: "Please enter a label for this location",
+                });
+                return;
+            }
+            setIsCreating(true);
+            createQRCodeMutation.mutate({
+                label: addressForm.label,
+                // No address details sent
+            }, {
+                onSettled: () => setIsCreating(false),
             });
-            return;
+        } else {
+            // Address mode validation
+            if (!addressForm.label.trim() || !addressForm.addressLine1.trim() ||
+                !addressForm.city.trim() || !addressForm.state.trim() || !addressForm.pincode.trim()) {
+                toast({
+                    variant: "destructive",
+                    title: "Validation Error",
+                    description: "Please fill in all required fields (Label, Address Line 1, City, State, Pincode)",
+                });
+                return;
+            }
+            setIsCreating(true);
+            createQRCodeMutation.mutate({
+                fullAddress: addressForm,
+                address: addressForm.addressLine1, // Legacy support
+            }, {
+                onSettled: () => setIsCreating(false),
+            });
         }
-        setIsCreating(true);
-        createQRCodeMutation.mutate(addressForm, {
-            onSettled: () => {
-                setIsCreating(false);
-            },
-        });
     };
 
     const handleDeleteQRCode = (qrId: string) => {
@@ -167,126 +194,132 @@ export default function CollegeAddressQRManagement({ collegeId }: CollegeAddress
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Address QR Codes</h3>
+                <h3 className="text-lg font-medium">{mode === 'location' ? 'Location QR Codes' : 'Address QR Codes'}</h3>
                 <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
                     <DialogTrigger asChild>
                         <Button size="sm" className="flex items-center space-x-2">
                             <Plus className="w-4 h-4" />
-                            <span>Create QR Code</span>
+                            <span>Create {mode === 'location' ? 'Location' : ''} QR Code</span>
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Create New Address QR</DialogTitle>
+                            <DialogTitle>Create New {mode === 'location' ? 'Location' : 'Address'} QR</DialogTitle>
                             <p className="text-sm text-muted-foreground">
-                                Enter the address details. This address will be linked to the generated QR code.
+                                {mode === 'location'
+                                    ? "Enter a label for this location (e.g., 'Main Campus'). Scanning this QR will set the user's location to this college."
+                                    : "Enter the address details. This address will be linked to the generated QR code."}
                             </p>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             {/* Label */}
                             <div className="space-y-2">
-                                <Label htmlFor="label">Address Label *</Label>
+                                <Label htmlFor="label">{mode === 'location' ? 'Location Name' : 'Address Label'} *</Label>
                                 <Input
                                     id="label"
-                                    placeholder="e.g., Main Entrance, Admin Block"
+                                    placeholder={mode === 'location' ? "e.g., Main Campus, North Block" : "e.g., Main Entrance, Admin Block"}
                                     value={addressForm.label}
                                     onChange={(e) => setAddressForm({ ...addressForm, label: e.target.value })}
                                     required
                                 />
                             </div>
 
-                            {/* Full Name */}
-                            <div className="space-y-2">
-                                <Label htmlFor="fullName">Full Name (Optional)</Label>
-                                <Input
-                                    id="fullName"
-                                    placeholder="Contact Person Name"
-                                    value={addressForm.fullName || ''}
-                                    onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
-                                />
-                            </div>
+                            {mode === 'address' && (
+                                <>
+                                    {/* Full Name */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="fullName">Full Name (Optional)</Label>
+                                        <Input
+                                            id="fullName"
+                                            placeholder="Contact Person Name"
+                                            value={addressForm.fullName || ''}
+                                            onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })}
+                                        />
+                                    </div>
 
-                            {/* Phone Number */}
-                            <div className="space-y-2">
-                                <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
-                                <Input
-                                    id="phoneNumber"
-                                    type="tel"
-                                    placeholder="Contact Phone Number"
-                                    value={addressForm.phoneNumber || ''}
-                                    onChange={(e) => setAddressForm({ ...addressForm, phoneNumber: e.target.value })}
-                                />
-                            </div>
+                                    {/* Phone Number */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
+                                        <Input
+                                            id="phoneNumber"
+                                            type="tel"
+                                            placeholder="Contact Phone Number"
+                                            value={addressForm.phoneNumber || ''}
+                                            onChange={(e) => setAddressForm({ ...addressForm, phoneNumber: e.target.value })}
+                                        />
+                                    </div>
 
-                            {/* Address Line 1 */}
-                            <div className="space-y-2">
-                                <Label htmlFor="addressLine1">Address Line 1 *</Label>
-                                <Textarea
-                                    id="addressLine1"
-                                    placeholder="Building Name, Street, etc."
-                                    value={addressForm.addressLine1}
-                                    onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
-                                    required
-                                    rows={2}
-                                />
-                            </div>
+                                    {/* Address Line 1 */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="addressLine1">Address Line 1 *</Label>
+                                        <Textarea
+                                            id="addressLine1"
+                                            placeholder="Building Name, Street, etc."
+                                            value={addressForm.addressLine1}
+                                            onChange={(e) => setAddressForm({ ...addressForm, addressLine1: e.target.value })}
+                                            required
+                                            rows={2}
+                                        />
+                                    </div>
 
-                            {/* Address Line 2 */}
-                            <div className="space-y-2">
-                                <Label htmlFor="addressLine2">Address Line 2 (Optional)</Label>
-                                <Textarea
-                                    id="addressLine2"
-                                    placeholder="Area, Locality"
-                                    value={addressForm.addressLine2 || ''}
-                                    onChange={(e) => setAddressForm({ ...addressForm, addressLine2: e.target.value })}
-                                    rows={2}
-                                />
-                            </div>
+                                    {/* Address Line 2 */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="addressLine2">Address Line 2 (Optional)</Label>
+                                        <Textarea
+                                            id="addressLine2"
+                                            placeholder="Area, Locality"
+                                            value={addressForm.addressLine2 || ''}
+                                            onChange={(e) => setAddressForm({ ...addressForm, addressLine2: e.target.value })}
+                                            rows={2}
+                                        />
+                                    </div>
 
-                            {/* City, State, Pincode in a row */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="city">City *</Label>
-                                    <Input
-                                        id="city"
-                                        placeholder="Enter city"
-                                        value={addressForm.city}
-                                        onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="state">State *</Label>
-                                    <Input
-                                        id="state"
-                                        placeholder="Enter state"
-                                        value={addressForm.state}
-                                        onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="pincode">Pincode *</Label>
-                                    <Input
-                                        id="pincode"
-                                        placeholder="Enter pincode"
-                                        value={addressForm.pincode}
-                                        onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                            </div>
+                                    {/* City, State, Pincode in a row */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="city">City *</Label>
+                                            <Input
+                                                id="city"
+                                                placeholder="Enter city"
+                                                value={addressForm.city}
+                                                onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="state">State *</Label>
+                                            <Input
+                                                id="state"
+                                                placeholder="Enter state"
+                                                value={addressForm.state}
+                                                onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pincode">Pincode *</Label>
+                                            <Input
+                                                id="pincode"
+                                                placeholder="Enter pincode"
+                                                value={addressForm.pincode}
+                                                onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
 
-                            {/* Landmark */}
-                            <div className="space-y-2">
-                                <Label htmlFor="landmark">Landmark (Optional)</Label>
-                                <Input
-                                    id="landmark"
-                                    placeholder="Nearby landmark"
-                                    value={addressForm.landmark || ''}
-                                    onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
-                                />
-                            </div>
+                                    {/* Landmark */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="landmark">Landmark (Optional)</Label>
+                                        <Input
+                                            id="landmark"
+                                            placeholder="Nearby landmark"
+                                            value={addressForm.landmark || ''}
+                                            onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })}
+                                        />
+                                    </div>
+                                </>
+                            )}
 
                             <div className="flex gap-2 pt-2">
                                 <Button
@@ -318,9 +351,9 @@ export default function CollegeAddressQRManagement({ collegeId }: CollegeAddress
             ) : qrCodes.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground border rounded-md bg-muted/20">
                     <QrCode className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No Address QR codes created yet.</p>
+                    <p>No {mode === 'location' ? 'Location' : 'Address'} QR codes created yet.</p>
                     <Button variant="link" onClick={() => setShowCreateDialog(true)}>
-                        Create your first Address QR
+                        Create your first {mode === 'location' ? 'Location' : 'Address'} QR
                     </Button>
                 </div>
             ) : (
@@ -336,9 +369,16 @@ export default function CollegeAddressQRManagement({ collegeId }: CollegeAddress
                                                 {qrCode.fullAddress?.label || qrCode.address}
                                             </span>
                                         </CardTitle>
-                                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                                            {qrCode.fullAddress?.addressLine1}
-                                        </p>
+                                        {mode === 'address' && (
+                                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                                                {qrCode.fullAddress?.addressLine1}
+                                            </p>
+                                        )}
+                                        {mode === 'location' && (
+                                            <p className="text-xs text-muted-foreground mt-1 truncate">
+                                                Location Context Only
+                                            </p>
+                                        )}
                                     </div>
                                     <Button
                                         variant="ghost"
