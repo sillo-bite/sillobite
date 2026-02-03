@@ -25,6 +25,8 @@ export interface Canteen {
   priority?: number; // Priority for ordering (lower number = higher priority)
   createdAt: Date;
   updatedAt: Date;
+  imageUrl?: string; // URL for the canteen profile picture
+  imagePublicId?: string; // Cloudinary Public ID
   ownerSidebarConfig?: Record<string, boolean>;
 }
 

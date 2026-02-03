@@ -223,8 +223,9 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   );
 
   // Fallback to old hooks for admins or when new hook doesn't apply
+  // STRICT MODE: Never fetch all canteens as fallback. User must select a location.
   const { data: allCanteensData, isLoading: allLoading, error: allError } = useCanteens(
-    !institutionType && shouldFetchCanteens // Only enable if we should NOT use any filter AND should fetch canteens
+    false
   );
 
   // Choose the appropriate data source - use lazy loaded, restaurant, or all canteens

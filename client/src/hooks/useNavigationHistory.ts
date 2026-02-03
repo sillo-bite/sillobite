@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export type NavigationView = 'home' | 'cart' | 'favorites' | 'menu' | 'profile' | 'orders' | 'challenges';
+export type NavigationView = 'home' | 'cart' | 'favorites' | 'menu' | 'profile' | 'orders' | 'challenges' | 'selector';
 
 interface NavigationHistoryItem {
   view: NavigationView;
@@ -11,18 +11,18 @@ interface NavigationHistoryItem {
  * Hook to manage navigation history for proper back button behavior
  * Tracks the user's navigation path so back button follows the actual path taken
  */
-export function useNavigationHistory() {
+export function useNavigationHistory(initialView: NavigationView = 'home') {
   const [history, setHistory] = useState<NavigationHistoryItem[]>([]);
-  const [currentView, setCurrentView] = useState<NavigationView>('home');
+  const [currentView, setCurrentView] = useState<NavigationView>(initialView);
   const isNavigatingBackRef = useRef(false);
 
-  // Initialize with home view
+  // Initialize with initial view
   useEffect(() => {
     if (history.length === 0) {
-      setHistory([{ view: 'home', timestamp: Date.now() }]);
-      setCurrentView('home');
+      setHistory([{ view: initialView, timestamp: Date.now() }]);
+      setCurrentView(initialView);
     }
-  }, []);
+  }, [initialView]);
 
   /**
    * Navigate to a new view and add it to history
@@ -37,7 +37,7 @@ export function useNavigationHistory() {
       setCurrentView(view);
       return;
     }
-    
+
     setHistory(prev => {
       // Don't add if it's the same view and skipIfSame is true
       if (skipIfSame && prev.length > 0 && prev[prev.length - 1].view === view) {
@@ -56,9 +56,9 @@ export function useNavigationHistory() {
   const navigateBack = useCallback((): NavigationView => {
     // Set flag to prevent adding to history when view changes
     isNavigatingBackRef.current = true;
-    
+
     let previousView: NavigationView = 'home';
-    
+
     setHistory(prev => {
       if (prev.length <= 1) {
         // Already at root, stay at home
@@ -73,13 +73,13 @@ export function useNavigationHistory() {
       setCurrentView(previousView);
       return newHistory;
     });
-    
+
     // Reset flag after state update completes
     // Use requestAnimationFrame to ensure it happens after React's state update
     requestAnimationFrame(() => {
       isNavigatingBackRef.current = false;
     });
-    
+
     return previousView;
   }, []);
 
@@ -128,22 +128,22 @@ export function useNavigationHistory() {
       setCurrentView(view);
       return;
     }
-    
+
     setHistory(prev => {
       const newHistory = [...prev];
       const lastView = newHistory.length > 0 ? newHistory[newHistory.length - 1].view : null;
-      
+
       // If current view is not the last entry, add it first
       if (lastView !== currentViewToAdd && currentViewToAdd !== view) {
         newHistory.push({ view: currentViewToAdd, timestamp: Date.now() });
       }
-      
+
       // Then add the target view (only if different from last entry)
       const newLastView = newHistory.length > 0 ? newHistory[newHistory.length - 1].view : null;
       if (newLastView !== view) {
         newHistory.push({ view, timestamp: Date.now() });
       }
-      
+
       return newHistory;
     });
     setCurrentView(view);

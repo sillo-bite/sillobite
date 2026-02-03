@@ -24,7 +24,6 @@ import CurrentOrderBottomSheet from "@/components/orders/CurrentOrderBottomSheet
 import FloatingCart from "@/components/cart/FloatingCart";
 import { updateStatusBarColor } from "@/utils/statusBar";
 import { useLocation as useLocationContext } from "@/contexts/LocationContext";
-import LocationSelector from "@/components/profile/LocationSelector";
 import { MapPin, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 
@@ -58,16 +57,16 @@ const getDefaultCategoryName = (itemName: string): string => {
 interface HomeScreenProps {
   activateSearch?: boolean;
   onSearchDeactivated?: () => void;
+  onNavigateBack?: () => void;
 }
 
-export default function HomeScreen({ activateSearch = false, onSearchDeactivated }: HomeScreenProps) {
+export default function HomeScreen({ activateSearch = false, onSearchDeactivated, onNavigateBack }: HomeScreenProps) {
   const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuthSync();
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
   const { selectedLocationType, selectedLocationId } = useLocationContext();
-  const [showLocationSelector, setShowLocationSelector] = useState(false);
   const { getTotalItems } = useCart();
 
   // Smooth scroll-based transition state (0 to 1)
@@ -682,6 +681,21 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
           <div className="px-4 pt-12 pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full mr-1 -ml-2"
+                  onClick={() => {
+                    // Prefer explicit navigation handler if provided
+                    if (onNavigateBack) {
+                      onNavigateBack();
+                    } else {
+                      window.history.back();
+                    }
+                  }}
+                >
+                  <ArrowLeft className="w-5 h-5 text-foreground" />
+                </Button>
                 <CanteenSelector />
                 {/* Exit Restaurant Button - Only shown when restaurant context exists */}
                 {hasRestaurantContext && restaurantInfo && (

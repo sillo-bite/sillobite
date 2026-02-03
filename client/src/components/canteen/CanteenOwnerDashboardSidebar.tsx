@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -69,7 +69,11 @@ import {
   Download,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  QrCode,
+  Camera,
+  Upload,
+  Image as ImageIcon
 } from "lucide-react";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import ContentManager from "@/components/canteen/ContentManager";
@@ -78,6 +82,11 @@ import DeliveryManagement from "@/components/canteen/DeliveryManagement";
 import PosBilling from "@/components/canteen/PosBilling";
 import PayoutManagement from "@/components/canteen/PayoutManagement";
 import PositionBidding from "@/components/canteen/PositionBidding";
+import CanteenOwnerQRManager from "@/components/canteen/CanteenOwnerQRManager";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { compressImage } from "@/utils/imageCompression";
+import { useToast } from "@/hooks/use-toast";
+import { formatBytes } from "@/utils/formatting";
 
 // Sidebar Navigation Item Component
 interface SidebarNavItemProps {
@@ -162,6 +171,7 @@ export default function CanteenOwnerDashboardSidebar() {
     payout: true,
     "position-bidding": true,
     "store-mode": true,
+    "qr-manager": true,
   };
   const ownerSidebarOrder = [
     "overview",
@@ -175,7 +185,8 @@ export default function CanteenOwnerDashboardSidebar() {
     "delivery-management",
     "payout",
     "position-bidding",
-    "store-mode"
+    "store-mode",
+    "qr-manager"
   ];
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -244,12 +255,16 @@ export default function CanteenOwnerDashboardSidebar() {
   });
   const [isMobile, setIsMobile] = useState(false);
   const [showAllOrders, setShowAllOrders] = useState(false);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Use the updated hook with canteenId
   const {
     requestPermission: requestPushPermission,
     isSubscribed: isPushSubscribed
   } = useWebPushNotifications(user?.email || undefined, "canteen_owner", canteenId);
+
+  const { toast } = useToast();
 
   const sidebarCollapsed = isSidebarCollapsed && !isMobile;
 
@@ -302,7 +317,15 @@ export default function CanteenOwnerDashboardSidebar() {
       }
     };
     setupPush();
+    setupPush();
   }, [isAuthenticated, isCanteenOwner, user?.email, canteenId, isPushSubscribed, requestPushPermission]);
+
+
+
+  // Debug logging for canteen image
+
+
+
 
   const sendDeviceNotification = async (title: string, body: string, data?: Record<string, any>) => {
     try {
@@ -560,6 +583,81 @@ export default function CanteenOwnerDashboardSidebar() {
     enabled: !!canteenId,
   });
 
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    if (file.size > 100 * 1024) { // > 100KB check
+      // Basic client-side check
+    }
+
+    try {
+      setIsImageUploading(true);
+      const compressedBlob = await compressImage(file, 20); // Compress to ~20KB
+
+      if (!compressedBlob) {
+        throw new Error("Compression failed");
+      }
+
+      // Convert Blob to File for upload
+      const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+
+      const formData = new FormData();
+      formData.append('image', compressedFile);
+      formData.append('updatedBy', user?.id?.toString() || '0');
+
+      const response = await apiRequest(`/api/system-settings/canteens/${canteenId}/profile-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log("Upload response:", response);
+
+      // Force cache invalidation sequence
+      // Force cache invalidation sequence
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens/by-college"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens/by-organization"] });
+
+      // Update specific canteen cache
+      await queryClient.refetchQueries({ queryKey: ["/api/system-settings/canteens", canteenId] });
+      await refetchCanteenSettings();
+
+      toast({
+        title: "Profile Picture Updated",
+        description: `Successfully uploaded. Original: ${formatBytes(file.size)}, Compressed: ${formatBytes(compressedFile.size)}`,
+        variant: "default",
+      });
+
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImageUploading(false);
+    }
+  };
+
+  // Debug logging for canteen image
+  useEffect(() => {
+    if (canteenData) {
+      console.log("Canteen Data Updated:", {
+        id: canteenData.id,
+        name: canteenData.name,
+        imageUrl: canteenData.imageUrl,
+        hasImage: !!canteenData.imageUrl
+      });
+    }
+  }, [canteenData]);
+
+  const onSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageUpload(e.target.files[0]);
+    }
+  };
+
   // Mutation to update favorite counter
   const updateFavoriteCounterMutation = useMutation({
     mutationFn: async (favoriteCounterId: string) => {
@@ -617,7 +715,8 @@ export default function CanteenOwnerDashboardSidebar() {
       analytics: "Analytics",
       "delivery-management": "Delivery Management",
       payout: "Payout",
-      "store-mode": "Store Mode"
+      "store-mode": "Store Mode",
+      "qr-manager": "QR Manager"
     };
 
     const tabTitle = tabTitles[activeTab] || "Dashboard";
@@ -2086,6 +2185,15 @@ export default function CanteenOwnerDashboardSidebar() {
               collapsed={sidebarCollapsed}
             />
           )}
+          {ownerSidebarConfig["qr-manager"] && (
+            <SidebarNavItem
+              icon={QrCode}
+              label="QR Manager"
+              active={activeTab === "qr-manager"}
+              onClick={() => handleTabChange("qr-manager")}
+              collapsed={sidebarCollapsed}
+            />
+          )}
           {ownerSidebarConfig["payout"] && (
             <SidebarNavItem
               icon={DollarSign}
@@ -2216,7 +2324,7 @@ export default function CanteenOwnerDashboardSidebar() {
 
         {/* Content Area */}
         <div className="flex-1 p-4 md:p-6 min-h-0 overflow-hidden">
-          <div className={`max-w-7xl mx-auto w-full ${["orders", "pos-billing", "menu", "content", "analytics", "delivery-management", "payout"].includes(activeTab)
+          <div className={`max-w-7xl mx-auto w-full ${["orders", "pos-billing", "menu", "content", "analytics", "delivery-management", "payout", "qr-manager"].includes(activeTab)
             ? "h-full flex flex-col min-h-0"
             : ""
             }`}>
@@ -2767,6 +2875,13 @@ export default function CanteenOwnerDashboardSidebar() {
               </div>
             )}
 
+            {/* QR Manager Content */}
+            {activeTab === "qr-manager" && (
+              <div className="h-full flex flex-col min-h-0">
+                <CanteenOwnerQRManager />
+              </div>
+            )}
+
             {/* Analytics Content */}
             {activeTab === "analytics" && (
               <div className="h-full flex flex-col min-h-0">
@@ -3187,6 +3302,9 @@ export default function CanteenOwnerDashboardSidebar() {
       <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto app-scrollbar">
           <DialogHeader>
+            <DialogDescription className="sr-only">
+              Recent notifications and updates
+            </DialogDescription>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center space-x-2">
                 <Bell className="w-5 h-5" />
@@ -3284,9 +3402,59 @@ export default function CanteenOwnerDashboardSidebar() {
               <Settings className="w-5 h-5" />
               <span>Settings</span>
             </DialogTitle>
+            <DialogDescription className="text-muted-foreground mt-1">
+              Manage your account and canteen preferences
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 mt-4">
             <div className="space-y-4">
+              {/* Canteen Profile Visuals */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <ImageIcon className="w-5 h-5" />
+                    <span>Canteen Identity</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative group">
+                      <Avatar className="w-20 h-20 border-2 border-border">
+                        <AvatarImage src={canteenData?.imageUrl} alt={canteenData?.name} className="object-cover" />
+                        <AvatarFallback className="text-lg bg-muted">
+                          {canteenData?.name?.substring(0, 2).toUpperCase() || "CN"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isImageUploading}
+                      >
+                        {isImageUploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4" />
+                        )}
+                      </button>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={onSelectImage}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">{canteenData?.name || "My Canteen"}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload a profile picture. Max 100KB original,<br />
+                        auto-compressed to ~20KB.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Account Section */}
               <Card>
                 <CardHeader>
@@ -3479,6 +3647,9 @@ export default function CanteenOwnerDashboardSidebar() {
               <ScanLine className="w-5 h-5" />
               Barcode Scanner
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Scan utility for orders
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">

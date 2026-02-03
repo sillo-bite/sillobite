@@ -525,6 +525,8 @@ export type SystemSettings = {
       payAtCounterEnabled?: boolean; // Allow pay-at-counter option
       deliveryEnabled?: boolean; // Allow delivery orders
       priority?: number; // Priority for ordering (lower number = higher priority)
+      imageUrl?: string; // Canteen profile picture URL
+      imagePublicId?: string; // Canteen profile picture public ID
       createdAt: Date;
       updatedAt: Date;
     }>;

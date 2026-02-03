@@ -11,8 +11,10 @@ import FloatingCart from "@/components/cart/FloatingCart";
 import { useNavigationHistory, type NavigationView } from "@/hooks/useNavigationHistory";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@shared/schema";
+import CanteenSelectorPage from "./CanteenSelectorPage";
+import { useCanteenContext } from "@/contexts/CanteenContext";
 
-type ViewType = "home" | "cart" | "favorites" | "menu" | "profile" | "orders" | "challenges";
+type ViewType = "home" | "cart" | "favorites" | "menu" | "profile" | "orders" | "challenges" | "selector";
 
 /**
  * App Page - Single Page Application entry point
@@ -61,12 +63,22 @@ function MenuWrapper({ category, children }: { category: string; children: React
   );
 }
 export default function AppPage() {
-  const [currentView, setCurrentView] = useState<ViewType>("home");
+  const { selectedCanteen } = useCanteenContext();
+
+  // Determine initial view based on history state or default to selector
+  const initialView: ViewType = React.useMemo(() => {
+    if (typeof window !== 'undefined' && window.history.state && window.history.state.view) {
+      return window.history.state.view as ViewType;
+    }
+    return "selector";
+  }, []);
+
+  const [currentView, setCurrentView] = useState<ViewType>(initialView);
   const [menuCategory, setMenuCategory] = useState<string>("all");
   const [menuSearchQuery, setMenuSearchQuery] = useState<string>("");
   const [activateHomeSearch, setActivateHomeSearch] = useState<boolean>(false);
   const [, setLocation] = useLocation();
-  const { navigateTo, navigateBack, getPreviousView, history, navigateToWithCurrent } = useNavigationHistory();
+  const { navigateTo, navigateBack, getPreviousView, history, navigateToWithCurrent } = useNavigationHistory(initialView as NavigationView);
   const [showExitToast, setShowExitToast] = useState(false);
   const { user } = useAuth();
 
@@ -126,7 +138,7 @@ export default function AppPage() {
   }, [currentView, history, navigateTo]);
 
   // Handle navigation from bottom navigation
-  const handleNavigation = (view: "home" | "menu" | "cart" | "profile" | "favorites") => {
+  const handleNavigation = (view: "home" | "menu" | "cart" | "profile" | "favorites" | "selector") => {
     // Track this navigation in history (not a back navigation)
     navigateTo(view);
     setCurrentView(view);
@@ -709,10 +721,19 @@ export default function AppPage() {
       }}
     >
       {/* Conditionally render HomeScreen, CartPage, FavoritesPage, MenuListingPage, ProfilePage, or OrdersPage */}
+      {currentView === "selector" && (
+        <CanteenSelectorPage
+          onCanteenSelect={() => {
+            handleNavigation("home");
+          }}
+        />
+      )}
+
       {currentView === "home" && (
         <HomeScreen
           activateSearch={activateHomeSearch}
           onSearchDeactivated={() => setActivateHomeSearch(false)}
+          onNavigateBack={() => handleNavigation('selector')}
         />
       )}
 
