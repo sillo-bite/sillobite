@@ -11,6 +11,7 @@ interface MaintenanceScreenProps {
   contactInfo?: string;
   showAuthOptions?: boolean;
   isAuthenticated?: boolean;
+  onAnimationComplete?: () => void;
 }
 
 export default function MaintenanceScreen({
@@ -19,7 +20,8 @@ export default function MaintenanceScreen({
   estimatedTime,
   contactInfo,
   showAuthOptions = true,
-  isAuthenticated = false
+  isAuthenticated = false,
+  onAnimationComplete
 }: MaintenanceScreenProps) {
   const [, setLocation] = useLocation();
 
