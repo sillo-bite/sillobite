@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
-import { isPWAInstalled } from '@/utils/pwaAuth';
+import { setPWAAuth } from '@/utils/pwaAuth';
+import { UserRole } from '@shared/schema';
 
 export default function OAuthCallback() {
   const [, setLocation] = useLocation();
@@ -9,13 +10,17 @@ export default function OAuthCallback() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+  const processedRef = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      if (processedRef.current) return;
+      processedRef.current = true;
+
       try {
         console.log('🔄 OAuthCallback component mounted');
         console.log('📍 Current URL:', window.location.href);
-        
+
         const urlParams = new URLSearchParams(window.location.search);
         const errorParam = urlParams.get('error');
 
@@ -37,7 +42,7 @@ export default function OAuthCallback() {
 
         const googleUser = await response.json();
         console.log('Google user authenticated:', googleUser.email);
-        
+
         setIsSuccess(true);
         await handleUserAuthentication(googleUser);
       } catch (error) {
@@ -54,11 +59,11 @@ export default function OAuthCallback() {
   const handleUserAuthentication = async (user: any) => {
     try {
       console.log('Starting user authentication for:', user.email);
-      
+
       // Check if this is from organization QR code
       const pendingOrgQRData = sessionStorage.getItem('pendingOrgQRData');
       let orgQRData: { organizationId: string; address: string; hash: string; timestamp: number } | null = null;
-      
+
       if (pendingOrgQRData) {
         try {
           orgQRData = JSON.parse(pendingOrgQRData);
@@ -66,7 +71,7 @@ export default function OAuthCallback() {
           console.error('Error parsing org QR data:', error);
         }
       }
-      
+
       // Check if user exists in database
       // Use cache: 'force-cache' to prevent duplicate calls if data was recently fetched
       const userResponse = await fetch(`/api/users/by-email/${user.email}`, {
@@ -76,21 +81,24 @@ export default function OAuthCallback() {
         }
       });
       console.log('User response status:', userResponse.status);
-      
+
       if (userResponse.ok) {
         // User exists, check if they are blocked
         const userData = await userResponse.json();
         console.log('User data received:', userData);
-        
+
         // Check if user is blocked (role starts with 'blocked_')
         if (userData.role && userData.role.startsWith('blocked_')) {
           setIsLoading(false);
           setLocation('/login?blocked=true');
           return;
         }
-        
+
+        // Debug logs removed
+
+
         // Check if user came from organization QR; apply context but do not force profile setup
-        if (orgQRData && (userData.role === 'guest' || !userData.organizationId)) {
+        if (orgQRData && (userData.role === UserRole.GUEST || !userData.organizationId)) {
           // Validate QR code first
           const validateResponse = await fetch(
             `/api/system-settings/qr-codes/validate/${orgQRData.organizationId}/${orgQRData.hash}?address=${encodeURIComponent(orgQRData.address)}`
@@ -112,12 +120,12 @@ export default function OAuthCallback() {
             // Do not require phone number; continue to login flow
           }
         }
-        
+
         // Get organizationId from database (now stored in user record)
         // For guest users, organizationId is stored in the database
         const organizationId = userData.organizationId || null;
         console.log('🔧 Organization ID from database:', organizationId);
-        
+
         // Login user directly without profile completion check
         const userDisplayData = {
           id: userData.id,
@@ -131,34 +139,50 @@ export default function OAuthCallback() {
             organization: organizationId,
             organizationId: organizationId,
           }),
-          ...((userData.role === "student" || userData.role === "employee" || userData.role === "contractor" || userData.role === "visitor" || userData.role === "guest") && {
+          ...((userData.role === UserRole.STUDENT || userData.role === UserRole.EMPLOYEE || userData.role === UserRole.CONTRACTOR || userData.role === UserRole.VISITOR || userData.role === UserRole.GUEST) && {
             registerNumber: userData.registerNumber || '',
             department: userData.department || '',
             currentStudyYear: userData.currentStudyYear?.toString() || '1',
             isPassed: userData.isPassed || false,
           }),
-          ...(userData.role === "staff" && {
+          ...(userData.role === UserRole.STAFF && {
             staffId: userData.staffId || '',
           }),
+          // Include location preferences
+          selectedLocationType: userData.selectedLocationType,
+          selectedLocationId: userData.selectedLocationId,
+          // Include restaurant context if present
+          restaurantId: userData.restaurantId,
+          restaurantName: userData.restaurantName,
+          tableNumber: userData.tableNumber
         };
-        
+
         console.log('Logging in user with data:', userDisplayData);
         console.log('🔧 Organization ID from database:', userDisplayData.organization);
-        
+
         // Use the proper login function to maintain authentication state
         login(userDisplayData);
-        
+
         // Keep loading state true until redirect completes
+        // Check for stored redirect (from QR code etc)
+        const authRedirect = sessionStorage.getItem('authRedirect');
+        if (authRedirect) {
+          sessionStorage.removeItem('authRedirect');
+          console.log('🔄 Restoring redirect from session:', authRedirect);
+          setLocation(decodeURIComponent(authRedirect));
+          return;
+        }
+
         // Redirect based on role
-        if (userData.role === 'super_admin' || userData.role === 'admin') {
+        if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.ADMIN) {
           setLocation('/admin');
-        } else if (userData.role === 'canteen_owner' || userData.role === 'canteen-owner') {
+        } else if (userData.role === UserRole.CANTEEN_OWNER) {
           // For canteen owners, we need to get their canteen ID first
           try {
             console.log('Fetching canteen for owner:', userData.email);
             const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`);
             console.log('Canteen response status:', canteenResponse.status);
-            
+
             if (canteenResponse.ok) {
               const canteenData = await canteenResponse.json();
               console.log('Canteen data received:', canteenData);
@@ -174,7 +198,7 @@ export default function OAuthCallback() {
             console.error('Error fetching canteen for owner:', error);
             setLocation('/login?error=canteen_fetch_failed');
           }
-        } else if (userData.role === 'delivery_person') {
+        } else if (userData.role === UserRole.DELIVERY_PERSON) {
           console.log('✅ Login successful, redirecting delivery person to portal');
           setTimeout(() => {
             setLocation('/delivery-portal');
@@ -189,7 +213,7 @@ export default function OAuthCallback() {
         }
       } else {
         console.log('User not found, checking for organization QR context');
-        
+
         // User doesn't exist - check if from organization QR
         if (orgQRData) {
           // Validate QR code first
@@ -212,7 +236,7 @@ export default function OAuthCallback() {
             email: user.email,
             name: user.name || '',
             phoneNumber: '', // Will be collected in profile setup
-            role: 'guest',
+            role: UserRole.GUEST,
             college: organization.name, // Store organization name in college field
             isProfileComplete: false, // Need to collect phone number
           };
@@ -225,17 +249,17 @@ export default function OAuthCallback() {
 
           if (createResponse.ok) {
             const newUser = await createResponse.json();
-            
+
             // Store organization context for profile setup (including full address)
             sessionStorage.setItem('orgContext', JSON.stringify({
               organizationId: organization.id,
               organizationName: organization.name,
               fullAddress: fullAddress, // Store full address to auto-add to user addresses
             }));
-            
+
             // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
-            
+
             console.log('✅ Guest user created with organization context, redirecting to profile setup');
             setIsLoading(false);
             setLocation(`/profile-setup?email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name)}`);
@@ -246,17 +270,17 @@ export default function OAuthCallback() {
             const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
             if (existingUserResponse.ok) {
               const existingUser = await existingUserResponse.json();
-              
+
               // Store organization context for profile setup (including full address)
               sessionStorage.setItem('orgContext', JSON.stringify({
                 organizationId: organization.id,
                 organizationName: organization.name,
                 fullAddress: fullAddress, // Store full address to auto-add to user addresses
               }));
-              
+
               // Remove pending QR data
               sessionStorage.removeItem('pendingOrgQRData');
-              
+
               // Check if user needs profile completion
               if (!existingUser.phoneNumber || !existingUser.organizationId) {
                 // Update user with organizationId if missing
@@ -273,7 +297,7 @@ export default function OAuthCallback() {
                     console.error('Error updating user with organizationId:', e);
                   }
                 }
-                
+
                 console.log('✅ Existing user needs profile completion, redirecting to profile setup');
                 setIsLoading(false);
                 setLocation(`/profile-setup?email=${encodeURIComponent(existingUser.email)}&name=${encodeURIComponent(existingUser.name)}`);
@@ -284,7 +308,7 @@ export default function OAuthCallback() {
                   id: existingUser.id,
                   name: existingUser.name,
                   email: existingUser.email,
-                  role: existingUser.role || 'guest',
+                  role: existingUser.role || UserRole.GUEST,
                   phoneNumber: existingUser.phoneNumber || '',
                   ...(organizationId && {
                     organization: organizationId,
@@ -314,7 +338,7 @@ export default function OAuthCallback() {
           const minimalUser = {
             email: user.email,
             name: user.name || '',
-            role: 'guest',
+            role: UserRole.GUEST,
             isProfileComplete: false,
           };
           const createResponse = await fetch('/api/users', {
@@ -328,7 +352,7 @@ export default function OAuthCallback() {
               id: created.id,
               name: created.name,
               email: created.email,
-              role: created.role || 'guest',
+              role: created.role || UserRole.GUEST,
               phoneNumber: created.phoneNumber || '',
             };
             login(userDisplayData);

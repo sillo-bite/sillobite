@@ -1,5 +1,5 @@
 // Re-export Prisma types for User (PostgreSQL)
-export type { 
+export type {
   User,
   Prisma
 } from '@prisma/client';
@@ -8,6 +8,10 @@ export type {
 export type InsertUser = Prisma.UserCreateInput;
 
 // MongoDB types (defined in mongodb-models.ts)
+// MongoDB types (defined in mongodb-models.ts)
+import { UserRole } from '@prisma/client';
+export { UserRole };
+
 export type Category = {
   id: string;
   name: string;
@@ -359,7 +363,9 @@ export type SystemSettings = {
       id: string;
       name: string;
       code: string;
+
       isActive: boolean;
+      adminEmail?: string; // Admin email for college-specific notifications
       departments: Array<{
         code: string;
         name: string;
@@ -594,20 +600,20 @@ import { z } from "zod";
 export const profileCompletionSchema = z.object({
   name: z.string().min(1, "Name is required"),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-  role: z.enum(["student", "staff", "employee", "guest", "contractor", "visitor"], { required_error: "Role is required" }),
-  
+  role: z.nativeEnum(UserRole, { required_error: "Role is required" }),
+
   // Student fields (conditional)
   registerNumber: z.string().optional(),
   department: z.string().optional(),
   passingOutYear: z.number().optional(),
-  
+
   // Staff fields (conditional)
   staffId: z.string().optional(),
 }).refine((data) => {
-  if (data.role === "student") {
+  if (data.role === UserRole.STUDENT) {
     return data.registerNumber && data.department && data.passingOutYear;
   }
-  if (data.role === "staff" || data.role === "employee" || data.role === "guest") {
+  if (data.role === UserRole.STAFF || data.role === UserRole.EMPLOYEE || data.role === UserRole.GUEST) {
     return data.staffId;
   }
   return false;
@@ -648,7 +654,7 @@ export const insertUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   phoneNumber: z.string().optional(),
-  role: z.string(),
+  role: z.nativeEnum(UserRole).or(z.string()), // Allow string for backward compatibility/flexibility if needed, or stick to strict Enum
   registerNumber: z.string().optional(),
   college: z.string().optional(),
   department: z.string().optional(),
@@ -898,6 +904,35 @@ export const insertSystemSettingsSchema = z.object({
   appVersion: z.object({
     version: z.string().min(1, "App version is required"),
     buildTimestamp: z.number(),
+    lastUpdatedBy: z.number().optional(),
+    lastUpdatedAt: z.date().optional(),
+  }),
+  colleges: z.object({
+    list: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      code: z.string(),
+      isActive: z.boolean(),
+      adminEmail: z.string().email().optional().or(z.literal("")),
+      departments: z.array(z.object({
+        code: z.string(),
+        name: z.string(),
+        isActive: z.boolean(),
+        studyDuration: z.number().default(4),
+        registrationFormats: z.array(z.object({
+          id: z.string().optional(),
+          name: z.string().optional(),
+          year: z.number(),
+          formats: z.record(z.any()), // Simplifying structure for now to avoid massive duplication
+          createdAt: z.date().optional(),
+          updatedAt: z.date().optional()
+        })).optional(),
+        createdAt: z.date().optional(),
+        updatedAt: z.date().optional()
+      })),
+      createdAt: z.date().optional(),
+      updatedAt: z.date().optional()
+    })),
     lastUpdatedBy: z.number().optional(),
     lastUpdatedAt: z.date().optional(),
   }),

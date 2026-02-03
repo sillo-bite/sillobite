@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, ArrowLeft, Save, CheckCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Upload, MapPin, Building, GraduationCap, Briefcase, Calendar, Phone, Mail, User, ShieldCheck } from "lucide-react";
+import { UserRole } from "@shared/schema";
 import { useActiveDepartments } from "@/hooks/useDepartments";
 import { useActiveColleges, useDepartmentsByCollege } from "@/hooks/useColleges";
 import { useAuthSync } from "@/hooks/useDataSync";
@@ -58,14 +59,12 @@ export default function ProfileEditPage() {
 
   const ReadOnlyField = ({ label, value, placeholder = "Not specified" }: { label: string; value: any; placeholder?: string }) => (
     <FormItem>
-      <FormLabel className={`text-sm font-medium ${
-        resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-      }`}>{label}</FormLabel>
-      <div className={`flex items-center h-11 px-3 py-2 text-sm border rounded-lg ${
-        resolvedTheme === 'dark' 
-          ? 'border-gray-700 bg-gray-800/50 text-gray-400' 
+      <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+        }`}>{label}</FormLabel>
+      <div className={`flex items-center h-11 px-3 py-2 text-sm border rounded-lg ${resolvedTheme === 'dark'
+          ? 'border-gray-700 bg-gray-800/50 text-gray-400'
           : 'border-gray-300 bg-gray-50 text-gray-700'
-      }`}>
+        }`}>
         <span>
           {value || placeholder}
         </span>
@@ -112,7 +111,7 @@ export default function ProfileEditPage() {
         staffId: userInfo.staffId,
         updatedAt: new Date().toISOString(),
       };
-      
+
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setLocation("/profile");
     } catch (error) {
@@ -124,36 +123,32 @@ export default function ProfileEditPage() {
 
   if (!userInfo || !collegesData) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${
-        'bg-background'
-      }`}>
+      <div className={`min-h-screen flex items-center justify-center ${'bg-background'
+        }`}>
         <div className="text-center">
-          <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4 ${
-            resolvedTheme === 'dark' ? 'border-[#B37ED7]' : 'border-[#724491]'
-          }`}></div>
-          <p className={`${
-            resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-          }`}>Loading profile...</p>
+          <div className={`animate-spin rounded-full h-8 w-8 border-b-2 mx-auto mb-4 ${resolvedTheme === 'dark' ? 'border-[#B37ED7]' : 'border-[#724491]'
+            }`}></div>
+          <p className={`${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+            }`}>Loading profile...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${
-      'bg-background'
-    }`}>
+    <div className={`min-h-screen ${'bg-background'
+      }`}>
       {/* Header */}
       <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
         <div className="flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => {
               // Dispatch custom event to navigate back using history
               // Check if we came from Profile
               const fromProfile = sessionStorage.getItem('navigationFrom') === 'profile';
-              
+
               if (fromProfile) {
                 // Navigate back to Profile view
                 setLocation("/app");
@@ -180,321 +175,299 @@ export default function ProfileEditPage() {
       <div className="px-4 py-6 max-w-2xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center mb-6">
-            <div className={`p-2 rounded-lg mr-3 ${
-              resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
-            }`}>
-              <User className={`w-5 h-5 ${
-                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`} />
+            <div className={`p-2 rounded-lg mr-3 ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+              }`}>
+              <User className={`w-5 h-5 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`} />
             </div>
-            <h2 className={`text-lg font-semibold ${
-              resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-            }`}>
+            <h2 className={`text-lg font-semibold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+              }`}>
               Personal Information
             </h2>
           </div>
-          
-          <Card className={`${
-            resolvedTheme === 'dark' 
-              ? 'bg-black border border-gray-800 shadow-lg' 
+
+          <Card className={`${resolvedTheme === 'dark'
+              ? 'bg-black border border-gray-800 shadow-lg'
               : 'bg-white border border-gray-200 shadow-sm'
-          }`}>
+            }`}>
             <CardContent className="p-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="space-y-4">
-                  <div className={`pb-4 border-b ${
-                    resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                  }`}>
-                    <h3 className={`text-sm font-medium mb-4 ${
-                      resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                      EDITABLE FIELDS
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={`text-sm font-medium ${
-                              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                            }`}>Full Name</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter your full name" 
-                                {...field} 
-                                className={`h-11 text-sm ${
-                                  resolvedTheme === 'dark' 
-                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]' 
-                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
-                                }`} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="phoneNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={`text-sm font-medium ${
-                              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                            }`}>Phone Number</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter your phone number" 
-                                {...field} 
-                                className={`h-11 text-sm ${
-                                  resolvedTheme === 'dark' 
-                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]' 
-                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
-                                }`} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {userInfo?.role === "student" && (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="space-y-4">
+                    <div className={`pb-4 border-b ${resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                      }`}>
+                      <h3 className={`text-sm font-medium mb-4 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                        EDITABLE FIELDS
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
-                          name="currentStudyYear"
+                          name="name"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className={`text-sm font-medium ${
-                                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                              }`}>Current Study Year</FormLabel>
-                              <Select 
-                                onValueChange={(value) => field.onChange(parseInt(value))} 
-                                value={field.value?.toString()}
-                              >
+                              <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                                }`}>Full Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Enter your full name"
+                                  {...field}
+                                  className={`h-11 text-sm ${resolvedTheme === 'dark'
+                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]'
+                                      : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
+                                    }`}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="phoneNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                                }`}>Phone Number</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Enter your phone number"
+                                  {...field}
+                                  className={`h-11 text-sm ${resolvedTheme === 'dark'
+                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]'
+                                      : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
+                                    }`}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {userInfo?.role === UserRole.STUDENT && (
+                          <FormField
+                            control={form.control}
+                            name="currentStudyYear"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                                  }`}>Current Study Year</FormLabel>
+                                <Select
+                                  onValueChange={(value) => field.onChange(parseInt(value))}
+                                  value={field.value?.toString()}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className={`h-11 text-sm ${resolvedTheme === 'dark'
+                                        ? 'bg-gray-800/50 border-gray-700 text-gray-100'
+                                        : 'bg-white border-gray-300 text-gray-900'
+                                      }`}>
+                                      <SelectValue placeholder="Select year" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {[1, 2, 3, 4, 5, 6].map((year) => (
+                                      <SelectItem key={year} value={year.toString()}>
+                                        Year {year}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        <FormField
+                          control={form.control}
+                          name="selectedLocationType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                                }`}>Preferred Location Type</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger className={`h-11 text-sm ${
-                                    resolvedTheme === 'dark' 
-                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100' 
+                                  <SelectTrigger className={`h-11 text-sm ${resolvedTheme === 'dark'
+                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100'
                                       : 'bg-white border-gray-300 text-gray-900'
-                                  }`}>
-                                    <SelectValue placeholder="Select year" />
+                                    }`}>
+                                    <SelectValue placeholder="Select location type" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {[1, 2, 3, 4, 5, 6].map((year) => (
-                                    <SelectItem key={year} value={year.toString()}>
-                                      Year {year}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectItem value="college">College</SelectItem>
+                                  <SelectItem value="organization">Organization</SelectItem>
+                                  <SelectItem value="restaurant">Restaurant</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                      )}
-
-                      <FormField
-                        control={form.control}
-                        name="selectedLocationType"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className={`text-sm font-medium ${
-                              resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                            }`}>Preferred Location Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className={`h-11 text-sm ${
-                                  resolvedTheme === 'dark' 
-                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100' 
-                                    : 'bg-white border-gray-300 text-gray-900'
-                                }`}>
-                                  <SelectValue placeholder="Select location type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="college">College</SelectItem>
-                                <SelectItem value="organization">Organization</SelectItem>
-                                <SelectItem value="restaurant">Restaurant</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-4">
-                  <div className={`pb-4 border-b ${
-                    resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                  }`}>
-                    <h3 className={`text-sm font-medium mb-4 ${
-                      resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                      ACCOUNT INFORMATION
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <ReadOnlyField 
-                        label="Email Address" 
-                        value={userInfo?.email} 
-                      />
-
-                      <FormItem>
-                        <FormLabel className={`text-sm font-medium ${
-                          resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
-                        }`}>Role</FormLabel>
-                        <div className={`flex items-center h-11 px-3 py-2 text-sm border rounded-lg ${
-                          resolvedTheme === 'dark' 
-                            ? 'border-gray-700 bg-gray-800/50 text-gray-400' 
-                            : 'border-gray-300 bg-gray-50 text-gray-700'
-                        }`}>
-                          <span className="capitalize">
-                            {userInfo?.role || "Not specified"}
-                          </span>
-                        </div>
-                      </FormItem>
-
-                      <ReadOnlyField 
-                        label="Profile Status" 
-                        value={userInfo?.isProfileComplete ? "Complete" : "Incomplete"} 
-                      />
-
-                      {userInfo?.selectedLocationId && (
-                        <ReadOnlyField 
-                          label="Selected Location ID" 
-                          value={userInfo?.selectedLocationId} 
-                        />
-                      )}
-                    </div>
-
-                    <p className={`text-sm mt-4 ${
-                      resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                      Your email and role cannot be changed. Contact support if you need to update these fields.
-                    </p>
-                  </div>
-                </div>
-
-                {(userInfo?.role === "student" || userInfo?.role === "employee" || userInfo?.role === "contractor" || userInfo?.role === "visitor" || userInfo?.role === "guest" || userInfo?.role === "staff") && (
                   <div className="space-y-4">
-                    <div className={`pb-4 ${
-                      resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
-                    }`}>
-                      <h3 className={`text-sm font-medium mb-4 ${
-                        resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    <div className={`pb-4 border-b ${resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
                       }`}>
-                        {userInfo?.role === "staff" ? "PROFESSIONAL INFORMATION" : "ACADEMIC INFORMATION"}
+                      <h3 className={`text-sm font-medium mb-4 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                        ACCOUNT INFORMATION
                       </h3>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(userInfo?.role === "student" || userInfo?.role === "employee" || userInfo?.role === "contractor" || userInfo?.role === "visitor" || userInfo?.role === "guest") && (
-                          <>
-                            <ReadOnlyField 
-                              label="Register Number" 
-                              value={userInfo?.registerNumber} 
-                            />
+                        <ReadOnlyField
+                          label="Email Address"
+                          value={userInfo?.email}
+                        />
 
-                            <ReadOnlyField 
-                              label="College" 
-                              value={collegesData?.colleges?.find(college => college.id === userInfo?.college)?.name} 
-                            />
+                        <FormItem>
+                          <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
+                            }`}>Role</FormLabel>
+                          <div className={`flex items-center h-11 px-3 py-2 text-sm border rounded-lg ${resolvedTheme === 'dark'
+                              ? 'border-gray-700 bg-gray-800/50 text-gray-400'
+                              : 'border-gray-300 bg-gray-50 text-gray-700'
+                            }`}>
+                            <span className="capitalize">
+                              {userInfo?.role || "Not specified"}
+                            </span>
+                          </div>
+                        </FormItem>
 
-                            <ReadOnlyField 
-                              label="Department" 
-                              value={departmentsByCollege?.departments?.find(dept => dept.code === userInfo?.department)?.name} 
-                            />
+                        <ReadOnlyField
+                          label="Profile Status"
+                          value={userInfo?.isProfileComplete ? "Complete" : "Incomplete"}
+                        />
 
-                            {userInfo?.role === "student" && (
-                              <>
-                                <ReadOnlyField 
-                                  label="Joining Year" 
-                                  value={userInfo?.joiningYear ? String(userInfo.joiningYear) : undefined} 
-                                />
-
-                                <ReadOnlyField 
-                                  label="Passing Out Year" 
-                                  value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined} 
-                                />
-
-                                <ReadOnlyField 
-                                  label="Graduation Status" 
-                                  value={userInfo?.isPassed ? "Graduated" : "Currently Studying"} 
-                                />
-                              </>
-                            )}
-
-                            {userInfo?.role !== "student" && (
-                              <ReadOnlyField 
-                                label="Passing Out Year" 
-                                value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined} 
-                              />
-                            )}
-                          </>
-                        )}
-
-                        {userInfo?.role === "staff" && (
-                          <>
-                            <ReadOnlyField 
-                              label="Staff ID" 
-                              value={userInfo?.staffId} 
-                            />
-
-                            <ReadOnlyField 
-                              label="College" 
-                              value={collegesData?.colleges?.find(college => college.id === userInfo?.college)?.name} 
-                            />
-                          </>
-                        )}
-
-                        {userInfo?.organizationId && (
-                          <ReadOnlyField 
-                            label="Organization ID" 
-                            value={userInfo?.organizationId} 
+                        {userInfo?.selectedLocationId && (
+                          <ReadOnlyField
+                            label="Selected Location ID"
+                            value={userInfo?.selectedLocationId}
                           />
                         )}
                       </div>
+
+                      <p className={`text-sm mt-4 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                        Your email and role cannot be changed. Contact support if you need to update these fields.
+                      </p>
                     </div>
                   </div>
-                )}
 
-                <div className="flex gap-4 pt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setLocation("/profile")}
-                    className={`flex-1 h-12 ${
-                      resolvedTheme === 'dark' 
-                        ? 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-gray-200' 
-                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-800'
-                    }`}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 h-12 bg-red-600 hover:bg-red-700 text-white font-medium"
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Saving...
+                  {(userInfo?.role === UserRole.STUDENT || userInfo?.role === UserRole.EMPLOYEE || userInfo?.role === UserRole.CONTRACTOR || userInfo?.role === UserRole.VISITOR || userInfo?.role === UserRole.GUEST || userInfo?.role === UserRole.STAFF) && (
+                    <div className="space-y-4">
+                      <div className={`pb-4 ${resolvedTheme === 'dark' ? 'border-gray-800' : 'border-gray-200'
+                        }`}>
+                        <h3 className={`text-sm font-medium mb-4 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                          {userInfo?.role === UserRole.STAFF ? "PROFESSIONAL INFORMATION" : "ACADEMIC INFORMATION"}
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {(userInfo?.role === UserRole.STUDENT || userInfo?.role === UserRole.EMPLOYEE || userInfo?.role === UserRole.CONTRACTOR || userInfo?.role === UserRole.VISITOR || userInfo?.role === UserRole.GUEST) && (
+                            <>
+                              <ReadOnlyField
+                                label="Register Number"
+                                value={userInfo?.registerNumber}
+                              />
+
+                              <ReadOnlyField
+                                label="College"
+                                value={collegesData?.colleges?.find(college => college.id === userInfo?.college)?.name}
+                              />
+
+                              <ReadOnlyField
+                                label="Department"
+                                value={departmentsByCollege?.departments?.find(dept => dept.code === userInfo?.department)?.name}
+                              />
+
+                              {userInfo?.role === UserRole.STUDENT && (
+                                <>
+                                  <ReadOnlyField
+                                    label="Joining Year"
+                                    value={userInfo?.joiningYear ? String(userInfo.joiningYear) : undefined}
+                                  />
+
+                                  <ReadOnlyField
+                                    label="Passing Out Year"
+                                    value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined}
+                                  />
+
+                                  <ReadOnlyField
+                                    label="Graduation Status"
+                                    value={userInfo?.isPassed ? "Graduated" : "Currently Studying"}
+                                  />
+                                </>
+                              )}
+
+                              {userInfo?.role !== "student" && (
+                                <ReadOnlyField
+                                  label="Passing Out Year"
+                                  value={userInfo?.passingOutYear ? String(userInfo.passingOutYear) : undefined}
+                                />
+                              )}
+                            </>
+                          )}
+
+                          {userInfo?.role === UserRole.STAFF && (
+                            <>
+                              <ReadOnlyField
+                                label="Staff ID"
+                                value={userInfo?.staffId}
+                              />
+
+                              <ReadOnlyField
+                                label="College"
+                                value={collegesData?.colleges?.find(college => college.id === userInfo?.college)?.name}
+                              />
+                            </>
+                          )}
+
+                          {userInfo?.organizationId && (
+                            <ReadOnlyField
+                              label="Organization ID"
+                              value={userInfo?.organizationId}
+                            />
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <Save className="w-4 h-4 mr-2" />
-                        Save Changes
-                      </div>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
+                    </div>
+                  )}
+
+                  <div className="flex gap-4 pt-6">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setLocation("/profile")}
+                      className={`flex-1 h-12 ${resolvedTheme === 'dark'
+                          ? 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-gray-200'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-800'
+                        }`}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex-1 h-12 bg-red-600 hover:bg-red-700 text-white font-medium"
+                    >
+                      {isLoading ? (
+                        <div className="flex items-center">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Saving...
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Changes
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </div>

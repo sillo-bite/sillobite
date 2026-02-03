@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { UserRole } from "@shared/schema";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,9 +36,9 @@ export default function SendEmailPage() {
     if (usersLoading) return 0;
     switch (groupValue) {
       case 'all': return users.length;
-      case 'students': return users.filter(u => u.role === 'student').length;
+      case 'students': return users.filter(u => u.role === UserRole.STUDENT).length;
       case 'faculty': return users.filter(u => u.role === 'faculty').length;
-      case 'staff': return users.filter(u => u.role === 'staff').length;
+      case 'staff': return users.filter(u => u.role === UserRole.STAFF).length;
       case 'active': return users.filter(u => u.status === 'Active' || !u.status).length;
       case 'inactive': return users.filter(u => u.status === 'Suspended' || u.status === 'Inactive').length;
       default: return 0;
@@ -63,7 +64,7 @@ export default function SendEmailPage() {
     }
 
     setIsSending(true);
-    
+
     try {
       // TODO: Replace with actual API endpoint for sending bulk emails
       // const response = await fetch('/api/admin/send-bulk-email', {
@@ -79,16 +80,16 @@ export default function SendEmailPage() {
       // if (!response.ok) {
       //   throw new Error('Failed to send emails');
       // }
-      
+
       // Simulate API call for now
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       const selectedGroup = userGroups.find(g => g.value === emailData.userGroup);
       const recipientCount = selectedGroup?.count || 0;
-      
+
       setLocation("/admin/user-management");
     } catch (error) {
-      } finally {
+    } finally {
       setIsSending(false);
     }
   };
@@ -98,8 +99,8 @@ export default function SendEmailPage() {
       <div className="border-b bg-card">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setLocation("/admin/user-management")}
               data-testid="button-back"
@@ -126,8 +127,8 @@ export default function SendEmailPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="userGroup">Select User Group</Label>
-                <Select 
-                  value={emailData.userGroup} 
+                <Select
+                  value={emailData.userGroup}
                   onValueChange={(value) => setEmailData(prev => ({ ...prev, userGroup: value }))}
                   data-testid="select-user-group"
                 >
@@ -192,7 +193,7 @@ export default function SendEmailPage() {
             <CardContent>
               <div className="border rounded-lg p-4 bg-muted/20">
                 <div className="mb-4">
-                  <strong>To:</strong> {userGroups.find(g => g.value === emailData.userGroup)?.label} 
+                  <strong>To:</strong> {userGroups.find(g => g.value === emailData.userGroup)?.label}
                   <span className="text-muted-foreground">({userGroups.find(g => g.value === emailData.userGroup)?.count || 0} recipients)</span>
                 </div>
                 <div className="mb-4">
@@ -209,16 +210,16 @@ export default function SendEmailPage() {
           </Card>
 
           <div className="flex space-x-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setLocation("/admin/user-management")}
               disabled={isSending}
               data-testid="button-cancel"
             >
               Cancel
             </Button>
-            <Button 
-              variant="default" 
+            <Button
+              variant="default"
               onClick={handleSendEmail}
               disabled={!emailData.subject.trim() || !emailData.message.trim() || isSending}
               className="flex items-center space-x-2"

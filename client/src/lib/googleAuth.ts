@@ -3,7 +3,22 @@
  * All OAuth URL generation and token exchange handled by backend
  */
 
-export const signInWithGoogle = (): void => {
+export const signInWithGoogle = (redirectUrl?: string | null): void => {
+  // Save redirect parameter to session storage so we can restore it after callback
+  // Prioritize passed argument, then check URL
+  let redirect = redirectUrl;
+  if (!redirect) {
+    const urlParams = new URLSearchParams(window.location.search);
+    redirect = urlParams.get('redirect');
+  }
+
+  if (redirect) {
+    console.log('🔄 Saving auth redirect:', redirect);
+    sessionStorage.setItem('authRedirect', redirect);
+  } else {
+    // If no redirect, make sure we don't have a stale one
+    sessionStorage.removeItem('authRedirect');
+  }
   window.location.href = '/api/auth/google';
 };
 
@@ -36,7 +51,7 @@ export const handleGoogleRedirect = async (): Promise<{
   try {
     console.log('Starting OAuth token exchange...');
     console.log('Authorization code:', code ? 'present' : 'missing');
-    
+
     const tokenResponse = await fetch('/api/auth/google/token', {
       method: 'POST',
       headers: {
@@ -156,7 +171,7 @@ export const signOutGoogle = (): void => {
 export const isAuthenticated = (): boolean => {
   const user = localStorage.getItem('user');
   const sessionTimestamp = localStorage.getItem('session_timestamp');
-  
+
   if (!user || !sessionTimestamp) {
     return false;
   }

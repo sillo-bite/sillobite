@@ -1,8 +1,11 @@
+```typescript
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, School, Briefcase, Hash, Calendar, GraduationCap, Building } from "lucide-react";
 import { getStudyYearDisplay } from "@shared/utils";
 import { useDepartments } from "@/hooks/useDepartments";
+import { useToast } from "@/hooks/use-toast";
+import { UserRole } from "@shared/schema";
 import { useColleges } from "@/hooks/useColleges";
 
 interface UserData {
@@ -96,16 +99,16 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
       </Card>
 
       {/* Student/Employee/Contractor/Visitor/Guest Information */}
-      {(user.role === 'student' || user.role === 'employee' || user.role === 'contractor' || user.role === 'visitor' || user.role === 'guest') && (
+      {(user.role === UserRole.STUDENT || user.role === UserRole.EMPLOYEE || user.role === UserRole.CONTRACTOR || user.role === UserRole.VISITOR || user.role === UserRole.GUEST) && (
         <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center text-lg font-semibold text-gray-900">
               <School className="w-5 h-5 mr-2 text-gray-600" />
-              {user.role === 'student' ? 'Academic Information' : 
-               user.role === 'employee' ? 'Employee Information' : 
-               user.role === 'contractor' ? 'Contractor Information' :
-               user.role === 'visitor' ? 'Visitor Information' :
-               user.role === 'guest' ? 'Guest Information' : 'Information'}
+              {user.role === UserRole.STUDENT ? 'Academic Information' : 
+               user.role === UserRole.EMPLOYEE ? 'Employee Information' : 
+               user.role === UserRole.CONTRACTOR ? 'Contractor Information' :
+               user.role === UserRole.VISITOR ? 'Visitor Information' :
+               user.role === UserRole.GUEST ? 'Guest Information' : 'Information'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -167,7 +170,7 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
       )}
 
       {/* Staff Information */}
-      {user.role === 'staff' && user.staffId && (
+      {user.role === UserRole.STAFF && user.staffId && (
         <Card className="bg-white border border-gray-200 shadow-sm">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center text-lg font-semibold text-gray-900">

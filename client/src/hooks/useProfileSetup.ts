@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from "./useAuth";
+import { UserRole } from "@shared/schema";
 import { apiRequest } from '@/lib/queryClient';
 
 // Hook to get institutions by type
 export function useInstitutionsByType(institutionType: string | null, enabled: boolean = true) {
   console.log(`🔍 useInstitutionsByType - Called with:`, { institutionType, enabled });
-  
+
   return useQuery({
     queryKey: ['institutions', institutionType],
     queryFn: async () => {
@@ -12,10 +14,10 @@ export function useInstitutionsByType(institutionType: string | null, enabled: b
         console.log(`🔍 useInstitutionsByType - No institution type, returning null`);
         return null;
       }
-      
+
       const url = `/api/system-settings/institutions?type=${encodeURIComponent(institutionType)}`;
       console.log(`🔍 useInstitutionsByType - Fetching from URL: ${url}`);
-      
+
       try {
         const result = await apiRequest(url);
         console.log(`🔍 useInstitutionsByType - API Response:`, result);
@@ -40,13 +42,13 @@ export function useDepartmentsByInstitution(institutionType: string | null, inst
         console.log(`🔍 useDepartmentsByInstitution - Missing params:`, { institutionType, institutionId });
         return null;
       }
-      
+
       const url = `/api/system-settings/departments?institutionType=${encodeURIComponent(institutionType)}&institutionId=${encodeURIComponent(institutionId)}`;
       console.log(`🔍 useDepartmentsByInstitution - Fetching from URL: ${url}`);
-      
+
       const result = await apiRequest(url);
       console.log(`🔍 useDepartmentsByInstitution - API Response:`, result);
-      
+
       return result;
     },
     enabled: !!institutionType && !!institutionId && enabled,
@@ -67,12 +69,12 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
     queryKey: ['registrationFormats', institutionType, institutionId, departmentCode, year, role],
     queryFn: async () => {
       if (!institutionType || !institutionId || !departmentCode || !year || !role) {
-        console.log(`🔍 useRegistrationFormatsByInstitutionAndDepartment - Missing params:`, { 
-          institutionType, institutionId, departmentCode, year, role 
+        console.log(`🔍 useRegistrationFormatsByInstitutionAndDepartment - Missing params:`, {
+          institutionType, institutionId, departmentCode, year, role
         });
         return null;
       }
-      
+
       // Build URL based on institution type and role
       let url: string;
       if (institutionType === 'college') {
@@ -85,7 +87,7 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
         console.log(`🔍 useRegistrationFormatsByInstitutionAndDepartment - Invalid institution type:`, institutionType);
         return null;
       }
-      
+
       console.log(`🔍 ===== API REQUEST DETAILS =====`);
       console.log(`🔍 Request URL: ${url}`);
       console.log(`🔍 Institution Type: ${institutionType}`);
@@ -94,7 +96,7 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
       console.log(`🔍 Year (${institutionType === 'college' ? 'passingOutYear' : 'joiningYear'}): ${year}`);
       console.log(`🔍 Role: ${role}`);
       console.log(`🔍 ===== MAKING API REQUEST =====`);
-      
+
       const result = await apiRequest(url);
       console.log(`🔍 useRegistrationFormatsByInstitutionAndDepartment - API Response:`, result);
       console.log(`🔍 ===== COMPLETE API RESPONSE RECEIVED =====`);
@@ -109,12 +111,12 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
       console.log(`🔍 Filtered Formats Count: ${result?.filteredFormatsCount}`);
       console.log(`🔍 Filtering Criteria:`, result?.filteringCriteria);
       console.log(`🔍 Complete API Response Object:`, result);
-      
+
       if (result?.formats) {
-        console.log(`🔍 useRegistrationFormatsByInstitutionAndDepartment - Formats details:`, 
-          result.formats.map((f: any) => ({ 
-            id: f.id, 
-            name: f.name, 
+        console.log(`🔍 useRegistrationFormatsByInstitutionAndDepartment - Formats details:`,
+          result.formats.map((f: any) => ({
+            id: f.id,
+            name: f.name,
             year: f.year,
             hasStudentFormat: !!f.formats?.student,
             hasStaffFormat: !!f.formats?.staff,
@@ -122,7 +124,7 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
             hasGuestFormat: !!f.formats?.guest
           }))
         );
-        
+
         // Log complete format data received from server
         console.log(`🔍 CLIENT RECEIVED ${result.formats.length} FORMATS FROM SERVER:`);
         result.formats.forEach((format: any, index: number) => {
@@ -131,12 +133,12 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
           console.log(`🔍 Format Name: "${format.name}"`);
           console.log(`🔍 Format Year: ${format.year}`);
           console.log(`🔍 Complete formats object received:`, format.formats);
-          
+
           // Log all roles available in the received data
           Object.keys(format.formats || {}).forEach(roleKey => {
             console.log(`🔍 Available role: ${roleKey}`);
           });
-          
+
           // Log the requested role format in detail
           const requestedRoleFormat = format.formats?.[role];
           if (requestedRoleFormat) {
@@ -146,7 +148,7 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
             console.log(`🔍   Example: "${requestedRoleFormat.example}"`);
             console.log(`🔍   Description: "${requestedRoleFormat.description}"`);
             console.log(`🔍   Complete Structure Array:`, requestedRoleFormat.structure);
-            
+
             // Log each position in the structure
             if (requestedRoleFormat.structure) {
               requestedRoleFormat.structure.forEach((position: any, posIndex: number) => {
@@ -156,32 +158,32 @@ export function useRegistrationFormatsByInstitutionAndDepartment(
                   description: position.description,
                   range: position.range
                 };
-                
+
                 // Only include yearType if it's defined and relevant
                 if (position.yearType && position.type === 'year') {
                   positionData.yearType = position.yearType;
                 }
-                
+
                 // Only include value if it's defined and relevant
                 if (position.value && position.type === 'fixed') {
                   positionData.value = position.value;
                 }
-                
+
                 console.log(`🔍     Position ${posIndex + 1}:`, positionData);
               });
             }
           } else {
             console.log(`🔍 ❌ No ${role} role format found in received data`);
           }
-          
+
           console.log(`🔍 ===== END CLIENT FORMAT ${index + 1} =====`);
         });
       }
-      
+
       return result;
     },
-    enabled: !!institutionType && !!institutionId && !!departmentCode && !!role && enabled && 
-             (institutionType === 'college' ? (role === 'student' ? !!year : true) : false), // Organizations don't use this hook
+    enabled: !!institutionType && !!institutionId && !!departmentCode && !!role && enabled &&
+      (institutionType === 'college' ? (role === UserRole.STUDENT ? !!year : true) : false), // Organizations don't use this hook
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -209,10 +211,10 @@ export function useRegistrationFormatsNoYear(
         });
         return null;
       }
-      
+
       // Build URL for no-year endpoint
       const url = `/api/system-settings/registration-formats/no-year?institutionType=${encodeURIComponent(institutionType)}&institutionId=${encodeURIComponent(institutionId)}&departmentCode=${encodeURIComponent(departmentCode)}&role=${encodeURIComponent(role)}`;
-      
+
       console.log(`🔍 ===== API REQUEST DETAILS =====`);
       console.log(`🔍 useRegistrationFormatsNoYear - Institution Type:`, institutionType);
       console.log(`🔍 useRegistrationFormatsNoYear - Institution ID:`, institutionId);
@@ -220,9 +222,9 @@ export function useRegistrationFormatsNoYear(
       console.log(`🔍 useRegistrationFormatsNoYear - Role:`, role);
       console.log(`🔍 useRegistrationFormatsNoYear - Full URL:`, url);
       console.log(`🔍 ===== END API REQUEST =====`);
-      
+
       const result = await apiRequest(url);
-      
+
       console.log(`🔍 ===== API RESPONSE DETAILS =====`);
       console.log(`🔍 useRegistrationFormatsNoYear - Response Success:`, result?.success);
       console.log(`🔍 useRegistrationFormatsNoYear - Institution Type:`, result?.institutionType);
@@ -233,12 +235,12 @@ export function useRegistrationFormatsNoYear(
       console.log(`🔍 useRegistrationFormatsNoYear - Filtered Formats Count:`, result?.filteredFormatsCount);
       console.log(`🔍 useRegistrationFormatsNoYear - Filtering Criteria:`, result?.filteringCriteria);
       console.log(`🔍 useRegistrationFormatsNoYear - Formats Array Length:`, result?.formats?.length || 0);
-      
+
       // Log each format in detail
       if (result?.formats) {
         result.formats.forEach((format: any, index: number) => {
           console.log(`🔍 Format ${index + 1}: "${format.name}" (Year: ${format.year})`);
-          
+
           // Only log the requested role format
           const requestedRoleFormat = format.formats?.[role];
           if (requestedRoleFormat) {
@@ -251,9 +253,9 @@ export function useRegistrationFormatsNoYear(
           }
         });
       }
-      
+
       console.log(`🔍 ===== END API RESPONSE =====`);
-      
+
       return result;
     },
     enabled: !!institutionType && !!institutionId && !!departmentCode && !!role && enabled,

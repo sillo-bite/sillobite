@@ -2,12 +2,14 @@ import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useOrder } from '@/hooks/useOrder';
+import { UserRole } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  ArrowLeft, 
-  Clock, 
-  Receipt, 
+import {
+  ArrowLeft,
+  Clock,
+  Receipt,
   User,
   Phone,
   CreditCard,
@@ -43,21 +45,21 @@ export default function CanteenOrderDetailPage() {
       } catch (error) {
         // If ID lookup fails, continue to barcode lookup
       }
-      
+
       // Fallback: search all orders for matching barcode or order number
       const ordersResponse = await fetch('/api/orders');
       if (!ordersResponse.ok) {
         throw new Error('Failed to fetch orders');
       }
       const orders = await ordersResponse.json();
-      const order = orders.find((o: Order) => 
+      const order = orders.find((o: Order) =>
         o.barcode === orderId || o.orderNumber === orderId
       );
-      
+
       if (!order) {
         throw new Error('Order not found');
       }
-      
+
       return order;
     },
     enabled: !!orderId,
@@ -104,9 +106,9 @@ export default function CanteenOrderDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders', orderId] });
-      },
+    },
     onError: () => {
-      }
+    }
   });
 
   const getStatusColor = (status: string) => {
@@ -206,7 +208,7 @@ export default function CanteenOrderDetailPage() {
             {/* Action Buttons based on status */}
             <div className="flex gap-2">
               {orderDetails.status === "preparing" && (
-                <Button 
+                <Button
                   onClick={handleMarkReady}
                   className="w-full bg-success text-success-foreground hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={updateOrderStatusMutation.isPending}
@@ -226,7 +228,7 @@ export default function CanteenOrderDetailPage() {
               )}
 
               {orderDetails.status === "ready" && (
-                <Button 
+                <Button
                   onClick={handleCompleteOrder}
                   className="w-full bg-success text-success-foreground hover:bg-success/90"
                   disabled={updateOrderStatusMutation.isPending}
@@ -253,7 +255,7 @@ export default function CanteenOrderDetailPage() {
                   <div className="w-12 h-12 rounded-lg bg-accent/50 flex items-center justify-center">
                     <span className="text-2xl">🍽️</span>
                   </div>
-                  
+
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
                       <h4 className="font-medium">{item.name || 'Unknown Item'}</h4>
@@ -264,7 +266,7 @@ export default function CanteenOrderDetailPage() {
                       <p className="text-sm text-primary mt-1">Special Instructions: {item.specialInstructions}</p>
                     )}
                   </div>
-                  
+
                   <div className="text-right">
                     <p className="font-semibold">x{item.quantity || 1}</p>
                     <p className="text-sm font-bold">₹{(item.price || 0) * (item.quantity || 1)}</p>
@@ -282,7 +284,7 @@ export default function CanteenOrderDetailPage() {
               <User className="w-5 h-5 mr-2" />
               Customer Details
             </h2>
-            
+
             {isLoadingCustomer ? (
               <div className="flex items-center space-x-2 py-4">
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -301,12 +303,12 @@ export default function CanteenOrderDetailPage() {
                       </Badge>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     <Mail className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm">{customerDetails.email}</span>
                   </div>
-                  
+
                   {customerDetails.phoneNumber && (
                     <div className="flex items-center space-x-3">
                       <Phone className="w-4 h-4 text-muted-foreground" />
@@ -316,15 +318,15 @@ export default function CanteenOrderDetailPage() {
                 </div>
 
                 <Separator />
-                
+
                 {/* Role-specific details */}
-                {customerDetails.role === 'student' && (
+                {customerDetails.role === UserRole.STUDENT && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-muted-foreground flex items-center">
                       <GraduationCap className="w-4 h-4 mr-2" />
                       Student Information
                     </h3>
-                    
+
                     {customerDetails.registerNumber && (
                       <div className="flex items-center space-x-3">
                         <BadgeCheck className="w-4 h-4 text-muted-foreground" />
@@ -334,7 +336,7 @@ export default function CanteenOrderDetailPage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {customerDetails.department && (
                       <div className="flex items-center space-x-3">
                         <School className="w-4 h-4 text-muted-foreground" />
@@ -344,7 +346,7 @@ export default function CanteenOrderDetailPage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {customerDetails.currentStudyYear && (
                       <div className="flex items-center space-x-3">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -354,7 +356,7 @@ export default function CanteenOrderDetailPage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {customerDetails.joiningYear && (
                       <div className="flex items-center space-x-3">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -366,14 +368,14 @@ export default function CanteenOrderDetailPage() {
                     )}
                   </div>
                 )}
-                
-                {customerDetails.role === 'staff' && customerDetails.staffId && (
+
+                {customerDetails.role === UserRole.STAFF && customerDetails.staffId && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-muted-foreground flex items-center">
                       <Building className="w-4 h-4 mr-2" />
                       Staff Information
                     </h3>
-                    
+
                     <div className="flex items-center space-x-3">
                       <BadgeCheck className="w-4 h-4 text-muted-foreground" />
                       <div>
@@ -406,15 +408,15 @@ export default function CanteenOrderDetailPage() {
               <CreditCard className="w-5 h-5 mr-2" />
               Payment Summary
             </h2>
-            
+
             <div className="space-y-3">
               <div className="flex justify-between">
                 <span>Total Amount</span>
                 <span className="font-bold text-lg">₹{orderDetails.amount}</span>
               </div>
-              
+
               <Separator />
-              
+
               <div className="flex justify-between items-center">
                 <span>Payment Status</span>
                 <Badge variant="secondary" className="bg-green-100 text-green-700">
