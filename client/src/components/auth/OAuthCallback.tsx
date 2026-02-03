@@ -131,7 +131,7 @@ export default function OAuthCallback() {
           id: userData.id,
           name: userData.name,
           email: userData.email,
-          role: userData.role,
+          role: userData.role ? String(userData.role).toLowerCase() : UserRole.GUEST,
           phoneNumber: userData.phoneNumber || '',
           college: userData.college || '', // Include college field
           // Use organizationId from database
@@ -174,9 +174,14 @@ export default function OAuthCallback() {
         }
 
         // Redirect based on role
-        if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.ADMIN) {
+        // Normalize role to lowercase for comparison
+        const userRole = userData.role ? String(userData.role).toLowerCase() : '';
+
+        if (userRole === UserRole.SUPER_ADMIN) {
           setLocation('/admin');
-        } else if (userData.role === UserRole.CANTEEN_OWNER) {
+        } else if (userRole === UserRole.ADMIN) {
+          setLocation('/college-admin');
+        } else if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
           // For canteen owners, we need to get their canteen ID first
           try {
             console.log('Fetching canteen for owner:', userData.email);
@@ -198,7 +203,7 @@ export default function OAuthCallback() {
             console.error('Error fetching canteen for owner:', error);
             setLocation('/login?error=canteen_fetch_failed');
           }
-        } else if (userData.role === UserRole.DELIVERY_PERSON) {
+        } else if (userRole === UserRole.DELIVERY_PERSON) {
           console.log('✅ Login successful, redirecting delivery person to portal');
           setTimeout(() => {
             setLocation('/delivery-portal');

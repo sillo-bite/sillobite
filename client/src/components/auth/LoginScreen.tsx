@@ -329,7 +329,7 @@ export default function LoginScreen() {
           id: userData.id,
           name: userData.name,
           email: userData.email,
-          role: userData.role || UserRole.STUDENT, // Ensure role is always set
+          role: userData.role ? String(userData.role).toLowerCase() : UserRole.STUDENT, // Ensure role is always set and normalized
           phoneNumber: userData.phoneNumber || '',
           // Use organizationId from database
           ...(organizationId && {
@@ -398,28 +398,33 @@ export default function LoginScreen() {
 
           if (redirectUrl) {
             setLocation(decodeURIComponent(redirectUrl));
-          } else if (userData.role === UserRole.SUPER_ADMIN) {
-            setLocation("/admin");
-          } else if (userData.role === UserRole.ADMIN) {
-            setLocation("/college-admin");
-          } else if (userData.role === UserRole.CANTEEN_OWNER || userData.role === 'canteen-owner') {
-            // For canteen owners, fetch canteen ID first
-            try {
-              const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`);
-              if (canteenResponse.ok) {
-                const canteenData = await canteenResponse.json();
-                setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
-              } else {
-                setLocation('/login?error=no_canteen');
-              }
-            } catch (error) {
-              console.error('Error fetching canteen:', error);
-              setLocation('/login?error=canteen_fetch_failed');
-            }
-          } else if (userData.role === UserRole.DELIVERY_PERSON) {
-            setLocation("/delivery-portal");
           } else {
-            setLocation("/app");
+            // Normalize role for comparison
+            const userRole = userData.role ? String(userData.role).toLowerCase() : '';
+
+            if (userRole === UserRole.SUPER_ADMIN) {
+              setLocation("/admin");
+            } else if (userRole === UserRole.ADMIN) {
+              setLocation("/college-admin");
+            } else if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
+              // For canteen owners, fetch canteen ID first
+              try {
+                const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`);
+                if (canteenResponse.ok) {
+                  const canteenData = await canteenResponse.json();
+                  setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
+                } else {
+                  setLocation('/login?error=no_canteen');
+                }
+              } catch (error) {
+                console.error('Error fetching canteen:', error);
+                setLocation('/login?error=canteen_fetch_failed');
+              }
+            } else if (userRole === UserRole.DELIVERY_PERSON) {
+              setLocation("/delivery-portal");
+            } else {
+              setLocation("/app");
+            }
           }
         }, 100);
       } else if (userResponse.status === 404) {
@@ -802,20 +807,22 @@ export default function LoginScreen() {
         }
 
         // Login successful
+        const userRole = data.user.role ? String(data.user.role).toLowerCase() : UserRole.STUDENT;
+
         const userDisplayData = {
           id: data.user.id,
           name: data.user.name,
           email: data.user.email,
-          role: data.user.role,
+          role: userRole,
           phoneNumber: data.user.phoneNumber || '',
           college: data.user.college || '',
-          ...((data.user.role === UserRole.STUDENT || data.user.role === UserRole.EMPLOYEE || data.user.role === UserRole.CONTRACTOR || data.user.role === UserRole.VISITOR || data.user.role === UserRole.GUEST) && {
+          ...((userRole === UserRole.STUDENT || userRole === UserRole.EMPLOYEE || userRole === UserRole.CONTRACTOR || userRole === UserRole.VISITOR || userRole === UserRole.GUEST) && {
             registerNumber: data.user.registerNumber || '',
             department: data.user.department || '',
             currentStudyYear: data.user.currentStudyYear?.toString() || '1',
             isPassed: data.user.isPassed || false,
           }),
-          ...(data.user.role === UserRole.STAFF && {
+          ...(userRole === UserRole.STAFF && {
             staffId: data.user.staffId || '',
           }),
         };
@@ -853,11 +860,11 @@ export default function LoginScreen() {
 
         if (redirectUrl) {
           setLocation(decodeURIComponent(redirectUrl));
-        } else if (data.user.role === UserRole.SUPER_ADMIN) {
+        } else if (userRole === UserRole.SUPER_ADMIN) {
           setLocation("/admin");
-        } else if (data.user.role === UserRole.ADMIN) {
+        } else if (userRole === UserRole.ADMIN) {
           setLocation("/college-admin");
-        } else if (data.user.role === UserRole.CANTEEN_OWNER || data.user.role === 'canteen-owner') {
+        } else if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
           // For canteen owners, fetch canteen ID first
           try {
             const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${data.user.email}`);
@@ -871,7 +878,7 @@ export default function LoginScreen() {
             console.error('Error fetching canteen:', error);
             setLocation('/login?error=canteen_fetch_failed');
           }
-        } else if (data.user.role === UserRole.DELIVERY_PERSON) {
+        } else if (userRole === UserRole.DELIVERY_PERSON) {
           setLocation("/delivery-portal");
         } else {
           setLocation("/app");
@@ -926,18 +933,37 @@ export default function LoginScreen() {
         }
 
         // Registration successful - log in directly with minimal data
+        // Registration successful - log in directly with minimal data
+        // Normalize role just in case backend returns something else
+        const userRole = data.user.role ? String(data.user.role).toLowerCase() : UserRole.STUDENT;
+
         const userDisplayData = {
           id: data.user.id,
           name: emailPasswordForm.name?.trim() || data.user.name || (isEmail ? trimmedIdentifier.split('@')[0] : trimmedIdentifier),
           email: data.user.email,
-          role: data.user.role || UserRole.STUDENT,
+          role: userRole,
           phoneNumber: data.user.phoneNumber || '',
           college: data.user.college || '',
         };
         login(userDisplayData as any);
         setIsEmailPasswordLoading(false);
+
         setTimeout(() => {
-          setLocation("/app");
+          // Redirect based on role
+          if (userRole === UserRole.SUPER_ADMIN) {
+            setLocation("/admin");
+          } else if (userRole === UserRole.ADMIN) {
+            setLocation("/college-admin");
+          } else if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
+            // For newly registered canteen owner (unlikely via this form but possible)
+            // We'd need to fetch canteen, but for now redirecting to login if no canteen found might be safer
+            // or just let them fall through to app where they might get redirected
+            setLocation('/login?error=account_setup_required');
+          } else if (userRole === UserRole.DELIVERY_PERSON) {
+            setLocation("/delivery-portal");
+          } else {
+            setLocation("/app");
+          }
         }, 100);
       }
     } catch (error: any) {

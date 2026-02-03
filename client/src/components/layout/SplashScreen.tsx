@@ -303,21 +303,24 @@ export default function SplashScreen() {
           // Invalid JSON, treat as no user
         }
 
-        // PRIORITY 1: If cached user exists, treat as old user and go to home (skip onboarding)
-        if (hasCachedUser) {
-          // Use cached user for role-based redirect
-          const userForRedirect = user || cachedUserData || pwaAuthState.user;
+        // PRIORITY 1: If cached user exists OR if we have a resolved user from useAuth/PWA, treat as authenticated
+        const userForRedirect = user || cachedUserData || (isPWALaunch && pwaAuthState.user);
 
+        // Check if we have any valid user object
+        if (hasCachedUser || userForRedirect) {
           if (userForRedirect) {
-            if (userForRedirect.role === UserRole.SUPER_ADMIN) {
+            // Normalize role to lowercase for comparison to handle case discrepancies (SUPER_ADMIN vs super_admin)
+            const userRole = userForRedirect.role ? String(userForRedirect.role).toLowerCase() : '';
+
+            if (userRole === UserRole.SUPER_ADMIN) {
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/admin") : "/admin";
               setLocation(redirectUrl);
               return;
-            } else if (userForRedirect.role === UserRole.ADMIN) {
+            } else if (userRole === UserRole.ADMIN) {
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/college-admin") : "/college-admin";
               setLocation(redirectUrl);
               return;
-            } else if (userForRedirect.role === UserRole.CANTEEN_OWNER || userForRedirect.role === 'canteen-owner') {
+            } else if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
               // Handle canteen owner redirect - fetch canteen ID and redirect to counter selection
               const redirectCanteenOwner = async () => {
                 try {
@@ -353,7 +356,7 @@ export default function SplashScreen() {
 
               redirectCanteenOwner();
               return;
-            } else if (userForRedirect.role === UserRole.DELIVERY_PERSON) {
+            } else if (userRole === UserRole.DELIVERY_PERSON) {
               // Handle delivery person redirect
               const redirectUrl = isPWALaunch ? formatRedirectUrl("/delivery-portal") : "/delivery-portal";
               setLocation(redirectUrl);

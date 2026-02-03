@@ -756,12 +756,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ User ${userId} validation successful - user exists: ${user.name}`);
 
+      // Normalize role to ensure consistency
+      const userRole = user.role ? String(user.role).toLowerCase() : UserRole.GUEST;
+
       // User exists, return basic info for session validation
       const userData = {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: userRole,
         phoneNumber: user.phoneNumber,
         registerNumber: user.registerNumber,
         department: user.department,
@@ -781,10 +784,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restaurantId: user.restaurantId,
         restaurantName: user.restaurantName,
         tableNumber: user.tableNumber
-      };
+      } as any; // Using any to allow adding dynamic properties like canteen
 
       // For canteen owners, include canteen data to avoid additional API call
-      if (user.role === UserRole.CANTEEN_OWNER || user.role === 'canteen-owner') {
+      if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
         try {
           // Import SystemSettings model
           const { default: mongoose } = await import('mongoose');
