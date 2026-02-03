@@ -2288,7 +2288,8 @@ router.post('/colleges/:collegeId/qr-codes', async (req, res) => {
     const qrId = 'QR' + Date.now().toString(36).toUpperCase();
     const hash = Buffer.from(`${collegeId}-${qrId}-${Date.now()}`).toString('base64');
     // Using a simpler URL structure for now, can be updated to actual frontend route
-    const qrCodeUrl = `${process.env.APP_URL || 'http://localhost:5000'}/qr/college/${qrId}`;
+    const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const qrCodeUrl = `${baseUrl}/qr/college/${qrId}`;
 
     // Construct new QR object based on type
     const newQrCode: any = {
