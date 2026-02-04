@@ -4,6 +4,26 @@ import { UserRole, insertSystemSettingsSchema, type SystemSettings, type InsertS
 import mongoose from 'mongoose';
 
 const router = express.Router();
+import multer from 'multer';
+import { cloudinaryService } from "../services/cloudinaryService";
+import { OrderService } from "../services/order-service";
+
+const orderService = new OrderService();
+
+// Configure multer for canteen profile picture uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 100 * 1024, // 100KB limit (client should compress to 20KB, but we allow 100KB buffer)
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // MongoDB model for SystemSettings
 const SystemSettingsSchema = new mongoose.Schema({
@@ -313,6 +333,8 @@ const SystemSettingsSchema = new mongoose.Schema({
       name: { type: String, required: true },
       code: { type: String, required: true },
       description: { type: String },
+      imageUrl: { type: String }, // URL for the canteen profile picture
+      imagePublicId: { type: String }, // Cloudinary Public ID
       location: { type: String },
       contactNumber: { type: String },
       email: { type: String },
@@ -2883,7 +2905,9 @@ router.get('/canteens/by-institution', async (req, res) => {
           isActive: '$canteens.list.isActive',
           priority: { $ifNull: ['$canteens.list.priority', 0] }, // Default to 0 if not set
           createdAt: '$canteens.list.createdAt',
-          updatedAt: '$canteens.list.updatedAt'
+          updatedAt: '$canteens.list.updatedAt',
+          imageUrl: '$canteens.list.imageUrl', // Profile Picture URL
+          imagePublicId: '$canteens.list.imagePublicId' // Cloudinary Public ID
         }
       },
 
@@ -2916,8 +2940,36 @@ router.get('/canteens/by-institution', async (req, res) => {
 
     console.log(`🏪 MongoDB aggregation result: ${total} total canteens, returning ${canteens.length} canteens (hasMore: ${hasMore})`);
 
+    // Fetch trending items for each canteen (up to 4 items)
+    const canteensWithTrending = await Promise.all(
+      canteens.map(async (canteen: any) => {
+        try {
+          const trendingItems = await orderService.getTrendingItems(canteen.id);
+          // Extract only the names, limit to 4 items
+          const trendingItemNames = trendingItems
+            .slice(0, 4)
+            .map((item: any) => item.name)
+            .filter((name: string) => name); // Filter out any undefined/null names
+
+          return {
+            ...canteen,
+            trendingItems: trendingItemNames
+          };
+        } catch (error) {
+          console.error(`Error fetching trending items for canteen ${canteen.id}:`, error);
+          // Return canteen with empty trending items on error
+          return {
+            ...canteen,
+            trendingItems: []
+          };
+        }
+      })
+    );
+
+    console.log(`🏪 Added trending items to ${canteensWithTrending.length} canteens`);
+
     res.json({
-      canteens,
+      canteens: canteensWithTrending,
       total,
       hasMore,
       limit: limitNum,
@@ -4810,6 +4862,95 @@ router.get('/canteens/by-college/:collegeId', async (req, res) => {
   } catch (error) {
     console.error(`❌ Error fetching canteens for college ${req.params.collegeId}:`, error);
     res.status(500).json({ error: 'Failed to fetch canteens by college' });
+  }
+});
+
+/**
+ * Get specific canteen by ID
+ */
+router.get('/canteens/:canteenId', async (req, res) => {
+  try {
+    const { canteenId } = req.params;
+
+    const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.canteens?.list) {
+      return res.status(404).json({ error: 'No canteens found' });
+    }
+
+    const canteen = settings.canteens.list.find((c: any) => c.id === canteenId);
+
+    if (!canteen) {
+      return res.status(404).json({ error: 'Canteen not found' });
+    }
+
+    res.json(canteen);
+  } catch (error) {
+    console.error('Error fetching canteen:', error);
+    res.status(500).json({ error: 'Failed to fetch canteen' });
+  }
+});
+
+/**
+ * Upload canteen profile picture
+ * Expects 'image' file in request
+ */
+router.post('/canteens/:canteenId/profile-image', upload.single('image'), async (req, res) => {
+  try {
+    const { canteenId } = req.params;
+    const { updatedBy } = req.body;
+
+    if (!canteenId) {
+      return res.status(400).json({ error: 'Canteen ID is required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file uploaded' });
+    }
+
+    // Upload to Cloudinary
+    const result = await cloudinaryService.uploadImage(
+      req.file.buffer,
+      'canteen-profiles',
+      `canteen-${canteenId}-profile`
+    );
+
+    // Update System Settings
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.canteens?.list) {
+      return res.status(404).json({ error: 'No canteens found' });
+    }
+
+    const canteenIndex = settings.canteens.list.findIndex((c: any) => c.id === canteenId);
+    if (canteenIndex === -1) {
+      // If image uploaded successfully but canteen not found, try to delete the image
+      await cloudinaryService.deleteImage(result.public_id);
+      return res.status(404).json({ error: 'Canteen not found' });
+    }
+
+    // Update canteen with image details
+    settings.canteens.list[canteenIndex].imageUrl = result.secure_url;
+    settings.canteens.list[canteenIndex].imagePublicId = result.public_id;
+    settings.canteens.list[canteenIndex].updatedAt = new Date();
+
+    settings.canteens.lastUpdatedBy = updatedBy;
+    settings.canteens.lastUpdatedAt = new Date();
+    settings.updatedAt = new Date();
+
+    await settings.save();
+
+    console.log(`📸 Canteen profile picture updated for ${canteenId}: ${result.secure_url}`);
+
+    res.json({
+      success: true,
+      imageUrl: result.secure_url,
+      imagePublicId: result.public_id,
+      canteen: settings.canteens.list[canteenIndex]
+    });
+  } catch (error) {
+    console.error('Error uploading canteen profile picture:', error);
+    res.status(500).json({ error: 'Failed to upload profile picture' });
   }
 });
 

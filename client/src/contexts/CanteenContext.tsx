@@ -223,8 +223,9 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   );
 
   // Fallback to old hooks for admins or when new hook doesn't apply
+  // STRICT MODE: Never fetch all canteens as fallback. User must select a location.
   const { data: allCanteensData, isLoading: allLoading, error: allError } = useCanteens(
-    !institutionType && shouldFetchCanteens // Only enable if we should NOT use any filter AND should fetch canteens
+    false
   );
 
   // Choose the appropriate data source - use lazy loaded, restaurant, or all canteens
@@ -261,6 +262,19 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   // Set default canteen when canteens are loaded - only on initial load or if selected canteen is no longer available
   useEffect(() => {
     if (canteens && canteens.length > 0) {
+      // First try to restore from localStorage if not already selected
+      if (!selectedCanteen && !hasManuallySelected.current) {
+        const savedCanteenId = localStorage.getItem('selectedCanteenId');
+        if (savedCanteenId) {
+          const savedCanteen = canteens.find(c => c.id === savedCanteenId);
+          if (savedCanteen && savedCanteen.isActive) {
+            console.log('Restoring selected canteen from localStorage:', savedCanteen.name);
+            setSelectedCanteen(savedCanteen);
+            return; // Initialized from storage
+          }
+        }
+      }
+
       // If user has manually selected a canteen, respect that selection
       if (hasManuallySelected.current && selectedCanteen) {
         // Check if the selected canteen is still in the available list
@@ -288,11 +302,12 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     }
   }, [canteens, selectedCanteen]);
 
-  // Initialize cart for the selected canteen (don't save to localStorage to allow priority-based selection on refresh)
+  // Initialize cart for the selected canteen and persist selection
   useEffect(() => {
     if (selectedCanteen) {
-      // Don't save to localStorage - we want to always select highest priority canteen on refresh
-      // localStorage.setItem('selectedCanteenId', selectedCanteen.id);
+      // Save to localStorage to persist selection across refreshes
+      localStorage.setItem('selectedCanteenId', selectedCanteen.id);
+
       // Initialize cart for the selected canteen
       initializeCartForCanteen(selectedCanteen.id);
     }
@@ -302,6 +317,9 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const handleSetSelectedCanteen = React.useCallback((canteen: Canteen | null) => {
     if (canteen) {
       hasManuallySelected.current = true; // Mark as manually selected
+      localStorage.setItem('selectedCanteenId', canteen.id);
+    } else {
+      localStorage.removeItem('selectedCanteenId');
     }
     setSelectedCanteen(canteen);
   }, []);

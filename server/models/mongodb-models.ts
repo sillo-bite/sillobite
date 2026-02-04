@@ -615,6 +615,7 @@ export interface IMediaBanner extends Document {
   displayOrder: number;
   displayMode?: 'fit' | 'fill'; // How to display the image: fit (contain) or fill (cover)
   uploadedBy?: number; // User ID who uploaded
+  canteenId?: string; // Canteen ID this banner belongs to
   createdAt: Date;
   updatedAt: Date;
 }
@@ -635,10 +636,14 @@ const MediaBannerSchema = new Schema<IMediaBanner>({
   isActive: { type: Boolean, default: true },
   displayOrder: { type: Number, default: 0 },
   displayMode: { type: String, enum: ['fit', 'fill'], default: 'fill' }, // How to display the image
+  canteenId: { type: String, index: true }, // Canteen ID this banner belongs to
   uploadedBy: { type: Number }, // References PostgreSQL user ID
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
+
+// Index for efficient querying by canteen
+MediaBannerSchema.index({ canteenId: 1, displayOrder: 1 });
 
 // Update the updatedAt field on save
 MediaBannerSchema.pre('save', function (next) {

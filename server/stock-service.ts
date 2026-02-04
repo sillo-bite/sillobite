@@ -33,7 +33,7 @@ export class AtomicStockService {
     // OPTIMIZATION: Batch query - fetch all menu items in a single DB query
     const itemIds = orderItems.map(item => item.id);
     const menuItems = await MenuItem.find({ _id: { $in: itemIds } }).lean();
-    
+
     // Create a map for O(1) lookup
     const menuItemMap = new Map(menuItems.map(item => [item._id.toString(), item]));
 
@@ -80,7 +80,7 @@ export class AtomicStockService {
         const version = buildInfo.version;
         const majorVersion = parseInt(version.split('.')[0]);
         const minorVersion = parseInt(version.split('.')[1]);
-        
+
         if (majorVersion < 4 || (majorVersion === 4 && minorVersion <= 4)) {
           MONGODB_SUPPORTS_TRANSACTIONS = false;
           console.log(`🔄 MongoDB ${version} detected - forcing non-transactional mode for compatibility`);
@@ -94,20 +94,20 @@ export class AtomicStockService {
     let session: mongoose.ClientSession | null = null;
     try {
       session = await mongoose.startSession();
-      
+
       // Test actual transaction with a real operation using Mongoose
       await session.withTransaction(async () => {
         // Try to find a menu item within transaction to properly test
         await MenuItem.findOne({}).session(session).limit(1);
       });
-      
+
       MONGODB_SUPPORTS_TRANSACTIONS = true;
       console.log('✅ MongoDB transactions supported (replica set detected)');
     } catch (error: any) {
-      if (error.message?.includes('Transaction numbers are only allowed on a replica set') || 
-          error.message?.includes('Transaction numbers') ||
-          error.codeName === 'IllegalOperation' ||
-          error.code === 20) {
+      if (error.message?.includes('Transaction numbers are only allowed on a replica set') ||
+        error.message?.includes('Transaction numbers') ||
+        error.codeName === 'IllegalOperation' ||
+        error.code === 20) {
         MONGODB_SUPPORTS_TRANSACTIONS = false;
         console.log('🔄 MongoDB transactions not supported (standalone instance detected)');
       } else {
@@ -160,48 +160,48 @@ export class AtomicStockService {
           try {
             // OPTIMIZATION: Use bulkWrite for batch operations
             const bulkOps = updates.map(update => {
-            if (update.operation === 'deduct') {
-              return {
-                updateOne: {
-                  filter: { 
-                    _id: update.id, 
-                    stock: { $gte: update.quantity } // Ensure sufficient stock atomically
-                  },
-                  update: { $inc: { stock: -update.quantity } }
-                }
-              };
-            } else if (update.operation === 'restore') {
-              return {
-                updateOne: {
-                  filter: { _id: update.id },
-                  update: { $inc: { stock: update.quantity } }
-                }
-              };
-            }
-            return null;
-          }).filter(op => op !== null) as any[];
+              if (update.operation === 'deduct') {
+                return {
+                  updateOne: {
+                    filter: {
+                      _id: update.id,
+                      stock: { $gte: update.quantity } // Ensure sufficient stock atomically
+                    },
+                    update: { $inc: { stock: -update.quantity } }
+                  }
+                };
+              } else if (update.operation === 'restore') {
+                return {
+                  updateOne: {
+                    filter: { _id: update.id },
+                    update: { $inc: { stock: update.quantity } }
+                  }
+                };
+              }
+              return null;
+            }).filter(op => op !== null) as any[];
 
-          if (bulkOps.length > 0) {
-            const result = await MenuItem.bulkWrite(bulkOps, { session });
-            
-            // Verify all updates succeeded (check matchedCount for deduct operations)
-            const deductUpdates = updates.filter(u => u.operation === 'deduct');
-            if (result.matchedCount < deductUpdates.length) {
-              // Some items didn't have sufficient stock - find which ones
-              const itemIds = deductUpdates.map(u => u.id);
-              const currentStock = await MenuItem.find({ _id: { $in: itemIds } }, { _id: 1, stock: 1 }).session(session).lean();
-              const stockMap = new Map(currentStock.map(item => [item._id.toString(), item.stock]));
-              
-              for (const update of deductUpdates) {
-                const currentStockValue = stockMap.get(update.id) ?? 0;
-                if (currentStockValue < update.quantity) {
-                  throw new Error(`Insufficient stock for item ${update.id}. Available: ${currentStockValue}, Requested: ${update.quantity}`);
+            if (bulkOps.length > 0) {
+              const result = await MenuItem.bulkWrite(bulkOps, { session });
+
+              // Verify all updates succeeded (check matchedCount for deduct operations)
+              const deductUpdates = updates.filter(u => u.operation === 'deduct');
+              if (result.matchedCount < deductUpdates.length) {
+                // Some items didn't have sufficient stock - find which ones
+                const itemIds = deductUpdates.map(u => u.id);
+                const currentStock = await MenuItem.find({ _id: { $in: itemIds } }, { _id: 1, stock: 1 }).session(session).lean();
+                const stockMap = new Map(currentStock.map(item => [item._id.toString(), item.stock]));
+
+                for (const update of deductUpdates) {
+                  const currentStockValue = stockMap.get(update.id) ?? 0;
+                  if (currentStockValue < update.quantity) {
+                    throw new Error(`Insufficient stock for item ${update.id}. Available: ${currentStockValue}, Requested: ${update.quantity}`);
+                  }
                 }
               }
-            }
 
-            console.log(`📦 Bulk stock update: ${result.modifiedCount} items updated`);
-          }
+              console.log(`📦 Bulk stock update: ${result.modifiedCount} items updated`);
+            }
           } finally {
             // Release all locks
             if (useLocks) {
@@ -220,13 +220,13 @@ export class AtomicStockService {
     } else {
       // Fallback to bulk operations for standalone MongoDB (still optimized)
       console.log('🔄 Using bulk stock updates (standalone MongoDB)');
-      
+
       const bulkOps = updates.map(update => {
         if (update.operation === 'deduct') {
           return {
             updateOne: {
-              filter: { 
-                _id: update.id, 
+              filter: {
+                _id: update.id,
                 stock: { $gte: update.quantity } // Ensure sufficient stock atomically
               },
               update: { $inc: { stock: -update.quantity } }
@@ -245,7 +245,7 @@ export class AtomicStockService {
 
       if (bulkOps.length > 0) {
         const result = await MenuItem.bulkWrite(bulkOps);
-        
+
         // Verify all updates succeeded
         const deductUpdates = updates.filter(u => u.operation === 'deduct');
         if (result.matchedCount < deductUpdates.length) {
@@ -253,7 +253,7 @@ export class AtomicStockService {
           const itemIds = deductUpdates.map(u => u.id);
           const currentStock = await MenuItem.find({ _id: { $in: itemIds } }, { _id: 1, stock: 1 }).lean();
           const stockMap = new Map(currentStock.map(item => [item._id.toString(), item.stock]));
-          
+
           for (const update of deductUpdates) {
             const currentStockValue = stockMap.get(update.id) ?? 0;
             if (currentStockValue < update.quantity) {
@@ -274,12 +274,12 @@ export class AtomicStockService {
     // For deduction, use atomic findOneAndUpdate with stock validation
     if (update.operation === 'deduct') {
       let result;
-      
+
       if (session) {
         // Use session when transactions are supported
         result = await MenuItem.findOneAndUpdate(
-          { 
-            _id: update.id, 
+          {
+            _id: update.id,
             stock: { $gte: update.quantity } // Ensure sufficient stock atomically
           },
           { $inc: { stock: -update.quantity } },
@@ -288,8 +288,8 @@ export class AtomicStockService {
       } else {
         // Direct operation without session for standalone MongoDB
         result = await MenuItem.findOneAndUpdate(
-          { 
-            _id: update.id, 
+          {
+            _id: update.id,
             stock: { $gte: update.quantity } // Ensure sufficient stock atomically
           },
           { $inc: { stock: -update.quantity } },
@@ -308,11 +308,11 @@ export class AtomicStockService {
       }
 
       console.log(`📦 Stock deducted for item ${update.id}: ${result.stock + update.quantity} → ${result.stock} (${update.quantity} deducted)`);
-    } 
+    }
     // For restoration, use simple increment
     else if (update.operation === 'restore') {
       let result;
-      
+
       if (session) {
         // Use session when transactions are supported
         result = await MenuItem.findByIdAndUpdate(
@@ -399,7 +399,7 @@ export class AtomicStockService {
           ...update,
           operation: 'restore' as const
         }));
-        
+
         try {
           await this.processStockUpdates(restoreUpdates);
           console.log('✅ Stock restored after order creation failure');
@@ -410,7 +410,7 @@ export class AtomicStockService {
       } else {
         console.error('❌ Order creation failed, but stock was already reserved at checkout - will be restored by checkout session cleanup');
       }
-      
+
       throw error;
     }
   }
@@ -449,7 +449,7 @@ export class AtomicStockService {
    * Gets stock status for multiple items
    * OPTIMIZED: Uses batch query instead of N sequential queries
    */
-  async getStockStatus(itemIds: string[]): Promise<Array<{id: string, stock: number, available: boolean}>> {
+  async getStockStatus(itemIds: string[]): Promise<Array<{ id: string, stock: number, available: boolean }>> {
     // Early return for empty array
     if (!itemIds || itemIds.length === 0) {
       return [];
@@ -518,6 +518,50 @@ export class AtomicStockService {
         stock: 0,
         available: false
       }));
+    }
+  }
+  async getQuickPicks(canteenId: string): Promise<any[]> {
+    try {
+      // Priority 1: Direct DB query for manual quick picks (Efficient)
+      const manualQuickPicks = await MenuItem.find({
+        canteenId,
+        isQuickPick: true,
+        available: true
+      }).limit(10).lean(); // Limit to reasonable number before slicing
+
+      if (manualQuickPicks.length > 0) {
+        return manualQuickPicks
+          .slice(0, 5)
+          .map((item: any) => {
+            const obj: any = item;
+            if (obj._id) {
+              obj.id = obj._id.toString();
+              delete obj._id;
+            }
+            if (obj.__v !== undefined) delete obj.__v;
+            return obj;
+          });
+      }
+
+      // Priority 2: Fallback to high stock items using direct DB query
+      const highStockItems = await MenuItem.find({
+        canteenId,
+        available: true,
+        stock: { $gt: 10 }
+      }).limit(5).lean();
+
+      return highStockItems.map((item: any) => {
+        const obj: any = item;
+        if (obj._id) {
+          obj.id = obj._id.toString();
+          delete obj._id;
+        }
+        if (obj.__v !== undefined) delete obj.__v;
+        return obj;
+      });
+    } catch (error) {
+      console.error('Error fetching quick picks:', error);
+      return [];
     }
   }
 }

@@ -11,22 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { 
-  ArrowLeft, 
-  Clock, 
-  LogOut, 
-  ChevronRight, 
-  User, 
-  Leaf, 
-  Palette, 
-  Star, 
-  Bookmark, 
-  Receipt, 
-  MessageCircle, 
-  HelpCircle, 
-  Settings, 
-  Info, 
-  Edit, 
+import {
+  ArrowLeft,
+  Clock,
+  LogOut,
+  ChevronRight,
+  User,
+  Leaf,
+  Palette,
+  Star,
+  Bookmark,
+  Receipt,
+  MessageCircle,
+  HelpCircle,
+  Settings,
+  Info,
+  Edit,
   Power,
   MapPin,
   Bell,
@@ -71,7 +71,7 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, isTemporary, setLocation]);
   const [userInfo, setUserInfo] = useState<any>(null);
-  
+
   // User preferences state
   const [userPreferences, setUserPreferences] = useState({
     vegMode: true,
@@ -99,9 +99,9 @@ export default function ProfilePage() {
   const userOrders = (orders as any[]).filter((order: any) => {
     if (!userInfo) return false;
     const currentUserId = userInfo.id;
-    return order.customerId === currentUserId || 
-           order.customerName === userInfo?.name ||
-           order.customerName?.toLowerCase().includes(userInfo?.name?.toLowerCase() || '');
+    return order.customerId === currentUserId ||
+      order.customerName === userInfo?.name ||
+      order.customerName?.toLowerCase().includes(userInfo?.name?.toLowerCase() || '');
   });
 
   const userStats = {
@@ -137,7 +137,7 @@ export default function ProfilePage() {
   const updatePreferences = (newPreferences: any) => {
     setUserPreferences(newPreferences);
     localStorage.setItem('userPreferences', JSON.stringify(newPreferences));
-    };
+  };
 
 
   const handleLogout = async () => {
@@ -198,12 +198,12 @@ export default function ProfilePage() {
   const calculateProfileCompletion = () => {
     let completed = 0;
     let total = 4;
-    
+
     if (userInfo?.name) completed++;
     if (userInfo?.email) completed++;
     if (userInfo?.phoneNumber) completed++;
     if (userInfo?.college) completed++;
-    
+
     return Math.round((completed / total) * 100);
   };
 
@@ -222,18 +222,17 @@ export default function ProfilePage() {
   return (
     <>
       {showLocationSelector && <LocationSelector onClose={() => setShowLocationSelector(false)} />}
-       <div className={`min-h-screen overflow-x-hidden ${
-        'bg-background'
-      }`}>
+      <div className={`min-h-screen overflow-x-hidden ${'bg-background'
+        }`}>
         {/* Header */}
         <div className="relative bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
           {/* Subtle Pattern Overlay */}
           {/* Header Navigation */}
           <div className="relative z-10 flex items-center justify-between mb-6">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white hover:bg-white/20 transition-all duration-200 rounded-full" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/20 transition-all duration-200 rounded-full"
               onClick={() => {
                 // Dispatch custom event to navigate back using history
                 window.dispatchEvent(new CustomEvent('appNavigateBack', {}));
@@ -244,9 +243,9 @@ export default function ProfilePage() {
             </Button>
             <h1 className="text-xl font-bold text-white tracking-tight">My Profile</h1>
             {!isTemporary && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="text-white hover:bg-white/20 transition-all duration-200 rounded-full"
                 onClick={() => {
                   sessionStorage.setItem('navigationFrom', 'profile');
@@ -261,7 +260,7 @@ export default function ProfilePage() {
 
           {/* Profile Card */}
           <div className="relative bg-[#724491] rounded-3xl p-6 border border-[#B37ED7] overflow-hidden">
-            
+
             <div className="relative z-10 flex items-center">
               <div className="relative">
                 <Avatar className="w-16 h-16 border-2 border-gray-300">
@@ -270,7 +269,7 @@ export default function ProfilePage() {
                   </AvatarFallback>
                 </Avatar>
               </div>
-              
+
               <div className="flex-1 ml-4">
                 <h2 className="text-xl font-bold text-white mb-1 tracking-tight">
                   {isTemporary ? `Guest at Table ${tempUserData?.tableNumber}` : (userInfo?.name || "User")}
@@ -278,7 +277,7 @@ export default function ProfilePage() {
                 <p className="text-white/90 text-sm mb-2">
                   {isTemporary ? tempUserData?.restaurantName : (userInfo?.email || "Email not provided")}
                 </p>
-                
+
                 {isTemporary && (
                   <div className="flex items-center space-x-2 text-white/80 text-xs mb-2">
                     <div className="flex items-center">
@@ -291,7 +290,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Profile Stats - only show for regular users */}
                 {!isTemporary && (
                   <div className="flex items-center space-x-4 text-white/80 text-xs">
@@ -303,9 +302,9 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 )}
-                
+
                 {!isTemporary && (
-                  <button 
+                  <button
                     className="text-white/90 text-sm mt-2 flex items-center hover:text-white transition-colors group"
                     onClick={() => {
                       sessionStorage.setItem('navigationFrom', 'profile');
@@ -313,7 +312,7 @@ export default function ProfilePage() {
                       setLocation("/reviews");
                     }}
                   >
-                    My Reviews 
+                    My Reviews
                     <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                   </button>
                 )}
@@ -327,14 +326,13 @@ export default function ProfilePage() {
           {/* Account & Orders */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Account & Orders</h3>
-            
-             <Card className={`${
-              resolvedTheme === 'dark' 
-                ? 'bg-card border border-gray-800 shadow-sm' 
+
+            <Card className={`${resolvedTheme === 'dark'
+                ? 'bg-card border border-gray-800 shadow-sm'
                 : 'bg-white border border-gray-200 shadow-sm'
-            }`}>
+              }`}>
               <CardContent className="p-0">
-                <button 
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={() => setShowLocationSelector(true)}
                 >
@@ -344,9 +342,8 @@ export default function ProfilePage() {
                     {selectedLocationType === 'restaurant' && <UtensilsCrossed className="w-5 h-5 text-muted-foreground mr-3" />}
                     {!selectedLocationType && <MapPin className="w-5 h-5 text-muted-foreground mr-3" />}
                     <div className="flex-1 text-left">
-                      <span className={`block ${
-                        resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                      }`}>
+                      <span className={`block ${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                        }`}>
                         Current Location
                       </span>
                       {selectedLocationName ? (
@@ -362,8 +359,8 @@ export default function ProfilePage() {
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={() => {
                     // Dispatch custom event to switch to orders view in AppPage
@@ -373,31 +370,15 @@ export default function ProfilePage() {
                 >
                   <div className="flex items-center">
                     <Receipt className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>My Orders</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>My Orders</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
 
-                <button 
-                  className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
-                  onClick={() => {
-                    // Dispatch custom event to switch to cart view in AppPage
-                    window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-                    setLocation("/app");
-                  }}
-                >
-                  <div className="flex items-center">
-                    <ShoppingCart className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>My Cart</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </button>
 
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={() => {
                     // Dispatch custom event to switch to favorites view in AppPage
@@ -407,14 +388,13 @@ export default function ProfilePage() {
                 >
                   <div className="flex items-center">
                     <Heart className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>My Favorites</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>My Favorites</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToChallenges', {}));
@@ -423,9 +403,8 @@ export default function ProfilePage() {
                 >
                   <div className="flex items-center">
                     <Trophy className="w-5 h-5 text-yellow-500 mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Coding Challenges</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Coding Challenges</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1">
@@ -439,44 +418,41 @@ export default function ProfilePage() {
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   </div>
                 </button>
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={handleNotifications}
                 >
                   <div className="flex items-center">
                     <Bell className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Notifications</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Notifications</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
-                
+
                 {!isTemporary && (
-                  <button 
+                  <button
                     className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                     onClick={() => setShowAddresses(true)}
                   >
                     <div className="flex items-center">
                       <MapPin className="w-5 h-5 text-muted-foreground mr-3" />
-                       <span className={`${
-                        resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                      }`}>Addresses</span>
+                      <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                        }`}>Addresses</span>
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   </button>
                 )}
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 hover:bg-accent transition-colors"
                   onClick={handleOrderHelp}
                 >
                   <div className="flex items-center">
                     <MessageCircle className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Help & Support</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Help & Support</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
@@ -487,50 +463,47 @@ export default function ProfilePage() {
           {/* Preferences */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Preferences</h3>
-            
-             <Card className={`${
-              resolvedTheme === 'dark' 
-                ? 'bg-card border border-gray-800 shadow-sm' 
+
+            <Card className={`${resolvedTheme === 'dark'
+                ? 'bg-card border border-gray-800 shadow-sm'
                 : 'bg-white border border-gray-200 shadow-sm'
-            }`}>
+              }`}>
               <CardContent className="p-0">
                 <div className="flex items-center justify-between p-4 border-b border-border">
                   <div className="flex items-center">
                     <Leaf className="w-5 h-5 text-green-600 mr-3" />
-                    <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Veg Mode</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Veg Mode</span>
                   </div>
                   <Switch
                     variant="green"
                     checked={userPreferences.vegMode}
-                    onCheckedChange={(checked) => updatePreferences({...userPreferences, vegMode: checked})}
+                    onCheckedChange={(checked) => updatePreferences({ ...userPreferences, vegMode: checked })}
                   />
                 </div>
-                
-                 <button 
-                   className="w-full flex items-center justify-between p-4 hover:bg-accent transition-colors"
-                   onClick={() => {
-                     // Cycle through themes: light -> dark -> system -> light
-                     const themes = ['light', 'dark', 'system'];
-                     const currentIndex = themes.indexOf(theme);
-                     const nextIndex = (currentIndex + 1) % themes.length;
-                     setTheme(themes[nextIndex] as 'light' | 'dark' | 'system');
-                   }}
-                 >
-                   <div className="flex items-center">
-                     <Palette className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Theme</span>
-                   </div>
-                   <div className="flex items-center">
-                     <span className="text-muted-foreground text-sm mr-2">
-                       {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                     </span>
-                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                   </div>
-                 </button>
+
+                <button
+                  className="w-full flex items-center justify-between p-4 hover:bg-accent transition-colors"
+                  onClick={() => {
+                    // Cycle through themes: light -> dark -> system -> light
+                    const themes = ['light', 'dark', 'system'];
+                    const currentIndex = themes.indexOf(theme);
+                    const nextIndex = (currentIndex + 1) % themes.length;
+                    setTheme(themes[nextIndex] as 'light' | 'dark' | 'system');
+                  }}
+                >
+                  <div className="flex items-center">
+                    <Palette className="w-5 h-5 text-muted-foreground mr-3" />
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Theme</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="text-muted-foreground text-sm mr-2">
+                      {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                    </span>
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                </button>
               </CardContent>
             </Card>
           </div>
@@ -538,61 +511,56 @@ export default function ProfilePage() {
           {/* Help & Support */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Help & Support</h3>
-            
-             <Card className={`${
-              resolvedTheme === 'dark' 
-                ? 'bg-card border border-gray-800 shadow-sm' 
+
+            <Card className={`${resolvedTheme === 'dark'
+                ? 'bg-card border border-gray-800 shadow-sm'
                 : 'bg-white border border-gray-200 shadow-sm'
-            }`}>
+              }`}>
               <CardContent className="p-0">
-                <button 
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={handleAbout}
                 >
                   <div className="flex items-center">
                     <Info className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>About Us</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>About Us</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={handleTermsConditions}
                 >
                   <div className="flex items-center">
                     <FileText className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Terms & Conditions</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Terms & Conditions</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={handlePrivacyPolicy}
                 >
                   <div className="flex items-center">
                     <Shield className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Privacy Policy</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Privacy Policy</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
-                
-                <button 
+
+                <button
                   className="w-full flex items-center justify-between p-4 hover:bg-accent transition-colors"
                   onClick={handleSendFeedback}
                 >
                   <div className="flex items-center">
                     <Edit className="w-5 h-5 text-muted-foreground mr-3" />
-                     <span className={`${
-                      resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>Feedback</span>
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>Feedback</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
@@ -603,14 +571,13 @@ export default function ProfilePage() {
           {/* Account Actions */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-foreground">Account</h3>
-            
-             <Card className={`${
-              resolvedTheme === 'dark' 
-                ? 'bg-card border border-gray-800 shadow-sm' 
+
+            <Card className={`${resolvedTheme === 'dark'
+                ? 'bg-card border border-gray-800 shadow-sm'
                 : 'bg-white border border-gray-200 shadow-sm'
-            }`}>
+              }`}>
               <CardContent className="p-0">
-                <button 
+                <button
                   className="w-full flex items-center justify-between p-4 hover:bg-accent transition-colors"
                   onClick={handleLogout}
                 >
