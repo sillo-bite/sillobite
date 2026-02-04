@@ -1240,15 +1240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'canteenId is required' });
       }
 
-      // OPTIMIZED: Parallel database queries for optimal performance
-      const queries: Promise<any>[] = [
+      // Fetch data in parallel
+      const [mediaBanners, trendingItems, quickPicks, systemSettings] = await Promise.all([
         // OPTIMIZED: Media Banners - direct DB query
         MediaBanner.find({ isActive: true })
           .select('_id name type cloudinaryUrl fileId originalName mimeType displayMode')
           .sort({ displayOrder: 1, createdAt: -1 })
           .limit(10)
           .lean()
-          .exec(), // Use lean() and exec() for faster reads
+          .exec(),
 
         // OPTIMIZED: Trending Items - DB query with isTrending filter
         MenuItem.find({
@@ -1261,7 +1261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .sort({ trendingOrder: 1, createdAt: -1 })
           .limit(4)
           .lean()
-          .exec(), // Use lean() for faster reads and to preserve counter IDs
+          .exec(),
 
         // OPTIMIZED: Quick Picks - DB query with specific selection criteria
         MenuItem.find({
@@ -1274,38 +1274,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .sort({ quickPickOrder: 1, createdAt: -1 })
           .limit(4)
           .lean()
-          .exec() // Use lean() for faster reads and to preserve counter IDs
-      ];
+          .exec(),
 
-      // Add user active orders query if userId is provided
-      if (userId && !isNaN(userId)) {
-        queries.push(
-          storage.getUserActiveOrders(userId)
-        );
-      }
-
-      // Fetch canteen settings to get content settings
-      const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
-      const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
-      queries.push(
-        SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec()
-      );
-
-      const results = await Promise.all(queries);
-      // Fetch data in parallel
-      const [mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings] = await Promise.all([
-        mediaService.getBannersByCanteen(canteenId),
-        orderService.getTrendingItems(canteenId),
-        stockService.getQuickPicks(canteenId),
-        userId ? orderService.getActiveOrders(userId, canteenId) : Promise.resolve([]),
         // Fetch content settings to check if coding challenges are enabled
         (async () => {
-          // Use top-level mongoose import
           const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
           const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
           return SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
         })()
       ]);
+
+      // Fetch user active orders separately if userId is provided
+      let activeOrders: any[] = [];
+      if (userId && !isNaN(userId)) {
+        activeOrders = await storage.getUserActiveOrders(userId);
+      }
 
       // Ensure activeOrders is always an array
       if (!Array.isArray(activeOrders)) {
