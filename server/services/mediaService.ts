@@ -25,14 +25,16 @@ export class MediaService {
     fileName: string,
     originalName: string,
     mimeType: string,
-    uploadedBy?: number
+    uploadedBy?: number,
+    canteenId?: string
   ): Promise<MediaBannerType> {
     try {
       // Only support images now
       const type: 'image' = 'image';
 
-      // Get the next display order
-      const lastBanner = await MediaBanner.findOne().sort({ displayOrder: -1 });
+      // Get the next display order for this canteen (or global if no canteenId)
+      const query = canteenId ? { canteenId } : { canteenId: { $exists: false } };
+      const lastBanner = await MediaBanner.findOne(query).sort({ displayOrder: -1 });
       const displayOrder = lastBanner ? lastBanner.displayOrder + 1 : 1;
 
       // Upload file to Cloudinary
@@ -55,6 +57,7 @@ export class MediaService {
         isActive: true,
         displayOrder,
         uploadedBy,
+        canteenId,
         createdAt: new Date(),
         updatedAt: new Date()
       });
@@ -74,7 +77,9 @@ export class MediaService {
         isActive: mediaBanner.isActive,
         displayOrder: mediaBanner.displayOrder,
         displayMode: mediaBanner.displayMode,
+
         uploadedBy: mediaBanner.uploadedBy,
+        canteenId: mediaBanner.canteenId,
         createdAt: mediaBanner.createdAt,
         updatedAt: mediaBanner.updatedAt
       };
@@ -110,11 +115,11 @@ export class MediaService {
         const bucket = this.getBucket();
         const objectId = banner.fileId;
         const downloadStream = bucket.openDownloadStream(objectId);
-        
+
         // Get file metadata
         const files = await bucket.find({ _id: objectId }).toArray();
         const file = files[0];
-        
+
         if (!file) {
           throw new Error('File not found in GridFS');
         }
@@ -196,6 +201,7 @@ export class MediaService {
         displayOrder: banner.displayOrder,
         displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
       })).filter(banner => banner.fileId || banner.cloudinaryPublicId); // Only return banners with valid storage
@@ -225,11 +231,76 @@ export class MediaService {
         displayOrder: banner.displayOrder,
         displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
       })).filter(banner => banner.fileId || banner.cloudinaryPublicId); // Only return banners with valid storage
     } catch (error) {
       console.error('Error getting banners:', error);
+      throw new Error(`Failed to get banners: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getGlobalBanners(): Promise<MediaBannerType[]> {
+    try {
+      // Find banners that do NOT have a canteenId set
+      const banners = await MediaBanner.find({
+        isActive: true,
+        $or: [{ canteenId: { $exists: false } }, { canteenId: null }]
+      })
+        .sort({ displayOrder: 1 })
+        .exec();
+
+      return banners.map(banner => ({
+        id: (banner._id as any).toString(),
+        fileName: banner.fileName,
+        originalName: banner.originalName,
+        mimeType: banner.mimeType,
+        size: banner.size,
+        type: banner.type,
+        fileId: banner.fileId?.toString(),
+        cloudinaryPublicId: banner.cloudinaryPublicId,
+        cloudinaryUrl: banner.cloudinaryUrl,
+        isActive: banner.isActive,
+        displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
+        uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
+        createdAt: banner.createdAt,
+        updatedAt: banner.updatedAt
+      })).filter(banner => banner.fileId || banner.cloudinaryPublicId);
+    } catch (error) {
+      console.error('Error getting global banners:', error);
+      throw new Error(`Failed to get global banners: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getBannersByCanteen(canteenId: string): Promise<MediaBannerType[]> {
+    try {
+      const banners = await MediaBanner.find({ canteenId, isActive: true })
+        .sort({ displayOrder: 1 })
+        .exec();
+
+      return banners.map(banner => ({
+        id: (banner._id as any).toString(),
+        fileName: banner.fileName,
+        originalName: banner.originalName,
+        mimeType: banner.mimeType,
+        size: banner.size,
+        type: banner.type,
+        fileId: banner.fileId?.toString(),
+        cloudinaryPublicId: banner.cloudinaryPublicId,
+        cloudinaryUrl: banner.cloudinaryUrl,
+        isActive: banner.isActive,
+        displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
+        uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
+        createdAt: banner.createdAt,
+        updatedAt: banner.updatedAt
+      })).filter(banner => banner.fileId || banner.cloudinaryPublicId);
+    } catch (error) {
+      console.error(`Error getting banners for canteen ${canteenId}:`, error);
       throw new Error(`Failed to get banners: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -260,6 +331,7 @@ export class MediaService {
         displayOrder: banner.displayOrder,
         displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
       };
@@ -294,6 +366,7 @@ export class MediaService {
         displayOrder: banner.displayOrder,
         displayMode: banner.displayMode,
         uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
         createdAt: banner.createdAt,
         updatedAt: banner.updatedAt
       };
@@ -311,7 +384,7 @@ export class MediaService {
           updatedAt: new Date()
         })
       );
-      
+
       await Promise.all(promises);
     } catch (error) {
       console.error('Error reordering banners:', error);

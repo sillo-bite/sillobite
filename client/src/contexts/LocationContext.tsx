@@ -27,26 +27,35 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
     const loadLocation = async () => {
       try {
         // First, check if user has a stored location in the database
-        if (user?.selectedLocationType && user?.selectedLocationId) {
-          console.log('📍 Loading location from user data:', user.selectedLocationType, user.selectedLocationId);
-          
+        const userLocationId = user?.selectedLocationId;
+        // Infer type if missing but ID is present
+        let userLocationType = user?.selectedLocationType;
+        if (userLocationId && !userLocationType) {
+          if (userLocationId.startsWith('college-')) userLocationType = 'college';
+          else if (userLocationId.startsWith('org-')) userLocationType = 'organization';
+          else if (userLocationId.startsWith('rest-')) userLocationType = 'restaurant';
+        }
+
+        if (userLocationType && userLocationId) {
+          console.log('📍 Loading location from user data:', userLocationType, userLocationId);
+
           // Fetch the location name from the API
           try {
-            const response = await fetch(`/api/locations/${user.selectedLocationType}`);
+            const response = await fetch(`/api/locations/${userLocationType}`);
             if (response.ok) {
               const data = await response.json();
-              const location = data.locations?.find((loc: any) => loc.id === user.selectedLocationId);
+              const location = data.locations?.find((loc: any) => loc.id === userLocationId);
               if (location) {
                 const locationData = {
-                  type: user.selectedLocationType,
-                  id: user.selectedLocationId,
+                  type: userLocationType,
+                  id: userLocationId,
                   name: location.name
                 };
-                
-                setSelectedLocationType(user.selectedLocationType as 'college' | 'organization' | 'restaurant');
-                setSelectedLocationId(user.selectedLocationId);
+
+                setSelectedLocationType(userLocationType as 'college' | 'organization' | 'restaurant');
+                setSelectedLocationId(userLocationId);
                 setSelectedLocationName(location.name);
-                
+
                 // Save to localStorage for offline access
                 localStorage.setItem('selectedLocation', JSON.stringify(locationData));
                 console.log('✅ Location loaded from user data:', location.name);
@@ -58,7 +67,7 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
             console.error('Error fetching location details:', error);
           }
         }
-        
+
         // Fallback to localStorage if no user location or fetch failed
         const stored = localStorage.getItem('selectedLocation');
         if (stored) {
@@ -82,7 +91,7 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
     try {
       const location = { type, id, name };
       localStorage.setItem('selectedLocation', JSON.stringify(location));
-      
+
       setSelectedLocationType(type);
       setSelectedLocationId(id);
       setSelectedLocationName(name);
@@ -93,6 +102,21 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ locationType: type, locationId: id }),
         });
+
+        // Update user object in localStorage so useAuthSync picks it up immediately
+        const storedUserStr = localStorage.getItem('user');
+        if (storedUserStr) {
+          const storedUser = JSON.parse(storedUserStr);
+          const updatedUser = {
+            ...storedUser,
+            selectedLocationId: id,
+            selectedLocationType: type
+          };
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+
+          // Dispatch event to notify useAuthSync
+          window.dispatchEvent(new CustomEvent('userAuthChange'));
+        }
       }
 
       window.dispatchEvent(new CustomEvent('locationChanged'));

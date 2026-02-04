@@ -1292,18 +1292,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       const results = await Promise.all(queries);
-
-      // Handle different result structures based on whether userId was provided
-      let mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings;
-
-      if (userId && !isNaN(userId)) {
-        // userId provided: [mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings]
-        [mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings] = results;
-      } else {
-        // userId not provided: [mediaBanners, trendingItems, quickPicks, systemSettings]
-        [mediaBanners, trendingItems, quickPicks, systemSettings] = results;
-        activeOrders = []; // No active orders for guest users or when userId is not provided
-      }
+      // Fetch data in parallel
+      const [mediaBanners, trendingItems, quickPicks, activeOrders, systemSettings] = await Promise.all([
+        mediaService.getBannersByCanteen(canteenId),
+        orderService.getTrendingItems(canteenId),
+        stockService.getQuickPicks(canteenId),
+        userId ? orderService.getActiveOrders(userId, canteenId) : Promise.resolve([]),
+        // Fetch content settings to check if coding challenges are enabled
+        (async () => {
+          // Use top-level mongoose import
+          const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
+          const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
+          return SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
+        })()
+      ]);
 
       // Ensure activeOrders is always an array
       if (!Array.isArray(activeOrders)) {
@@ -3528,7 +3530,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Media Banner Management endpoints
+  // Get media banners for a specific canteen (admin only)
+  app.get("/api/media-banners/canteen/:canteenId", async (req, res) => {
+    try {
+      const canteenId = req.params.canteenId;
+      console.log(`🖼️ GET /api/media-banners/canteen/${canteenId} - Fetching banners`);
+
+      const banners = await mediaService.getBannersByCanteen(canteenId);
+      console.log(`✅ Found ${banners.length} banners for canteen ${canteenId}`);
+
+      res.json(banners);
+    } catch (error) {
+      console.error(`❌ Error fetching banners for canteen ${req.params.canteenId}:`, error);
+      res.status(500).json({ message: "Failed to fetch banners" });
+    }
+  });
+
+  // Media Banner endpoints
   app.get("/api/media-banners", async (req, res) => {
     try {
       // Check if this is an admin request based on query parameter or user role
@@ -3537,7 +3555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const banners = isAdmin
         ? await mediaService.getAllBannersForAdmin()
-        : await mediaService.getAllBanners();
+        : await mediaService.getGlobalBanners();
 
       console.log(`✅ Successfully fetched ${banners.length} media banners`);
       res.json(banners);
@@ -3555,21 +3573,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const { originalname, mimetype, buffer } = req.file;
-      const uploadedBy = req.body.uploadedBy ? parseInt(req.body.uploadedBy) : undefined;
-      console.log(`📤 Uploading file: ${originalname} (${mimetype}), Size: ${buffer.length} bytes`);
+      const { originalname, buffer, mimetype } = req.file;
+      const uploadedBy = req.body.userId ? parseInt(req.body.userId) : undefined;
+      const canteenId = req.body.canteenId;
 
-      // Generate unique filename
-      const timestamp = Date.now();
-      const fileExtension = originalname.split('.').pop();
-      const fileName = `banner_${timestamp}.${fileExtension}`;
+      console.log(`🖼️ Uploading banner: ${originalname}, size: ${buffer.length} bytes, canteenId: ${canteenId || 'global'}`);
 
       const banner = await mediaService.uploadFile(
         buffer,
-        fileName,
+        originalname,
         originalname,
         mimetype,
-        uploadedBy
+        uploadedBy,
+        canteenId
       );
 
       // Send WebSocket notification about new banner
@@ -9170,6 +9186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete address" });
     }
   });
+
+
+
 
   const httpServer = createServer(app);
 

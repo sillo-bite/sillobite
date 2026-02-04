@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2, Code, Save, Shield, HandCoins, Truck } from "lucide-react";
 import { useAuthSync } from "@/hooks/useDataSync";
+import CanteenAdminBannerManagement from "./CanteenAdminBannerManagement";
 
 interface CanteenAdminContentManagementProps {
   canteenId: string;
@@ -127,6 +128,8 @@ export default function CanteenAdminContentManagement({ canteenId }: CanteenAdmi
         </p>
       </div>
 
+      <CanteenAdminBannerManagement canteenId={canteenId} />
+
       <Card>
         <CardHeader>
           <div className="flex items-center space-x-3">
@@ -157,20 +160,20 @@ export default function CanteenAdminContentManagement({ canteenId }: CanteenAdmi
               disabled={updateContentSettingsMutation.isPending}
             />
           </div>
-          
+
           {updateContentSettingsMutation.isPending && (
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>Saving changes...</span>
             </div>
           )}
-          
+
           {updateContentSettingsMutation.isSuccess && (
             <div className="flex items-center space-x-2 text-sm text-green-600">
               <span>✓ Settings saved successfully</span>
             </div>
           )}
-          
+
           {updateContentSettingsMutation.isError && (
             <div className="flex items-center space-x-2 text-sm text-red-600">
               <span>✗ Failed to save settings. Please try again.</span>

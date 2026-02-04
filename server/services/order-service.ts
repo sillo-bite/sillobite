@@ -5,7 +5,7 @@ import { stockService } from '../stock-service';
 import { webPushService } from './webPushService';
 import { CheckoutSessionService, checkDuplicatePaymentMiddleware } from '../checkout-session-service';
 import { getWebSocketManager } from '../websocket';
-import { MenuItem, CanteenCharge } from '../models/mongodb-models';
+import { MenuItem, CanteenCharge, Order } from '../models/mongodb-models';
 import { PAYMENT_STATUS } from '@shared/razorpay';
 import { generateOrderNumber } from '@shared/utils';
 import { insertOrderSchema } from '@shared/schema';
@@ -491,6 +491,120 @@ export class OrderService {
         }
 
         return order;
+    }
+
+    async getTrendingItems(canteenId: string): Promise<any[]> {
+        try {
+            // Priority 1: Fetch manually marked trending items
+            const manualTrending = await MenuItem.find({
+                canteenId,
+                isTrending: true,
+                available: true
+            }).lean();
+
+            if (manualTrending.length > 0) {
+                // Format manual items
+                return manualTrending.map(item => {
+                    const obj: any = item;
+                    if (obj._id) {
+                        obj.id = obj._id.toString();
+                        delete obj._id;
+                    }
+                    if (obj.__v !== undefined) delete obj.__v;
+                    return obj;
+                });
+            }
+
+            // Priority 2: Fallback to sales history if no manual items are selected
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            // Use direct DB query for efficiency
+            const recentOrders = await Order.find({
+                canteenId,
+                status: 'completed',
+                createdAt: { $gte: sevenDaysAgo }
+            }).lean(); // Use lean for performance
+
+            // Aggregate items
+            const itemCounts: Record<string, number> = {};
+
+            for (const order of recentOrders) {
+                try {
+                    const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+                    if (Array.isArray(items)) {
+                        for (const item of items) {
+                            if (item.menuItemId) {
+                                // Ensure we count by ID string
+                                const id = item.menuItemId.toString();
+                                itemCounts[id] = (itemCounts[id] || 0) + (item.quantity || 1);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing items for order', (order as any)._id, e);
+                }
+            }
+
+            // Sort by count and take top 5 IDs
+            const sortedItemIds = Object.keys(itemCounts).sort((a, b) => itemCounts[b] - itemCounts[a]).slice(0, 5);
+
+            if (sortedItemIds.length === 0) return [];
+
+            // Fetch actual menu items from DB
+            const menuItems = await MenuItem.find({
+                _id: { $in: sortedItemIds },
+                canteenId: canteenId
+            }).lean();
+
+            // Map back to maintain sort order and add orderCount
+            const result = sortedItemIds.map(id => {
+                const item = menuItems.find((m: any) => m._id.toString() === id);
+                if (!item) return null;
+
+                const plainItem: any = { ...item };
+                if (plainItem._id) {
+                    plainItem.id = plainItem._id.toString();
+                    delete plainItem._id;
+                }
+                if (plainItem.__v !== undefined) delete plainItem.__v;
+
+                return {
+                    ...plainItem,
+                    orderCount: itemCounts[id]
+                };
+            }).filter(item => item !== null);
+
+            return result;
+        } catch (error) {
+            console.error('Error fetching trending items:', error);
+            return [];
+        }
+    }
+
+    async getActiveOrders(userId: number, canteenId: string): Promise<any[]> {
+        try {
+            // Use direct DB query for efficiency
+            const orders = await Order.find({
+                canteenId,
+                customerId: userId,
+                status: { $in: ['pending_payment', 'pending', 'preparing', 'ready'] }
+            }).sort({ createdAt: -1 }).lean();
+
+            // Format items
+            return orders.map((o: any) => {
+                const obj: any = o;
+                if (obj._id) {
+                    obj.id = obj._id.toString();
+                    delete obj._id;
+                }
+                if (obj.__v !== undefined) delete obj.__v;
+                return obj;
+            });
+        } catch (error) {
+            console.error('Error fetching active orders:', error);
+            return [];
+        }
     }
 }
 

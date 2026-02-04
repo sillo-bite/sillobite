@@ -16,6 +16,9 @@ interface Canteen {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+  trendingItems?: string[]; // Array of trending menu item names (0-4 items)
 }
 
 interface CanteensResponse {
