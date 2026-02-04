@@ -7,12 +7,12 @@ import { useAuthSync } from "@/hooks/useDataSync";
 import { useCategoriesLazyLoad } from "@/hooks/useCategoriesLazyLoad";
 import { useDynamicCategoryPageSize } from "@/hooks/useDynamicCategoryPageSize";
 import { useHomeData } from "@/hooks/useHomeData";
-import { Loader2, XCircle, CheckCircle, TrendingUp, Zap, Sparkles, UserCircle2, Search, ShoppingBag, X, ArrowLeft } from "lucide-react";
+import { Loader2, XCircle, CheckCircle, TrendingUp, Zap, Sparkles, UserCircle2, Search, ShoppingBag, ShoppingCart, X, ArrowLeft, Store } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clearRestaurantContext, resolveUserSessionConflict, securelyUpdateUserData } from "@/utils/sessionConflictResolver";
 import { setPWAAuth } from "@/utils/pwaAuth";
 import type { Category, MenuItem } from "@shared/schema";
-import { CanteenSelector } from "@/components/canteen/CanteenSelector";
+
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import HomeMediaBanner from "@/components/pages/HomeMediaBanner";
@@ -573,7 +573,20 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                 >
                   <ArrowLeft className="w-5 h-5 text-foreground" />
                 </Button>
-                <CanteenSelector />
+                <div className="flex items-center ml-2 flex-1 overflow-hidden">
+                  <div className={`p-2 rounded-xl mr-3 transition-all duration-300 ${resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'
+                    }`}>
+                    <Store className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase mb-0.5 leading-none">
+                      Currently at
+                    </span>
+                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight text-foreground">
+                      {selectedCanteen?.name || 'Select Canteen'}
+                    </h2>
+                  </div>
+                </div>
                 {/* Exit Restaurant Button - Only shown when restaurant context exists */}
                 {hasRestaurantContext && restaurantInfo && (
                   <Button
@@ -599,7 +612,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   className="rounded-full h-12 w-12 p-0 relative group hover:bg-primary/10 transition-all duration-200"
                   aria-label={`View cart with ${getTotalItems()} items`}
                 >
-                  <ShoppingBag className="w-6 h-6 text-primary" />
+                  <ShoppingCart className="w-7 h-7 text-primary" />
                   {getTotalItems() > 0 && (
                     <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg ring-2 ring-background">
                       {getTotalItems() > 99 ? '99+' : getTotalItems()}

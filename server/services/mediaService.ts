@@ -77,7 +77,7 @@ export class MediaService {
         isActive: mediaBanner.isActive,
         displayOrder: mediaBanner.displayOrder,
         displayMode: mediaBanner.displayMode,
-        displayMode: mediaBanner.displayMode,
+
         uploadedBy: mediaBanner.uploadedBy,
         canteenId: mediaBanner.canteenId,
         createdAt: mediaBanner.createdAt,
@@ -238,6 +238,40 @@ export class MediaService {
     } catch (error) {
       console.error('Error getting banners:', error);
       throw new Error(`Failed to get banners: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async getGlobalBanners(): Promise<MediaBannerType[]> {
+    try {
+      // Find banners that do NOT have a canteenId set
+      const banners = await MediaBanner.find({
+        isActive: true,
+        $or: [{ canteenId: { $exists: false } }, { canteenId: null }]
+      })
+        .sort({ displayOrder: 1 })
+        .exec();
+
+      return banners.map(banner => ({
+        id: (banner._id as any).toString(),
+        fileName: banner.fileName,
+        originalName: banner.originalName,
+        mimeType: banner.mimeType,
+        size: banner.size,
+        type: banner.type,
+        fileId: banner.fileId?.toString(),
+        cloudinaryPublicId: banner.cloudinaryPublicId,
+        cloudinaryUrl: banner.cloudinaryUrl,
+        isActive: banner.isActive,
+        displayOrder: banner.displayOrder,
+        displayMode: banner.displayMode,
+        uploadedBy: banner.uploadedBy,
+        canteenId: banner.canteenId,
+        createdAt: banner.createdAt,
+        updatedAt: banner.updatedAt
+      })).filter(banner => banner.fileId || banner.cloudinaryPublicId);
+    } catch (error) {
+      console.error('Error getting global banners:', error);
+      throw new Error(`Failed to get global banners: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

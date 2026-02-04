@@ -4,9 +4,13 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthSync } from '@/hooks/useDataSync';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Search, ArrowRight, Store, ChevronRight } from 'lucide-react';
+import { MapPin, Search, ArrowRight, Store, ChevronRight, ChevronDown, ShoppingCart, UserCircle2 } from 'lucide-react';
 import { LoadingIndicator, EmptyState } from '@/components/canteen/CanteenSkeletonLoader';
 import LocationSelector from "@/components/profile/LocationSelector";
+import HomeMediaBanner from "./HomeMediaBanner";
+import { useQuery } from '@tanstack/react-query';
+import { useLocation } from '@/contexts/LocationContext';
+import { useCart } from '@/contexts/CartContext';
 
 interface CanteenSelectorPageProps {
     onCanteenSelect: (canteenId?: string) => void;
@@ -26,8 +30,22 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
     } = useCanteenContext();
     const { resolvedTheme } = useTheme();
     const { user } = useAuthSync();
+    const { selectedLocationName } = useLocation();
+    const { getTotalItems } = useCart();
     const [searchQuery, setSearchQuery] = useState('');
     const [showLocationSelector, setShowLocationSelector] = useState(false);
+
+    // Fetch Global/Promotional Banners
+    const { data: activeBanners, isLoading: isBannersLoading } = useQuery({
+        queryKey: ['/api/media-banners'],
+        queryFn: async () => {
+            const res = await fetch('/api/media-banners');
+            if (!res.ok) throw new Error('Failed to fetch banners');
+            return res.json();
+        },
+        staleTime: 1000 * 60 * 5, // 5 minutes cache
+        refetchOnWindowFocus: false,
+    });
 
     // Filter and sort canteens based on search query
     const filteredCanteens = useMemo(() => {
@@ -64,6 +82,9 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
 
     // Handle location context display
     const getLocationDisplay = () => {
+        // First priority: LocationContext selectedLocationName
+        if (selectedLocationName) return selectedLocationName;
+        // Fallback to user data
         if (user?.collegeName) return user.collegeName;
         if (user?.organizationName) return user.organizationName;
         return "All Locations";
@@ -72,15 +93,52 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
     return (
         <div className={`min-h-screen ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-gray-50'}`}>
             {/* Header Section */}
-            <div className={`sticky top-0 z-10 ${resolvedTheme === 'dark' ? 'bg-background/95 border-b border-white/10' : 'bg-white/95 border-b border-gray-100'} backdrop-blur-md pb-4 pt-12 px-6 shadow-sm`}>
-                <div className="max-w-md mx-auto">
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent mb-1">
-                        Choose Canteen
-                    </h1>
-                    <div className="flex items-center text-sm text-muted-foreground mb-6">
-                        <MapPin className="w-4 h-4 mr-1 text-primary" />
-                        <span className="font-medium truncate max-w-[250px]">{getLocationDisplay()}</span>
+            <div className={`sticky top-0 z-10 ${resolvedTheme === 'dark' ? 'bg-background/95' : 'bg-white/95'} backdrop-blur-md pb-4 pt-12 px-6`}>
+                <div className="max-w-4xl mx-auto">
+                    {/* Header with Navigation */}
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex-1">
+                            {/* Location Selector Button */}
+                            <button
+                                onClick={() => setShowLocationSelector(true)}
+                                className={`group flex items-center w-auto p-1 rounded-2xl transition-all duration-200`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2.5 rounded-xl transition-all duration-200 ${resolvedTheme === 'dark'
+                                        ? 'bg-primary/10 text-primary group-hover:bg-primary/20'
+                                        : 'bg-primary/10 text-primary group-hover:bg-primary/20'
+                                        }`}>
+                                        <MapPin className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-left flex-1 min-w-0">
+                                        <div className="text-xs text-muted-foreground mb-0.5">Current Location</div>
+                                        <div className="text-lg font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent truncate max-w-[200px]">
+                                            {getLocationDisplay()}
+                                        </div>
+                                    </div>
+                                </div>
+                                <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 group-hover:translate-y-0.5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                    }`} />
+                            </button>
+                        </div>
+
+                        {/* Profile Navigation */}
+                        <div className="flex items-center mx-4">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                    window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
+                                }}
+                                className="rounded-full h-14 w-14 p-0 relative overflow-hidden group shadow-premium hover-scale-subtle"
+                                aria-label="View Profile"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent group-hover:from-primary/30 group-hover:via-primary/20 transition-all duration-300"></div>
+                                <UserCircle2 className="w-9 h-9 relative z-10 text-primary" />
+                            </Button>
+                        </div>
                     </div>
+
 
                     <div className="relative">
                         <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
@@ -97,9 +155,13 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                     </div>
                 </div>
             </div>
-
+            {/* Global Promo Banners */}
+            <div className="mb-4 mt-4">
+                <HomeMediaBanner banners={activeBanners || []} isLoading={isBannersLoading} />
+            </div>
             {/* Content Section */}
-            <div className="px-5 py-6 max-w-md mx-auto pb-24">
+            <div className="px-4 py-6 max-w-4xl mx-auto pb-24">
+
                 {(() => {
                     if (process.env.NODE_ENV === 'development') {
                         console.log('DEBUG: CanteenSelectorPage User:', user);
@@ -142,13 +204,14 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                             <div
                                 key={canteen.id}
                                 onClick={() => handleCanteenClick(canteen)}
-                                className={`group relative overflow-hidden rounded-2xl p-5 cursor-pointer transition-all duration-300 border hover:shadow-lg active:scale-[0.98] ${resolvedTheme === 'dark'
+                                className={`group relative overflow-hidden rounded-3xl cursor-pointer transition-all duration-300 border hover:shadow-xl active:scale-[0.98] ${resolvedTheme === 'dark'
                                     ? 'bg-card border-white/5 hover:border-primary/30'
                                     : 'bg-white border-gray-100 hover:border-primary/30 shadow-sm'
                                     }`}
                             >
-                                <div className="flex items-center space-x-4">
-                                    <div className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden shadow-sm border ${resolvedTheme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-100 bg-gray-50'} relative`}>
+                                <div className="flex items-stretch">
+                                    {/* Left: Large Image */}
+                                    <div className="relative w-40 h-40 flex-shrink-0">
                                         {canteen.imageUrl ? (
                                             <img
                                                 src={canteen.imageUrl}
@@ -156,36 +219,83 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                                                 className="w-full h-full object-cover"
                                                 loading="lazy"
                                                 onError={(e) => {
-                                                    // Fallback to icon on error
                                                     e.currentTarget.style.display = 'none';
                                                     e.currentTarget.nextElementSibling?.classList.remove('hidden');
                                                 }}
                                             />
                                         ) : null}
 
-                                        {/* Fallback Icon - Shown if no image or image fails */}
+                                        {/* Fallback Icon */}
                                         <div className={`${canteen.imageUrl ? 'hidden' : 'flex'} w-full h-full items-center justify-center ${resolvedTheme === 'dark' ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'}`}>
-                                            <Store className="w-8 h-8 opacity-75" />
+                                            <Store className="w-16 h-16 opacity-75" />
                                         </div>
+
+                                        {/* Promotional Badge Overlay (if applicable) */}
+                                        {canteen.hasPromotion && (
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                                <div className="text-white">
+                                                    <div className="text-[10px] font-medium uppercase tracking-wide opacity-90">Special Offer</div>
+                                                    <div className="text-sm font-bold">10% OFF</div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className={`font-semibold text-lg truncate ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                    {/* Right: Details */}
+                                    <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
+                                        {/* Canteen Name */}
+                                        <h3 className={`font-bold text-lg mb-1 truncate ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                                             {canteen.name}
                                         </h3>
+
+                                        {/* Rating (if available) */}
+                                        {canteen.rating && (
+                                            <div className="flex items-center gap-1 mb-2">
+                                                <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded-md text-xs font-semibold">
+                                                    <span>★</span>
+                                                    <span>{canteen.rating}</span>
+                                                </div>
+                                                {canteen.reviewCount && (
+                                                    <span className="text-xs text-muted-foreground">({canteen.reviewCount})</span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Categories/Tags */}
+                                        {canteen.categories && canteen.categories.length > 0 && (
+                                            <p className="text-sm text-muted-foreground mb-2 truncate">
+                                                {canteen.categories.join(', ')}
+                                            </p>
+                                        )}
+
+                                        {/* Trending Menu Items Preview */}
+                                        {canteen.trendingItems && canteen.trendingItems.length > 0 && (
+                                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                                {canteen.trendingItems.slice(0, 4).join(' • ')}
+                                            </p>
+                                        )}
+
+                                        {/* Location */}
                                         {canteen.location && (
-                                            <p className={`text-sm mt-1 flex items-center ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            <p className={`text-sm flex items-center ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 <MapPin className="w-3.5 h-3.5 mr-1.5 opacity-70 flex-shrink-0" />
                                                 <span className="truncate">{canteen.location}</span>
+                                                {canteen.distance && (
+                                                    <span className="ml-1">• {canteen.distance}</span>
+                                                )}
                                             </p>
                                         )}
                                     </div>
 
-                                    <ChevronRight className={`w-5 h-5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform group-hover:translate-x-1 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
+                                    {/* Arrow Icon */}
+                                    <div className="flex items-center pr-4">
+                                        <ChevronRight className={`w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
+                                    </div>
                                 </div>
 
-                                {/* Decorative background gradient */}
-                                < div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                                {/* Hover gradient effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
                             </div>
                         ))}
 
@@ -232,6 +342,14 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                     </div>
                 )}
             </div>
+
+            {/* Location Selector Modal */}
+            {showLocationSelector && (
+                <LocationSelector
+                    isOpen={showLocationSelector}
+                    onClose={() => setShowLocationSelector(false)}
+                />
+            )}
         </div >
     );
 }

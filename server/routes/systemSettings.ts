@@ -6,6 +6,9 @@ import mongoose from 'mongoose';
 const router = express.Router();
 import multer from 'multer';
 import { cloudinaryService } from "../services/cloudinaryService";
+import { OrderService } from "../services/order-service";
+
+const orderService = new OrderService();
 
 // Configure multer for canteen profile picture uploads
 const upload = multer({
@@ -2937,8 +2940,36 @@ router.get('/canteens/by-institution', async (req, res) => {
 
     console.log(`🏪 MongoDB aggregation result: ${total} total canteens, returning ${canteens.length} canteens (hasMore: ${hasMore})`);
 
+    // Fetch trending items for each canteen (up to 4 items)
+    const canteensWithTrending = await Promise.all(
+      canteens.map(async (canteen: any) => {
+        try {
+          const trendingItems = await orderService.getTrendingItems(canteen.id);
+          // Extract only the names, limit to 4 items
+          const trendingItemNames = trendingItems
+            .slice(0, 4)
+            .map((item: any) => item.name)
+            .filter((name: string) => name); // Filter out any undefined/null names
+
+          return {
+            ...canteen,
+            trendingItems: trendingItemNames
+          };
+        } catch (error) {
+          console.error(`Error fetching trending items for canteen ${canteen.id}:`, error);
+          // Return canteen with empty trending items on error
+          return {
+            ...canteen,
+            trendingItems: []
+          };
+        }
+      })
+    );
+
+    console.log(`🏪 Added trending items to ${canteensWithTrending.length} canteens`);
+
     res.json({
-      canteens,
+      canteens: canteensWithTrending,
       total,
       hasMore,
       limit: limitNum,

@@ -3555,7 +3555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const banners = isAdmin
         ? await mediaService.getAllBannersForAdmin()
-        : await mediaService.getAllBanners();
+        : await mediaService.getGlobalBanners();
 
       console.log(`✅ Successfully fetched ${banners.length} media banners`);
       res.json(banners);
@@ -9186,6 +9186,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to delete address" });
     }
   });
+
+
+
 
   const httpServer = createServer(app);
 
