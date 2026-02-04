@@ -9,7 +9,7 @@ import { LoadingIndicator, EmptyState } from '@/components/canteen/CanteenSkelet
 import LocationSelector from "@/components/profile/LocationSelector";
 
 interface CanteenSelectorPageProps {
-    onCanteenSelect: () => void;
+    onCanteenSelect: (canteenId?: string) => void;
 }
 
 export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelectorPageProps) {
@@ -47,7 +47,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
 
     const handleCanteenClick = (canteen: any) => {
         setSelectedCanteen(canteen);
-        onCanteenSelect();
+        onCanteenSelect(canteen.id);
     };
 
     // Infinite scroll implementation

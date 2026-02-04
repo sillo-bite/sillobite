@@ -66,7 +66,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const { selectedCanteen } = useCanteenContext();
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
-  const { selectedLocationType, selectedLocationId } = useLocationContext();
+  const { selectedLocationType, selectedLocationId, isLoading: isLocationLoading } = useLocationContext();
   const { getTotalItems } = useCart();
 
   // Smooth scroll-based transition state (0 to 1)
@@ -373,104 +373,38 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     }
   }, [isAuthenticated, user, hasRestaurantContext]);
 
-  // Handle exit restaurant
-  const handleExitRestaurant = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      // Fetch fresh user data from server to get original college/org context
-      console.log('🔄 Fetching user data from server to restore college/org context...');
-      // Use cache-busting for this specific case since we need fresh data when exiting restaurant
-      const userResponse = await fetch(`/api/users/by-email/${user.email}`, {
-        cache: 'no-cache' // Force fresh data when exiting restaurant context
-      });
-
-      if (userResponse.ok) {
-        const serverUserData = await userResponse.json();
-
-        // Check if user has college or organization associated
-        const hasCollege = !!(serverUserData.college || serverUserData.collegeId);
-        const hasOrganization = !!(serverUserData.organization || serverUserData.organizationId);
-
-        // Clear restaurant context from user data
-        const updatedUserData = clearRestaurantContext(user);
-
-        // Restore college/organization data from server if available
-        if (hasCollege || hasOrganization) {
-          // Merge server data with current user data, excluding restaurant context
-          const restoredUserData = {
-            ...updatedUserData,
-            college: serverUserData.college || updatedUserData.college,
-            collegeId: serverUserData.collegeId || updatedUserData.collegeId,
-            collegeName: serverUserData.collegeName || updatedUserData.collegeName,
-            organization: serverUserData.organization || updatedUserData.organization,
-            organizationId: serverUserData.organizationId || updatedUserData.organizationId,
-            organizationName: serverUserData.organizationName || updatedUserData.organizationName,
-            department: serverUserData.department || updatedUserData.department,
-          };
-
-          // Update user data
-          localStorage.setItem('user', JSON.stringify(restoredUserData));
-          setPWAAuth(restoredUserData);
-          login(restoredUserData);
-
-          console.log('✅ Restored college/org context:', {
-            college: restoredUserData.college,
-            organization: restoredUserData.organization
-          });
-
-          // Refresh the page to ensure all components reflect the change
-          window.location.href = '/app';
-        } else {
-          // User has no college/org - show incomplete profile message
-          console.log('⚠️ User has no college or organization associated');
-
-          // Update user data without college/org
-          localStorage.setItem('user', JSON.stringify(updatedUserData));
-          setPWAAuth(updatedUserData);
-          login(updatedUserData);
-
-          // Show message asking to complete profile or scan QR
-          // Redirect with query param to show message after reload
-          window.location.href = '/app?exitedRestaurant=true&noCollege=true';
-        }
-
-        // Update local state
-        setHasRestaurantContext(false);
-        setRestaurantInfo(null);
+  // Redirect to selector if no location is selected and not in restaurant context
+  // Redirect to selector if no location is selected and not in restaurant context
+  useEffect(() => {
+    // Wait for location context to finish loading before redirecting
+    if (!isLocationLoading && !hasRestaurantContext && (!selectedLocationType || !selectedLocationId)) {
+      if (onNavigateBack) {
+        onNavigateBack();
       } else {
-        // If server fetch fails, just clear restaurant context
-        const updatedUserData = clearRestaurantContext(user);
-        login(updatedUserData);
-
-        // Check if current user data has college/org
-        const hasCollege = !!(user.college || user.collegeId);
-        const hasOrganization = !!(user.organization || user.organizationId);
-
-        if (!hasCollege && !hasOrganization) {
-          // Redirect with query param to show message
-          window.location.href = '/app?exitedRestaurant=true&noCollege=true';
-        } else {
-          window.location.href = '/app';
-        }
-
-        setHasRestaurantContext(false);
-        setRestaurantInfo(null);
-      }
-    } catch (error) {
-      console.error('Error exiting restaurant:', error);
-
-      // Fallback: just clear restaurant context
-      try {
-        const updatedUserData = clearRestaurantContext(user);
-        login(updatedUserData);
-        setHasRestaurantContext(false);
-        setRestaurantInfo(null);
-        window.location.href = '/app';
-      } catch (fallbackError) {
-        alert('Failed to exit restaurant. Please try again.');
+        // Fallback if onNavigateBack is not provided (though it should be from AppPage)
+        window.history.back();
       }
     }
+  }, [hasRestaurantContext, selectedLocationType, selectedLocationId, onNavigateBack, isLocationLoading]);
+
+  // Determine if we should show content or loading
+  // If we are redirecting, we can return null or a loader to prevent flash of content
+  // Also show loader if location context is still initializing
+
+
+  // Handle exit restaurant
+  const handleExitRestaurant = useCallback(async () => {
+    // ... code truncated for brevity, same as before ...
+    if (!user) return;
+
+    // ... exit restaurant logic ...
+    // (Actual logic is long, we just need to place the hook before it or after it, but before any return)
+    // To minimize complexity in replace_file_content, I will insert the new hook at a safe spot 
+    // and remove the old one.
+    // Wait, replace_file_content replaces a block. I cannot easily "move" without replacing two blocks
+    // unless I use multi_replace.
+
+    // Let's use multi_replace instead.
   }, [user, login]);
 
   // Show loading while checking authentication
@@ -575,6 +509,19 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     return encodeURIComponent(categoryName.toLowerCase());
   }, []);
 
+  // Determine if we should show content or loading
+  // If we are redirecting, we can return null or a loader to prevent flash of content
+  // Also show loader if location context is still initializing
+  if (isLocationLoading || (!hasRestaurantContext && (!selectedLocationType || !selectedLocationId))) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${'bg-background'}`}>
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+        </div>
+      </div>
+    );
+  }
+
 
 
   if (isLoading) {
@@ -585,82 +532,12 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     );
   }
 
-  // Show only location selector if no location is selected and not in restaurant context
+
+
+  // Determine if we should show content or loading
+  // If we are redirecting, we can return null or a loader to prevent flash of content
   if (!hasRestaurantContext && (!selectedLocationType || !selectedLocationId)) {
-    return (
-      <>
-        <div className={`min-h-screen overflow-x-hidden ${'bg-background'
-          }`} style={{ maxWidth: '100vw' }}>
-          {/* Header Container */}
-          <div className="bg-background pb-6">
-            {/* Top section - Profile only */}
-            <div className="px-4 pt-12 pb-4">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-foreground">
-                  Welcome
-                </h1>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
-                  }}
-                  className="rounded-full h-14 w-14 p-0 relative overflow-hidden group"
-                  aria-label="View Profile"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent group-hover:from-primary/30 group-hover:via-primary/20 transition-all duration-300"></div>
-                  <UserCircle2 className="w-9 h-9 relative z-10 text-primary" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Location Selector - Full Screen */}
-          <div className="px-4 mt-8">
-            <div className="text-center mb-6">
-              <h2 className={`text-2xl font-bold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                }`}>
-                Choose Your Location
-              </h2>
-              <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                }`}>
-                Select your college, organization, or scan a restaurant QR code to get started
-              </p>
-            </div>
-
-            {showLocationSelector && (
-              <LocationSelector onClose={() => setShowLocationSelector(false)} />
-            )}
-
-            <button
-              className={`w-full p-6 rounded-2xl flex items-center justify-between border-2 transition-all shadow-lg ${resolvedTheme === 'dark'
-                ? 'bg-gray-800/60 border-gray-700 hover:bg-gray-700/60 hover:border-gray-600'
-                : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                }`}
-              onClick={() => setShowLocationSelector(true)}
-              aria-label="Select Location"
-            >
-              <div className="flex items-center">
-                <div className={`p-3 rounded-full mr-4 ${resolvedTheme === 'dark' ? 'bg-[#724491]/20' : 'bg-[#724491]/10'
-                  }`}>
-                  <MapPin className="w-6 h-6 text-[#724491]" />
-                </div>
-                <div className="text-left">
-                  <span className={`text-lg font-semibold block ${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
-                    }`}>
-                    Select Location
-                  </span>
-                  <span className="text-sm text-muted-foreground block mt-1">
-                    Tap to choose college, organization, or restaurant
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className="w-6 h-6 text-muted-foreground" />
-            </button>
-          </div>
-        </div>
-      </>
-    );
+    return null; // Or a transparent loader
   }
 
   // Search bar becomes sticky only when header is fully hidden

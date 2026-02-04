@@ -53,49 +53,151 @@ function MenuWrapper({ category, children }: { category: string; children: React
       setLocation(newLocation);
     };
 
-    return [location, customSetLocation] as const;
+    return [location, customSetLocation];
   };
 
   return (
-    <Router hook={useCustomLocation}>
+    <Router hook={useCustomLocation as any}>
       {children}
     </Router>
   );
 }
+
 export default function AppPage() {
   const { selectedCanteen } = useCanteenContext();
+  const [, setLocation] = useLocation(); // Keep for redirecting out of app
+  // Removed internal location state usage for view management in favor of manual URL updates
 
-  // Determine initial view based on history state or default to selector
-  const initialView: ViewType = React.useMemo(() => {
-    if (typeof window !== 'undefined' && window.history.state && window.history.state.view) {
-      return window.history.state.view as ViewType;
-    }
-    return "selector";
-  }, []);
+  // Helper to get params from URL
+  const getParams = () => {
+    if (typeof window === 'undefined') return { view: 'selector' as ViewType, category: 'all', search: '', activateSearch: false, canteenId: null };
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
+    // Validate view param to ensure it matches ViewType
+    const validViews: ViewType[] = ["home", "cart", "favorites", "menu", "profile", "orders", "challenges", "selector"];
+    const view = (validViews.includes(viewParam as ViewType) ? viewParam as ViewType : 'selector');
 
-  const [currentView, setCurrentView] = useState<ViewType>(initialView);
-  const [menuCategory, setMenuCategory] = useState<string>("all");
-  const [menuSearchQuery, setMenuSearchQuery] = useState<string>("");
-  const [activateHomeSearch, setActivateHomeSearch] = useState<boolean>(false);
-  const [, setLocation] = useLocation();
-  const { navigateTo, navigateBack, getPreviousView, history, navigateToWithCurrent } = useNavigationHistory(initialView as NavigationView);
+    return {
+      view,
+      category: params.get('category') || 'all',
+      search: params.get('search') || '',
+      activateSearch: params.get('activateSearch') === 'true',
+      canteenId: params.get('canteenId')
+    };
+  };
+
+  // Initial state from URL
+  const initialParams = getParams();
+
+  // State now just mirrors URL for reactivity, but source of truth is URL
+  const [currentView, setCurrentView] = useState<ViewType>(initialParams.view);
+  const [menuCategory, setMenuCategory] = useState<string>(initialParams.category);
+  const [menuSearchQuery, setMenuSearchQuery] = useState<string>(initialParams.search);
+  const [activateHomeSearch, setActivateHomeSearch] = useState<boolean>(initialParams.activateSearch);
+
+  const { navigateTo, navigateBack, history, navigateToWithCurrent } = useNavigationHistory(initialParams.view as NavigationView);
   const [showExitToast, setShowExitToast] = useState(false);
   const { user } = useAuth();
 
-  // Ref to track current view for event handlers (prevents closure issues)
+  // Ref to track current view
   const currentViewRef = useRef<ViewType>(currentView);
 
-  // Redirect delivery persons to their portal (immediate check)
+  // Update state when URL changes (popstate or manual change)
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const params = getParams();
+      // Only update if changed to avoid loops
+      if (params.view !== currentViewRef.current) {
+        setCurrentView(params.view);
+      }
+      setMenuCategory(params.category);
+      setMenuSearchQuery(params.search);
+      setActivateHomeSearch(params.activateSearch);
+    };
+
+    window.addEventListener('popstate', handleUrlChange);
+    // Also listen to a custom event for pushState/replaceState if we wrapped them, 
+    // but for now we'll just update state where we update URL.
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
+
+  // Sync ref
+  useEffect(() => {
+    currentViewRef.current = currentView;
+  }, [currentView]);
+
+  // Sync Canteen Selection with URL
+  // If URL has canteenId, ensure it matches context (prioritize URL for deep linking)
+  const { setSelectedCanteen, availableCanteens } = useCanteenContext();
+
+  useEffect(() => {
+    const params = getParams();
+    if (params.canteenId && availableCanteens.length > 0) {
+      if (!selectedCanteen || selectedCanteen.id !== params.canteenId) {
+        const canteenFromUrl = availableCanteens.find(c => c.id === params.canteenId);
+        if (canteenFromUrl) {
+          console.log("Restoring canteen from URL:", canteenFromUrl.name);
+          setSelectedCanteen(canteenFromUrl);
+        }
+      }
+    } else if (selectedCanteen && !params.canteenId) {
+      // If context has canteen but URL doesn't, we should ideally update URL, 
+      // but let's do that via the updateUrl helper to avoid loops
+    }
+  }, [availableCanteens, selectedCanteen?.id]);
+
+
+  // Helper to update URL
+  const updateUrl = (view: ViewType, extraParams: Record<string, string> = {}, replace = false) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view);
+
+    // Clear old specific params
+    url.searchParams.delete('category');
+    url.searchParams.delete('search');
+    url.searchParams.delete('activateSearch');
+
+    // Persist canteenId if it exists in extraParams or current context
+    // Priority: extraParams > context (to handle immediate navigation after selection)
+    if (extraParams.canteenId) {
+      url.searchParams.set('canteenId', extraParams.canteenId);
+    } else if (selectedCanteen?.id) {
+      url.searchParams.set('canteenId', selectedCanteen.id);
+    }
+
+    // Set new params
+    Object.entries(extraParams).forEach(([key, value]) => {
+      if (value) url.searchParams.set(key, value);
+    });
+
+    const newUrl = `${window.location.pathname}?${url.searchParams.toString()}`;
+
+    if (replace) {
+      window.history.replaceState({}, "", newUrl);
+    } else {
+      window.history.pushState({}, "", newUrl);
+    }
+
+    // Sync local state immediately
+    setCurrentView(view);
+    if (extraParams.category) setMenuCategory(extraParams.category);
+    if (extraParams.search) setMenuSearchQuery(extraParams.search);
+    if (extraParams.activateSearch) setActivateHomeSearch(extraParams.activateSearch === 'true');
+  };
+
+  // Redirect delivery persons
   useEffect(() => {
     if (user && user.role === UserRole.DELIVERY_PERSON) {
       console.log('🚚 Delivery person detected in AppPage, redirecting to delivery portal');
-      console.log('   User data:', { id: user.id, email: user.email, role: user.role });
       setLocation('/delivery-portal');
       return;
     }
   }, [user, setLocation]);
 
-  // Also check on mount in case user is already loaded
+  // Check user on mount
   useEffect(() => {
     const checkUser = () => {
       const cachedUserStr = localStorage.getItem('user');
@@ -103,194 +205,125 @@ export default function AppPage() {
         try {
           const cachedUser = JSON.parse(cachedUserStr);
           if (cachedUser && cachedUser.role === UserRole.DELIVERY_PERSON) {
-            console.log('🚚 Delivery person detected from cache in AppPage, redirecting to delivery portal');
             setLocation('/delivery-portal');
           }
-        } catch (e) {
-          // Ignore parse errors
-        }
+        } catch (e) { }
       }
     };
     checkUser();
   }, [setLocation]);
 
-  // Update ref when currentView changes
-  useEffect(() => {
-    currentViewRef.current = currentView;
-  }, [currentView]);
-
-  // Check if we're returning from a separate route (like Notifications, Help & Support, etc.) and need to restore Profile
+  // Restore Profile check
   useEffect(() => {
     const currentPath = window.location.pathname;
     if (currentPath === "/app") {
       const fromProfile = sessionStorage.getItem('navigationFrom') === 'profile';
       if (fromProfile && currentView !== 'profile') {
-        // We're returning from a page that came from Profile, restore Profile view
         sessionStorage.removeItem('navigationFrom');
-        const lastHistoryView = history.length > 0 ? history[history.length - 1].view : null;
-        if (lastHistoryView !== 'profile') {
-          navigateTo("profile");
-        } else {
-          setCurrentView("profile");
-        }
+        // Simple restore
+        updateUrl('profile');
       }
     }
-  }, [currentView, history, navigateTo]);
+  }, []);
 
-  // Handle navigation from bottom navigation
-  const handleNavigation = (view: "home" | "menu" | "cart" | "profile" | "favorites" | "selector") => {
-    // Track this navigation in history (not a back navigation)
+  // ~~~~~ Navigation Handlers ~~~~~
+
+  const handleNavigation = (view: ViewType, canteenId?: string) => {
     navigateTo(view);
-    setCurrentView(view);
+    // Determine if we need to set any default params for specific views
+    const params: Record<string, string> = {};
+    if (view === 'menu') params.category = 'all';
+    if (canteenId) params.canteenId = canteenId;
 
-    // Keep URL at /app with proper state marking
-    // Important: Mark state differently based on view for iOS/Android back handling
-    if (view === "home") {
-      // Mark as home view for back navigation handling
-      window.history.replaceState({
-        homeView: true,
-        isHome: true,
-        timestamp: Date.now()
-      }, "", "/app");
-    } else {
-      // For other views, use neutral state
-      window.history.replaceState({
-        view: view,
-        timestamp: Date.now()
-      }, "", "/app");
-    }
+    updateUrl(view, params);
 
-    // Scroll to top when switching views
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Listen for menu category changes and navigation events
   useEffect(() => {
     const handleCategoryChange = (e: CustomEvent) => {
       const category = e.detail?.category || "all";
-      setMenuCategory(category);
-      // Switch to menu view when category changes
-      if (currentView !== "menu") {
-        navigateTo("menu");
-        setCurrentView("menu");
-        window.history.replaceState({}, "", "/app");
-      }
+      // Update URL with new category, keeping view as menu
+      updateUrl('menu', { category });
     };
 
-    // Listen for back navigation - uses history to go to previous view
     const handleNavigateBack = () => {
       const previousView = navigateBack();
-      setCurrentView(previousView);
-      window.history.replaceState({}, "", "/app");
+      // When going back, we should ideally pop state, but since our internal history 
+      // is separate from browser history (sometimes), we simulate it.
+      // Ideally, simple history.back() would work if we pushed state correctly.
+      // For now, we sync the URL to the calculated previous view.
+      updateUrl(previousView, {}, true); // Replace to not clutter history further? Or push? 
+      // Actually, if user hit browser back, we invoke this? No, this is for in-app back button.
+      // If in-app back button, we likely want to go back in browser history if it matches?
+      // Let's just update URL to match the view we want to show.
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    // Listen for navigation to cart view
     const handleNavigateToCart = () => {
       navigateTo("cart");
-      setCurrentView("cart");
-      window.history.replaceState({}, "", "/app");
+      updateUrl("cart");
     };
 
-    // Listen for navigation to orders view
     const handleNavigateToOrders = () => {
-      // Ensure we're not already on orders
-      if (currentView === "orders") {
-        return; // Already on orders, don't navigate
-      }
-
-      // Use navigateToWithCurrent to ensure current view is in history before navigating to orders
-      // This ensures proper back navigation: Profile -> Orders -> Back -> Profile -> Back -> Home
+      if (currentView === "orders") return;
       navigateToWithCurrent("orders", currentView as NavigationView);
-      setCurrentView("orders");
-      window.history.replaceState({}, "", "/app");
+      updateUrl("orders");
     };
 
-    // Listen for navigation to favorites view
     const handleNavigateToFavorites = () => {
-      // Ensure we're not already on favorites
-      if (currentView === "favorites") {
-        return;
-      }
-
+      if (currentView === "favorites") return;
       navigateToWithCurrent("favorites", currentView as NavigationView);
-      setCurrentView("favorites");
-      window.history.replaceState({}, "", "/app");
+      updateUrl("favorites");
     };
 
-    // Listen for navigation to menu view from category clicks
     const handleNavigateToMenu = (e: CustomEvent) => {
       const category = e.detail?.category || "all";
       const search = e.detail?.search || "";
-      // MenuListingPage expects category to be lowercase for matching
       const normalizedCategory = category === "all" ? "all" : category.toLowerCase();
-      setCurrentView("menu");
-      setMenuCategory(normalizedCategory);
-      setMenuSearchQuery(search);
-      window.history.replaceState({}, "", "/app");
-      // Scroll to top when switching views
+
+      const params: Record<string, string> = { category: normalizedCategory };
+      if (search) params.search = search;
+
+      updateUrl("menu", params);
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    // Listen for ensuring Profile is in history (before navigating away)
     const handleEnsureProfileInHistory = () => {
-      // Ensure Profile is in history before navigating to a separate route
+      // With URL params, browser history naturally handles this if we pushState appropriately.
+      // However, useNavigationHistory hook is still used for the custom back button logic.
       const lastHistoryView = history.length > 0 ? history[history.length - 1].view : null;
       if (lastHistoryView !== 'profile' && currentView === 'profile') {
         navigateTo("profile");
+        // URL is already profile if currentView is profile
       }
     };
 
-    // Listen for navigation to profile view
     const handleNavigateToProfile = () => {
-      // Check if we're coming back from a separate route (like Notifications)
       const fromNotifications = sessionStorage.getItem('navigationFrom') === 'profile';
-
       if (fromNotifications) {
-        // Coming back from Notifications - restore Profile view
         sessionStorage.removeItem('navigationFrom');
-
-        // Check if Profile is already in history
-        const lastHistoryView = history.length > 0 ? history[history.length - 1].view : null;
-
-        if (lastHistoryView !== 'profile') {
-          // Profile is not in history, add it
-          navigateTo("profile");
-        } else {
-          // Profile is already in history, just set the view
-          setCurrentView("profile");
-        }
-        window.history.replaceState({}, "", "/app");
-      } else {
-        // Normal navigation to Profile - add to history
-        navigateTo("profile");
-        setCurrentView("profile");
-        window.history.replaceState({}, "", "/app");
+        // Logic to maybe just replace state if we just came back
       }
+      navigateTo("profile");
+      updateUrl("profile");
     };
 
-    // Listen for navigation to challenges view
     const handleNavigateToChallenges = () => {
       navigateToWithCurrent("challenges", currentView as NavigationView);
-      setCurrentView("challenges");
-      window.history.replaceState({}, "", "/app");
+      updateUrl("challenges");
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    // Listen for navigation to home view (for direct navigation, not back)
     const handleNavigateHome = () => {
-      setActivateHomeSearch(false); // Reset search activation
       navigateTo("home");
-      setCurrentView("home");
-      window.history.replaceState({}, "", "/app");
+      updateUrl("home");
     };
 
-    // Listen for navigation to home with search activated
     const handleNavigateHomeWithSearch = () => {
       navigateTo("home");
-      setCurrentView("home");
-      setActivateHomeSearch(true); // Activate search on home
-      window.history.replaceState({}, "", "/app");
+      updateUrl("home", { activateSearch: 'true' });
     };
 
     window.addEventListener('appMenuCategoryChange' as any, handleCategoryChange);
@@ -318,91 +351,46 @@ export default function AppPage() {
       window.removeEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
       window.removeEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
     };
-  }, [navigateTo, navigateBack, history, currentView]); // Include history and currentView for handleNavigateToOrders
+  }, [navigateTo, navigateBack, history, currentView]);
 
+
+  // ~~~~~ Logic to prevent leaving /app or handling special back cases ~~~~~
 
   // Handle browser back navigation and intercept goToHome from MenuListingPage
   useEffect(() => {
+    // Replaced the interval check with just reacting to popstate in the first useEffect
+    // Removal of aggressive URL masking allows refreshing on specific views.
+
+    // Logic for intercepting internal menu routing
     if (currentView === "menu") {
-      // Intercept navigation to /home when in menu view (from goToHome or back button)
-      const checkUrl = () => {
-        const path = window.location.pathname;
-        if ((path === "/home" || path === "/") && currentView === "menu") {
-          setCurrentView("home");
-          window.history.replaceState({}, "", "/app");
-        }
-      };
-
-      const urlCheckInterval = setInterval(checkUrl, 50); // Check more frequently
-
-      // Listen for popstate events (browser back button)
-      const handlePopState = (event: PopStateEvent) => {
-        // When back button is pressed, use navigation history
-        event.preventDefault();
-        const previousView = navigateBack();
-        setCurrentView(previousView);
-        window.history.replaceState({}, "", "/app");
-      };
-
-      // Also intercept history.back() calls
-      const originalBack = window.history.back;
-      window.history.back = function () {
-        const previousView = navigateBack();
-        setCurrentView(previousView);
-        window.history.replaceState({}, "", "/app");
-        return;
-      };
-
-      window.addEventListener('popstate', handlePopState);
-
-      return () => {
-        clearInterval(urlCheckInterval);
-        window.removeEventListener('popstate', handlePopState);
-        window.history.back = originalBack;
-      };
+      // If the internal router inside MenuWrapper tries to go to IDLE path (rare with this new setup), handled by wrapper.
     }
-  }, [currentView, navigateBack]);
+  }, [currentView]);
 
-  // Handle back navigation from home view - iOS: prevent swipe, Android: close PWA
+  // Handle back navigation - iOS/Android specific overrides
+  // We keep the touch blocking for iOS PWA but remove history hacks that might conflict with URL params
   useEffect(() => {
     if (currentView === "home") {
-      // Detect device type
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const isAndroid = /Android/.test(navigator.userAgent);
       const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as any).standalone === true;
 
       // For iOS PWA: Block left-to-right swipe gesture on home page
       if (isIOS && isPWA) {
-        // Clear any history entries from splash/OAuth/login pages
-        const clearAuthHistory = () => {
-          const currentPath = window.location.pathname;
-          if (currentPath === '/app') {
-            window.history.replaceState({ home: true, isHome: true, view: 'home', cleared: true }, '', '/app');
-            window.history.pushState({ home: true, isHome: true, view: 'home', barrier: true }, '', '/app');
-          }
-        };
-
-        clearAuthHistory();
-
-        // Touch tracking for swipe prevention - more aggressive
+        // Touch tracking for swipe prevention
         let touchStartX = 0;
         let touchStartY = 0;
         let isSwipeBlocked = false;
         let hasMoved = false;
-        const EDGE_THRESHOLD = 30; // Increased edge zone to 30px
+        const EDGE_THRESHOLD = 30;
 
-        // Block left-to-right swipe gesture
         const handleTouchStart = (e: TouchEvent) => {
           if (e.touches.length > 0) {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             hasMoved = false;
-
-            // Block if touch starts from left edge (increased threshold)
             if (touchStartX < EDGE_THRESHOLD) {
               isSwipeBlocked = true;
-              // Prevent default immediately for edge touches
               e.preventDefault();
               e.stopPropagation();
             }
@@ -411,94 +399,48 @@ export default function AppPage() {
 
         const handleTouchMove = (e: TouchEvent) => {
           if (e.touches.length === 0) return;
-
           const currentX = e.touches[0].clientX;
           const currentY = e.touches[0].clientY;
           const deltaX = currentX - touchStartX;
           const deltaY = Math.abs(currentY - touchStartY);
 
-          // Track if any movement occurred
-          if (Math.abs(deltaX) > 0 || deltaY > 0) {
-            hasMoved = true;
-          }
+          if (Math.abs(deltaX) > 0 || deltaY > 0) hasMoved = true;
 
-          // More aggressive blocking: catch even tiny movements from edge
           if (touchStartX < EDGE_THRESHOLD) {
-            // Block ANY rightward movement from edge, even tiny ones
             if (deltaX > 0) {
-              e.preventDefault();
-              e.stopPropagation();
-              e.stopImmediatePropagation();
+              e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
               isSwipeBlocked = true;
               return;
             }
-
-            // Also block if movement is primarily horizontal (even small)
             if (Math.abs(deltaX) > deltaY && Math.abs(deltaX) > 3) {
-              e.preventDefault();
-              e.stopPropagation();
-              e.stopImmediatePropagation();
+              e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
               isSwipeBlocked = true;
               return;
             }
           }
-
-          // Also check if current position is in edge zone and moving right
           if (currentX < EDGE_THRESHOLD && deltaX > 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
             isSwipeBlocked = true;
           }
         };
 
         const handleTouchEnd = (e: TouchEvent) => {
-          // If we blocked a swipe, prevent any default behavior
           if (isSwipeBlocked && hasMoved) {
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
           }
-          isSwipeBlocked = false;
-          hasMoved = false;
+          isSwipeBlocked = false; hasMoved = false;
         };
 
-        const handleTouchCancel = () => {
-          isSwipeBlocked = false;
-          hasMoved = false;
-        };
+        const handleTouchCancel = () => { isSwipeBlocked = false; hasMoved = false; };
 
-        // Handle back navigation - immediately push forward to re-render home
-        const handlePopState = () => {
-          const latestView = currentViewRef.current;
-          const currentPath = window.location.pathname;
-
-          // Block navigation to splash, OAuth, login, onboarding pages
-          const blockedPaths = ['/', '/oauth-callback', '/login', '/onboarding', '/profile-setup'];
-          const isBlockedPath = blockedPaths.includes(currentPath);
-
-          // If we're on home view OR trying to navigate to a blocked path, restore home
-          if (latestView === 'home' || isBlockedPath) {
-            window.history.replaceState({ home: true, isHome: true, view: 'home' }, '', '/app');
-            window.history.pushState({ home: true, isHome: true, view: 'home', barrier: true }, '', '/app');
-            setCurrentView('home');
-          }
-        };
-
-        // Add touch event listeners to block swipe gesture
-        // Use non-passive for all to ensure we can preventDefault
         document.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
         document.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
         document.addEventListener('touchend', handleTouchEnd, { capture: true, passive: false });
         document.addEventListener('touchcancel', handleTouchCancel, { capture: true, passive: false });
-
-        // Also add to window for maximum coverage
         window.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
         window.addEventListener('touchmove', handleTouchMove, { capture: true, passive: false });
         window.addEventListener('touchend', handleTouchEnd, { capture: true, passive: false });
         window.addEventListener('touchcancel', handleTouchCancel, { capture: true, passive: false });
-
-        // Add popstate listener for fallback
-        window.addEventListener('popstate', handlePopState, { capture: true, passive: true });
 
         return () => {
           document.removeEventListener('touchstart', handleTouchStart, { capture: true });
@@ -509,222 +451,21 @@ export default function AppPage() {
           window.removeEventListener('touchmove', handleTouchMove, { capture: true });
           window.removeEventListener('touchend', handleTouchEnd, { capture: true });
           window.removeEventListener('touchcancel', handleTouchCancel, { capture: true });
-          window.removeEventListener('popstate', handlePopState, { capture: true });
-        };
-      }
-
-      // For Android PWA: Close/minimize app when back button is pressed on home view
-      if (isAndroid && isPWA) {
-        // Clear history stack and set up for app exit on back press
-        // Replace all history with single root entry
-        window.history.replaceState({
-          homeView: true,
-          isRootEntry: true,
-          allowExit: true,
-          timestamp: Date.now()
-        }, '', '/app');
-
-        // Track back press count for double-tap to exit pattern
-        let backPressCount = 0;
-        let backPressTimer: NodeJS.Timeout | null = null;
-
-        const handlePopState = (event: PopStateEvent) => {
-          const currentState = window.history.state;
-
-          // If we're at root entry, allow the app to close
-          if (currentState?.isRootEntry || currentState?.allowExit) {
-            // Don't prevent default - let Android system close the app
-            // This is the natural behavior when history is empty
-            console.log('📱 Android PWA: Back pressed on home - allowing app to close');
-            return;
-          }
-
-          // If somehow not at root, navigate to root and mark as exit-ready
-          event.preventDefault();
-          event.stopPropagation();
-
-          window.history.replaceState({
-            homeView: true,
-            isRootEntry: true,
-            allowExit: true,
-            timestamp: Date.now()
-          }, '', '/app');
-        };
-
-        // Override history.back to handle double-tap to exit
-        const originalBack = window.history.back;
-        window.history.back = function () {
-          console.log('📱 Android PWA: Back button pressed on home view');
-
-          // Increment back press count
-          backPressCount++;
-
-          // Clear existing timer
-          if (backPressTimer) {
-            clearTimeout(backPressTimer);
-          }
-
-          // If double tap within 2 seconds, close app
-          if (backPressCount >= 2) {
-            console.log('📱 Android PWA: Double back press detected - closing app');
-            // Reset history to empty state to allow app close
-            window.history.replaceState(null, '', '/app');
-            // Attempt to close (some browsers support this)
-            window.close();
-            // If close doesn't work, system will minimize on next back
-            backPressCount = 0;
-            return;
-          }
-
-          // Show toast message for single tap
-          console.log('📱 Android PWA: Press back again to exit');
-
-          // Show visual toast notification
-          setShowExitToast(true);
-
-          // Reset counter and hide toast after 2 seconds
-          backPressTimer = setTimeout(() => {
-            backPressCount = 0;
-            setShowExitToast(false);
-          }, 2000);
-        };
-
-        // Override history.go
-        const originalGo = window.history.go;
-        window.history.go = function (delta?: number) {
-          if (delta && delta < 0) {
-            // Treat as back button press
-            return originalBack.call(window.history);
-          }
-          return originalGo.call(window.history, delta);
-        };
-
-        // Add popstate listener
-        window.addEventListener('popstate', handlePopState, { capture: true });
-
-        return () => {
-          if (backPressTimer) {
-            clearTimeout(backPressTimer);
-          }
-          window.removeEventListener('popstate', handlePopState, { capture: true });
-          window.history.back = originalBack;
-          window.history.go = originalGo;
         };
       }
     }
   }, [currentView]);
 
-  // Handle browser back navigation from orders view - use history-based navigation
-  useEffect(() => {
-    if (currentView === "orders") {
-      // Listen for popstate events (browser back button, Android back, iOS swipe)
-      const handlePopState = (event: PopStateEvent) => {
-        // When back button is pressed from orders view, use history-based navigation
-        if (currentView === "orders") {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Use history-based back navigation
-          const previousView = navigateBack();
-          setCurrentView(previousView);
-          window.history.replaceState({}, "", "/app");
-        }
-      };
-
-      // Also intercept history.back() calls
-      const originalBack = window.history.back;
-      window.history.back = function () {
-        if (currentView === "orders") {
-          const previousView = navigateBack();
-          setCurrentView(previousView);
-          window.history.replaceState({}, "", "/app");
-          return;
-        }
-        return originalBack.call(window.history);
-      };
-
-      // Use capture phase to handle event before other handlers
-      window.addEventListener('popstate', handlePopState, { capture: true });
-
-      return () => {
-        window.removeEventListener('popstate', handlePopState, { capture: true });
-        window.history.back = originalBack;
-      };
-    }
-  }, [currentView, navigateBack]);
-
-  // Handle browser back navigation from challenges view - use history-based navigation
-  useEffect(() => {
-    if (currentView === "challenges") {
-      // Listen for popstate events (browser back button, Android back, iOS swipe)
-      const handlePopState = (event: PopStateEvent) => {
-        // When back button is pressed from challenges view, use history-based navigation
-        if (currentView === "challenges") {
-          event.preventDefault();
-          event.stopPropagation();
-
-          // Use history-based back navigation
-          const previousView = navigateBack();
-          setCurrentView(previousView);
-          window.history.replaceState({}, "", "/app");
-        }
-      };
-
-      // Also intercept history.back() calls
-      const originalBack = window.history.back;
-      window.history.back = function () {
-        if (currentView === "challenges") {
-          const previousView = navigateBack();
-          setCurrentView(previousView);
-          window.history.replaceState({}, "", "/app");
-          return;
-        }
-        return originalBack.call(window.history);
-      };
-
-      // Use capture phase to handle event before other handlers
-      window.addEventListener('popstate', handlePopState, { capture: true });
-
-      return () => {
-        window.removeEventListener('popstate', handlePopState, { capture: true });
-        window.history.back = originalBack;
-      };
-    }
-  }, [currentView, navigateBack]);
-
-  // Intercept navigation when menu view is active to keep URL at /app
-  useEffect(() => {
-    if (currentView === "menu") {
-      // Always keep URL at /app
-      if (window.location.pathname !== "/app" && !window.location.pathname.startsWith("/dish/")) {
-        window.history.replaceState({}, "", "/app");
-      }
-
-      // Continuously ensure URL stays at /app (except for dish pages)
-      const urlCheckInterval = setInterval(() => {
-        if (window.location.pathname !== "/app" && !window.location.pathname.startsWith("/dish/")) {
-          window.history.replaceState({}, "", "/app");
-        }
-      }, 100);
-
-      return () => {
-        clearInterval(urlCheckInterval);
-      };
-    }
-  }, [currentView]);
 
   return (
     <div
       className="min-h-screen bg-background overflow-y-auto overflow-x-hidden"
-      style={{
-        WebkitOverflowScrolling: 'touch'
-      }}
+      style={{ WebkitOverflowScrolling: 'touch' }}
     >
-      {/* Conditionally render HomeScreen, CartPage, FavoritesPage, MenuListingPage, ProfilePage, or OrdersPage */}
       {currentView === "selector" && (
         <CanteenSelectorPage
-          onCanteenSelect={() => {
-            handleNavigation("home");
+          onCanteenSelect={(canteenId) => {
+            handleNavigation("home", canteenId);
           }}
         />
       )}
