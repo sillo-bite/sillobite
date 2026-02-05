@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useCanteenContext } from '@/contexts/CanteenContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthSync } from '@/hooks/useDataSync';
@@ -37,8 +37,10 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
     const [searchQuery, setSearchQuery] = useState('');
     const [showLocationSelector, setShowLocationSelector] = useState(false);
     const [isSearchSticky, setIsSearchSticky] = useState(false);
-    const [isCategoriesSticky, setIsCategoriesSticky] = useState(false);
-
+    const [isCategorySticky, setIsCategorySticky] = useState(false);
+    const trg = useRef();
+    const trg2 = useRef();
+    const trg1 = useRef();
     // Hardcoded categories for filtering
     const categories = [
         'All',
@@ -66,29 +68,6 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
         refetchOnWindowFocus: false,
     });
 
-    // Scroll handler for sticky positioning
-    useEffect(() => {
-        const handleScroll = () => {
-            const scrollY = window.scrollY;
-            const searchBarElement = document.getElementById('search-bar-section');
-            const categoriesElement = document.getElementById('categories-section');
-
-            if (searchBarElement && categoriesElement) {
-                const searchBarTop = searchBarElement.getBoundingClientRect().top + scrollY;
-                const categoriesTop = categoriesElement.getBoundingClientRect().top + scrollY;
-
-                // Make search bar sticky when it reaches the top
-                setIsSearchSticky(scrollY > searchBarTop - 100);
-
-                // Make categories sticky when search bar is sticky and categories reach it
-                setIsCategoriesSticky(isSearchSticky && scrollY > categoriesTop - 160);
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [isSearchSticky]);
-
     // Filter and sort canteens based on search query
     const filteredCanteens = useMemo(() => {
         const filtered = availableCanteens.filter(canteen =>
@@ -109,15 +88,46 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
         setSelectedCanteen(canteen);
         onCanteenSelect(canteen.id);
     };
+    //sticky scroll category section
+    useEffect(() => {
+        const el = selectedCategory ? trg1.current : trg.current;
+        if (!el) return;
 
+        const obs = new IntersectionObserver(([e]) => {
+            setIsCategorySticky(!e.isIntersecting);
+        }, {
+            root: null,
+            threshold: 0,
+            rootMargin: selectedCategory ? "-70px 0px 0px 0px" : "-92px 0px 0px 0px"
+        });
+
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [selectedCategory]);
+
+    //sticky scroll search section
+    useEffect(() => {
+        const obs = new IntersectionObserver(
+            ([e]) => {
+                setIsSearchSticky(!e.isIntersecting);
+            },
+            {
+                root: null,
+                threshold: 0,
+                rootMargin: "-13px 0px 0px 0px"
+            }
+        );
+        if (trg2.current) obs.observe(trg2.current);
+        return () => obs.disconnect();
+    }, []);
     // Infinite scroll implementation
     useEffect(() => {
         const handleScroll = () => {
             if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 && hasNextPage && !isFetchingNextPage && !searchQuery) {
                 fetchNextPage();
             }
-        };
 
+        };
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, [hasNextPage, isFetchingNextPage, searchQuery, fetchNextPage]);
@@ -135,7 +145,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
     return (
         <div className={`min-h-screen ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-gray-50'}`}>
             {/* Header Section */}
-            <div className={`sticky top-0 z-10 ${resolvedTheme === 'dark' ? 'bg-background/95' : 'bg-white/95'} backdrop-blur-md pb-4 pt-12 px-6`}>
+            <div className={`backdrop-blur-md pt-12 px-6`}>
                 <div className="max-w-4xl mx-auto">
                     {/* Header with Navigation */}
                     <div className="flex items-center justify-between mb-6">
@@ -180,10 +190,41 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                             </Button>
                         </div>
                     </div>
-
-
-
-                    <div className="flex items-center gap-3">
+                </div>
+            </div>
+            <div ref={trg2} className="h-2px" />
+            <div
+                id="search-bar"
+                style={{
+                    position: isSearchSticky ? 'fixed' : 'relative',
+                    top: isSearchSticky ? 0 : 'auto',
+                    left: 0,
+                    right: 0,
+                    zIndex: isSearchSticky ? 50 : 1,
+                    paddingTop: isSearchSticky ? '12px' : '0',
+                    paddingBottom: '16px',
+                    // Background only when sticky
+                    background: isSearchSticky
+                        ? (resolvedTheme === 'dark'
+                            ? 'hsla(0, 41%, 7%, 0.95)'
+                            : 'rgba(255, 255, 255, 0.98)')
+                        : 'transparent',
+                    backdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
+                    WebkitBackdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
+                    // borderBottom: isSearchSticky
+                    //     ? (resolvedTheme === 'dark'
+                    //         ? '1px solid rgba(255, 255, 255, 0.08)'
+                    //         : '1px solid rgba(0, 0, 0, 0.06)')
+                    //     : 'none',
+                    boxShadow: isSearchSticky && !isCategorySticky
+                        ? '0 4px 20px rgba(0, 0, 0, 0.08)'
+                        : 'none',
+                    transition: isSearchSticky && isCategorySticky ? 'background 0.5s ease-out, backdrop-filter 0.5s ease-out, box-shadow 0.5s ease-out' : 'background 0.2s ease-out, backdrop-filter 0.2s ease-out, box-shadow 0.2s ease-out',
+                }}
+            >
+                <div className="backdrop-blur-md max-w-4xl mx-auto px-6">
+                    <div
+                        className="flex items-center gap-3">
                         {/* Back Button - Icon only, shown when category is selected */}
                         {selectedCategory && (
                             <button
@@ -214,36 +255,78 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                     </div>
                 </div>
             </div>
-
             {/* Global Promo Banners - Hidden when category is selected */}
-            {!selectedCategory && (
-                <div className="mb-4 mt-4">
-                    <HomeMediaBanner banners={activeBanners || []} isLoading={isBannersLoading} />
-                </div>
-            )}
+            {
+                !selectedCategory && (
+                    <div className={`mb-4 ${isSearchSticky ? 'mt-[120px]' : 'mt-8'}`} >
+                        <HomeMediaBanner banners={activeBanners || []} isLoading={isBannersLoading} />
+                    </div>
+                )
+            }
 
             {/* Category Filter Section */}
-            <div className="px-4 mb-6">
-                <h2 className="text-lg font-semibold mb-3">Categories</h2>
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                    {categories.map((category) => (
-                        <button
-                            key={category}
-                            onClick={() => setSelectedCategory(category === 'All' ? null : category)}
-                            className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all duration-200 ${(category === 'All' && !selectedCategory) || selectedCategory === category
-                                ? 'bg-primary text-white shadow-lg'
-                                : resolvedTheme === 'dark'
-                                    ? 'bg-secondary/50 text-gray-300 hover:bg-secondary border border-white/10'
-                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                                }`}
-                        >
-                            {category}
-                        </button>
-                    ))}
+
+            <div className="px-4">
+                {!selectedCategory && (
+                    <h2 className="text-lg font-semibold mb-3">Categories</h2>
+                )}
+            </div>
+            {selectedCategory && <div ref={trg1} className="h-2px" />}
+            {!selectedCategory && <div ref={trg} className="h-2px" />}
+            {/* <div ref={trg} className="h-2px" /> */}
+            <div className={`mb-4 ${selectedCategory ? 'pt-4' : ''}`}>
+                <div
+                    id="category-section"
+                    style={{
+                        position: isCategorySticky ? 'fixed' : 'relative',
+                        top: isCategorySticky ? 78 : 'auto',
+                        left: 0,
+                        right: 0,
+                        zIndex: isCategorySticky ? 50 : 1,
+                        paddingTop: isCategorySticky ? '12px' : '0',
+                        paddingLeft: '16px',
+                        paddingBottom: '16px',
+                        //Background only when sticky
+                        background: isCategorySticky
+                            ? (resolvedTheme === 'dark'
+                                ? 'rgba(15, 10, 24, 0.95)'
+                                : 'rgba(255, 255, 255, 0.98)')
+                            : 'transparent',
+                        backdropFilter: isCategorySticky ? 'blur(20px) saturate(180%)' : 'none',
+                        WebkitBackdropFilter: isCategorySticky ? 'blur(20px) saturate(180%)' : 'none',
+                        borderBottom: isCategorySticky
+                            ? (resolvedTheme === 'dark'
+                                ? '1px solid rgba(255, 255, 255, 0.08)'
+                                : '1px solid rgba(0, 0, 0, 0.06)')
+                            : 'none',
+                        // boxShadow: isCategorySticky
+                        //     ? '0 4px 20px rgba(0, 0, 0, 0.08)'
+                        //     : 'none',
+                        transition: 'background 0.5s ease-out, backdrop-filter 0.5s ease-out, box-shadow 0.5s ease-out',
+                    }}
+                >
+                    <div className={`flex gap-3 overflow-x-auto scrollbar-hide`}>
+                        {categories.map((category) => (
+
+                            <button
+                                key={category}
+                                onClick={() => setSelectedCategory(category === 'All' ? null : category)}
+                                className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all duration-200 ${(category === 'All' && !selectedCategory) || selectedCategory === category
+                                    ? 'bg-primary text-white shadow-lg'
+                                    : resolvedTheme === 'dark'
+                                        ? 'bg-secondary/50 text-gray-300 hover:bg-secondary border border-white/10'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                                    }`}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
                 </div>
+
             </div>
 
-            <div className="px-4 flex items-center justify-between">
+            <div className={`px-4 flex items-center justify-between ${isCategorySticky ? isSearchSticky && selectedCategory ? 'mt-40' : 'mt-20' : ''}`}>
                 <h1 className="text-2xl font-bold">Available Canteens</h1>
                 <Filter className="mx-4">
                     <button className="text-primary px-4 py-2 rounded-2xl">Filter</button>
@@ -430,11 +513,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                             <p className="text-sm text-muted-foreground mb-4">Wrong location?</p>
                             <Button
                                 variant="ghost"
-                                onClick={() => {
-                                    // Manually clear location to show selector again
-                                    localStorage.removeItem('selectedLocation');
-                                    window.location.reload();
-                                }}
+                                onClick={() => setShowLocationSelector(true)}
                             >
                                 Change Location
                             </Button>
@@ -444,12 +523,14 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             </div>
 
             {/* Location Selector Modal */}
-            {showLocationSelector && (
-                <LocationSelector
-                    isOpen={showLocationSelector}
-                    onClose={() => setShowLocationSelector(false)}
-                />
-            )}
+            {
+                showLocationSelector && (
+                    <LocationSelector
+                        isOpen={showLocationSelector}
+                        onClose={() => setShowLocationSelector(false)}
+                    />
+                )
+            }
         </div >
     );
 }
