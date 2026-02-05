@@ -28,7 +28,8 @@ export interface Canteen {
   imageUrl?: string; // URL for the canteen profile picture
   imagePublicId?: string; // Cloudinary Public ID
   ownerSidebarConfig?: Record<string, boolean>;
-  trendingItems?: string[]; // Array of trending menu item names (0-4 items)
+  trendingItems?: Array<{ name: string; price: number }>; // Array of trending menu items with name and price (0-4 items)
+  categories?: string[]; // Array of category names for this canteen
 }
 
 export interface CanteensResponse {

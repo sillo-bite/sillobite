@@ -18,7 +18,8 @@ interface Canteen {
   updatedAt: string;
   imageUrl?: string;
   imagePublicId?: string;
-  trendingItems?: string[]; // Array of trending menu item names (0-4 items)
+  trendingItems?: Array<{ name: string; price: number }>; // Array of trending menu items with name and price (0-4 items)
+  categories?: string[]; // Array of category names for this canteen
 }
 
 interface CanteensResponse {

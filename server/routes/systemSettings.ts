@@ -2945,15 +2945,18 @@ router.get('/canteens/by-institution', async (req, res) => {
       canteens.map(async (canteen: any) => {
         try {
           const trendingItems = await orderService.getTrendingItems(canteen.id);
-          // Extract only the names, limit to 4 items
-          const trendingItemNames = trendingItems
+          // Extract name and price, limit to 4 items
+          const trendingItemsData = trendingItems
             .slice(0, 4)
-            .map((item: any) => item.name)
-            .filter((name: string) => name); // Filter out any undefined/null names
+            .map((item: any) => ({
+              name: item.name,
+              price: item.price
+            }))
+            .filter((item: any) => item.name && item.price !== undefined); // Filter out invalid items
 
           return {
             ...canteen,
-            trendingItems: trendingItemNames
+            trendingItems: trendingItemsData
           };
         } catch (error) {
           console.error(`Error fetching trending items for canteen ${canteen.id}:`, error);
@@ -2968,8 +2971,41 @@ router.get('/canteens/by-institution', async (req, res) => {
 
     console.log(`🏪 Added trending items to ${canteensWithTrending.length} canteens`);
 
+    // Fetch categories for each canteen (up to 3 categories)
+    const { Category } = await import('../models/mongodb-models');
+    const canteensWithCategories = await Promise.all(
+      canteensWithTrending.map(async (canteen: any) => {
+        try {
+          // Fetch categories for this canteen
+          const categories = await Category.find({ canteenId: canteen.id })
+            .sort({ name: 1 })
+            .limit(3)
+            .lean();
+
+          // Extract only the names
+          const categoryNames = categories
+            .map((cat: any) => cat.name)
+            .filter((name: string) => name); // Filter out any undefined/null names
+
+          return {
+            ...canteen,
+            categories: categoryNames
+          };
+        } catch (error) {
+          console.error(`Error fetching categories for canteen ${canteen.id}:`, error);
+          // Return canteen with empty categories on error
+          return {
+            ...canteen,
+            categories: []
+          };
+        }
+      })
+    );
+
+    console.log(`🏪 Added categories to ${canteensWithCategories.length} canteens`);
+
     res.json({
-      canteens: canteensWithTrending,
+      canteens: canteensWithCategories,
       total,
       hasMore,
       limit: limitNum,

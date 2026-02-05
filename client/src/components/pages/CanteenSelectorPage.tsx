@@ -4,7 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthSync } from '@/hooks/useDataSync';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Search, ArrowRight, Store, ChevronRight, ChevronDown, ShoppingCart, UserCircle2 } from 'lucide-react';
+import { MapPin, Search, ArrowRight, Store, ChevronRight, ChevronDown, ShoppingCart, UserCircle2, Filter } from 'lucide-react';
 import { LoadingIndicator, EmptyState } from '@/components/canteen/CanteenSkeletonLoader';
 import LocationSelector from "@/components/profile/LocationSelector";
 import HomeMediaBanner from "./HomeMediaBanner";
@@ -159,6 +159,12 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             <div className="mb-4 mt-4">
                 <HomeMediaBanner banners={activeBanners || []} isLoading={isBannersLoading} />
             </div>
+            <div className="px-4 flex items-center justify-between">
+                <h1 className="text-2xl font-bold">Available Canteens</h1>
+                <Filter className="mx-4">
+                    <button className="text-primary px-4 py-2 rounded-2xl">Filter</button>
+                </Filter>
+            </div>
             {/* Content Section */}
             <div className="px-4 py-6 max-w-4xl mx-auto pb-24">
 
@@ -199,103 +205,113 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                         ))}
                     </div>
                 ) : filteredCanteens.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
                         {filteredCanteens.map((canteen) => (
                             <div
                                 key={canteen.id}
                                 onClick={() => handleCanteenClick(canteen)}
-                                className={`group relative overflow-hidden rounded-3xl cursor-pointer transition-all duration-300 border hover:shadow-xl active:scale-[0.98] ${resolvedTheme === 'dark'
-                                    ? 'bg-card border-white/5 hover:border-primary/30'
-                                    : 'bg-white border-gray-100 hover:border-primary/30 shadow-sm'
+                                className={`group relative overflow-hidden rounded-3xl cursor-pointer transition-all duration-300 hover:shadow-2xl active:scale-[0.98] ${resolvedTheme === 'dark'
+                                    ? 'bg-gradient-to-b from-gray-800/90 to-gray-900/90 border border-white/5'
+                                    : 'bg-white border border-gray-100 shadow-md'
                                     }`}
                             >
-                                <div className="flex items-stretch">
-                                    {/* Left: Large Image */}
-                                    <div className="relative w-40 h-40 flex-shrink-0">
-                                        {canteen.imageUrl ? (
-                                            <img
-                                                src={canteen.imageUrl}
-                                                alt={canteen.name}
-                                                className="w-full h-full object-cover"
-                                                loading="lazy"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                                }}
-                                            />
-                                        ) : null}
+                                {/* Top: Large Image */}
+                                <div className="relative w-full h-40 overflow-hidden rounded-b-3xl">
+                                    {canteen.imageUrl ? (
+                                        <img
+                                            src={canteen.imageUrl}
+                                            alt={canteen.name}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                            loading="lazy"
+                                            onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                            }}
+                                        />
+                                    ) : null}
 
-                                        {/* Fallback Icon */}
-                                        <div className={`${canteen.imageUrl ? 'hidden' : 'flex'} w-full h-full items-center justify-center ${resolvedTheme === 'dark' ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary'}`}>
-                                            <Store className="w-16 h-16 opacity-75" />
+                                    {/* Fallback Icon */}
+                                    <div className={`${canteen.imageUrl ? 'hidden' : 'flex'} w-full h-full items-center justify-center ${resolvedTheme === 'dark' ? 'bg-purple-900/40' : 'bg-purple-100'}`}>
+                                        <Store className={`w-20 h-20 ${resolvedTheme === 'dark' ? 'text-purple-400' : 'text-purple-500'} opacity-60`} />
+                                    </div>
+
+                                    {/* Free Delivery Badge - Top Left */}
+                                    <div className="absolute top-3 left-3">
+                                        <div className="bg-primary text-white px-3 py-1.5 rounded-full shadow-lg">
+                                            {canteen.trendingItems && canteen.trendingItems?.length > 0 ? (
+                                                canteen.trendingItems?.slice(0, 1).map((item, index) => <span key={index} className="text-xs font-bold">{item.name} at ₹{item.price}</span>)
+                                            ) : (
+                                                <span className="text-xs font-bold">New</span>
+                                            )}
                                         </div>
-
-                                        {/* Promotional Badge Overlay (if applicable) */}
-                                        {canteen.hasPromotion && (
-                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-                                                <div className="text-white">
-                                                    <div className="text-[10px] font-medium uppercase tracking-wide opacity-90">Special Offer</div>
-                                                    <div className="text-sm font-bold">10% OFF</div>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
-                                    {/* Right: Details */}
-                                    <div className="flex-1 p-4 flex flex-col justify-center min-w-0">
-                                        {/* Canteen Name */}
-                                        <h3 className={`font-bold text-lg mb-1 truncate ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                            {canteen.name}
-                                        </h3>
-
-                                        {/* Rating (if available) */}
-                                        {canteen.rating && (
-                                            <div className="flex items-center gap-1 mb-2">
-                                                <div className="flex items-center gap-1 bg-green-600 text-white px-2 py-0.5 rounded-md text-xs font-semibold">
-                                                    <span>★</span>
-                                                    <span>{canteen.rating}</span>
-                                                </div>
-                                                {canteen.reviewCount && (
-                                                    <span className="text-xs text-muted-foreground">({canteen.reviewCount})</span>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Categories/Tags */}
-                                        {canteen.categories && canteen.categories.length > 0 && (
-                                            <p className="text-sm text-muted-foreground mb-2 truncate">
-                                                {canteen.categories.join(', ')}
-                                            </p>
-                                        )}
-
-                                        {/* Trending Menu Items Preview */}
-                                        {canteen.trendingItems && canteen.trendingItems.length > 0 && (
-                                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                                                {canteen.trendingItems.slice(0, 4).join(' • ')}
-                                            </p>
-                                        )}
-
-                                        {/* Location */}
-                                        {canteen.location && (
-                                            <p className={`text-sm flex items-center ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                <MapPin className="w-3.5 h-3.5 mr-1.5 opacity-70 flex-shrink-0" />
-                                                <span className="truncate">{canteen.location}</span>
-                                                {canteen.distance && (
-                                                    <span className="ml-1">• {canteen.distance}</span>
-                                                )}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Arrow Icon */}
-                                    <div className="flex items-center pr-4">
-                                        <ChevronRight className={`w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-300 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-400'}`} />
+                                    {/* Bookmark Icon - Top Right */}
+                                    <div className="absolute top-3 right-3">
+                                        <div className={`p-2.5 rounded-full ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
+                                            <svg className="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z" />
+                                            </svg>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Hover gradient effect */}
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                                {/* Bottom: Content */}
+                                <div className="p-4">
+                                    {/* Canteen Name */}
+                                    <h3 className={`font-bold text-lg mb-3 truncate ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        {canteen.name}
+                                    </h3>
 
+                                    {/* Rating and Delivery Time */}
+                                    <div className="flex items-center justify-between gap-4 mb-3">
+
+
+
+
+
+                                        {/* Category Tags */}
+                                        <div className="flex items-center gap-2 text-sm">
+                                            {canteen.categories && canteen.categories?.length > 0 ? (
+                                                canteen.categories?.slice(0, 3).map((category: string, idx: number) => (
+                                                    <React.Fragment key={idx}>
+                                                        <span className={`truncate max-w-24 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                            {category}
+                                                        </span>
+                                                        {idx < Math.min(canteen.categories?.length || 0, 3) - 1 && (
+                                                            <span className={`${resolvedTheme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>•</span>
+                                                        )}
+                                                    </React.Fragment>
+                                                ))
+                                            ) : (
+                                                <>
+                                                    <span className={`${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Burger</span>
+                                                    <span className={`${resolvedTheme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>•</span>
+                                                    <span className={`${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Pizza</span>
+                                                    <span className={`${resolvedTheme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>•</span>
+                                                    <span className={`${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>Fast Food</span>
+                                                </>
+                                            )}
+                                        </div>
+                                        {/* Star Rating */}
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-yellow-400 text-lg">★</span>
+                                            <span className={`text-sm font-bold ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>4.9</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Enhanced Hover Effects */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-purple-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                                {/* Subtle Border Glow on Hover */}
+                                <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                                    style={{
+                                        boxShadow: resolvedTheme === 'dark'
+                                            ? '0 0 30px rgba(var(--primary-rgb, 139, 92, 246), 0.3)'
+                                            : '0 0 30px rgba(var(--primary-rgb, 139, 92, 246), 0.2)'
+                                    }}
+                                />
                             </div>
                         ))}
 
