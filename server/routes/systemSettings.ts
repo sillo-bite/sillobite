@@ -2832,9 +2832,11 @@ router.get('/canteens/by-restaurant/:restaurantId', async (req, res) => {
  */
 router.get('/canteens/by-institution', async (req, res) => {
   try {
-    const { institutionType, institutionId, limit = 5, offset = 0 } = req.query;
+    const { institutionType, institutionId, limit = 5, offset = 0, category } = req.query;
 
-    console.log(`🏪 Fetching canteens for ${institutionType} ${institutionId} (limit: ${limit}, offset: ${offset})`);
+    console.log(`🏪 Fetching canteens for ${institutionType} ${institutionId} (limit: ${limit}, offset: ${offset}, category: ${category || 'none'})`)
+
+      ;
 
     if (!institutionType || !institutionId) {
       return res.status(400).json({ error: 'institutionType and institutionId are required' });
@@ -2842,6 +2844,7 @@ router.get('/canteens/by-institution', async (req, res) => {
 
     const limitNum = parseInt(limit as string) || 5;
     const offsetNum = parseInt(offset as string) || 0;
+    const categoryFilter = category as string | undefined;
 
     // Build the match condition based on institution type
     // Support both array-based (new) and single value (legacy) matching
@@ -2935,10 +2938,60 @@ router.get('/canteens/by-institution', async (req, res) => {
     }
 
     const total = result[0].totalCount[0]?.count || 0;
-    const canteens = result[0].canteens || [];
+    let canteens = result[0].canteens || [];
     const hasMore = offsetNum + limitNum < total;
 
     console.log(`🏪 MongoDB aggregation result: ${total} total canteens, returning ${canteens.length} canteens (hasMore: ${hasMore})`);
+
+    // Apply category filtering if category is provided
+    if (categoryFilter) {
+      console.log(`🏪 Applying category filter: ${categoryFilter}`);
+      console.log(`🏪 Total canteens before filtering: ${canteens.length}`);
+
+      const { Category, MenuItem } = await import('../models/mongodb-models');
+
+      // Filter canteens based on category
+      const filteredCanteens = await Promise.all(
+        canteens.map(async (canteen: any) => {
+          try {
+            const canteenIdentifier = canteen.id || canteen._id;
+            console.log(`🏪 Checking canteen: ${canteen.name} (ID: ${canteenIdentifier})`);
+
+            // Check if canteen has matching category
+            const hasMatchingCategory = await Category.findOne({
+              canteenId: canteenIdentifier,
+              name: { $regex: categoryFilter, $options: 'i' } // Case-insensitive match
+            });
+
+            if (hasMatchingCategory) {
+              console.log(`🏪 ✅ Canteen "${canteen.name}" matches via category: ${hasMatchingCategory.name}`);
+              return canteen;
+            }
+
+            // Check if any menu item name contains the category as substring
+            const hasMatchingMenuItem = await MenuItem.findOne({
+              canteenId: canteenIdentifier,
+              name: { $regex: categoryFilter, $options: 'i' } // Case-insensitive substring match
+            });
+
+            if (hasMatchingMenuItem) {
+              console.log(`🏪 ✅ Canteen "${canteen.name}" matches via menu item: ${hasMatchingMenuItem.name}`);
+              return canteen;
+            }
+
+            console.log(`🏪 ❌ Canteen "${canteen.name}" does NOT match category "${categoryFilter}"`);
+            return null; // No match found
+          } catch (error) {
+            console.error(`Error filtering canteen ${canteen.id}:`, error);
+            return null;
+          }
+        })
+      );
+
+      // Remove null values (canteens that didn't match)
+      canteens = filteredCanteens.filter((c: any) => c !== null);
+      console.log(`🏪 After category filtering: ${canteens.length} canteens match "${categoryFilter}"`);
+    }
 
     // Fetch trending items for each canteen (up to 4 items)
     const canteensWithTrending = await Promise.all(

@@ -34,10 +34,11 @@ export function useCanteensLazyLoad(
   institutionType: string | null,
   institutionId: string | null,
   limit: number = 5,
-  enabled: boolean = true
+  enabled: boolean = true,
+  category?: string | null
 ) {
   return useInfiniteQuery<CanteensResponse>({
-    queryKey: ['canteens-lazy-load', institutionType, institutionId, limit],
+    queryKey: ['canteens-lazy-load', institutionType, institutionId, limit, category],
     initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
       if (!institutionType || !institutionId) {
@@ -46,11 +47,13 @@ export function useCanteensLazyLoad(
       }
 
       const offset = (pageParam as number) * limit;
-      const url = `/api/system-settings/canteens/by-institution?institutionType=${encodeURIComponent(institutionType)}&institutionId=${encodeURIComponent(institutionId)}&limit=${limit}&offset=${offset}`;
+      const categoryParam = category ? `&category=${encodeURIComponent(category)}` : '';
+      const url = `/api/system-settings/canteens/by-institution?institutionType=${encodeURIComponent(institutionType)}&institutionId=${encodeURIComponent(institutionId)}&limit=${limit}&offset=${offset}${categoryParam}`;
 
       console.log(`🏪 ===== LAZY LOAD CANTEENS API REQUEST =====`);
       console.log(`🏪 useCanteensLazyLoad - Institution Type:`, institutionType);
       console.log(`🏪 useCanteensLazyLoad - Institution ID:`, institutionId);
+      console.log(`🏪 useCanteensLazyLoad - Category Filter:`, category || 'NONE');
       console.log(`🏪 useCanteensLazyLoad - Limit:`, limit);
       console.log(`🏪 useCanteensLazyLoad - Offset:`, offset);
       console.log(`🏪 useCanteensLazyLoad - Full URL:`, url);
