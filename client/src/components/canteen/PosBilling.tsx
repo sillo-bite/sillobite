@@ -30,19 +30,19 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
   const [showCartSheet, setShowCartSheet] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
-  
+
   // Form State
   const [customerName, setCustomerName] = useState("");
   const [discountConfig, setDiscountConfig] = useState<DiscountConfig>({ percent: 0, amount: 0 });
   const [couponCode, setCouponCode] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>("cash");
-  
+
   // Print State
   const [printError, setPrintError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [lastTransactionForPrint, setLastTransactionForPrint] = useState<Transaction | null>(null);
   const [lastTotalsForPrint, setLastTotalsForPrint] = useState<{ subtotal: number; discount: number; tax: number; total: number } | null>(null);
-  
+
   // Test Print State
   const [isTestPrinting, setIsTestPrinting] = useState(false);
 
@@ -63,19 +63,19 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
   // Test Print Handler
   const handleTestPrint = async () => {
     setIsTestPrinting(true);
-    
+
     try {
       const subtotal = 470.00;
       const discount = 50.00;
       const deliveryCharge = 40.00;
       const packagingFee = 15.00;
-      
+
       const taxableAmount = subtotal - discount + deliveryCharge + packagingFee;
       const tax = (taxableAmount * (canteenSettings.taxRate / 100)); // Dynamic tax calculation
       const total = taxableAmount + tax;
-      
+
       const testBillId = `TEST-${Date.now()}`;
-      
+
       const dummyReceiptData = {
         version: "1.0.0",
         billId: testBillId,
@@ -135,9 +135,9 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
           timestamp: Date.now(),
         },
       };
-      
+
       const result = await printBill(dummyReceiptData);
-      
+
       if (result.success) {
         toast.success("Test print sent successfully");
       } else {
@@ -173,11 +173,11 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
     // Get barcode from transaction and extract OTP from first 4 digits
     const barcode = (transaction as any).barcode || transaction.orderNumber || '';
     const orderOtp = barcode ? barcode.substring(0, 4) : '0000';
-    
+
     // Map payment method to printer API accepted values (CASH or UPI only)
     const isOffline = transaction.paymentMethod === 'offline' || transaction.paymentMethod === 'cash';
     const printerPaymentMode = isOffline ? 'CASH' : 'UPI';
-    
+
     const payload: any = {
       version: "1.0.0",
       billId: transaction.orderNumber,
@@ -224,10 +224,10 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
     setPrintError(null);
 
     const printPayload = formatTransactionForPrint(transaction, totalsForPrint);
-    
+
     try {
       const result = await printWithRetry(printPayload, 2, 1000);
-      
+
       if (result.success) {
         toast.success("Bill sent to printer successfully");
         setPrintError(null);
@@ -275,7 +275,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
       setLastTotalsForPrint(totals);
       resetForm();
       refetchTransactions();
-      
+
       // Send to printer after successful save (non-blocking)
       sendToPrinter(transaction, totals).catch(() => {
         // Error already handled in sendToPrinter
@@ -311,7 +311,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
       tax: transaction.taxAmount || 0,
       total: transaction.amount,
     };
-    
+
     const transactionForPrint: any = {
       id: transaction.id,
       orderNumber: transaction.orderNumber,
@@ -324,18 +324,18 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
       status: transaction.status,
       barcode: transaction.barcode,
     };
-    
+
     // Fetch canteen charges if payment method is UPI or QR
     const shouldIncludeCharges = transaction.paymentMethod === 'upi' || transaction.paymentMethod === 'card' || transaction.paymentMethod === 'netbanking' || transaction.paymentMethod === 'qr';
     let chargesForPrint: any[] = [];
-    
+
     if (shouldIncludeCharges && transaction.chargesApplied) {
       // chargesApplied can be a JSON string or already an array
-      chargesForPrint = typeof transaction.chargesApplied === 'string' 
-        ? JSON.parse(transaction.chargesApplied) 
+      chargesForPrint = typeof transaction.chargesApplied === 'string'
+        ? JSON.parse(transaction.chargesApplied)
         : transaction.chargesApplied;
     }
-    
+
     await sendToPrinterWithCharges(transactionForPrint, totalsForPrint, chargesForPrint);
   };
 
@@ -344,7 +344,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
     setPrintError(null);
 
     const printPayload = formatTransactionForPrint(transaction, totalsForPrint);
-    
+
     // Add charges if available and payment method requires them
     if (charges && charges.length > 0) {
       printPayload.charges = charges.map((charge: any) => ({
@@ -353,10 +353,10 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
         isPercentage: charge.type === 'percent',
       }));
     }
-    
+
     try {
       const result = await printWithRetry(printPayload, 2, 1000);
-      
+
       if (result.success) {
         toast.success("Bill sent to printer successfully");
         setPrintError(null);
@@ -386,92 +386,52 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
   };
 
   return (
-    <OwnerPageLayout>
-      <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 px-4">
-          <OwnerTabList>
-            <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
-              Billing
-            </OwnerTab>
-            <OwnerTab value="history" icon={<History className="w-4 h-4" />}>
-              History
-            </OwnerTab>
-          </OwnerTabList>
-        </div>
+    <div className="z-50 overflow-auto h-screen scrollbar-hide">
+      <OwnerPageLayout>
+        <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3  px-4">
+            <OwnerTabList>
+              <OwnerTab value="billing" icon={<ShoppingCart className="w-4 h-4" />}>
+                Billing
+              </OwnerTab>
+              <OwnerTab value="history" icon={<History className="w-4 h-4" />}>
+                History
+              </OwnerTab>
+            </OwnerTabList>
+          </div>
 
-        {/* Single shared content container - only one panel rendered at a time */}
-        <div className="pos-billing-tab-content flex-1 flex flex-col min-h-0 overflow-hidden mt-4">
-          {activeTab === "billing" ? (
-            <>
-              {/* Desktop: Side by side | Mobile: Full width menu only */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
-                <MenuGrid
-                  menuItems={menuItems}
-                  categories={categories}
-                  searchQuery={searchQuery}
-                  selectedCategory={selectedCategory}
-                  isLoading={isLoading}
-                  onSearchChange={setSearchQuery}
-                  onCategoryChange={setSelectedCategory}
-                  onItemClick={addToCart}
-                  headerExtras={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleTestPrint}
-                      disabled={isTestPrinting}
-                      className="flex items-center gap-2"
-                    >
-                      <TestTube2 className={`w-4 h-4 ${isTestPrinting ? "animate-pulse" : ""}`} />
-                      <span className="hidden sm:inline">{isTestPrinting ? "Testing..." : "Test Printer"}</span>
-                      <span className="sm:hidden">{isTestPrinting ? "Test..." : "Test"}</span>
-                    </Button>
-                  }
-                />
-
-                {/* Desktop Cart - Hidden on mobile */}
-                <div className="hidden lg:block">
-                  <CartPanel
-                    cart={cart}
-                    customerName={customerName}
-                    discountConfig={discountConfig}
-                    totals={totals}
-                    isProcessing={isProcessing}
-                    taxRate={canteenSettings.taxRate}
-                    taxName={canteenSettings.taxName}
-                    onCustomerNameChange={setCustomerName}
-                    onQuantityChange={updateQuantity}
-                    onRemoveItem={removeFromCart}
-                    onClearCart={resetForm}
-                    onDiscountConfigChange={handleDiscountConfigChange}
-                    onCheckout={handleCheckout}
+          {/* Single shared content container - only one panel rendered at a time */}
+          <div className="pos-billing-tab-content flex-1 flex flex-col min-h-0 overflow-hidden">
+            {activeTab === "billing" ? (
+              <>
+                {/* Desktop: Side by side | Mobile: Full width menu only */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden min-h-0">
+                  <MenuGrid
+                    menuItems={menuItems}
+                    categories={categories}
+                    searchQuery={searchQuery}
+                    selectedCategory={selectedCategory}
+                    isLoading={isLoading}
+                    onSearchChange={setSearchQuery}
+                    onCategoryChange={setSelectedCategory}
+                    onItemClick={addToCart}
+                    headerExtras={
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTestPrint}
+                        disabled={isTestPrinting}
+                        className="flex items-center gap-2"
+                      >
+                        <TestTube2 className={`w-4 h-4 ${isTestPrinting ? "animate-pulse" : ""}`} />
+                        <span className="hidden sm:inline">{isTestPrinting ? "Testing..." : "Test Printer"}</span>
+                        <span className="sm:hidden">{isTestPrinting ? "Test..." : "Test"}</span>
+                      </Button>
+                    }
                   />
-                </div>
-              </div>
 
-              {/* Mobile Floating Cart Button */}
-              {cart.length > 0 && (
-                <button
-                  onClick={() => setShowCartSheet(true)}
-                  className="lg:hidden fixed bottom-6 right-6 z-40 bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 pr-5"
-                >
-                  <ShoppingCart className="w-6 h-6" />
-                  <Badge className="bg-white text-primary font-bold">
-                    {cart.length}
-                  </Badge>
-                </button>
-              )}
-
-              {/* Mobile Cart Sheet */}
-              <Sheet open={showCartSheet} onOpenChange={setShowCartSheet}>
-                <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
-                  <SheetHeader className="p-4 border-b">
-                    <SheetTitle className="flex items-center gap-2">
-                      <ShoppingCart className="w-5 h-5" />
-                      Cart ({cart.length} items)
-                    </SheetTitle>
-                  </SheetHeader>
-                  <div className="flex-1 overflow-hidden">
+                  {/* Desktop Cart - Hidden on mobile */}
+                  <div className="hidden lg:block">
                     <CartPanel
                       cart={cart}
                       customerName={customerName}
@@ -485,59 +445,99 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
                       onRemoveItem={removeFromCart}
                       onClearCart={resetForm}
                       onDiscountConfigChange={handleDiscountConfigChange}
-                      onCheckout={() => {
-                        setShowCartSheet(false);
-                        handleCheckout();
-                      }}
+                      onCheckout={handleCheckout}
                     />
                   </div>
-                </SheetContent>
-              </Sheet>
-            </>
-          ) : (
-            <TransactionHistory 
-              transactions={transactions} 
-              pagination={transactionsPagination}
-              onPageChange={setTransactionsPage}
-              onTransactionClick={handleTransactionClick}
-              onRefresh={refetchTransactions}
-            />
-          )}
-        </div>
-      </OwnerTabs>
+                </div>
 
-      {/* POS Checkout Dialog */}
-      <PosCheckoutDialog
-        open={showCheckoutDialog}
-        onOpenChange={setShowCheckoutDialog}
-        totals={totals}
-        cart={cart}
-        customerName={customerName || "Customer"}
-        canteenId={canteenId}
-        taxRate={canteenSettings.taxRate}
-        taxName={canteenSettings.taxName}
-        onOrderCreated={() => {
-          refetchTransactions();
-          resetForm();
-        }}
-      />
+                {/* Mobile Floating Cart Button */}
+                {cart.length > 0 && (
+                  <button
+                    onClick={() => setShowCartSheet(true)}
+                    className="lg:hidden fixed bottom-6 right-6 z-40 bg-primary text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all flex items-center gap-2 pr-5"
+                  >
+                    <ShoppingCart className="w-6 h-6" />
+                    <Badge className="bg-white text-primary font-bold">
+                      {cart.length}
+                    </Badge>
+                  </button>
+                )}
 
-      {/* Receipt Dialog */}
-      <ReceiptDialog
-        open={showReceipt}
-        onOpenChange={setShowReceipt}
-        transaction={currentTransaction}
-        onPrint={handlePrintReceipt}
-      />
 
-      {/* Order Detail Dialog for History */}
-      <OrderDetailDialog
-        open={showOrderDetail}
-        onOpenChange={setShowOrderDetail}
-        transaction={selectedTransaction}
-        onPrint={handlePrintHistoricalReceipt}
-        isPrinting={isPrinting}
-      />
-    </OwnerPageLayout>
+              </>
+            ) : (
+              <TransactionHistory
+                transactions={transactions}
+                pagination={transactionsPagination}
+                onPageChange={setTransactionsPage}
+                onTransactionClick={handleTransactionClick}
+                onRefresh={refetchTransactions}
+              />
+            )}
+          </div>
+        </OwnerTabs>
+
+        {/* POS Checkout Dialog */}
+        <PosCheckoutDialog
+          open={showCheckoutDialog}
+          onOpenChange={setShowCheckoutDialog}
+          totals={totals}
+          cart={cart}
+          customerName={customerName || "Customer"}
+          canteenId={canteenId}
+          taxRate={canteenSettings.taxRate}
+          taxName={canteenSettings.taxName}
+          onOrderCreated={() => {
+            refetchTransactions();
+            resetForm();
+          }}
+        />
+
+        {/* Receipt Dialog */}
+        <ReceiptDialog
+          open={showReceipt}
+          onOpenChange={setShowReceipt}
+          transaction={currentTransaction}
+          onPrint={handlePrintReceipt}
+        />
+
+        {/* Order Detail Dialog for History */}
+        <OrderDetailDialog
+          open={showOrderDetail}
+          onOpenChange={setShowOrderDetail}
+          transaction={selectedTransaction}
+          onPrint={handlePrintHistoricalReceipt}
+          isPrinting={isPrinting}
+        />
+
+      </OwnerPageLayout>
+
+      {/* Mobile Cart Sheet */}
+      {showCartSheet && (
+        <>
+
+          <CartPanel
+            cart={cart}
+            customerName={customerName}
+            discountConfig={discountConfig}
+            totals={totals}
+            isProcessing={isProcessing}
+            taxRate={canteenSettings.taxRate}
+            taxName={canteenSettings.taxName}
+            onCustomerNameChange={setCustomerName}
+            onQuantityChange={updateQuantity}
+            onRemoveItem={removeFromCart}
+            onClearCart={resetForm}
+            onDiscountConfigChange={handleDiscountConfigChange}
+            onCloseCart={() => setShowCartSheet(false)}
+            onCheckout={() => {
+              setShowCartSheet(false);
+              handleCheckout();
+            }}
+          />
+        </>
+      )
+      }
+    </div >
   );
 }

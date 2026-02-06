@@ -98,7 +98,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
         }, {
             root: null,
             threshold: 0,
-            rootMargin: selectedCategory ? "-70px 0px 0px 0px" : "-92px 0px 0px 0px"
+            rootMargin: selectedCategory ? "-70px 0px 0px 0px" : "-78px 0px 0px 0px"
         });
 
         obs.observe(el);
@@ -194,6 +194,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             </div>
             <div ref={trg2} className="h-2px" />
             <div
+                className={`${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'}`}
                 id="search-bar"
                 style={{
                     position: isSearchSticky ? 'fixed' : 'relative',
@@ -202,13 +203,15 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                     right: 0,
                     zIndex: isSearchSticky ? 50 : 1,
                     paddingTop: isSearchSticky ? '12px' : '0',
+                    marginLeft: isSearchSticky ? 'auto' : '0',
+                    marginRight: isSearchSticky ? '0px' : '0',
                     paddingBottom: '16px',
                     // Background only when sticky
-                    background: isSearchSticky
-                        ? (resolvedTheme === 'dark'
-                            ? 'hsla(0, 41%, 7%, 0.95)'
-                            : 'rgba(255, 255, 255, 0.98)')
-                        : 'transparent',
+                    // background: isSearchSticky
+                    //     ? (resolvedTheme === 'dark'
+                    //         ? 'hsla(0, 41%, 7%, 0.95)'
+                    //         : 'rgba(255, 255, 255, 0.98)')
+                    //     : 'transparent',
                     backdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
                     WebkitBackdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
                     // borderBottom: isSearchSticky
@@ -222,10 +225,10 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                     transition: isSearchSticky && isCategorySticky ? 'background 0.5s ease-out, backdrop-filter 0.5s ease-out, box-shadow 0.5s ease-out' : 'background 0.2s ease-out, backdrop-filter 0.2s ease-out, box-shadow 0.2s ease-out',
                 }}
             >
-                <div className="backdrop-blur-md max-w-4xl mx-auto px-6">
-                    <div
-                        className="flex items-center gap-3">
-                        {/* Back Button - Icon only, shown when category is selected */}
+                <div className={`flex items-center gap-3 backdrop-blur-md max-w-4xl ${isSearchSticky ? 'px-6' : 'mx-auto px-6'
+                    }`}>
+                    <div className="flex items-center gap-3 flex-1">
+                        {/* Back Button */}
                         {selectedCategory && (
                             <button
                                 onClick={() => setSelectedCategory(null)}
@@ -239,8 +242,10 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                         )}
 
                         {/* Search Bar */}
-                        <div className="relative flex-1">
-                            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <div className={`relative transition-all duration-300 ${isSearchSticky ? 'flex-1' : 'flex-[1.5]'
+                            }`}>
+                            <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                }`} />
                             <input
                                 type="text"
                                 placeholder="Search available canteens..."
@@ -252,6 +257,35 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                                     }`}
                             />
                         </div>
+                    </div>
+
+                    {/* Profile button stays the same */}
+                    <div
+                        style={{
+                            opacity: isSearchSticky ? 1 : 0,
+                            transform: `translateX(${isSearchSticky ? 0 : 20}px) scale(${isSearchSticky ? 1 : 0.8})`,
+                            width: isSearchSticky ? '48px' : '0px',
+                            minWidth: isSearchSticky ? '48px' : '0px',
+                            overflow: 'hidden',
+                            transition: 'opacity 0.4s ease-out, transform 0.4s ease-out, width 0.4s ease-out',
+                        }}
+                    >
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                                window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
+                            }}
+                            className={`rounded-full h-12 w-12 p-0 relative overflow-hidden group flex-shrink-0 transition-all duration-200 ${resolvedTheme === 'dark'
+                                ? 'bg-white/10 hover:bg-white/15 border border-white/10'
+                                : 'bg-primary/10 hover:bg-primary/15 border border-primary/20'
+                                }`}
+                            aria-label="View Profile"
+                            tabIndex={isSearchSticky ? 0 : -1}
+                        >
+                            <UserCircle2 className={`w-7 h-7 ${resolvedTheme === 'dark' ? 'text-primary-light' : 'text-primary'
+                                }`} />
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -276,6 +310,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             {/* <div ref={trg} className="h-2px" /> */}
             <div className={`mb-4 ${selectedCategory ? 'pt-4' : ''}`}>
                 <div
+                    className={`${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'}`}
                     id="category-section"
                     style={{
                         position: isCategorySticky ? 'fixed' : 'relative',
@@ -283,15 +318,14 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                         left: 0,
                         right: 0,
                         zIndex: isCategorySticky ? 50 : 1,
-                        paddingTop: isCategorySticky ? '12px' : '0',
-                        paddingLeft: '16px',
+                        paddingTop: isCategorySticky ? '12px' : '12px',
                         paddingBottom: '16px',
                         //Background only when sticky
-                        background: isCategorySticky
-                            ? (resolvedTheme === 'dark'
-                                ? 'rgba(15, 10, 24, 0.95)'
-                                : 'rgba(255, 255, 255, 0.98)')
-                            : 'transparent',
+                        // background: isCategorySticky
+                        //     ? (resolvedTheme === 'dark'
+                        //         ? 'rgba(15, 10, 24, 0.95)'
+                        //         : 'rgba(255, 255, 255, 0.98)')
+                        //     : 'transparent',
                         backdropFilter: isCategorySticky ? 'blur(20px) saturate(180%)' : 'none',
                         WebkitBackdropFilter: isCategorySticky ? 'blur(20px) saturate(180%)' : 'none',
                         borderBottom: isCategorySticky
@@ -305,7 +339,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                         transition: 'background 0.5s ease-out, backdrop-filter 0.5s ease-out, box-shadow 0.5s ease-out',
                     }}
                 >
-                    <div className={`flex gap-3 overflow-x-auto scrollbar-hide`}>
+                    <div className={`pl-4 pr-4 flex gap-3 overflow-x-auto scrollbar-hide`}>
                         {categories.map((category) => (
 
                             <button
@@ -326,7 +360,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
 
             </div>
 
-            <div className={`px-4 flex items-center justify-between ${isCategorySticky ? isSearchSticky && selectedCategory ? 'mt-40' : 'mt-20' : ''}`}>
+            <div className={`px-4 flex items-center justify-between ${isCategorySticky ? isSearchSticky && selectedCategory ? 'mt-40' : 'mt-24' : ''}`}>
                 <h1 className="text-2xl font-bold">Available Canteens</h1>
                 <Filter className="mx-4">
                     <button className="text-primary px-4 py-2 rounded-2xl">Filter</button>

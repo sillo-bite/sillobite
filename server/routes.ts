@@ -1243,7 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch data in parallel
       const [mediaBanners, trendingItems, quickPicks, systemSettings] = await Promise.all([
         // OPTIMIZED: Media Banners - direct DB query
-        MediaBanner.find({ isActive: true })
+        MediaBanner.find({ isActive: true, canteenId: canteenId })
           .select('_id name type cloudinaryUrl fileId originalName mimeType displayMode')
           .sort({ displayOrder: 1, createdAt: -1 })
           .limit(10)
