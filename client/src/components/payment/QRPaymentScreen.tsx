@@ -49,7 +49,7 @@ export function QRPaymentScreen({
     enabled: true,
     onPaymentSuccess: (data: any) => {
       console.log('🔔 WebSocket payment_success received:', data);
-      
+
       if (hasPaymentSucceededRef.current) {
         return;
       }
@@ -74,7 +74,7 @@ export function QRPaymentScreen({
     hasPaymentSucceededRef.current = true;
     setPaymentStatus('success');
     stopPolling();
-    
+
     if (expiryTimerRef.current) {
       clearInterval(expiryTimerRef.current);
       expiryTimerRef.current = null;
@@ -88,10 +88,10 @@ export function QRPaymentScreen({
       customerName: customerName
     };
     setOrderDetails(orderInfo);
-    
+
     console.log('✅ Payment successful via WebSocket:', orderInfo);
     toast.success('Payment received instantly!');
-    
+
     setTimeout(() => {
       console.log('🔄 Attempting redirect with orderInfo:', orderInfo);
       if (onSuccess && orderInfo.orderNumber) {
@@ -138,11 +138,11 @@ export function QRPaymentScreen({
       if (response.success) {
         setQrData(response);
         setPaymentStatus('pending');
-        
+
         // Store refs for WebSocket matching
         qrIdRef.current = response.qrId;
         orderNumberRef.current = response.orderNumber;
-        
+
         const expiresAt = response.expiresAt;
         const now = Math.floor(Date.now() / 1000);
         const timeRemaining = expiresAt - now;
@@ -183,7 +183,7 @@ export function QRPaymentScreen({
           hasPaymentSucceededRef.current = true;
           setPaymentStatus('success');
           stopPolling();
-          
+
           if (expiryTimerRef.current) {
             clearInterval(expiryTimerRef.current);
             expiryTimerRef.current = null;
@@ -197,10 +197,10 @@ export function QRPaymentScreen({
             customerName: customerName
           };
           setOrderDetails(orderInfo);
-          
+
           console.log('✅ Payment successful:', orderInfo);
           toast.success('Payment received successfully!');
-          
+
           setTimeout(() => {
             console.log('🔄 Attempting redirect with orderInfo:', orderInfo);
             if (onSuccess && orderInfo.orderNumber) {
@@ -225,9 +225,9 @@ export function QRPaymentScreen({
 
   const startPolling = (qrId: string) => {
     stopPolling();
-    
+
     checkPaymentStatus(qrId);
-    
+
     pollingIntervalRef.current = setInterval(() => {
       if (!hasPaymentSucceededRef.current) {
         checkPaymentStatus(qrId);
@@ -357,7 +357,7 @@ export function QRPaymentScreen({
             <p className="text-muted-foreground">
               Your payment has been received and verified.
             </p>
-            
+
             {orderDetails && (
               <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
                 {orderDetails.orderNumber && (
@@ -392,9 +392,9 @@ export function QRPaymentScreen({
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Redirecting to order status...</span>
               </div>
-              
-              <Button 
-                variant="secondary" 
+
+              <Button
+                variant="secondary"
                 className="w-full"
                 onClick={() => {
                   if (onSuccess && orderDetails?.orderNumber) {
@@ -442,23 +442,24 @@ export function QRPaymentScreen({
   }
 
   return (
-    <div className="fixed inset-0 bg-background z-50 flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <QrCode className="w-6 h-6 text-primary" />
-          <h1 className="text-xl font-semibold">Scan to Pay</h1>
+    <>
+      <div className="fixed top-0 left-0 right-0 bottom-0 bg-background z-50">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <QrCode className="w-6 h-6 text-primary" />
+            <h1 className="text-xl font-semibold">Scan to Pay</h1>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCancel}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-6 h-6" />
+          </Button>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleCancel}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <X className="w-6 h-6" />
-        </Button>
       </div>
-
-      <div className="flex-1 flex flex-col items-center justify-center p-6 space-y-6">
+      <div className="flex flex-col items-center justify-center overflow-y-auto scrollbar-hide z-50">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 space-y-6">
             <div className="text-center space-y-2">
@@ -476,7 +477,7 @@ export function QRPaymentScreen({
                 <img
                   src={qrData.qrImageUrl}
                   alt="QR Code for Payment"
-                  className="w-full max-w-sm h-auto"
+                  className="w-full max-w-sm h-50"
                 />
               </div>
             )}
@@ -486,14 +487,14 @@ export function QRPaymentScreen({
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Waiting for payment...</span>
               </div>
-              
+
               {isConnected && (
                 <div className="flex items-center justify-center gap-1 text-xs text-green-600">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                   <span>Live updates enabled</span>
                 </div>
               )}
-              
+
               {timeLeft > 0 && (
                 <div className="flex items-center justify-center gap-2 text-sm">
                   <span className="text-muted-foreground">Expires in:</span>
@@ -520,6 +521,8 @@ export function QRPaymentScreen({
           Cancel Payment
         </Button>
       </div>
-    </div>
+
+    </>
+
   );
 }

@@ -24,6 +24,9 @@ interface CanteenContextType {
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
   totalCanteens: number;
+  // Category filtering
+  selectedCategory: string | null;
+  setSelectedCategory: (category: string | null) => void;
 }
 
 const CanteenContext = createContext<CanteenContextType | undefined>(undefined);
@@ -34,6 +37,7 @@ interface CanteenProviderProps {
 
 export const CanteenProvider = React.memo(function CanteenProvider({ children }: CanteenProviderProps) {
   const [selectedCanteen, setSelectedCanteen] = useState<Canteen | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const hasManuallySelected = React.useRef(false); // Track if user manually selected a canteen
   const { user, isAuthenticated } = useAuthSync();
   const { initializeCartForCanteen } = useCart();
@@ -208,7 +212,8 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     institutionType,
     institutionId,
     5, // limit - load 5 canteens per page
-    shouldFetchCanteens && !!institutionType && !!institutionId // Enable only when user is authenticated and has institution data
+    shouldFetchCanteens && !!institutionType && !!institutionId, // Enable only when user is authenticated and has institution data
+    selectedCategory // Pass selected category for filtering
   );
 
   // Restaurant-specific canteens query for both authenticated users with restaurant context and temporary users
@@ -337,6 +342,9 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     isFetchingNextPage: institutionType ? isFetchingNextPage : false,
     fetchNextPage: institutionType ? fetchNextPage : () => { },
     totalCanteens,
+    // Category filtering
+    selectedCategory,
+    setSelectedCategory,
   }), [
     selectedCanteen,
     canteens,
@@ -350,7 +358,9 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-    totalCanteens
+    totalCanteens,
+    selectedCategory,
+    setSelectedCategory,
   ]);
 
   return (
