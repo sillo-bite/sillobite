@@ -459,7 +459,7 @@ export default function AppPage() {
 
   return (
     <div
-      className="min-h-screen bg-background overflow-y-auto overflow-x-hidden"
+      className="min-h-screen bg-background overflow-x-hidden"
       style={{ WebkitOverflowScrolling: 'touch' }}
     >
       {currentView === "selector" && (
