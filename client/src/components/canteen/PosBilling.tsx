@@ -478,21 +478,22 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
         </OwnerTabs>
 
         {/* POS Checkout Dialog */}
-        <PosCheckoutDialog
-          open={showCheckoutDialog}
-          onOpenChange={setShowCheckoutDialog}
-          totals={totals}
-          cart={cart}
-          customerName={customerName || "Customer"}
-          canteenId={canteenId}
-          taxRate={canteenSettings.taxRate}
-          taxName={canteenSettings.taxName}
-          onOrderCreated={() => {
-            refetchTransactions();
-            resetForm();
-          }}
-        />
-
+        {showCheckoutDialog && (
+          <PosCheckoutDialog
+            open={showCheckoutDialog}
+            onOpenChange={setShowCheckoutDialog}
+            totals={totals}
+            cart={cart}
+            customerName={customerName || "Customer"}
+            canteenId={canteenId}
+            taxRate={canteenSettings.taxRate}
+            taxName={canteenSettings.taxName}
+            onOrderCreated={() => {
+              refetchTransactions();
+              resetForm();
+            }}
+          />
+        )}
         {/* Receipt Dialog */}
         <ReceiptDialog
           open={showReceipt}
