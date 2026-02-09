@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { connectToMongoDB } from './mongodb';
 import {
   User, InsertUser, UserRole
@@ -449,15 +449,20 @@ export class HybridStorage implements IStorage {
     };
 
     // Ensure role is correctly cast to UserRole enum if it's a string
-    if (normalizedUser.role && typeof normalizedUser.role === 'string') {
-      const roleStr = (normalizedUser.role as string).toUpperCase();
-      if (Object.prototype.hasOwnProperty.call(UserRole, roleStr)) {
-        normalizedUser.role = UserRole[roleStr as keyof typeof UserRole];
+    if (typeof normalizedUser.role === "string") {
+      const roleStr = normalizedUser.role;
+
+      if (!Object.values(UserRole).includes(roleStr as UserRole)) {
+        throw new Error(`Invalid role: ${normalizedUser.role}`);
       }
+
+      normalizedUser.role = roleStr.toUpperCase() as UserRole;
     }
 
+    console.log(normalizedUser, typeof normalizedUser.role);
+
     // For guest users, ensure we don't include unnecessary fields
-    if (insertUser.role === UserRole.GUEST) {
+    if (normalizedUser.role === UserRole.GUEST) {
       delete normalizedUser.registerNumber;
       delete normalizedUser.department;
       delete normalizedUser.joiningYear;

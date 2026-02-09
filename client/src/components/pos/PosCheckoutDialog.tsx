@@ -17,7 +17,7 @@ import OrderNotFoundModal from "@/components/orders/OrderNotFoundModal";
 import DeliveryPersonSelectModal from "@/components/canteen/DeliveryPersonSelectModal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { OrderTotals } from "@/types/pos";
-
+import { Button } from "@/components/ui/button";
 interface PosCheckoutDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -81,18 +81,18 @@ export function PosCheckoutDialog({
       console.log('🔍 [CHECKOUT] Fetching charges for canteenId:', canteenId);
       const chargesResponse = await apiRequest(`/api/canteens/${canteenId}/charges`);
       console.log('📥 [CHECKOUT] Charges API response:', chargesResponse);
-      
+
       const chargesArray = Array.isArray(chargesResponse) ? chargesResponse : chargesResponse?.items || [];
       console.log(`📋 [CHECKOUT] Total charges found: ${chargesArray.length}`);
-      
+
       const activeCharges = chargesArray.filter((charge: any) => charge.active);
       console.log(`📊 [CHECKOUT] Active canteen charges: ${activeCharges.length}`, activeCharges);
-      
+
       if (activeCharges.length === 0) {
         console.warn(`⚠️ [CHECKOUT] No active canteen charges configured for canteen ${canteenId}`);
         console.warn('⚠️ [CHECKOUT] All charges:', chargesArray);
       }
-      
+
       setCanteenCharges(activeCharges);
       return activeCharges;
     } catch (error) {
@@ -135,7 +135,7 @@ export function PosCheckoutDialog({
     try {
       setIsLoading(true);
       await fetchCanteenCharges();
-      
+
       const response = await apiRequest('/api/checkout-sessions/create', {
         method: 'POST',
         body: JSON.stringify({
@@ -161,7 +161,7 @@ export function PosCheckoutDialog({
 
   const abandonCheckoutSession = async (sessionId: string) => {
     if (hasAbandonedRef.current) return;
-    
+
     try {
       hasAbandonedRef.current = true;
       await apiRequest(`/api/checkout-sessions/${sessionId}/abandon`, {
@@ -190,7 +190,7 @@ export function PosCheckoutDialog({
       if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_selection' && !isPaymentInProgressRef.current && !showQRPayment) {
         abandonCheckoutSession(checkoutSessionId);
       }
-      
+
       // Only reset state if not in payment processing, not showing success, and not showing QR payment
       if (!isPaymentInProgressRef.current && stage !== 'payment_success' && !showQRPayment) {
         setStage('payment_selection');
@@ -204,7 +204,7 @@ export function PosCheckoutDialog({
           sessionTimerRef.current = null;
         }
       }
-      
+
       // When closing after success, reset for next time
       if (stage === 'payment_success') {
         setStage('payment_selection');
@@ -256,28 +256,28 @@ export function PosCheckoutDialog({
     if (isPaymentInProgressRef.current) {
       return;
     }
-    
+
     // Close Razorpay if open
     if (razorpayRef.current) {
       razorpayRef.current.close();
       razorpayRef.current = null;
     }
-    
+
     // Only abandon session if we're at payment selection stage
     if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_selection') {
       abandonCheckoutSession(checkoutSessionId);
     }
-    
+
     onOpenChange(false);
   };
 
   const initiateUpiPayment = async () => {
     try {
       setIsLoading(true);
-      
+
       const upiTotals = calculateTotalsWithCharges(totals, canteenCharges, true);
       cachedTotalsRef.current = upiTotals;
-      
+
       const response = await apiRequest('/api/pos/payments/initiate', {
         method: 'POST',
         body: JSON.stringify({
@@ -293,7 +293,7 @@ export function PosCheckoutDialog({
       if (response.success) {
         setPaymentData(response);
         setStage('payment_processing');
-        
+
         // Load Razorpay and open payment modal
         loadRazorpayAndOpenModal(response);
       } else {
@@ -358,7 +358,7 @@ export function PosCheckoutDialog({
     try {
       setIsLoading(true);
       isPaymentInProgressRef.current = false;
-      
+
       // Create order after successful payment
       const orderResponse = await apiRequest('/api/pos/orders/create', {
         method: 'POST',
@@ -374,10 +374,10 @@ export function PosCheckoutDialog({
         setCreatedOrder(orderResponse.order);
         setStage('payment_success');
         toast.success('Order created successfully!');
-        
+
         // Reopen dialog to show success screen
         onOpenChange(true);
-        
+
         if (onOrderCreated) {
           onOrderCreated();
         }
@@ -400,7 +400,7 @@ export function PosCheckoutDialog({
       const qrTotals = calculateTotalsWithCharges(totals, canteenCharges, true);
       cachedCartRef.current = cart;
       cachedTotalsRef.current = qrTotals;
-      
+
       // Show QR payment screen
       setShowQRPayment(true);
       onOpenChange(false);
@@ -412,12 +412,12 @@ export function PosCheckoutDialog({
 
   const handleOfflinePaymentConfirmed = async () => {
     setShowOfflineConfirm(false);
-    
+
     try {
       setIsLoading(true);
-      
+
       cachedTotalsRef.current = totals;
-      
+
       // Create order with offline payment (no charges)
       const orderResponse = await apiRequest('/api/pos/orders/create-offline', {
         method: 'POST',
@@ -434,7 +434,7 @@ export function PosCheckoutDialog({
         setCreatedOrder(orderResponse.order);
         setStage('payment_success');
         toast.success('Order created successfully!');
-        
+
         if (onOrderCreated) {
           onOrderCreated();
         }
@@ -464,7 +464,7 @@ export function PosCheckoutDialog({
       // Determine payment method from order if available, otherwise use state
       const orderPaymentMethod = createdOrder.paymentMethod || paymentMethod;
       const isOfflineOrder = orderPaymentMethod === 'offline' || orderPaymentMethod === 'cash';
-      
+
       // Map payment method to printer API accepted values (CASH or UPI only)
       const printerPaymentMode = isOfflineOrder ? 'CASH' : 'UPI';
 
@@ -505,17 +505,17 @@ export function PosCheckoutDialog({
       if (!isOfflineOrder) {
         // Use chargesApplied from order if available, otherwise calculate from canteen charges
         let chargesForPrint: any[] = [];
-        
+
         console.log('🔍 Print Debug - Order Payment Method:', orderPaymentMethod);
         console.log('🔍 Print Debug - Created Order:', createdOrder);
         console.log('🔍 Print Debug - chargesApplied:', createdOrder.chargesApplied);
         console.log('🔍 Print Debug - chargesTotal:', createdOrder.chargesTotal);
         console.log('🔍 Print Debug - Canteen Charges:', canteenCharges);
-        
+
         if (createdOrder.chargesApplied) {
           // Parse chargesApplied from order (can be string or array)
-          chargesForPrint = typeof createdOrder.chargesApplied === 'string' 
-            ? JSON.parse(createdOrder.chargesApplied) 
+          chargesForPrint = typeof createdOrder.chargesApplied === 'string'
+            ? JSON.parse(createdOrder.chargesApplied)
             : createdOrder.chargesApplied;
           console.log('✅ Using chargesApplied from order:', chargesForPrint);
         } else if (canteenCharges.length > 0) {
@@ -538,7 +538,7 @@ export function PosCheckoutDialog({
         } else {
           console.warn('⚠️ No charges found - neither chargesApplied nor canteenCharges');
         }
-        
+
         if (chargesForPrint.length > 0) {
           printPayload.charges = chargesForPrint.map((charge: any) => ({
             name: charge.name || 'Charge',
@@ -612,7 +612,7 @@ export function PosCheckoutDialog({
       const response = await apiRequest(`/api/orders/${orderId}/out-for-delivery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           counterId: null,
           deliveryPersonId,
           deliveryPersonEmail
@@ -643,13 +643,13 @@ export function PosCheckoutDialog({
   // Helper function to check if scanned barcode matches order (full barcode or first 4 digits)
   const matchesBarcode = (scannedBarcode: string, orderBarcode: string): boolean => {
     if (!orderBarcode) return false;
-    
+
     // Exact match
     if (scannedBarcode === orderBarcode) return true;
-    
+
     // Check if scanned barcode matches first 4 digits (OTP)
     if (scannedBarcode.length === 4 && orderBarcode.startsWith(scannedBarcode)) return true;
-    
+
     return false;
   };
 
@@ -666,7 +666,7 @@ export function PosCheckoutDialog({
     try {
       console.log('📱 Barcode scanned:', barcode);
       setIsBarcodeModalOpen(false);
-      
+
       // Verify if the scanned barcode matches the order's barcode (full or first 4 digits)
       if (createdOrder && matchesBarcode(barcode, createdOrder.barcode)) {
         console.log('✅ Barcode/OTP matches! Showing order found modal');
@@ -696,34 +696,34 @@ export function PosCheckoutDialog({
         console.error('❌ No order selected for delivery');
         return;
       }
-      
+
       const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
-      
+
       if (!orderId) {
         console.error('❌ Order ID not found in order object:', createdOrder);
         return;
       }
-      
+
       setIsDelivering(true);
       console.log('📦 Marking order as delivered:', { orderId, orderNumber: createdOrder.orderNumber });
-      
+
       // Call the deliver API endpoint
       // For POS orders without delivery person, send deliveryPersonId if exists, otherwise send empty body
-      const requestBody = createdOrder.deliveryPersonId 
+      const requestBody = createdOrder.deliveryPersonId
         ? { deliveryPersonId: createdOrder.deliveryPersonId }
         : {};
-        
+
       await apiRequest(`/api/orders/${orderId}/deliver`, {
         method: 'POST',
         body: JSON.stringify(requestBody)
       });
-      
+
       console.log('✅ Order marked as delivered successfully');
       toast.success('Order marked as delivered!');
-      
+
       handleCloseOrderFoundModal();
       onOpenChange(false);
-      
+
       if (onOrderCreated) {
         onOrderCreated();
       }
@@ -745,482 +745,445 @@ export function PosCheckoutDialog({
       console.error('❌ No order for delivery person assignment');
       return;
     }
-    
+
     const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
-    
+
     if (!orderId) {
       console.error('❌ Order ID not found in order object:', createdOrder);
       return;
     }
-    
+
     markOutForDeliveryMutation.mutate({ orderId, deliveryPersonId, deliveryPersonEmail });
   };
 
   return (
     <>
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-bold">
-              {stage === 'payment_success' ? 'Order Confirmed' : 'Checkout'}
-            </DialogTitle>
-            <button
-              onClick={handleClose}
-              disabled={isLoading}
-              className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+      <Card className="fixed inset-0 h-2/3 flex flex-col px-4 mx-4 mt-32 z-50">
+        <div className="flex items-center justify-between">
+          <div className="flex-1 text-lg font-semibold p-4">
+            {stage === 'payment_success' ? 'Order Confirmed' : 'Checkout'}
+          </div>
+          <div className="flex flex-3">
+            <div className="flex items-center">
+              <Clock className="w-5 h-5 mr-2 text-primary" />
+            </div>
+            <div className="text-lg font-bold text-primary">
+              {formatTime(sessionTimeLeft)}
+            </div>
+          </div>
+          <div className="flex flex-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              className="absolute right-4 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none"
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
-            </button>
+            </Button>
           </div>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
+        </div>
+        <div className="space-y-4 py-4 overflow-y-scroll scrollbar-hide">
           {isLoading && stage !== 'payment_processing' && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           )}
+          <div className="py-4 overflow-y-scroll scrollbar-hide">
 
-          {!isLoading && stage === 'payment_selection' && checkoutSessionId && (
-            <>
-              {/* Session Timer */}
-              <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Clock className="w-5 h-5 mr-2 text-primary" />
-                      <span className="text-sm font-medium">Checkout Session</span>
+            {!isLoading && stage === 'payment_selection' && checkoutSessionId && (
+              <>
+                {/* Order Summary */}
+                <Card>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">Order Summary</h3>
+
+                    {/* Customer Name */}
+                    <div className="mb-3 pb-3 border-b">
+                      <div className="text-sm text-muted-foreground">Customer</div>
+                      <div className="font-medium">{customerName}</div>
                     </div>
-                    <div className="text-lg font-bold text-primary">
-                      {formatTime(sessionTimeLeft)}
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Your checkout session expires in {formatTime(sessionTimeLeft)}
-                  </p>
-                </CardContent>
-              </Card>
 
-              {/* Order Summary */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-3">Order Summary</h3>
-
-                  {/* Customer Name */}
-                  <div className="mb-3 pb-3 border-b">
-                    <div className="text-sm text-muted-foreground">Customer</div>
-                    <div className="font-medium">{customerName}</div>
-                  </div>
-
-                  {/* Order Items */}
-                  <div className="space-y-2 mb-3">
-                    {cart.map((item, index) => {
-                      const itemTotal = item.price * item.quantity;
-                      return (
-                        <div key={index} className="flex justify-between items-center">
-                          <div className="flex-1 min-w-0 pr-4">
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {formatCurrency(item.price)} × {item.quantity}
+                    {/* Order Items */}
+                    <div className="space-y-2 mb-3">
+                      {cart.map((item, index) => {
+                        const itemTotal = item.price * item.quantity;
+                        return (
+                          <div key={index} className="flex justify-between items-center">
+                            <div className="flex-1 min-w-0 pr-4">
+                              <div className="font-medium">{item.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {formatCurrency(item.price)} × {item.quantity}
+                              </div>
+                            </div>
+                            <div className="font-semibold whitespace-nowrap">
+                              {formatCurrency(itemTotal)}
                             </div>
                           </div>
-                          <div className="font-semibold whitespace-nowrap">
-                            {formatCurrency(itemTotal)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Price Breakdown */}
-                  <div className="space-y-2 pt-3 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+                        );
+                      })}
                     </div>
 
-                    {totals.discount > 0 && (
+                    {/* Price Breakdown */}
+                    <div className="space-y-2 pt-3 border-t">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-green-600">Discount</span>
-                        <span className="font-medium text-green-600">-{formatCurrency(totals.discount)}</span>
+                        <span className="text-sm">Subtotal</span>
+                        <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                       </div>
-                    )}
 
-                    {totals.tax > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Tax ({taxRate}% {taxName})</span>
-                        <span className="font-medium">{formatCurrency(totals.tax)}</span>
-                      </div>
-                    )}
-
-                    {(paymentMethod === 'upi' || paymentMethod === 'qr') && canteenCharges.length > 0 && canteenCharges.map((charge, idx) => {
-                      const chargeAmount = charge.type === 'percent' 
-                        ? (totals.subtotal * charge.value) / 100 
-                        : charge.value;
-                      return (
-                        <div key={idx} className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">
-                            {charge.name} {charge.type === 'percent' ? `(${charge.value}%)` : ''}
-                          </span>
-                          <span className="font-medium">{formatCurrency(chargeAmount)}</span>
+                      {totals.discount > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-green-600">Discount</span>
+                          <span className="font-medium text-green-600">-{formatCurrency(totals.discount)}</span>
                         </div>
-                      );
-                    })}
+                      )}
 
-                    <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="font-bold text-lg">Total</span>
-                      <span className="font-bold text-lg text-primary">
-                        {formatCurrency(getDisplayTotals().total)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                      {totals.tax > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Tax ({taxRate}% {taxName})</span>
+                          <span className="font-medium">{formatCurrency(totals.tax)}</span>
+                        </div>
+                      )}
 
-              {/* Payment Method Selection */}
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold mb-4 flex items-center">
-                    <CreditCard className="w-5 h-5 mr-2 text-primary" />
-                    Payment Method
-                  </h3>
-                  <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "offline" | "upi" | "qr")}>
-                    <div className="space-y-3">
-                      {/* Offline Payment */}
-                      <div className="flex items-center space-x-3 p-3 border-2 rounded-lg transition-colors cursor-pointer hover:bg-accent" onClick={() => setPaymentMethod("offline")}>
-                        <RadioGroupItem value="offline" id="offline-pos" />
-                        <Label htmlFor="offline-pos" className="flex-1 cursor-pointer">
-                          <div className="flex items-center">
-                            <HandCoins className="w-5 h-5 mr-3 text-orange-500" />
-                            <div>
-                              <p className="font-medium">Offline Payment</p>
-                              <p className="text-sm text-muted-foreground">Cash or Card at counter (Implementation pending)</p>
-                            </div>
+                      {(paymentMethod === 'upi' || paymentMethod === 'qr') && canteenCharges.length > 0 && canteenCharges.map((charge, idx) => {
+                        const chargeAmount = charge.type === 'percent'
+                          ? (totals.subtotal * charge.value) / 100
+                          : charge.value;
+                        return (
+                          <div key={idx} className="flex justify-between items-center transition-all duration-500">
+                            <span className="text-sm text-muted-foreground">
+                              {charge.name} {charge.type === 'percent' ? `(${charge.value}%)` : ''}
+                            </span>
+                            <span className="font-medium">{formatCurrency(chargeAmount)}</span>
                           </div>
-                        </Label>
-                      </div>
+                        );
+                      })}
 
-                      {/* QR Code Payment */}
-                      <div className="flex items-center space-x-3 p-3 border-2 rounded-lg transition-colors cursor-pointer hover:bg-accent" onClick={() => setPaymentMethod("qr")}>
-                        <RadioGroupItem value="qr" id="qr-pos" />
-                        <Label htmlFor="qr-pos" className="flex-1 cursor-pointer">
-                          <div className="flex items-center">
-                            <QrCode className="w-5 h-5 mr-3 text-purple-600" />
-                            <div>
-                              <p className="font-medium">QR Code Payment</p>
-                              <p className="text-sm text-muted-foreground">Scan with any UPI app</p>
-                            </div>
-                          </div>
-                        </Label>
-                      </div>
-
-                      {/* UPI Payment */}
-                      <div className="flex items-center space-x-3 p-3 border-2 rounded-lg transition-colors cursor-pointer hover:bg-accent" onClick={() => setPaymentMethod("upi")}>
-                        <RadioGroupItem value="upi" id="upi-pos" />
-                        <Label htmlFor="upi-pos" className="flex-1 cursor-pointer">
-                          <div className="flex items-center">
-                            <CreditCard className="w-5 h-5 mr-3 text-primary" />
-                            <div>
-                              <p className="font-medium">UPI Payment</p>
-                              <p className="text-sm text-muted-foreground">Google Pay, PhonePe, UPI, Cards</p>
-                            </div>
-                          </div>
-                        </Label>
+                      <div className="flex justify-between items-center pt-2 border-t">
+                        <span className="font-bold text-lg">Total</span>
+                        <span className="font-bold text-lg text-primary">
+                          {formatCurrency(getDisplayTotals().total)}
+                        </span>
                       </div>
                     </div>
-                  </RadioGroup>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <OwnerButton
-                  variant="secondary"
-                  onClick={handleClose}
-                  className="flex-1"
-                >
-                  Cancel
-                </OwnerButton>
-                <OwnerButton
-                  variant="primary"
-                  onClick={handleConfirmPayment}
-                  className="flex-1"
-                  disabled={isLoading}
-                  isLoading={isLoading}
-                >
-                  {paymentMethod === 'offline' ? 'Confirm Order' : paymentMethod === 'qr' ? 'Show QR Code' : `Pay ${formatCurrency(getDisplayTotals().total)}`}
-                </OwnerButton>
-              </div>
-            </>
-          )}
-
-          {stage === 'payment_processing' && (
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin text-primary" />
-              <p className="text-lg font-medium">Processing Payment...</p>
-              <p className="text-sm text-muted-foreground">Please complete the payment in the Razorpay window</p>
-            </div>
-          )}
-
-          {stage === 'payment_success' && createdOrder && (
-            <>
-              {/* Success Message */}
-              <div className="flex flex-col items-center justify-center py-6 space-y-4">
-                <div className="bg-green-100 rounded-full p-4">
-                  <CheckCircle className="w-12 h-12 text-green-600" />
-                </div>
-                <h3 className="text-2xl font-bold text-green-600">Order Confirmed!</h3>
-                <p className="text-muted-foreground text-center">
-                  Your order has been created successfully
-                </p>
-              </div>
-
-              {/* Order Details */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center pb-3 border-b">
-                      <span className="text-sm text-muted-foreground">Order Number</span>
-                      <span className="font-bold text-lg">{createdOrder?.orderNumber || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-3 border-b">
-                      <span className="text-sm text-muted-foreground">Order OTP</span>
-                      <span className="font-bold text-2xl text-primary tracking-wider">{createdOrder?.barcode ? createdOrder.barcode.substring(0, 4) : 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-3 border-b">
-                      <span className="text-sm text-muted-foreground">Customer Name</span>
-                      <span className="font-medium">{createdOrder?.customerName || customerName || 'Customer'}</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-3 border-b">
-                      <span className="text-sm text-muted-foreground">Status</span>
-                      <span className="font-medium capitalize">{createdOrder?.status || 'pending'}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Total Amount</span>
-                      <span className="font-bold text-lg text-primary">{formatCurrency(createdOrder.amount || cachedTotalsRef.current?.total || totals.total)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-3 pt-4">
-                <OwnerButton
-                  variant="outline"
-                  onClick={handlePrintReceipt}
-                  className="flex-1 flex items-center justify-center gap-2"
-                  disabled={isPrinting}
-                  isLoading={isPrinting}
-                >
-                  <Printer className="w-4 h-4" />
-                  Print Receipt
-                </OwnerButton>
-                {(() => {
-                  const orderStatus = createdOrder.status;
-                  const isDeliveryOrder = createdOrder.orderType === 'delivery';
-                  const hasDeliveryPerson = !!createdOrder.deliveryPersonId;
-                  const isOutForDelivery = orderStatus === 'out_for_delivery';
-                  
-                  // Button visibility logic
-                  // 1. If status is pending/preparing → Show "Mark as Ready"
-                  if (orderStatus === 'pending' || orderStatus === 'preparing') {
-                    return (
-                      <>
-                        <OwnerButton
-                          variant="secondary"
-                          onClick={() => {
-                            const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
-                            if (orderId) {
-                              markReadyMutation.mutate(orderId);
-                            }
-                          }}
-                          className="flex-1 flex items-center justify-center gap-2"
-                          disabled={markReadyMutation.isPending}
-                          isLoading={markReadyMutation.isPending}
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          Mark as Ready
-                        </OwnerButton>
-                        <OwnerButton
-                          variant="primary"
-                          onClick={() => onOpenChange(false)}
-                          className="flex-1 flex items-center justify-center gap-2"
-                        >
-                          Done
-                        </OwnerButton>
-                      </>
-                    );
-                  }
-                  
-                  // 2. If status is ready or out_for_delivery → Show "Scan Barcode"
-                  if (orderStatus === 'ready' || isOutForDelivery) {
-                    return (
-                      <>
-                        <OwnerButton
-                          variant="secondary"
-                          onClick={handleBarcodeScan}
-                          className="flex-1 flex items-center justify-center gap-2"
-                        >
-                          <QrCode className="w-4 h-4" />
-                          Scan Barcode
-                        </OwnerButton>
-                        <OwnerButton
-                          variant="primary"
-                          onClick={() => onOpenChange(false)}
-                          className="flex-1 flex items-center justify-center gap-2"
-                        >
-                          Done
-                        </OwnerButton>
-                      </>
-                    );
-                  }
-                  
-                  // 3. Default - just show Done button
-                  return (
+                {/* Payment Method Selection */}
+                <Card className="mt-4">
+                  <CardContent className="flex items-center justify-center gap-2 p-4">
+                    <div className="text-sm text-muted-foreground">Payment Method</div>
                     <OwnerButton
-                      variant="primary"
-                      onClick={() => onOpenChange(false)}
-                      className="flex-1 flex items-center justify-center gap-2"
+                      variant={paymentMethod === 'upi' ? 'primary' : 'secondary'}
+                      onClick={() => setPaymentMethod('upi')}
+                      className="flex-1"
                     >
-                      Done
+                      UPI
                     </OwnerButton>
-                  );
-                })()}
+                    <OwnerButton
+                      variant={paymentMethod === 'qr' ? 'primary' : 'secondary'}
+                      onClick={() => setPaymentMethod('qr')}
+                      className="flex-1"
+                    >
+                      QR
+                    </OwnerButton>
+                    <OwnerButton
+                      variant={paymentMethod === 'offline' ? 'primary' : 'secondary'}
+                      onClick={() => setPaymentMethod('offline')}
+                      className="flex-1"
+                    >
+                      Offline
+                    </OwnerButton>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <OwnerButton
+                    variant="secondary"
+                    onClick={handleClose}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </OwnerButton>
+                  <OwnerButton
+                    variant="primary"
+                    onClick={handleConfirmPayment}
+                    className="flex-1"
+                    disabled={isLoading}
+                    isLoading={isLoading}
+                  >
+                    {paymentMethod === 'offline' ? 'Confirm Order' : paymentMethod === 'qr' ? 'Show QR Code' : `Pay ${formatCurrency(getDisplayTotals().total)}`}
+                  </OwnerButton>
+                </div>
+              </>
+            )}
+
+            {stage === 'payment_processing' && (
+              <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                <Loader2 className="w-12 h-12 animate-spin text-primary" />
+                <p className="text-lg font-medium">Processing Payment...</p>
+                <p className="text-sm text-muted-foreground">Please complete the payment in the Razorpay window</p>
               </div>
-            </>
+            )}
+
+            {stage === 'payment_success' && createdOrder && (
+              <>
+                {/* Success Message */}
+                <div className="flex flex-col items-center justify-center py-6 space-y-4">
+                  <div className="bg-green-100 rounded-full p-4">
+                    <CheckCircle className="w-12 h-12 text-green-600" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-green-600">Order Confirmed!</h3>
+                  <p className="text-muted-foreground text-center">
+                    Your order has been created successfully
+                  </p>
+                </div>
+
+                {/* Order Details */}
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center pb-3 border-b">
+                        <span className="text-sm text-muted-foreground">Order Number</span>
+                        <span className="font-bold text-lg">{createdOrder?.orderNumber || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-3 border-b">
+                        <span className="text-sm text-muted-foreground">Order OTP</span>
+                        <span className="font-bold text-2xl text-primary tracking-wider">{createdOrder?.barcode ? createdOrder.barcode.substring(0, 4) : 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-3 border-b">
+                        <span className="text-sm text-muted-foreground">Customer Name</span>
+                        <span className="font-medium">{createdOrder?.customerName || customerName || 'Customer'}</span>
+                      </div>
+                      <div className="flex justify-between items-center pb-3 border-b">
+                        <span className="text-sm text-muted-foreground">Status</span>
+                        <span className="font-medium capitalize">{createdOrder?.status || 'pending'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Total Amount</span>
+                        <span className="font-bold text-lg text-primary">{formatCurrency(createdOrder.amount || cachedTotalsRef.current?.total || totals.total)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3 pt-4">
+                  <OwnerButton
+                    variant="outline"
+                    onClick={handlePrintReceipt}
+                    className="flex-1 flex items-center justify-center gap-2"
+                    disabled={isPrinting}
+                    isLoading={isPrinting}
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print Receipt
+                  </OwnerButton>
+                  {(() => {
+                    const orderStatus = createdOrder.status;
+                    const isDeliveryOrder = createdOrder.orderType === 'delivery';
+                    const hasDeliveryPerson = !!createdOrder.deliveryPersonId;
+                    const isOutForDelivery = orderStatus === 'out_for_delivery';
+
+                    // Button visibility logic
+                    // 1. If status is pending/preparing → Show "Mark as Ready"
+                    if (orderStatus === 'pending' || orderStatus === 'preparing') {
+                      return (
+                        <>
+                          <OwnerButton
+                            variant="secondary"
+                            onClick={() => {
+                              const orderId = createdOrder.id || createdOrder._id || createdOrder.orderNumber;
+                              if (orderId) {
+                                markReadyMutation.mutate(orderId);
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2"
+                            disabled={markReadyMutation.isPending}
+                            isLoading={markReadyMutation.isPending}
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            Mark as Ready
+                          </OwnerButton>
+                          <OwnerButton
+                            variant="primary"
+                            onClick={() => onOpenChange(false)}
+                            className="flex-1 flex items-center justify-center gap-2"
+                          >
+                            Done
+                          </OwnerButton>
+                        </>
+                      );
+                    }
+
+                    // 2. If status is ready or out_for_delivery → Show "Scan Barcode"
+                    if (orderStatus === 'ready' || isOutForDelivery) {
+                      return (
+                        <>
+                          <OwnerButton
+                            variant="secondary"
+                            onClick={handleBarcodeScan}
+                            className="flex-1 flex items-center justify-center gap-2"
+                          >
+                            <QrCode className="w-4 h-4" />
+                            Scan Barcode
+                          </OwnerButton>
+                          <OwnerButton
+                            variant="primary"
+                            onClick={() => onOpenChange(false)}
+                            className="flex-1 flex items-center justify-center gap-2"
+                          >
+                            Done
+                          </OwnerButton>
+                        </>
+                      );
+                    }
+
+                    // 3. Default - just show Done button
+                    return (
+                      <OwnerButton
+                        variant="primary"
+                        onClick={() => onOpenChange(false)}
+                        className="flex-1 flex items-center justify-center gap-2"
+                      >
+                        Done
+                      </OwnerButton>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Offline Payment Confirmation Dialog */}
+          <AlertDialog open={showOfflineConfirm} onOpenChange={setShowOfflineConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="bg-orange-100 rounded-full p-2">
+                    <AlertTriangle className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <AlertDialogTitle className="text-xl">Confirm Offline Payment</AlertDialogTitle>
+                </div>
+                <AlertDialogDescription className="text-base pt-2">
+                  You are about to create an order with <strong>offline payment</strong> of{' '}
+                  <strong className="text-primary">{formatCurrency(totals.total)}</strong> for{' '}
+                  <strong>{customerName}</strong>.
+                </AlertDialogDescription>
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-3">
+                  <p className="text-amber-800 text-sm font-medium">
+                    ⚠️ Note: This order will <strong>NOT</strong> be included in automatic payouts.
+                    It will only appear in analytics and reports.
+                  </p>
+                </div>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleOfflinePaymentConfirmed}
+                  disabled={isLoading}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Confirm Order'
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* QR Payment Screen */}
+          {showQRPayment && (
+            <QRPaymentScreen
+              amount={getDisplayTotals().total}
+              customerName={customerName}
+              canteenId={canteenId}
+              cart={cart}
+              totals={getDisplayTotals()}
+              checkoutSessionId={checkoutSessionId || undefined}
+              onSuccess={async (orderNumber) => {
+                setShowQRPayment(false);
+
+                try {
+                  // Fetch order details to show in success screen
+                  console.log('📥 Fetching order details for:', orderNumber);
+                  const orderResponse = await apiRequest(`/api/orders/${orderNumber}`);
+                  console.log('📦 Order response:', orderResponse);
+
+                  if (orderResponse) {
+                    setCreatedOrder(orderResponse);
+                    setStage('payment_success');
+                    onOpenChange(true);
+                    toast.success('Order created successfully!');
+
+                    if (onOrderCreated) {
+                      onOrderCreated();
+                    }
+                  } else {
+                    console.warn('⚠️ No order response received');
+                    toast.success('Payment successful!');
+                    if (onOrderCreated) {
+                      onOrderCreated();
+                    }
+                  }
+                } catch (error) {
+                  console.error('❌ Error fetching order details:', error);
+                  toast.success('Payment successful!');
+                  if (onOrderCreated) {
+                    onOrderCreated();
+                  }
+                }
+              }}
+              onCancel={() => {
+                setShowQRPayment(false);
+                onOpenChange(true);
+              }}
+            />
+          )}
+
+          {/* Barcode Scan Modal */}
+          <BarcodeScanModal
+            isOpen={isBarcodeModalOpen}
+            onClose={handleCloseBarcodeModal}
+            onBarcodeScanned={handleBarcodeScanned}
+          />
+
+          {/* Order Found Modal */}
+          {createdOrder && (
+            <OrderFoundModal
+              isOpen={isOrderFoundModalOpen}
+              onClose={handleCloseOrderFoundModal}
+              order={createdOrder}
+              onMarkDelivered={handleMarkDelivered}
+              isDelivering={isDelivering}
+            />
+          )}
+
+          {/* Order Not Found Modal */}
+          <OrderNotFoundModal
+            isOpen={isOrderNotFoundModalOpen}
+            onClose={handleCloseOrderNotFoundModal}
+            scannedBarcode={scannedBarcode}
+          />
+
+          {/* Delivery Person Select Modal */}
+          {createdOrder && (
+            <DeliveryPersonSelectModal
+              open={isDeliveryPersonModalOpen}
+              onClose={() => setIsDeliveryPersonModalOpen(false)}
+              onSelect={handleDeliveryPersonSelected}
+              canteenId={canteenId}
+              orderNumber={createdOrder.orderNumber || createdOrder.id}
+            />
           )}
         </div>
-      </DialogContent>
-      </Dialog>
-
-      {/* Offline Payment Confirmation Dialog */}
-      <AlertDialog open={showOfflineConfirm} onOpenChange={setShowOfflineConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-orange-100 rounded-full p-2">
-                <AlertTriangle className="w-6 h-6 text-orange-600" />
-              </div>
-              <AlertDialogTitle className="text-xl">Confirm Offline Payment</AlertDialogTitle>
-            </div>
-            <AlertDialogDescription className="text-base pt-2">
-              You are about to create an order with <strong>offline payment</strong> of{' '}
-              <strong className="text-primary">{formatCurrency(totals.total)}</strong> for{' '}
-              <strong>{customerName}</strong>.
-            </AlertDialogDescription>
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mt-3">
-              <p className="text-amber-800 text-sm font-medium">
-                ⚠️ Note: This order will <strong>NOT</strong> be included in automatic payouts. 
-                It will only appear in analytics and reports.
-              </p>
-            </div>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleOfflinePaymentConfirmed}
-              disabled={isLoading}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Confirm Order'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* QR Payment Screen */}
-      {showQRPayment && (
-        <QRPaymentScreen
-          amount={getDisplayTotals().total}
-          customerName={customerName}
-          canteenId={canteenId}
-          cart={cart}
-          totals={getDisplayTotals()}
-          checkoutSessionId={checkoutSessionId || undefined}
-          onSuccess={async (orderNumber) => {
-            setShowQRPayment(false);
-            
-            try {
-              // Fetch order details to show in success screen
-              console.log('📥 Fetching order details for:', orderNumber);
-              const orderResponse = await apiRequest(`/api/orders/${orderNumber}`);
-              console.log('📦 Order response:', orderResponse);
-              
-              if (orderResponse) {
-                setCreatedOrder(orderResponse);
-                setStage('payment_success');
-                onOpenChange(true);
-                toast.success('Order created successfully!');
-                
-                if (onOrderCreated) {
-                  onOrderCreated();
-                }
-              } else {
-                console.warn('⚠️ No order response received');
-                toast.success('Payment successful!');
-                if (onOrderCreated) {
-                  onOrderCreated();
-                }
-              }
-            } catch (error) {
-              console.error('❌ Error fetching order details:', error);
-              toast.success('Payment successful!');
-              if (onOrderCreated) {
-                onOrderCreated();
-              }
-            }
-          }}
-          onCancel={() => {
-            setShowQRPayment(false);
-            onOpenChange(true);
-          }}
-        />
-      )}
-
-      {/* Barcode Scan Modal */}
-      <BarcodeScanModal
-        isOpen={isBarcodeModalOpen}
-        onClose={handleCloseBarcodeModal}
-        onBarcodeScanned={handleBarcodeScanned}
-      />
-
-      {/* Order Found Modal */}
-      {createdOrder && (
-        <OrderFoundModal
-          isOpen={isOrderFoundModalOpen}
-          onClose={handleCloseOrderFoundModal}
-          order={createdOrder}
-          onMarkDelivered={handleMarkDelivered}
-          isDelivering={isDelivering}
-        />
-      )}
-
-      {/* Order Not Found Modal */}
-      <OrderNotFoundModal
-        isOpen={isOrderNotFoundModalOpen}
-        onClose={handleCloseOrderNotFoundModal}
-        scannedBarcode={scannedBarcode}
-      />
-
-      {/* Delivery Person Select Modal */}
-      {createdOrder && (
-        <DeliveryPersonSelectModal
-          open={isDeliveryPersonModalOpen}
-          onClose={() => setIsDeliveryPersonModalOpen(false)}
-          onSelect={handleDeliveryPersonSelected}
-          canteenId={canteenId}
-          orderNumber={createdOrder.orderNumber || createdOrder.id}
-        />
-      )}
+      </Card>
     </>
   );
 }

@@ -666,7 +666,14 @@ export const insertUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   phoneNumber: z.string().optional(),
-  role: z.nativeEnum(UserRole).or(z.string()), // Allow string for backward compatibility/flexibility if needed, or stick to strict Enum
+  role: z.string().transform((val) => {
+    const key = val.toUpperCase();
+    if (!(key in UserRole)) {
+      throw new Error("Invalid role");
+    }
+    return UserRole[key as keyof typeof UserRole];
+  }),
+  // Allow string for backward compatibility/flexibility if needed, or stick to strict Enum
   registerNumber: z.string().optional(),
   college: z.string().optional(),
   department: z.string().optional(),
