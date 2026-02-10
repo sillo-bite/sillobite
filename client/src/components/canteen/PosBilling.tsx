@@ -48,7 +48,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
-  const { menuItems, categories, transactions, transactionsPagination, canteenSettings, isLoading, refetchTransactions, setTransactionsPage } = usePosData(
+  const { menuItems, categories, transactions, transactionsPagination, canteenSettings, isLoading, refetchTransactions, refetchMenu, setTransactionsPage } = usePosData(
     canteenId,
     searchQuery,
     selectedCategory
@@ -274,7 +274,9 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
       setLastTransactionForPrint(transaction);
       setLastTotalsForPrint(totals);
       resetForm();
+      resetForm();
       refetchTransactions();
+      refetchMenu(); // Refresh stock counts
 
       // Send to printer after successful save (non-blocking)
       sendToPrinter(transaction, totals).catch(() => {

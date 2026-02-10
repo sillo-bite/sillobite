@@ -4312,7 +4312,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod = razorpayPayment.method || 'online';
         console.log(`💳 POS Payment method: ${paymentMethod}`);
       } catch (error) {
-        console.error('❌ Failed to fetch Razorpay payment details:', error);
+        console.error('❌ Failed to fetch Razorpay payment details:', {
+          message: (error as any)?.message,
+          code: (error as any)?.code,
+          status: (error as any)?.statusCode
+        });
+
       }
 
       // Calculate charges
@@ -4345,7 +4350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allPaymentCounterIds: enriched.allPaymentCounterIds,
         allKotCounterIds: enriched.allKotCounterIds,
         allCounterIds: enriched.allCounterIds,
-        itemStatusByCounter: JSON.stringify(enriched.itemStatusByCounter),
+        itemStatusByCounter: enriched.itemStatusByCounter,
         metadata: JSON.stringify({
           orderType: 'pos',
           checkoutSessionId,
@@ -4392,7 +4397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error('POS Order creation error:', error);
+      console.error('❌ Failed to fetch Razorpay payment details:', {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        status: (error as any)?.statusCode
+      });
+
       res.status(500).json({
         success: false,
         message: "Internal server error during order creation"
@@ -4470,7 +4480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allPaymentCounterIds: enriched.allPaymentCounterIds,
         allKotCounterIds: enriched.allKotCounterIds,
         allCounterIds: enriched.allCounterIds,
-        itemStatusByCounter: JSON.stringify(enriched.itemStatusByCounter),
+        itemStatusByCounter: enriched.itemStatusByCounter,
         metadata: JSON.stringify({
           orderType: 'pos',
           checkoutSessionId,
@@ -4501,6 +4511,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('POS Offline Order creation error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Internal server error";
+
+      if (errorMessage.includes('Stock validation failed') || errorMessage.includes('Insufficient stock')) {
+        return res.status(400).json({
+          success: false,
+          message: errorMessage
+        });
+      }
+
       res.status(500).json({
         success: false,
         message: "Internal server error during order creation"

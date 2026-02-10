@@ -343,8 +343,8 @@ export function PosCheckoutDialog({
       razorpayRef.current = new (window as any).Razorpay(options);
       isPaymentInProgressRef.current = true;
       razorpayRef.current.open();
-      // Close our dialog to allow Razorpay modal to be interactable
-      onOpenChange(false);
+      // Keep dialog open to maintain state
+      // onOpenChange(false);
     };
     script.onerror = () => {
       toast.error('Failed to load payment gateway');
@@ -403,7 +403,8 @@ export function PosCheckoutDialog({
 
       // Show QR payment screen
       setShowQRPayment(true);
-      onOpenChange(false);
+      // Keep dialog open to maintain state
+      // onOpenChange(false);
     } else {
       // For offline payment, show confirmation dialog
       setShowOfflineConfirm(true);
