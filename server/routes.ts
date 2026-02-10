@@ -30,7 +30,7 @@ import {
   fetchAllRazorpayQRPayments,
   closeRazorpayQR,
   PAYMENT_STATUS,
-  RAZORPAY_RESPONSE_CODES
+  RAZORPAY_RESPONSE_CODES,
 } from "@shared/razorpay";
 import { healthCheckHandler } from "./health-check";
 import { SimpleSchemaValidator } from "./migrations/simple-schema-check";
@@ -55,9 +55,9 @@ import multer from "multer";
 import axios from "axios";
 import { getWebSocketManager } from "./websocket";
 
+const razorpay = razorpayInstance;
 // Global server start time for development update detection
 const SERVER_START_TIME = Date.now();
-
 // Performance optimization: Cache payment status API failures to avoid repeated slow calls
 const paymentStatusCache = new Map<string, {
   lastAttempt: number;
@@ -531,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch system settings to get the lists
       const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
       const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
-      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
+      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec() as any;
 
       let locations: any[] = [];
 
@@ -605,7 +605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 1. Find the QR Code in SystemSettings
       const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
       const SystemSettingsModel = mongoose.models.SystemSettings || mongoose.model('SystemSettings', SystemSettingsSchema);
-      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec();
+      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean().exec() as any;
 
       let targetCollege: any = null;
       let targetQrCode: any = null;
@@ -746,7 +746,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       console.log(`🔍 GET /api/users/${userId}/validate - Validating user session`);
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(userId) as any;
 
       if (!user) {
         // Session validation failed: User no longer exists

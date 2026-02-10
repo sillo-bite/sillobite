@@ -386,7 +386,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
   };
 
   return (
-    <div className="z-50 overflow-auto h-screen scrollbar-hide">
+    <div className="overflow-auto h-screen scrollbar-hide">
       <OwnerPageLayout>
         <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3  px-4">

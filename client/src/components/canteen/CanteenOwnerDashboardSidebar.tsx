@@ -2061,7 +2061,7 @@ export default function CanteenOwnerDashboardSidebar() {
     <div className="h-screen bg-background flex overflow-hidden relative">
       {/* Mobile overlay for sidebar */}
       <div
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 z-100 lg:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         onClick={() => setIsSidebarOpen(false)}
       />

@@ -17,7 +17,7 @@ export const razorpayInstance = new Razorpay({
 // Payment status codes
 export const PAYMENT_STATUS = {
   PENDING: 'pending',
-  SUCCESS: 'success', 
+  SUCCESS: 'success',
   FAILED: 'failed',
   TIMEOUT: 'timeout'
 } as const;
@@ -25,7 +25,7 @@ export const PAYMENT_STATUS = {
 // Razorpay response codes
 export const RAZORPAY_RESPONSE_CODES = {
   PAYMENT_SUCCESS: 'authorized',
-  PAYMENT_FAILED: 'failed', 
+  PAYMENT_FAILED: 'failed',
   PAYMENT_PENDING: 'created',
   PAYMENT_CAPTURED: 'captured',
   PAYMENT_REFUNDED: 'refunded',
@@ -43,7 +43,7 @@ export function verifyWebhookSignature(
       .createHmac('sha256', secret)
       .update(payloadString)
       .digest('hex');
-    
+
     return crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)
@@ -65,6 +65,7 @@ export async function createRazorpayOrder(
   if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
     throw new Error('Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
   }
+  amount = parseInt(amount.toString());
 
   if (amount <= 0) {
     throw new Error('Invalid amount: amount must be greater than 0');
@@ -82,14 +83,14 @@ export async function createRazorpayOrder(
     return order;
   } catch (error: any) {
     console.error('Error creating Razorpay order:', error);
-    
+
     // Provide more helpful error messages
     if (error.error) {
       const errorDescription = error.error.description || error.error.error?.description || 'Unknown error';
       const errorCode = error.error.code || error.error.error?.code || 'UNKNOWN';
       throw new Error(`Razorpay API Error [${errorCode}]: ${errorDescription}`);
     }
-    
+
     throw error;
   }
 }
@@ -106,7 +107,7 @@ export function verifyPaymentSignature(
       .createHmac('sha256', RAZORPAY_CONFIG.KEY_SECRET)
       .update(payload)
       .digest('hex');
-    
+
     return crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)
@@ -172,13 +173,13 @@ export async function createRazorpayQR(
     return qrCode;
   } catch (error: any) {
     console.error('Error creating Razorpay QR code:', error);
-    
+
     if (error.error) {
       const errorDescription = error.error.description || error.error.error?.description || 'Unknown error';
       const errorCode = error.error.code || error.error.error?.code || 'UNKNOWN';
       throw new Error(`Razorpay QR API Error [${errorCode}]: ${errorDescription}`);
     }
-    
+
     throw error;
   }
 }
