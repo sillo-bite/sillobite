@@ -1856,6 +1856,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lightweight stock check endpoint for POS checkout validation
+  app.post("/api/menu/check-stock", async (req, res) => {
+    try {
+      const { itemIds } = req.body;
+
+      if (!Array.isArray(itemIds) || itemIds.length === 0) {
+        return res.status(400).json({ message: "itemIds array is required" });
+      }
+
+      // Minimal projection — only fetch what we need
+      const items = await MenuItem.find(
+        { _id: { $in: itemIds } },
+        { _id: 1, name: 1, stock: 1, available: 1 }
+      ).lean();
+
+      const stockMap = items.map(item => ({
+        id: item._id.toString(),
+        name: item.name,
+        stock: item.stock,
+        available: item.available,
+      }));
+
+      res.json({ items: stockMap });
+    } catch (error) {
+      console.error('Error checking stock:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/menu/:id", async (req, res) => {
     try {
       const menuItemId = req.params.id;

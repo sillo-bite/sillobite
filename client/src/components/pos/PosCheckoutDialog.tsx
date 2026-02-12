@@ -54,6 +54,7 @@ export function PosCheckoutDialog({
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
+  const [stockError, setStockError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [canteenCharges, setCanteenCharges] = useState<any[]>([]);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
@@ -382,11 +383,11 @@ export function PosCheckoutDialog({
           onOrderCreated();
         }
       } else {
-        toast.error('Order creation failed. Please contact support.');
+        setStockError(orderResponse.message || 'Order creation failed. Please contact support.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Order creation error:', error);
-      toast.error('Failed to create order. Please contact support.');
+      setStockError(error.message || 'Failed to create order. Please contact support.');
     } finally {
       setIsLoading(false);
     }
@@ -441,11 +442,12 @@ export function PosCheckoutDialog({
         }
       } else {
         console.error('❌ Order creation failed:', orderResponse);
-        toast.error(orderResponse.message || 'Order creation failed. Please try again.');
+        setStockError(orderResponse.message || 'Order creation failed. Please try again.');
       }
     } catch (error: any) {
       console.error('❌ Offline order creation error:', error);
-      toast.error(error.message || 'Failed to create order. Please try again.');
+      const msg = error.message || 'Failed to create order. Please try again.';
+      setStockError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -1184,6 +1186,36 @@ export function PosCheckoutDialog({
             />
           )}
         </div>
+
+        {/* Stock Error Popup */}
+        <AlertDialog open={!!stockError} onOpenChange={(open) => {
+          if (!open) {
+            setStockError(null);
+            onOpenChange(false);
+            queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
+          }
+        }}>
+          <AlertDialogContent className="max-w-sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Order Failed
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-gray-700">
+                {stockError}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => {
+                setStockError(null);
+                onOpenChange(false);
+                queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
+              }}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Card>
     </>
   );

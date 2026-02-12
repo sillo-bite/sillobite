@@ -87,6 +87,8 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
         const errorData = await response.json();
         if (errorData.error) {
           errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
         }
       } catch (e) {
         // If we can't parse the error response, use the default message
