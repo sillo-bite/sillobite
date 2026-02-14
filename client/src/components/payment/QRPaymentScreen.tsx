@@ -471,10 +471,10 @@ export function QRPaymentScreen({
               )}
             </div>
 
-            {qrData?.qrImageUrl ? (
+            {(qrData?.upiLink || qrData?.qrImageUrl) ? (
               <div className="bg-white p-4 rounded-lg flex items-center justify-center">
                 <QRCodeSVG
-                  value={qrData.qrImageUrl}
+                  value={qrData.upiLink || qrData.qrImageUrl}
                   size={200}
                   level="H"
                   includeMargin={true}

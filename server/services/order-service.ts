@@ -281,7 +281,7 @@ export class OrderService {
         // We can just use storage directly here to avoid stock reduction logic complexity for failed orders.
         // OR use createOrder with forced skipStock?
         // Better to use storage directly for "failed" records as they are inert.
-        const order = await storage.createOrder(insertOrderSchema.parse(completeOrderData));
+        const order = await storage.createOrder(insertOrderSchema.parse(completeOrderData) as any);
 
         // Link payment to order
         if (merchantTransactionId && order && order.id) {
@@ -445,20 +445,24 @@ export class OrderService {
                 ...(orderData.allKotCounterIds || [])
             ]));
 
-            let involvedCounters = [];
+            let involvedCounters: { id: string, name: string }[] = [];
             if (involvedIds.length > 0) {
                 try {
                     // Try fetching from 'storecounters' collection (common naming convention)
-                    let counters = [];
+                    let counters: any[] = [];
                     try {
                         // Check if collection exists first to avoid error? No, just try find
-                        counters = await mongoose.connection.db.collection('storecounters').find({ id: { $in: involvedIds } }).toArray();
+                        if (mongoose.connection.db) {
+                            counters = await mongoose.connection.db.collection('storecounters').find({ id: { $in: involvedIds } }).toArray();
+                        }
                     } catch (e) { /* ignore */ }
 
                     if (!counters || counters.length === 0) {
                         try {
                             // Try 'counters' collection
-                            counters = await mongoose.connection.db.collection('counters').find({ id: { $in: involvedIds } }).toArray();
+                            if (mongoose.connection.db) {
+                                counters = await mongoose.connection.db.collection('counters').find({ id: { $in: involvedIds } }).toArray();
+                            }
                         } catch (e) { /* ignore */ }
                     }
 

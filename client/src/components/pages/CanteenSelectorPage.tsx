@@ -38,9 +38,9 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
     const [showLocationSelector, setShowLocationSelector] = useState(false);
     const [isSearchSticky, setIsSearchSticky] = useState(false);
     const [isCategorySticky, setIsCategorySticky] = useState(false);
-    const trg = useRef();
-    const trg2 = useRef();
-    const trg1 = useRef();
+    const trg = useRef<HTMLDivElement>(null);
+    const trg2 = useRef<HTMLDivElement>(null);
+    const trg1 = useRef<HTMLDivElement>(null);
     // Hardcoded categories for filtering
     const categories = [
         'All',
@@ -560,7 +560,6 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             {
                 showLocationSelector && (
                     <LocationSelector
-                        isOpen={showLocationSelector}
                         onClose={() => setShowLocationSelector(false)}
                     />
                 )

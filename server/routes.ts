@@ -29,6 +29,7 @@ import {
   fetchRazorpayQR,
   fetchAllRazorpayQRPayments,
   closeRazorpayQR,
+  extractUpiLinkFromQR,
   PAYMENT_STATUS,
   RAZORPAY_RESPONSE_CODES,
 } from "@shared/razorpay";
@@ -54,6 +55,8 @@ import { mediaService } from "./services/mediaService.js";
 import multer from "multer";
 import axios from "axios";
 import { getWebSocketManager } from "./websocket";
+import { PaymentSessionService } from "./payment-session-service";
+import { mongoToPlain } from "./storage-hybrid";
 
 const razorpay = razorpayInstance;
 // Global server start time for development update detection
@@ -487,7 +490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent changing super admin role if it's the only super admin
-      if (existingUser.role === UserRole.SUPER_ADMIN && req.body.role && req.body.role !== UserRole.SUPER_ADMIN) {
+      if ((existingUser.role as any) === UserRole.SUPER_ADMIN && req.body.role && (req.body.role as any) !== UserRole.SUPER_ADMIN) {
         const existingSuperAdmin = await storage.getUserByRole(UserRole.SUPER_ADMIN);
         if (existingSuperAdmin && existingSuperAdmin.id === userId) {
           console.log(`🚫 Cannot change super admin role: ${existingUser.name} is the only super admin`);
@@ -711,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Prevent deletion of super admin
-      if (existingUser.role === UserRole.SUPER_ADMIN) {
+      if ((existingUser.role as any) === UserRole.SUPER_ADMIN) {
         console.log(`🚫 Cannot delete super admin: ${existingUser.name} (${existingUser.email})`);
         return res.status(403).json({
           message: "Super admin cannot be deleted. There must always be at least one super admin in the system."
@@ -806,8 +809,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
 
-          if (settings && settings.canteens?.list) {
-            const canteen = settings.canteens.list.find(c => c.canteenOwnerEmail === user.email);
+          if ((settings as any) && (settings as any).canteens?.list) {
+            const canteen = (settings as any).canteens.list.find((c: any) => c.canteenOwnerEmail === user.email);
             if (canteen) {
               userData.canteen = canteen;
             }
@@ -1027,8 +1030,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           obj.id = obj._id.toString();
           delete obj._id;
         }
-        if (obj.__v !== undefined) {
-          delete obj.__v;
+        if ((obj as any).__v !== undefined) {
+          delete (obj as any).__v;
         }
         return obj;
       });
@@ -1297,8 +1300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get coding challenges enabled status from canteen settings
       let codingChallengesEnabled = false;
-      if (systemSettings?.canteens?.list) {
-        const canteen = systemSettings.canteens.list.find((c: any) => c.id === canteenId);
+      if ((systemSettings as any)?.canteens?.list) {
+        const canteen = (systemSettings as any).canteens.list.find((c: any) => c.id === canteenId);
         if (canteen) {
           codingChallengesEnabled = canteen.codingChallengesEnabled ?? false;
         }
@@ -2421,7 +2424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Cleanup old rate limit entries periodically
   setInterval(() => {
     const now = Date.now();
-    for (const [key, value] of pollingRateLimit.entries()) {
+    for (const [key, value] of Array.from(pollingRateLimit.entries())) {
       if (now > value.resetTime) {
         pollingRateLimit.delete(key);
       }
@@ -2950,7 +2953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         // Collect all counter IDs that should receive this order
         // NEW LOGIC: Route based on markable items and KOT counters
-        const targetCounterIds = [];
+        const targetCounterIds: string[] = [];
 
         console.log('WebSocket Broadcasting - Counter assignments:', {
           allStoreCounterIds,
@@ -3017,7 +3020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Remove duplicates
-        const uniqueCounterIds = [...new Set(targetCounterIds)];
+        const uniqueCounterIds = Array.from(new Set(targetCounterIds));
 
         if (uniqueCounterIds.length > 0) {
           // Broadcast to specific counter rooms
@@ -3045,7 +3048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             allStoreCounterIds,
             allPaymentCounterIds,
             allKotCounterIds,
-            itemsWithCounters: orderItems.map(item => ({
+            itemsWithCounters: orderItems.map((item: any) => ({
               id: item.id,
               name: item.name,
               storeCounterId: item.storeCounterId,
@@ -3999,8 +4002,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const jobTimeout = 30000; // 30 seconds timeout
 
           try {
+            const { paymentQueue } = await import('./queues/paymentQueue') as any;
+
             const jobResult = await Promise.race([
-              paymentJob.waitUntilFinished(),
+              paymentJob.waitUntilFinished(paymentQueue.events),
               new Promise((_, reject) =>
                 setTimeout(() => reject(new Error('Job timeout')), jobTimeout)
               )
@@ -4601,8 +4606,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentCounterIds = new Set<string>();
       const kotCounterIds = new Set<string>();
 
+      // OPTIMIZATION: Run Razorpay API call and menu item batch query in parallel
+      const itemIds = orderItems.map((item: any) => item.id);
+      const [qrCode, menuItemsFromDb] = await Promise.all([
+        createRazorpayQR(
+          orderNumber,
+          amount,
+          'INR',
+          `POS Order ${orderNumber}`,
+          customerName || 'POS Customer'
+        ),
+        MenuItem.find({ _id: { $in: itemIds } }).lean()
+      ]);
+
+      console.log(`💳 Razorpay QR code created: ${qrCode.id} for order ${orderNumber}`);
+
+      // OPTIMIZATION: Build lookup map from batch query result
+      const menuItemMap = new Map(menuItemsFromDb.map((m: any) => [m._id.toString(), m]));
+
+      // Process each item using the batch-fetched data
       for (const item of orderItems) {
-        const menuItem = await storage.getMenuItem(item.id);
+        const menuItem = menuItemMap.get(item.id);
 
         if (menuItem) {
           item.storeCounterId = menuItem.storeCounterId || null;
@@ -4626,6 +4650,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           item.available = true;
         }
       }
+
+      // OPTIMIZATION: Extract UPI link from QR image (runs while we prepare order data)
+      const upiLinkPromise = extractUpiLinkFromQR(qrCode.image_url);
 
       const allStoreCounterIds = Array.from(storeCounterIds);
       const allPaymentCounterIds = Array.from(paymentCounterIds);
@@ -4652,17 +4679,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           itemStatusByCounter[counterId][item.id] = 'pending';
         }
       }
-
-      // Create Razorpay QR code
-      const qrCode = await createRazorpayQR(
-        orderNumber,
-        amount,
-        'INR',
-        `POS Order ${orderNumber}`,
-        customerName || 'POS Customer'
-      );
-
-      console.log(`💳 Razorpay QR code created: ${qrCode.id} for order ${orderNumber}`);
 
       // Calculate charges from totals (QR payments include charges)
       let chargesTotal = 0;
@@ -4728,7 +4744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create order with PENDING payment status
       const order = await storage.createOrder({
         customerName: customerName,
-        collegeName: 'POS Order',
+        // collegeName: 'POS Order', // Removed as it is not in InsertOrder schema
         canteenId: canteenId,
         customerId: 0,
         items: JSON.stringify(orderItems),
@@ -4759,7 +4775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           checkoutSessionId: checkoutSessionId,
           paymentMethod: 'qr'
         })
-      });
+      } as any);
 
       console.log(`✅ POS QR Order ${orderNumber} created with PENDING payment status`);
       console.log('  - Saved chargesTotal:', order.chargesTotal);
@@ -4808,10 +4824,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
+      // Await the UPI link extraction (started earlier, should be done by now)
+      const upiLink = await upiLinkPromise;
+
       res.json({
         success: true,
         qrId: qrCode.id,
         qrImageUrl: qrCode.image_url,
+        upiLink: upiLink,
         qrCodeData: qrCode,
         orderId: order.id,
         orderNumber: orderNumber,
@@ -4869,7 +4889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if payment was received
       let paymentReceived = false;
-      let razorpayPaymentId = null;
+      let razorpayPaymentId: string | null = null;
 
       if (payments.count > 0 && payments.items && payments.items.length > 0) {
         const successfulPayment = payments.items.find((p: any) =>
@@ -4886,7 +4906,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updateOrder(order.id, {
               paymentStatus: 'PAID',
               paymentId: razorpayPaymentId
-            });
+            } as any);
 
             // Update payment record
             const paymentRecord = await storage.getPaymentByMetadataField('qrCodeId', qrCodeId);
@@ -4924,7 +4944,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 });
 
                 if (order.allCounterIds) {
-                  order.allCounterIds.forEach((counterId) => {
+                  order.allCounterIds.forEach((counterId: string) => {
                     wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
                     wsManager.broadcastToCounter(counterId, 'payment_success', {
                       orderNumber: order.orderNumber,
@@ -5095,7 +5115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentStatus: 'PAID',
           paymentId: razorpayPaymentId,
           paymentMethod: paymentMethod || 'qr'
-        });
+        } as any);
 
         console.log(`✅ Order payment updated via webhook: ${order.orderNumber} - Payment ID: ${razorpayPaymentId}`);
 
@@ -5143,7 +5163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             if (order.allCounterIds) {
-              order.allCounterIds.forEach((counterId) => {
+              order.allCounterIds.forEach((counterId: string) => {
                 wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
                 wsManager.broadcastToCounter(counterId, 'payment_success', {
                   orderNumber: order.orderNumber,
@@ -5184,7 +5204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/payments/job-status/:jobId", async (req, res) => {
     try {
       const { jobId } = req.params;
-      const { paymentQueue } = await import('./queues/paymentQueue');
+      const { paymentQueue } = await import('./queues/paymentQueue') as any;
 
       const job = await paymentQueue.getJob(jobId);
       if (!job) {
@@ -5571,12 +5591,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentStatusCache.set(cacheKey, { lastAttempt: now, consecutiveFailures: 0, shouldSkipApi: false });
 
         // Get payment details if available
-        let paymentStatus = PAYMENT_STATUS.PENDING;
-        let razorpayPaymentId = null;
+
+        let paymentStatus: string = PAYMENT_STATUS.PENDING;
+        let razorpayPaymentId: string | undefined;
         let paymentMethod = 'unknown';
 
-        if (razorpayOrder.payments && razorpayOrder.payments.length > 0) {
-          const latestPayment = razorpayOrder.payments[0];
+        if ((razorpayOrder as any).payments && (razorpayOrder as any).payments.length > 0) {
+          const latestPayment = (razorpayOrder as any).payments[0] as any;
           razorpayPaymentId = latestPayment.id;
           paymentMethod = latestPayment.method || 'unknown';
 
@@ -5606,7 +5627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               // Parse order data from metadata and create order with proper stock management
               const orderData = JSON.parse(updatedPayment.metadata);
-              const newOrder = await createOrderFromPaymentCallback(orderData, merchantTransactionId);
+              const newOrder = await orderService.createOrderFromPayment(orderData, merchantTransactionId);
 
               if (!newOrder || !newOrder.id) {
                 throw new Error('Order creation returned invalid order object - missing id');
@@ -5654,7 +5675,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             try {
               // Parse order data from metadata
               const orderData = JSON.parse(updatedPayment.metadata);
-              const newOrder = await createOrderForFailedPayment(orderData, merchantTransactionId);
+              const newOrder = await orderService.createOrderForFailedPayment(orderData, merchantTransactionId);
 
               if (!newOrder || !newOrder.id) {
                 throw new Error('Order creation returned invalid order object');
@@ -7149,7 +7170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: user.name,
         email: user.email,
         role: user.role,
-        identifier: (user.role === 'student' || user.role === 'employee' || user.role === 'contractor' || user.role === 'visitor' || user.role === 'guest') ? user.registerNumber : user.staffId,
+        identifier: ((user.role as string) === 'student' || (user.role as string) === 'employee' || (user.role as string) === 'contractor' || (user.role as string) === 'visitor' || (user.role as string) === 'guest') ? user.registerNumber : user.staffId,
         department: user.department || '',
         createdAt: user.createdAt
       }));
@@ -7270,7 +7291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(counter);
     } catch (error) {
       console.error("Error creating counter:", error);
-      if (error.message?.includes('duplicate')) {
+      if ((error as any).message?.includes('duplicate')) {
         res.status(409).json({ message: "Counter code already exists for this canteen" });
       } else {
         res.status(500).json({ message: "Failed to create counter" });
@@ -7704,7 +7725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               customerName: result.customerName,
               amount: result.amount,
               items: result.items,
-              address: result.address || 'Pickup from canteen',
+              address: (result as any).address || 'Pickup from canteen',
               createdAt: result.createdAt,
               status: 'out_for_delivery',
               deliveryPersonId: deliveryPersonId
@@ -8083,42 +8104,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`❌ Failed to deliver order: ${orderId}`);
         return res.status(404).json({ message: "Order not found" });
       }
+      // Cast result to any for safe access
+      const resultAny = result as any;
 
       console.log(`✅ Order delivered successfully:`, {
-        orderId: result.id,
-        orderNumber: result.orderNumber,
+        orderId: resultAny.id,
+        orderNumber: resultAny.orderNumber,
         oldStatus: oldOrder.status,
-        newStatus: result.status,
-        canteenId: result.canteenId,
-        deliveryPersonId: result.deliveryPersonId,
+        newStatus: resultAny.status,
+        canteenId: resultAny.canteenId,
+        deliveryPersonId: resultAny.deliveryPersonId,
         isDeliveryPersonDelivery
       });
 
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`📢 Broadcasting deliver order for order ${result.orderNumber}:`, {
-          orderId: result.id,
-          orderNumber: result.orderNumber,
-          canteenId: result.canteenId,
+        // Cast result to any to access properties safely
+        const resultAny = result as any;
+        console.log(`📢 Broadcasting deliver order for order ${resultAny.orderNumber}:`, {
+          orderId: resultAny.id,
+          orderNumber: resultAny.orderNumber,
+          canteenId: resultAny.canteenId,
           oldStatus: oldOrder.status,
-          newStatus: result.status,
+          newStatus: resultAny.status,
           isDeliveryPersonDelivery
         });
 
         // Broadcast to canteen room (for user order status page)
         // Ensure order data includes all identifiers for proper matching on client
         const orderDataForBroadcast = {
-          ...(result.toObject ? result.toObject() : result),
-          id: result.id || result._id,
-          _id: result._id || result.id,
-          orderNumber: result.orderNumber
+          ...(resultAny.toObject ? resultAny.toObject() : resultAny),
+          id: resultAny.id || resultAny._id,
+          _id: resultAny._id || resultAny.id,
+          orderNumber: resultAny.orderNumber
         };
-        wsManager.broadcastOrderStatusUpdate(result.canteenId, orderDataForBroadcast, oldOrder.status, result.status);
+        wsManager.broadcastOrderStatusUpdate(resultAny.canteenId, orderDataForBroadcast, oldOrder.status, resultAny.status);
 
         // Broadcast to all relevant counter rooms for item-level updates
-        if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
-          result.allStoreCounterIds.forEach((storeCounterId: string) => {
+        if (resultAny.allStoreCounterIds && resultAny.allStoreCounterIds.length > 0) {
+          resultAny.allStoreCounterIds.forEach((storeCounterId: string) => {
             console.log(`📢 Broadcasting item-level delivery update to counter room: ${storeCounterId}`);
             wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
           });
@@ -8131,12 +8156,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Broadcast to delivery person if this was a delivery person delivery
-        if (isDeliveryPersonDelivery && result.deliveryPersonId) {
+        if (isDeliveryPersonDelivery && resultAny.deliveryPersonId) {
           try {
             const { db } = await import('./db');
             const database = db();
             const deliveryPerson = await database.deliveryPerson.findUnique({
-              where: { deliveryPersonId: result.deliveryPersonId }
+              where: { deliveryPersonId: resultAny.deliveryPersonId }
             });
 
             if (deliveryPerson && deliveryPerson.email) {
@@ -8144,8 +8169,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               wsManager.broadcastToDeliveryPerson(deliveryPerson.email, {
                 type: 'order_delivered',
                 data: orderDataForBroadcast,
-                orderNumber: result.orderNumber,
-                status: result.status
+                orderNumber: resultAny.orderNumber,
+                status: resultAny.status
               });
             }
           } catch (error) {
@@ -8191,7 +8216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if deliveryPerson model exists - Prisma uses camelCase for model names
       if (!database.deliveryPerson) {
         console.error("❌ DeliveryPerson model not found in Prisma client.");
-        console.error("Available models:", Object.keys(database).filter(k => !k.startsWith('_') && typeof database[k] === 'object'));
+        console.error("Available models:", Object.keys(database).filter(k => !k.startsWith('_') && typeof (database as any)[k] === 'object'));
         return res.status(500).json({
           error: "DeliveryPerson model not available. Please restart the server after running 'npx prisma generate'"
         });
@@ -8564,7 +8589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).sort({ createdAt: -1 });
 
       res.json(orders.map(order => ({
-        id: order._id.toString(),
+        id: (order as any)._id?.toString() || (order as any).id,
         orderNumber: order.orderNumber,
         customerName: order.customerName,
         items: order.items,
@@ -8632,7 +8657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all counters for the canteen to map counter IDs to names
       const { Counter } = await import('./models/mongodb-models');
-      const allCanteenIds = [...new Set([...activeOrders.map((o: any) => o.canteenId), ...completedOrders.map((o: any) => o.canteenId)])];
+      const allCanteenIds = Array.from(new Set([...activeOrders.map((o: any) => o.canteenId), ...completedOrders.map((o: any) => o.canteenId)]));
       const counters = await Counter.find({
         canteenId: { $in: allCanteenIds },
         type: 'store'
@@ -8644,7 +8669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         active: activeOrders.map(order => ({
-          id: order._id.toString(),
+          id: (order as any)._id.toString(),
           orderNumber: order.orderNumber,
           customerName: order.customerName,
           items: order.items,
@@ -8663,7 +8688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           counterMap: counterMap
         })),
         completed: completedOrders.map(order => ({
-          id: order._id.toString(),
+          id: (order as any)._id.toString(),
           orderNumber: order.orderNumber,
           customerName: order.customerName,
           items: order.items,
@@ -8848,7 +8873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const challenges = await CodingChallenge.find().sort({ createdAt: -1 });
       res.json(challenges.map(challenge => ({
-        id: challenge._id.toString(),
+        id: (challenge as any)._id.toString(),
         name: challenge.name,
         description: challenge.description,
         questionCount: challenge.questionCount,
@@ -8873,7 +8898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const challenges = await CodingChallenge.find({ isActive: true }).sort({ createdAt: -1 });
       res.json(challenges.map(challenge => ({
-        id: challenge._id.toString(),
+        id: (challenge as any)._id.toString(),
         name: challenge.name,
         description: challenge.description,
         questionCount: challenge.questionCount,
@@ -8929,7 +8954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await challenge.save();
 
       res.status(201).json({
-        id: challenge._id.toString(),
+        id: (challenge as any)._id.toString(),
         name: challenge.name,
         description: challenge.description,
         questionCount: challenge.questionCount,
@@ -8979,7 +9004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await challenge.save();
 
       res.json({
-        id: challenge._id.toString(),
+        id: (challenge as any)._id.toString(),
         name: challenge.name,
         description: challenge.description,
         questionCount: challenge.questionCount,
@@ -9039,7 +9064,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await challenge.save();
 
       res.json({
-        id: challenge._id.toString(),
+        id: (challenge as any)._id.toString(),
         isActive: challenge.isActive
       });
     } catch (error) {

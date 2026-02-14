@@ -586,7 +586,7 @@ export function PosCheckoutDialog({
     },
     onSuccess: (updatedOrder) => {
       toast.success('Order marked as ready!');
-      setCreatedOrder(prevOrder => ({
+      setCreatedOrder((prevOrder: any) => ({
         ...prevOrder,
         ...updatedOrder,
         orderNumber: updatedOrder.orderNumber || prevOrder?.orderNumber,
@@ -625,7 +625,7 @@ export function PosCheckoutDialog({
     },
     onSuccess: (updatedOrder) => {
       toast.success('Order marked as out for delivery!');
-      setCreatedOrder(prevOrder => ({
+      setCreatedOrder((prevOrder: any) => ({
         ...prevOrder,
         ...updatedOrder,
         orderNumber: updatedOrder.orderNumber || prevOrder?.orderNumber,
@@ -974,7 +974,7 @@ export function PosCheckoutDialog({
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-3 pt-4">
                   <OwnerButton
-                    variant="outline"
+                    variant="secondary"
                     onClick={handlePrintReceipt}
                     className="flex-1 flex items-center justify-center gap-2"
                     disabled={isPrinting}

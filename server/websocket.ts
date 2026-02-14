@@ -16,7 +16,7 @@ export interface SocketUser {
 }
 
 export interface OrderUpdateData {
-  type: 'new_order' | 'order_updated' | 'order_status_changed' | 'banner_updated' | 'payment_success';
+  type: 'new_order' | 'order_updated' | 'order_status_changed' | 'banner_updated' | 'payment_success' | 'menu_updated';
   data: any;
   oldStatus?: string;
   newStatus?: string;
@@ -77,7 +77,7 @@ class WebSocketManager {
           this.connectedUsers.set(socket.id, userInfo);
 
           // Join canteen-specific rooms
-          ids.forEach(canteenId => {
+          ids.forEach((canteenId: string) => {
             const roomName = `canteen_${canteenId}`;
             socket.join(roomName);
 
@@ -310,7 +310,7 @@ class WebSocketManager {
       });
 
       // Remove from delivery person rooms (find by checking all rooms)
-      for (const [email, members] of this.deliveryPersonRooms.entries()) {
+      for (const [email, members] of Array.from(this.deliveryPersonRooms.entries())) {
         if (members.has(socketId)) {
           members.delete(socketId);
           if (members.size === 0) {
@@ -408,7 +408,7 @@ class WebSocketManager {
     // Clean up old cache entries (older than 5 minutes)
     if (this.checkoutSessionBroadcastCache.size > 1000) {
       const fiveMinutesAgo = now - 5 * 60 * 1000;
-      for (const [key, value] of this.checkoutSessionBroadcastCache.entries()) {
+      for (const [key, value] of Array.from(this.checkoutSessionBroadcastCache.entries())) {
         if (value.lastBroadcast < fiveMinutesAgo) {
           this.checkoutSessionBroadcastCache.delete(key);
         }

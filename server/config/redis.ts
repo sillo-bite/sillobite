@@ -1,9 +1,9 @@
-import Redis from 'ioredis';
+import Redis, { Cluster } from 'ioredis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-let redisClient: Redis | null = null;
+let redisClient: Redis | Cluster | null = null;
 let redisConnectionAttempts = 0;
 const MAX_REDIS_CONNECTION_ATTEMPTS = 3; // Stop trying after 3 failed attempts
 let redisConnectionFailed = false;
@@ -13,7 +13,7 @@ let redisConnectionFailed = false;
  * Supports both Redis and Redis Cluster
  * SCALABILITY FIX: Stops reconnecting after max attempts to prevent log spam
  */
-export function getRedisClient(): Redis {
+export function getRedisClient(): Redis | Cluster {
   // If Redis connection has failed permanently, return a mock client that fails gracefully
   if (redisConnectionFailed) {
     // Return a mock client that always fails gracefully
@@ -34,7 +34,7 @@ export function getRedisClient(): Redis {
   }
 
   const redisUrl = process.env.REDIS_URL || process.env.REDIS_URI || 'redis://localhost:6379';
-  
+
   // Parse Redis URL for configuration
   const redisConfig: any = {
     maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES || '3'),
@@ -50,14 +50,14 @@ export function getRedisClient(): Redis {
     },
     reconnectOnError: (err: Error) => {
       redisConnectionAttempts++;
-      
+
       // Stop reconnecting after max attempts
       if (redisConnectionAttempts > MAX_REDIS_CONNECTION_ATTEMPTS) {
         redisConnectionFailed = true;
         console.log('⚠️ Redis reconnection stopped after max attempts. Using in-memory cache fallback.');
         return false; // Stop reconnecting
       }
-      
+
       const targetError = 'READONLY';
       if (err.message.includes(targetError)) {
         return true; // Reconnect on READONLY error
@@ -80,10 +80,10 @@ export function getRedisClient(): Redis {
   // If Redis URL contains cluster info, use cluster mode
   if (redisUrl.includes('cluster') || process.env.REDIS_CLUSTER === 'true') {
     // For cluster mode, parse nodes from URL or use environment variables
-    const nodes = process.env.REDIS_CLUSTER_NODES 
+    const nodes = process.env.REDIS_CLUSTER_NODES
       ? process.env.REDIS_CLUSTER_NODES.split(',').map(node => ({ host: node.split(':')[0], port: parseInt(node.split(':')[1]) }))
       : [{ host: 'localhost', port: 6379 }];
-    
+
     redisClient = new Redis.Cluster(nodes, {
       ...redisConfig,
       redisOptions: {
@@ -98,19 +98,19 @@ export function getRedisClient(): Redis {
     });
   }
 
-  redisClient.on('connect', () => {
+  redisClient!.on('connect', () => {
     console.log('✅ Redis client connected');
     redisConnectionAttempts = 0; // Reset on successful connection
     redisConnectionFailed = false;
   });
 
-  redisClient.on('ready', () => {
+  redisClient!.on('ready', () => {
     console.log('✅ Redis client ready');
     redisConnectionAttempts = 0; // Reset on ready
     redisConnectionFailed = false;
   });
 
-  redisClient.on('error', (err) => {
+  redisClient!.on('error', (err) => {
     // Only log first few errors to prevent spam
     if (redisConnectionAttempts <= MAX_REDIS_CONNECTION_ATTEMPTS) {
       if (redisConnectionAttempts === 0) {
@@ -120,21 +120,21 @@ export function getRedisClient(): Redis {
     // Don't log after max attempts to prevent log spam
   });
 
-  redisClient.on('close', () => {
+  redisClient!.on('close', () => {
     // Only log if not permanently failed
     if (!redisConnectionFailed && redisConnectionAttempts <= MAX_REDIS_CONNECTION_ATTEMPTS) {
       console.log('⚠️ Redis client connection closed');
     }
   });
 
-  redisClient.on('reconnecting', () => {
+  redisClient!.on('reconnecting', () => {
     // Only log if not permanently failed
     if (!redisConnectionFailed && redisConnectionAttempts <= MAX_REDIS_CONNECTION_ATTEMPTS) {
       console.log(`🔄 Redis client reconnecting... (attempt ${redisConnectionAttempts + 1}/${MAX_REDIS_CONNECTION_ATTEMPTS})`);
     }
   });
 
-  return redisClient;
+  return redisClient!;
 }
 
 /**
@@ -148,12 +148,12 @@ export async function isRedisAvailable(): Promise<boolean> {
 
   try {
     const client = getRedisClient();
-    
+
     // If client is a mock (failed), return false immediately
     if ((client as any).status === 'end') {
       return false;
     }
-    
+
     // Only try to connect if not already connected
     if (client.status !== 'ready' && client.status !== 'connecting') {
       // Use lazy connect - only connect when ping is called
@@ -168,7 +168,7 @@ export async function isRedisAvailable(): Promise<boolean> {
         return false;
       }
     }
-    
+
     await client.ping();
     redisConnectionFailed = false; // Reset on success
     redisConnectionAttempts = 0;
@@ -198,7 +198,7 @@ export async function closeRedisConnection(): Promise<void> {
  * Redis cache helper functions
  */
 export class RedisCache {
-  private client: Redis;
+  private client: Redis | Cluster;
 
   constructor() {
     this.client = getRedisClient();
@@ -314,7 +314,7 @@ export class RedisCache {
  * Distributed lock implementation using Redis
  */
 export class DistributedLock {
-  private client: Redis;
+  private client: Redis | Cluster;
   private lockKey: string;
   private lockValue: string;
   private ttl: number; // Lock TTL in seconds

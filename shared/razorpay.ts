@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
+import { Jimp } from 'jimp';
+import jsQR from 'jsqr';
 
 // Razorpay Configuration - loaded from environment variables
 export const RAZORPAY_CONFIG = {
@@ -214,3 +216,43 @@ export async function closeRazorpayQR(qrCodeId: string) {
   }
 }
 
+/**
+ * Extracts the UPI deep link from a Razorpay QR code image.
+ * Downloads the image, decodes the QR, and returns the embedded UPI link.
+ * Returns null if extraction fails — caller should fall back to image_url.
+ */
+export async function extractUpiLinkFromQR(imageUrl: string): Promise<string | null> {
+  try {
+    // Download the QR image
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.warn(`⚠️ Failed to download QR image: HTTP ${response.status}`);
+      return null;
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Read image with Jimp
+    const image = await Jimp.read(buffer);
+    const width = image.width;
+    const height = image.height;
+
+    // Get raw RGBA pixel data
+    const imageData = new Uint8ClampedArray(image.bitmap.data);
+
+    // Decode the QR code
+    const qrResult = jsQR(imageData, width, height);
+
+    if (qrResult && qrResult.data) {
+      console.log(`✅ UPI link extracted from QR image: ${qrResult.data.substring(0, 50)}...`);
+      return qrResult.data;
+    }
+
+    console.warn('⚠️ Could not decode QR code from image');
+    return null;
+  } catch (error) {
+    console.error('❌ Error extracting UPI link from QR:', error);
+    return null;
+  }
+}

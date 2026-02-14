@@ -62,8 +62,8 @@ export default function ProfileEditPage() {
       <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
         }`}>{label}</FormLabel>
       <div className={`flex items-center h-11 px-3 py-2 text-sm border rounded-lg ${resolvedTheme === 'dark'
-          ? 'border-gray-700 bg-gray-800/50 text-gray-400'
-          : 'border-gray-300 bg-gray-50 text-gray-700'
+        ? 'border-gray-700 bg-gray-800/50 text-gray-400'
+        : 'border-gray-300 bg-gray-50 text-gray-700'
         }`}>
         <span>
           {value || placeholder}
@@ -73,7 +73,9 @@ export default function ProfileEditPage() {
   );
 
 
-  const form = useForm({
+  type ProfileEditFormValues = z.infer<typeof profileEditSchema>;
+
+  const form = useForm<ProfileEditFormValues>({
     resolver: zodResolver(profileEditSchema),
     defaultValues: {
       name: "",
@@ -83,6 +85,8 @@ export default function ProfileEditPage() {
       selectedLocationId: "",
     },
   });
+
+
 
   // Update form when userInfo changes
   useEffect(() => {
@@ -187,8 +191,8 @@ export default function ProfileEditPage() {
           </div>
 
           <Card className={`${resolvedTheme === 'dark'
-              ? 'bg-black border border-gray-800 shadow-lg'
-              : 'bg-white border border-gray-200 shadow-sm'
+            ? 'bg-black border border-gray-800 shadow-lg'
+            : 'bg-white border border-gray-200 shadow-sm'
             }`}>
             <CardContent className="p-6">
               <Form {...form}>
@@ -213,8 +217,8 @@ export default function ProfileEditPage() {
                                   placeholder="Enter your full name"
                                   {...field}
                                   className={`h-11 text-sm ${resolvedTheme === 'dark'
-                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]'
-                                      : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
+                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]'
+                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
                                     }`}
                                 />
                               </FormControl>
@@ -235,8 +239,8 @@ export default function ProfileEditPage() {
                                   placeholder="Enter your phone number"
                                   {...field}
                                   className={`h-11 text-sm ${resolvedTheme === 'dark'
-                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]'
-                                      : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
+                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100 placeholder:text-gray-500 focus:border-[#724491]'
+                                    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#724491]'
                                     }`}
                                 />
                               </FormControl>
@@ -255,12 +259,12 @@ export default function ProfileEditPage() {
                                   }`}>Current Study Year</FormLabel>
                                 <Select
                                   onValueChange={(value) => field.onChange(parseInt(value))}
-                                  value={field.value?.toString()}
+                                  value={field.value ? String(field.value) : undefined}
                                 >
                                   <FormControl>
                                     <SelectTrigger className={`h-11 text-sm ${resolvedTheme === 'dark'
-                                        ? 'bg-gray-800/50 border-gray-700 text-gray-100'
-                                        : 'bg-white border-gray-300 text-gray-900'
+                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100'
+                                      : 'bg-white border-gray-300 text-gray-900'
                                       }`}>
                                       <SelectValue placeholder="Select year" />
                                     </SelectTrigger>
@@ -289,8 +293,8 @@ export default function ProfileEditPage() {
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className={`h-11 text-sm ${resolvedTheme === 'dark'
-                                      ? 'bg-gray-800/50 border-gray-700 text-gray-100'
-                                      : 'bg-white border-gray-300 text-gray-900'
+                                    ? 'bg-gray-800/50 border-gray-700 text-gray-100'
+                                    : 'bg-white border-gray-300 text-gray-900'
                                     }`}>
                                     <SelectValue placeholder="Select location type" />
                                   </SelectTrigger>
@@ -327,8 +331,8 @@ export default function ProfileEditPage() {
                           <FormLabel className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-900'
                             }`}>Role</FormLabel>
                           <div className={`flex items-center h-11 px-3 py-2 text-sm border rounded-lg ${resolvedTheme === 'dark'
-                              ? 'border-gray-700 bg-gray-800/50 text-gray-400'
-                              : 'border-gray-300 bg-gray-50 text-gray-700'
+                            ? 'border-gray-700 bg-gray-800/50 text-gray-400'
+                            : 'border-gray-300 bg-gray-50 text-gray-700'
                             }`}>
                             <span className="capitalize">
                               {userInfo?.role || "Not specified"}
@@ -442,8 +446,8 @@ export default function ProfileEditPage() {
                       variant="outline"
                       onClick={() => setLocation("/profile")}
                       className={`flex-1 h-12 ${resolvedTheme === 'dark'
-                          ? 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-gray-200'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-800'
+                        ? 'border-gray-700 bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 hover:text-gray-200'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-800'
                         }`}
                     >
                       Cancel
