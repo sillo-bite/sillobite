@@ -3,6 +3,8 @@ import Razorpay from 'razorpay';
 import { Jimp } from 'jimp';
 import jsQR from 'jsqr';
 
+import https from 'https';
+
 // Razorpay Configuration - loaded from environment variables
 export const RAZORPAY_CONFIG = {
   KEY_ID: process.env.RAZORPAY_KEY_ID || '',
@@ -10,10 +12,18 @@ export const RAZORPAY_CONFIG = {
   WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || '',
 };
 
+// SCALABILITY FIX: HTTP Keep-Alive Agent to reuse SSL connections
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 50
+});
+
 // Initialize Razorpay instance
 export const razorpayInstance = new Razorpay({
   key_id: RAZORPAY_CONFIG.KEY_ID,
   key_secret: RAZORPAY_CONFIG.KEY_SECRET,
+  // @ts-ignore - Pass agent for underlying axios/request library if supported
+  agent: httpsAgent
 });
 
 // Payment status codes

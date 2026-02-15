@@ -341,7 +341,7 @@ export default function CanteenOwnerDashboardSidebar() {
           tag: data?.tag || "canteen-order",
           timestamp: Date.now(),
           vibrate: [200, 100, 200],
-        });
+        } as any);
       }
     } catch (error) {
       console.warn("Failed to show device notification:", error);
@@ -1262,7 +1262,7 @@ export default function CanteenOwnerDashboardSidebar() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={() => refetchPaginatedActive()}
               className="flex items-center space-x-2"
             >
               <RefreshCcw className="h-4 w-4" />

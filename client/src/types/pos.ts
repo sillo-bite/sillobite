@@ -1,6 +1,6 @@
 import type { MenuItem, Category } from "@shared/schema";
 
-export type PaymentMethod = 'cash' | 'card' | 'upi' | 'wallet';
+export type PaymentMethod = 'cash' | 'card' | 'upi' | 'wallet' | 'offline';
 
 export interface CartItem {
   id: string;
