@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { ShoppingCart, History, TestTube2 } from "lucide-react";
+import { ShoppingCart, History, TestTube2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { OwnerPageLayout, OwnerTabs, OwnerTabList, OwnerTab } from "@/components/owner";
 import { usePosCart } from "@/hooks/usePosCart";
@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import type { PosBillingProps, DiscountConfig, PaymentMethod, Transaction } from "@/types/pos";
+import { apiRequest } from "@/lib/queryClient";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProps) {
   const [, setLocation] = useLocation();
@@ -45,10 +47,12 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
 
   // Test Print State
   const [isTestPrinting, setIsTestPrinting] = useState(false);
+  const [stockError, setStockError] = useState<string | null>(null);
+  const [isValidatingStock, setIsValidatingStock] = useState(false);
 
   // Custom Hooks
   const { cart, addToCart, updateQuantity, removeFromCart, clearCart } = usePosCart();
-  const { menuItems, categories, transactions, transactionsPagination, canteenSettings, isLoading, refetchTransactions, setTransactionsPage } = usePosData(
+  const { menuItems, categories, transactions, transactionsPagination, canteenSettings, isLoading, refetchTransactions, refetchMenu, setTransactionsPage } = usePosData(
     canteenId,
     searchQuery,
     selectedCategory
@@ -154,7 +158,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
   };
 
   // Handlers
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error("Please add items to cart before checkout.");
       return;
@@ -163,6 +167,42 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
     // Set default customer name if not provided
     if (!customerName.trim()) {
       setCustomerName("Customer");
+    }
+
+    // Re-validate stock before opening checkout (lightweight query)
+    try {
+      setIsValidatingStock(true);
+      const itemIds = cart.map(c => c.id);
+      const response = await apiRequest('/api/menu/check-stock', {
+        method: 'POST',
+        body: JSON.stringify({ itemIds }),
+      });
+      const freshItems = response?.items || [];
+
+      const insufficientItems: string[] = [];
+      for (const cartItem of cart) {
+        const freshItem = freshItems.find((m: any) => m.id === cartItem.id);
+        if (!freshItem || !freshItem.available) {
+          insufficientItems.push(`${cartItem.name} is no longer available`);
+        } else if (cartItem.quantity > freshItem.stock) {
+          insufficientItems.push(
+            `${cartItem.name}: requested ${cartItem.quantity}, only ${freshItem.stock} available`
+          );
+        }
+      }
+
+      if (insufficientItems.length > 0) {
+        setStockError(
+          `Some items in your cart have insufficient stock:\n\n${insufficientItems.join('\n')}`
+        );
+        refetchMenu(); // Refresh the menu grid too
+        return;
+      }
+    } catch (error) {
+      console.error('Stock validation error:', error);
+      // If we can't validate, let the server catch it later
+    } finally {
+      setIsValidatingStock(false);
     }
 
     setShowCheckoutDialog(true);
@@ -275,6 +315,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
       setLastTotalsForPrint(totals);
       resetForm();
       refetchTransactions();
+      refetchMenu(); // Refresh stock counts
 
       // Send to printer after successful save (non-blocking)
       sendToPrinter(transaction, totals).catch(() => {
@@ -386,7 +427,7 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
   };
 
   return (
-    <div className="z-50 overflow-auto h-screen scrollbar-hide">
+    <div className="overflow-auto h-screen scrollbar-hide">
       <OwnerPageLayout>
         <OwnerTabs value={activeTab} onValueChange={(v) => setActiveTab(v as "billing" | "history")}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3  px-4">
@@ -539,6 +580,31 @@ export default function PosBilling({ canteenId, onOpenSettings }: PosBillingProp
         </>
       )
       }
+
+      {/* Stock Validation Error Popup */}
+      <AlertDialog open={!!stockError} onOpenChange={(open) => {
+        if (!open) {
+          setStockError(null);
+          refetchMenu();
+        }
+      }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Insufficient Stock
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-gray-700 whitespace-pre-line">
+              {stockError}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setStockError(null); refetchMenu(); }}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div >
   );
 }

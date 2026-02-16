@@ -1,5 +1,12 @@
 // Google Analytics and Search Console Integration for SilloBite
 
+declare global {
+  interface Window {
+    dataLayer: any[];
+    gtag: (...args: any[]) => void;
+  }
+}
+
 // Google Analytics 4 Configuration
 export const GA_TRACKING_ID = 'G-XXXXXXXXXX'; // Replace with your actual GA4 tracking ID
 
@@ -14,9 +21,10 @@ export const initGoogleAnalytics = () => {
 
     // Initialize gtag
     window.dataLayer = window.dataLayer || [];
-    function gtag(...args: any[]) {
+    const gtag = function (...args: any[]) {
       window.dataLayer.push(args);
-    }
+    };
+    window.gtag = gtag;
     gtag('js', new Date());
     gtag('config', GA_TRACKING_ID, {
       page_title: document.title,
@@ -52,7 +60,7 @@ export const trackEvent = (action: string, category: string, label?: string, val
 
 // Payment-specific analytics tracking
 export const trackPaymentEvent = (
-  eventName: 'callback.started' | 'callback.success' | 'callback.failed' | 'callback.pending' | 'verification.failed' | 'status.check',
+  eventName: 'callback.started' | 'callback.success' | 'callback.failed' | 'callback.pending' | 'verification.failed' | 'status.check' | 'callback.timeout',
   params?: {
     transactionId?: string;
     orderNumber?: string;
@@ -161,12 +169,12 @@ export const submitSitemapToSearchConsole = () => {
 export const trackSEOMetrics = () => {
   // Track Core Web Vitals
   if ('web-vital' in window) {
-    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-      getCLS(trackPerformance);
-      getFID(trackPerformance);
-      getFCP(trackPerformance);
-      getLCP(trackPerformance);
-      getTTFB(trackPerformance);
+    import('web-vitals').then(({ onCLS, onINP, onFCP, onLCP, onTTFB }) => {
+      onCLS((metric) => trackPerformance(metric.name, metric.value));
+      onINP((metric) => trackPerformance(metric.name, metric.value));
+      onFCP((metric) => trackPerformance(metric.name, metric.value));
+      onLCP((metric) => trackPerformance(metric.name, metric.value));
+      onTTFB((metric) => trackPerformance(metric.name, metric.value));
     });
   }
 };

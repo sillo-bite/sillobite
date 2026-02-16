@@ -18,6 +18,10 @@ export interface StockValidationResult {
 }
 
 export class AtomicStockService {
+  // SCALABILITY FIX: In-memory "hot stock" guard
+  private stockCache = new Map<string, { stock: number, timestamp: number }>();
+  private readonly CACHE_TTL = 2000; // 2 seconds
+
   /**
    * Validates and prepares stock updates for order items
    * OPTIMIZED: Uses batch query instead of N sequential queries
@@ -28,6 +32,21 @@ export class AtomicStockService {
 
     if (orderItems.length === 0) {
       return { isValid: true, errors: [], updates: [] };
+    }
+
+    // SCALABILITY FIX: Check in-memory cache first (Fast Fail)
+    for (const item of orderItems) {
+      const cached = this.stockCache.get(item.id);
+      if (cached && (Date.now() - cached.timestamp < this.CACHE_TTL)) {
+        if (cached.stock < item.quantity) {
+          // Reject immediately without DB hit
+          return {
+            isValid: false,
+            errors: [`Insufficient stock for ${item.name || item.id} (cached). Available: ${cached.stock}, Requested: ${item.quantity}`],
+            updates: []
+          };
+        }
+      }
     }
 
     // OPTIMIZATION: Batch query - fetch all menu items in a single DB query
@@ -201,6 +220,19 @@ export class AtomicStockService {
               }
 
               console.log(`📦 Bulk stock update: ${result.modifiedCount} items updated`);
+
+              // SCALABILITY FIX: Update local cache on successful DB update
+              const now = Date.now();
+              updates.forEach(u => {
+                const cached = this.stockCache.get(u.id);
+                if (cached) {
+                  let newStock = cached.stock;
+                  if (u.operation === 'deduct') newStock -= u.quantity;
+                  else if (u.operation === 'restore') newStock += u.quantity;
+
+                  this.stockCache.set(u.id, { stock: newStock, timestamp: now });
+                }
+              });
             }
           } finally {
             // Release all locks
@@ -308,6 +340,9 @@ export class AtomicStockService {
       }
 
       console.log(`📦 Stock deducted for item ${update.id}: ${result.stock + update.quantity} → ${result.stock} (${update.quantity} deducted)`);
+
+      // SCALABILITY FIX: Update local cache
+      this.stockCache.set(update.id, { stock: result.stock, timestamp: Date.now() });
     }
     // For restoration, use simple increment
     else if (update.operation === 'restore') {
@@ -334,6 +369,9 @@ export class AtomicStockService {
       }
 
       console.log(`📦 Stock restored for item ${update.id}: ${result.stock - update.quantity} → ${result.stock} (${update.quantity} restored)`);
+
+      // SCALABILITY FIX: Update local cache
+      this.stockCache.set(update.id, { stock: result.stock, timestamp: Date.now() });
     } else {
       throw new Error(`Invalid stock operation: ${update.operation}`);
     }

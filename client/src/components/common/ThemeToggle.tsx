@@ -1,16 +1,16 @@
 import React from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme, type Theme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Sun, 
-  Moon, 
-  Monitor, 
+import {
+  Sun,
+  Moon,
+  Monitor,
   Palette,
   Check
 } from 'lucide-react';

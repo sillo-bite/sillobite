@@ -22,7 +22,7 @@ interface HomeDataResponse {
   timestamp: string;
 }
 
-export function useHomeData(canteenId: string | null, userId: number | null = null, enabled: boolean = true) {
+export function useHomeData(canteenId: string | null, userId: string | number | null = null, enabled: boolean = true) {
   return useQuery<HomeDataResponse>({
     // Always include userId in query key for consistency (even if null)
     // This prevents key structure changes that trigger unnecessary fetches
@@ -32,12 +32,12 @@ export function useHomeData(canteenId: string | null, userId: number | null = nu
         if (process.env.NODE_ENV === 'development') {
           console.log(`🏠 useHomeData - No canteen ID provided`);
         }
-        return { 
-          mediaBanners: [], 
-          trendingItems: [], 
+        return {
+          mediaBanners: [],
+          trendingItems: [],
           quickPicks: [],
           activeOrders: [],
-          timestamp: new Date().toISOString() 
+          timestamp: new Date().toISOString()
         };
       }
 

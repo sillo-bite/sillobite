@@ -188,7 +188,7 @@ export const getSEOConfig = (pageType: string, customData?: Partial<SEOConfig>):
       ...defaultSEO.keywords,
       ...(pageConfig.keywords || []),
       ...(customData?.keywords || [])
-    ].join(', ')
+    ]
   };
 };
 

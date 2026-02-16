@@ -25,7 +25,7 @@ class DeliveryAssignmentService {
   async startAssignment(orderId: string, orderNumber: string, canteenId: string): Promise<void> {
     try {
       console.log(`🚚 Starting delivery assignment for order ${orderNumber} (${orderId})`);
-      
+
       // Get available delivery persons for this canteen
       const database = getPostgresDb();
       const availableDeliveryPersons = await database.deliveryPerson.findMany({
@@ -183,7 +183,7 @@ class DeliveryAssignmentService {
       console.log(`⚠️ No assignment found for order ${orderId}`);
       return false;
     }
-    
+
     if (assignment.status !== 'pending') {
       console.log(`⚠️ Assignment for order ${orderId} is not pending (status: ${assignment.status})`);
       return false;
@@ -202,9 +202,9 @@ class DeliveryAssignmentService {
 
     // Check if this is the current person being asked - use email for more reliable matching
     const currentPersonId = assignment.deliveryPersonIds[assignment.currentDeliveryPersonIndex];
-    const isCurrentPerson = assignment.currentDeliveryPersonEmail === deliveryPersonEmail || 
-                            deliveryPerson.deliveryPersonId === currentPersonId;
-    
+    const isCurrentPerson = assignment.currentDeliveryPersonEmail === deliveryPersonEmail ||
+      deliveryPerson.deliveryPersonId === currentPersonId;
+
     console.log(`🔍 Checking assignment acceptance:`, {
       orderId,
       deliveryPersonEmail,
@@ -216,7 +216,7 @@ class DeliveryAssignmentService {
       status: assignment.status,
       isCurrentPerson
     });
-    
+
     if (!isCurrentPerson) {
       console.log(`⚠️ Delivery person ${deliveryPersonEmail} (${deliveryPerson.deliveryPersonId}) tried to accept but is not the current assignee`);
       console.log(`   Expected email: ${assignment.currentDeliveryPersonEmail}, Expected ID: ${currentPersonId}`);
@@ -322,7 +322,7 @@ class DeliveryAssignmentService {
       if (updatedOrder) {
         const oldStatus = order?.status || 'pending';
         wsManager.broadcastOrderStatusUpdate(assignment.canteenId, updatedOrder, oldStatus, updatedOrder.status);
-        
+
         // Also broadcast item-level status changes to all counter rooms
         if (updatedOrder.allStoreCounterIds && updatedOrder.allStoreCounterIds.length > 0) {
           updatedOrder.allStoreCounterIds.forEach((storeCounterId: string) => {
@@ -358,9 +358,9 @@ class DeliveryAssignmentService {
 
     // Check if this is the current person being asked - use email for more reliable matching
     const currentPersonId = assignment.deliveryPersonIds[assignment.currentDeliveryPersonIndex];
-    const isCurrentPerson = assignment.currentDeliveryPersonEmail === deliveryPersonEmail || 
-                            deliveryPerson.deliveryPersonId === currentPersonId;
-    
+    const isCurrentPerson = assignment.currentDeliveryPersonEmail === deliveryPersonEmail ||
+      deliveryPerson.deliveryPersonId === currentPersonId;
+
     if (!isCurrentPerson) {
       console.log(`⚠️ Delivery person ${deliveryPersonEmail} (${deliveryPerson.deliveryPersonId}) tried to reject but is not the current assignee`);
       console.log(`   Expected email: ${assignment.currentDeliveryPersonEmail}, Expected ID: ${currentPersonId}`);
@@ -450,7 +450,7 @@ class DeliveryAssignmentService {
       return null;
     }
 
-    for (const assignment of this.pendingAssignments.values()) {
+    for (const assignment of Array.from(this.pendingAssignments.values())) {
       if (assignment.status === 'pending') {
         const currentPersonId = assignment.deliveryPersonIds[assignment.currentDeliveryPersonIndex];
         if (deliveryPerson.deliveryPersonId === currentPersonId) {
@@ -466,7 +466,7 @@ class DeliveryAssignmentService {
    */
   cleanup(): void {
     const now = Date.now();
-    for (const [orderId, assignment] of this.pendingAssignments.entries()) {
+    for (const [orderId, assignment] of Array.from(this.pendingAssignments.entries())) {
       // Remove assignments older than 10 minutes
       if (now - assignment.startTime > 600000) {
         if (assignment.timer) {

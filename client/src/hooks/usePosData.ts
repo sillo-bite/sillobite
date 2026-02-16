@@ -8,7 +8,7 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
   const transactionsLimit = 10;
 
   // Fetch menu items with server-side filtering
-  const { data: menuData, isLoading: menuLoading } = useQuery<{
+  const { data: menuData, isLoading: menuLoading, refetch: refetchMenu } = useQuery<{
     items: MenuItem[];
     pagination?: any;
   }>({
@@ -19,10 +19,10 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
         availableOnly: 'true',
         limit: '1000'
       });
-      
+
       if (searchQuery) params.append('search', searchQuery);
       if (selectedCategory && selectedCategory !== 'all') params.append('category', selectedCategory);
-      
+
       return apiRequest(`/api/menu?${params.toString()}`);
     },
     enabled: !!canteenId,
@@ -41,8 +41,8 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
   });
 
   // Handle both response formats (object with items property or direct array)
-  const categoriesData = Array.isArray(categoriesResponse) 
-    ? categoriesResponse 
+  const categoriesData = Array.isArray(categoriesResponse)
+    ? categoriesResponse
     : (categoriesResponse?.items || []);
 
   // Fetch recent transactions (orders) with pagination
@@ -85,6 +85,7 @@ export function usePosData(canteenId: string, searchQuery: string, selectedCateg
     canteenSettings: canteenSettings || { taxRate: 5, taxName: 'GST' },
     isLoading: menuLoading,
     refetchTransactions,
+    refetchMenu,
     setTransactionsPage: setCurrentPage,
   };
 }

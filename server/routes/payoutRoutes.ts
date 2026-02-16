@@ -31,7 +31,7 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
     // Payment.orderId can be ObjectId or string, so we need to handle both
     const paidOrderIds = new Set<string>();
     const paidOrderNumbers = new Set<string>();
-    
+
     successfulPayments.forEach((payment) => {
       if (payment.orderId) {
         const orderIdStr = payment.orderId.toString();
@@ -81,25 +81,25 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
     const pendingOrderIds: string[] = [];
 
     completedOrders.forEach((order) => {
-      const orderId = order._id.toString();
-      
+      const orderId = (order as any)._id.toString();
+
       // Verify order is paid AND eligible for payout:
       // 1. Only include specific payment methods: online, upi, qr
       // 2. Exclude offline and cash payments
       // 3. For online orders: check if there's a successful payment record (by orderId or orderNumber)
       const paymentMethod = order.paymentMethod?.toLowerCase();
-      const isEligiblePaymentMethod = 
-        paymentMethod === 'online' || 
-        paymentMethod === 'upi' || 
+      const isEligiblePaymentMethod =
+        paymentMethod === 'online' ||
+        paymentMethod === 'upi' ||
         paymentMethod === 'qr' ||
         paymentMethod === 'card' ||
         paymentMethod === 'netbanking';
-      
-      const isPaid = 
+
+      const isPaid =
         isEligiblePaymentMethod && ( // Only eligible payment methods
           paidOrderIds.has(orderId) || // Has successful payment record by orderId
           paidOrderNumbers.has(order.orderNumber) || // Has successful payment record by orderNumber
-          order.paymentStatus === 'paid' || 
+          order.paymentStatus === 'paid' ||
           order.paymentStatus === 'completed'
         );
 
@@ -108,7 +108,7 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
       // - Order is not already settled
       // - Order is not in a pending request
       // - Order has a valid amount
-      
+
       // Calculate payout amount: menu items + tax (for POS orders), exclude canteen charges
       const itemsAmount = order.itemsSubtotal ?? order.originalAmount ?? order.amount ?? 0;
       const taxAmount = order.taxAmount ?? 0;
@@ -155,7 +155,7 @@ router.get("/canteens/:canteenId/payout/settlements", async (req, res) => {
 
     res.json({
       settlements: settlements.map((s) => ({
-        id: s._id.toString(),
+        id: (s as any)._id.toString(),
         settlementId: s.settlementId,
         amount: s.amount,
         amountInRupees: s.amount / 100,
@@ -211,7 +211,7 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
 
     const paidOrderIds = new Set<string>();
     const paidOrderNumbers = new Set<string>();
-    
+
     successfulPayments.forEach((payment) => {
       if (payment.orderId) {
         paidOrderIds.add(payment.orderId.toString());
@@ -231,15 +231,15 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
 
     // Filter to only include paid orders eligible for payout (only online/UPI/QR payments)
     const paidOrders = orders.filter((order) => {
-      const orderId = order._id.toString();
+      const orderId = (order as any)._id.toString();
       const paymentMethod = order.paymentMethod?.toLowerCase();
-      const isEligiblePaymentMethod = 
-        paymentMethod === 'online' || 
-        paymentMethod === 'upi' || 
+      const isEligiblePaymentMethod =
+        paymentMethod === 'online' ||
+        paymentMethod === 'upi' ||
         paymentMethod === 'qr' ||
         paymentMethod === 'card' ||
         paymentMethod === 'netbanking';
-      
+
       return (
         isEligiblePaymentMethod && ( // Only eligible payment methods
           paidOrderIds.has(orderId) || // Has successful payment record by orderId
@@ -282,7 +282,7 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
     }, 0);
 
     // Use only paid order IDs
-    const paidOrderIdStrings = paidOrders.map((order) => order._id.toString());
+    const paidOrderIdStrings = paidOrders.map((order) => (order as any)._id.toString());
 
     // Find the earliest and latest order dates from paid orders
     const orderDates = paidOrders.map((o) => new Date(o.createdAt));
@@ -310,7 +310,7 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
     res.json({
       success: true,
       payoutRequest: {
-        id: payoutRequest._id.toString(),
+        id: (payoutRequest as any)._id.toString(),
         requestId: payoutRequest.requestId,
         amount: payoutRequest.amount,
         amountInRupees: payoutRequest.amount / 100,
@@ -342,7 +342,7 @@ router.get("/canteens/:canteenId/payout/requests", async (req, res) => {
 
     res.json({
       requests: requests.map((r) => ({
-        id: r._id.toString(),
+        id: (r as any)._id.toString(),
         requestId: r.requestId,
         amount: r.amount,
         amountInRupees: r.amount / 100,
@@ -385,7 +385,7 @@ router.get("/admin/payout/requests", async (req, res) => {
 
     res.json({
       requests: requests.map((r) => ({
-        id: r._id.toString(),
+        id: (r as any)._id.toString(),
         requestId: r.requestId,
         canteenId: r.canteenId,
         amount: r.amount,
@@ -433,7 +433,7 @@ router.get("/admin/payout/requests/:requestId", async (req, res) => {
 
     res.json({
       request: {
-        id: request._id.toString(),
+        id: (request as any)._id.toString(),
         requestId: request.requestId,
         canteenId: request.canteenId,
         amount: request.amount,
@@ -453,7 +453,7 @@ router.get("/admin/payout/requests/:requestId", async (req, res) => {
         notes: request.notes,
         createdAt: request.createdAt,
         orders: orders.map((o) => ({
-          id: o._id.toString(),
+          id: (o as any)._id.toString(),
           orderNumber: o.orderNumber,
           amount: o.amount,
           status: o.status,
@@ -500,7 +500,7 @@ router.post("/admin/payout/requests/:requestId/approve", async (req, res) => {
     res.json({
       success: true,
       request: {
-        id: request._id.toString(),
+        id: (request as any)._id.toString(),
         requestId: request.requestId,
         status: request.status,
         approvedAt: request.approvedAt,
@@ -550,7 +550,7 @@ router.post("/admin/payout/requests/:requestId/reject", async (req, res) => {
     res.json({
       success: true,
       request: {
-        id: request._id.toString(),
+        id: (request as any)._id.toString(),
         requestId: request.requestId,
         status: request.status,
         rejectedAt: request.rejectedAt,
@@ -619,14 +619,14 @@ router.post("/admin/payout/requests/:requestId/process", async (req, res) => {
     res.json({
       success: true,
       settlement: {
-        id: settlement._id.toString(),
+        id: (settlement as any)._id.toString(),
         settlementId: settlement.settlementId,
         amount: settlement.amount,
         amountInRupees: settlement.amount / 100,
         status: settlement.status,
       },
       request: {
-        id: request._id.toString(),
+        id: (request as any)._id.toString(),
         requestId: request.requestId,
         status: request.status,
         settlementId: request.settlementId,
@@ -686,7 +686,7 @@ router.post("/admin/payout/settlements/:settlementId/complete", async (req, res)
     res.json({
       success: true,
       settlement: {
-        id: settlement._id.toString(),
+        id: (settlement as any)._id.toString(),
         settlementId: settlement.settlementId,
         status: settlement.status,
         processedAt: settlement.processedAt,
@@ -722,7 +722,7 @@ router.get("/admin/payout/settlements", async (req, res) => {
 
     res.json({
       settlements: settlements.map((s) => ({
-        id: s._id.toString(),
+        id: (s as any)._id.toString(),
         settlementId: s.settlementId,
         canteenId: s.canteenId,
         amount: s.amount,

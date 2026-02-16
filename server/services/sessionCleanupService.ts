@@ -23,6 +23,13 @@ export class SessionCleanupService {
     // Run cleanup every minute
     this.cleanupInterval = setInterval(async () => {
       await this.cleanupExpiredSessions();
+      // SCALABILITY FIX: also clean up checkout sessions to restore stock
+      try {
+        const { CheckoutSessionService } = await import('../checkout-session-service');
+        await CheckoutSessionService.cleanupExpiredSessions();
+      } catch (error) {
+        console.error('Error cleaning up checkout sessions:', error);
+      }
     }, 60 * 1000); // 60 seconds
 
     // Run initial cleanup
@@ -47,7 +54,7 @@ export class SessionCleanupService {
   private async cleanupExpiredSessions(): Promise<void> {
     try {
       const now = new Date();
-      
+
       // Find and deactivate expired sessions
       const result = await TempUserSessionModel.updateMany(
         {
@@ -94,7 +101,7 @@ export class SessionCleanupService {
    */
   async forceCleanup(): Promise<{ expired: number; deleted: number }> {
     console.log('🔄 Force cleanup initiated...');
-    
+
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 

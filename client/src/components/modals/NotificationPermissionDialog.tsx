@@ -6,7 +6,7 @@ import { useWebPushNotifications } from '@/hooks/useWebPushNotifications';
 
 interface NotificationPermissionDialogProps {
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (granted: boolean) => void;
   userId?: string;
   userRole?: string;
 }
@@ -18,7 +18,7 @@ export default function NotificationPermissionDialog({
   userRole
 }: NotificationPermissionDialogProps) {
   const [isEnabling, setIsEnabling] = useState(false);
-  
+
   const {
     requestPermission,
     supportsNotifications,
@@ -31,17 +31,19 @@ export default function NotificationPermissionDialog({
       await requestPermission();
       // Give a moment for the notification permission to be processed
       setTimeout(() => {
-        onClose();
+        const isGranted = Notification.permission === 'granted';
+        onClose(isGranted);
       }, 500);
     } catch (error) {
       console.error('Failed to enable notifications:', error);
+      onClose(false);
     } finally {
       setIsEnabling(false);
     }
   };
 
   const handleSkip = () => {
-    onClose();
+    onClose(false);
   };
 
   if (!supportsNotifications) {
@@ -80,7 +82,7 @@ export default function NotificationPermissionDialog({
                 <p className="font-medium text-white text-sm">Order Confirmed</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 bg-[#2E2E2E] rounded-lg border border-[#333333] animate-in slide-in-from-left-4 fade-in-0 duration-500 delay-300 hover:bg-[#2E2E2E]/80 transition-colors">
               <div className="w-8 h-8 bg-orange-500/20 rounded-full flex items-center justify-center flex-shrink-0 animate-in zoom-in-95 duration-300 delay-400">
                 <Clock className="w-4 h-4 text-orange-500" />
@@ -89,7 +91,7 @@ export default function NotificationPermissionDialog({
                 <p className="font-medium text-white text-sm">Ready for Pickup</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 bg-[#2E2E2E] rounded-lg border border-[#333333] animate-in slide-in-from-left-4 fade-in-0 duration-500 delay-400 hover:bg-[#2E2E2E]/80 transition-colors">
               <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0 animate-in zoom-in-95 duration-300 delay-500">
                 <CreditCard className="w-4 h-4 text-primary" />
@@ -132,7 +134,7 @@ export default function NotificationPermissionDialog({
               )}
             </Button>
           )}
-          
+
           <Button
             variant="outline"
             onClick={handleSkip}

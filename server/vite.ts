@@ -29,16 +29,16 @@ export async function setupVite(app: Express, server: Server) {
   // The server will listen on port 5000, so we configure HMR to use the same port
   const port = 5000;
   const host = 'localhost'; // Always use localhost for HMR client connection
-  
+
   const serverOptions = {
     middlewareMode: true,
-    hmr: { 
+    hmr: {
       server,
       port: port,
       host: host,
       clientPort: port,
     },
-    allowedHosts: true,
+    allowedHosts: true as true,
   };
 
   const vite = await createViteServer({
@@ -60,11 +60,11 @@ export async function setupVite(app: Express, server: Server) {
   const publicPath = pathModule.resolve(__dirname, "..", "client", "public");
   app.use((req, res, next) => {
     const requestPath = req.path || (req.originalUrl ? req.originalUrl.split('?')[0] : '');
-    
+
     // Check if it's a static file request
     const staticFileExtensions = ['.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.json', '.xml', '.txt'];
     const isStaticFile = staticFileExtensions.some(ext => requestPath.toLowerCase().endsWith(ext));
-    
+
     if (isStaticFile && !requestPath.startsWith('/api/')) {
       const filePath = pathModule.join(publicPath, requestPath);
       // Check if file exists and serve it directly - don't pass to Vite middleware
@@ -80,34 +80,34 @@ export async function setupVite(app: Express, server: Server) {
   app.use((req, res, next) => {
     // Get the path from multiple sources to be sure
     const requestPath = req.path || req.route?.path || (req.originalUrl ? req.originalUrl.split('?')[0] : '') || req.url?.split('?')[0] || '';
-    
+
     // Skip Vite middleware for ALL API routes
     if (requestPath && (requestPath.startsWith('/api/') || requestPath === '/api')) {
       return next(); // Skip to API route handler - don't call vite.middlewares at all
     }
-    
+
     // Skip Vite middleware for static files - they're already served by the previous middleware
     // This prevents esbuild conflicts when processing static assets
     const staticFileExtensions = ['.svg', '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.json', '.xml', '.txt', '.css', '.js', '.map'];
     const isStaticFile = staticFileExtensions.some(ext => requestPath.toLowerCase().endsWith(ext));
-    
+
     if (isStaticFile) {
       // Static files are already handled by the previous middleware
       // If we reach here, the file doesn't exist, so let Vite handle it (404)
       return vite.middlewares(req, res, next);
     }
-    
+
     // For all non-API, non-static routes, use Vite middleware
     return vite.middlewares(req, res, next);
   });
-  
+
   app.use("*", async (req, res, next) => {
     // Skip catch-all for API routes
     const requestPath = req.path || (req.originalUrl ? req.originalUrl.split('?')[0] : '');
     if (requestPath && requestPath.startsWith('/api/')) {
       return next();
     }
-    
+
     const url = req.originalUrl;
 
     try {
@@ -128,7 +128,7 @@ export async function setupVite(app: Express, server: Server) {
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       const error = e as Error;
-      viteLogger.error(`Error transforming HTML: ${error.message}`, { error: e });
+      viteLogger.error(`Error transforming HTML: ${error.message}`, { error });
       vite.ssrFixStacktrace(error);
       next(e);
     }

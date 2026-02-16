@@ -30,11 +30,11 @@ router.get("/api/admin/restaurants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const restaurant = await checkMongoConnection().collection("restaurants").findOne({ _id: new ObjectId(id) });
-    
+
     if (!restaurant) {
       return res.status(404).json({ error: "Restaurant not found" });
     }
-    
+
     res.json(restaurant);
   } catch (error) {
     console.error("Error fetching restaurant:", error);
@@ -45,17 +45,17 @@ router.get("/api/admin/restaurants/:id", async (req, res) => {
 router.post("/api/admin/restaurants", async (req, res) => {
   try {
     const validatedData = insertRestaurantSchema.parse(req.body);
-    
+
     const restaurant = {
       ...validatedData,
       _id: new ObjectId(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     await checkMongoConnection().collection("restaurants").insertOne(restaurant);
     res.status(201).json(restaurant);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating restaurant:", error);
     if (error.name === "ZodError") {
       return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -68,24 +68,24 @@ router.put("/api/admin/restaurants/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertRestaurantSchema.parse(req.body);
-    
+
     const updateData = {
       ...validatedData,
       updatedAt: new Date()
     };
-    
+
     const result = await checkMongoConnection().collection("restaurants").updateOne(
       { _id: new ObjectId(id) },
       { $set: updateData }
     );
-    
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: "Restaurant not found" });
     }
-    
+
     const updatedRestaurant = await checkMongoConnection().collection("restaurants").findOne({ _id: new ObjectId(id) });
     res.json(updatedRestaurant);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating restaurant:", error);
     if (error.name === "ZodError") {
       return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -97,25 +97,25 @@ router.put("/api/admin/restaurants/:id", async (req, res) => {
 router.delete("/api/admin/restaurants/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if restaurant has employees or tables
     const employeeCount = await checkMongoConnection().collection("restaurantEmployees").countDocuments({ restaurantId: id });
     const tableCount = await checkMongoConnection().collection("restaurantTables").countDocuments({ restaurantId: id });
-    
+
     if (employeeCount > 0 || tableCount > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Cannot delete restaurant with existing employees or tables",
         employeeCount,
         tableCount
       });
     }
-    
+
     const result = await checkMongoConnection().collection("restaurants").deleteOne({ _id: new ObjectId(id) });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: "Restaurant not found" });
     }
-    
+
     res.json({ message: "Restaurant deleted successfully" });
   } catch (error) {
     console.error("Error deleting restaurant:", error);
@@ -175,11 +175,11 @@ router.get("/api/admin/employees/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const employee = await checkMongoConnection().collection("restaurantEmployees").findOne({ _id: new ObjectId(id) });
-    
+
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }
-    
+
     res.json(employee);
   } catch (error) {
     console.error("Error fetching employee:", error);
@@ -194,19 +194,19 @@ router.post("/api/admin/employees", async (req, res) => {
       ...req.body,
       hireDate: req.body.hireDate ? new Date(req.body.hireDate) : undefined
     };
-    
+
     const validatedData = insertRestaurantEmployeeSchema.parse(dataToValidate);
-    
+
     const employee = {
       ...validatedData,
       _id: new ObjectId(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     await checkMongoConnection().collection("restaurantEmployees").insertOne(employee);
     res.status(201).json(employee);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating employee:", error);
     if (error.name === "ZodError") {
       return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -218,32 +218,32 @@ router.post("/api/admin/employees", async (req, res) => {
 router.put("/api/admin/employees/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Convert hireDate string to Date object if it exists
     const dataToValidate = {
       ...req.body,
       hireDate: req.body.hireDate ? new Date(req.body.hireDate) : undefined
     };
-    
+
     const validatedData = insertRestaurantEmployeeSchema.parse(dataToValidate);
-    
+
     const updateData = {
       ...validatedData,
       updatedAt: new Date()
     };
-    
+
     const result = await checkMongoConnection().collection("restaurantEmployees").updateOne(
       { _id: new ObjectId(id) },
       { $set: updateData }
     );
-    
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: "Employee not found" });
     }
-    
+
     const updatedEmployee = await checkMongoConnection().collection("restaurantEmployees").findOne({ _id: new ObjectId(id) });
     res.json(updatedEmployee);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating employee:", error);
     if (error.name === "ZodError") {
       return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -255,7 +255,7 @@ router.put("/api/admin/employees/:id", async (req, res) => {
 router.delete("/api/admin/employees/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Check if employee is assigned to any tables
     const assignedTables = await checkMongoConnection().collection("restaurantTables").find({
       $or: [
@@ -263,20 +263,20 @@ router.delete("/api/admin/employees/:id", async (req, res) => {
         { assignedHost: id }
       ]
     }).toArray();
-    
+
     if (assignedTables.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "Cannot delete employee assigned to tables",
         assignedTables: assignedTables.map(t => t.tableNumber)
       });
     }
-    
+
     const result = await checkMongoConnection().collection("restaurantEmployees").deleteOne({ _id: new ObjectId(id) });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: "Employee not found" });
     }
-    
+
     res.json({ message: "Employee deleted successfully" });
   } catch (error) {
     console.error("Error deleting employee:", error);
@@ -310,11 +310,11 @@ router.get("/api/admin/tables/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const table = await checkMongoConnection().collection("restaurantTables").findOne({ _id: new ObjectId(id) });
-    
+
     if (!table) {
       return res.status(404).json({ error: "Table not found" });
     }
-    
+
     res.json(table);
   } catch (error) {
     console.error("Error fetching table:", error);
@@ -325,27 +325,27 @@ router.get("/api/admin/tables/:id", async (req, res) => {
 router.post("/api/admin/tables", async (req, res) => {
   try {
     const validatedData = insertRestaurantTableSchema.parse(req.body);
-    
+
     // Check if table number already exists in the restaurant
     const existingTable = await checkMongoConnection().collection("restaurantTables").findOne({
       restaurantId: validatedData.restaurantId,
       tableNumber: validatedData.tableNumber
     });
-    
+
     if (existingTable) {
       return res.status(400).json({ error: "Table number already exists in this restaurant" });
     }
-    
+
     const table = {
       ...validatedData,
       _id: new ObjectId(),
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     await checkMongoConnection().collection("restaurantTables").insertOne(table);
     res.status(201).json(table);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating table:", error);
     if (error.name === "ZodError") {
       return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -358,35 +358,35 @@ router.put("/api/admin/tables/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertRestaurantTableSchema.parse(req.body);
-    
+
     // Check if table number already exists in the restaurant (excluding current table)
     const existingTable = await checkMongoConnection().collection("restaurantTables").findOne({
       restaurantId: validatedData.restaurantId,
       tableNumber: validatedData.tableNumber,
       _id: { $ne: new ObjectId(id) }
     });
-    
+
     if (existingTable) {
       return res.status(400).json({ error: "Table number already exists in this restaurant" });
     }
-    
+
     const updateData = {
       ...validatedData,
       updatedAt: new Date()
     };
-    
+
     const result = await checkMongoConnection().collection("restaurantTables").updateOne(
       { _id: new ObjectId(id) },
       { $set: updateData }
     );
-    
+
     if (result.matchedCount === 0) {
       return res.status(404).json({ error: "Table not found" });
     }
-    
+
     const updatedTable = await checkMongoConnection().collection("restaurantTables").findOne({ _id: new ObjectId(id) });
     res.json(updatedTable);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error updating table:", error);
     if (error.name === "ZodError") {
       return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -398,13 +398,13 @@ router.put("/api/admin/tables/:id", async (req, res) => {
 router.delete("/api/admin/tables/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await checkMongoConnection().collection("restaurantTables").deleteOne({ _id: new ObjectId(id) });
-    
+
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: "Table not found" });
     }
-    
+
     res.json({ message: "Table deleted successfully" });
   } catch (error) {
     console.error("Error deleting table:", error);
@@ -421,7 +421,7 @@ router.get("/api/admin/restaurant-stats", async (req, res) => {
     const activeEmployees = await checkMongoConnection().collection("restaurantEmployees").countDocuments({ isActive: true });
     const totalTables = await checkMongoConnection().collection("restaurantTables").countDocuments();
     const availableTables = await checkMongoConnection().collection("restaurantTables").countDocuments({ status: "available" });
-    
+
     res.json({
       totalRestaurants,
       activeRestaurants,
@@ -446,8 +446,8 @@ router.get('/api/table-access/:restaurantId/:tableNumber/:hash', async (req, res
     const { restaurantId, tableNumber, hash } = req.params;
 
     // Find the restaurant
-    const restaurant = await checkMongoConnection().collection('restaurants').findOne({ 
-      _id: new ObjectId(restaurantId) 
+    const restaurant = await checkMongoConnection().collection('restaurants').findOne({
+      _id: new ObjectId(restaurantId)
     });
 
     if (!restaurant) {
@@ -455,9 +455,9 @@ router.get('/api/table-access/:restaurantId/:tableNumber/:hash', async (req, res
     }
 
     // Find the table
-    const table = await checkMongoConnection().collection('restaurantTables').findOne({ 
+    const table = await checkMongoConnection().collection('restaurantTables').findOne({
       restaurantId,
-      tableNumber 
+      tableNumber
     });
 
     if (!table) {
@@ -467,9 +467,9 @@ router.get('/api/table-access/:restaurantId/:tableNumber/:hash', async (req, res
     // Validate the QR code hash
     const hashValidation = validateQRCodeHash(restaurantId, tableNumber, hash);
     if (!hashValidation.isValid) {
-      return res.status(403).json({ 
-        error: 'Invalid QR code', 
-        details: hashValidation.error 
+      return res.status(403).json({
+        error: 'Invalid QR code',
+        details: hashValidation.error
       });
     }
 
@@ -510,8 +510,8 @@ router.post('/api/admin/generate-qr-code', async (req, res) => {
     }
 
     // Verify that the restaurant exists
-    const restaurant = await checkMongoConnection().collection('restaurants').findOne({ 
-      _id: new ObjectId(restaurantId) 
+    const restaurant = await checkMongoConnection().collection('restaurants').findOne({
+      _id: new ObjectId(restaurantId)
     });
 
     if (!restaurant) {

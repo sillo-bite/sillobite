@@ -848,7 +848,7 @@ export class WebPushService {
         case 'role':
           if (criteria.values && criteria.values.length > 0) {
             const roleUsers = await database.user.findMany({
-              where: { role: { in: criteria.values } },
+              where: { role: { in: criteria.values as any } },
               select: { id: true }
             });
             userIds = roleUsers.map(user => user.id);

@@ -341,7 +341,7 @@ export default function CanteenOwnerDashboardSidebar() {
           tag: data?.tag || "canteen-order",
           timestamp: Date.now(),
           vibrate: [200, 100, 200],
-        });
+        } as any);
       }
     } catch (error) {
       console.warn("Failed to show device notification:", error);
@@ -1262,7 +1262,7 @@ export default function CanteenOwnerDashboardSidebar() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={() => refetchPaginatedActive()}
               className="flex items-center space-x-2"
             >
               <RefreshCcw className="h-4 w-4" />
@@ -2061,7 +2061,7 @@ export default function CanteenOwnerDashboardSidebar() {
     <div className="h-screen bg-background flex overflow-hidden relative">
       {/* Mobile overlay for sidebar */}
       <div
-        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 lg:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 z-100 lg:hidden ${isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           }`}
         onClick={() => setIsSidebarOpen(false)}
       />

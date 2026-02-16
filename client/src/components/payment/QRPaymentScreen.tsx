@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { toast } from "sonner";
 import { formatCurrency } from "@/utils/posCalculations";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { QRCodeSVG } from "qrcode.react";
 import type { OrderTotals } from "@/types/pos";
 
 interface QRPaymentScreenProps {
@@ -442,24 +443,22 @@ export function QRPaymentScreen({
   }
 
   return (
-    <>
-      <div className="fixed top-0 left-0 right-0 bottom-0 bg-background z-50">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <QrCode className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-semibold">Scan to Pay</h1>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCancel}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-6 h-6" />
-          </Button>
+    <div className="fixed top-0 left-0 right-0 bottom-0 bg-background z-50 flex flex-col">
+      <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <QrCode className="w-6 h-6 text-primary" />
+          <h1 className="text-xl font-semibold">Scan to Pay</h1>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleCancel}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <X className="w-6 h-6" />
+        </Button>
       </div>
-      <div className="flex flex-col items-center justify-center overflow-y-auto scrollbar-hide z-50">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto scrollbar-hide p-4 gap-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 space-y-6">
             <div className="text-center space-y-2">
@@ -472,13 +471,18 @@ export function QRPaymentScreen({
               )}
             </div>
 
-            {qrData?.qrImageUrl && (
+            {(qrData?.upiLink || qrData?.qrImageUrl) ? (
               <div className="bg-white p-4 rounded-lg flex items-center justify-center">
-                <img
-                  src={qrData.qrImageUrl}
-                  alt="QR Code for Payment"
-                  className="w-full max-w-sm h-50"
+                <QRCodeSVG
+                  value={qrData.upiLink || qrData.qrImageUrl}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
                 />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             )}
 
@@ -521,8 +525,6 @@ export function QRPaymentScreen({
           Cancel Payment
         </Button>
       </div>
-
-    </>
-
+    </div>
   );
 }

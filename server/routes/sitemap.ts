@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { db } from '../db';
+import mongoose from 'mongoose';
+import { Category } from '../models/mongodb-models';
 
 const router = Router();
 
@@ -34,12 +35,14 @@ router.get('/sitemap.xml', async (req, res) => {
 
     try {
       // Get canteens (if you have a canteens collection)
-      const canteensCollection = db.collection('canteens');
-      canteens = await canteensCollection.find({}).limit(50).toArray();
+      if (mongoose.connection.db) {
+        const canteensCollection = mongoose.connection.db.collection('canteens');
+        canteens = await canteensCollection.find({}).limit(50).toArray();
+      }
 
       // Get categories (if you have a categories collection)
-      const categoriesCollection = db.collection('categories');
-      categories = await categoriesCollection.find({}).limit(20).toArray();
+      // Get categories using Mongoose model
+      categories = await Category.find({}).limit(20).lean();
     } catch (dbError) {
       console.log('Database not available for sitemap generation, using static content only');
     }
