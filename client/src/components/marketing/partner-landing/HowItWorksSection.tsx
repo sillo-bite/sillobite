@@ -1,127 +1,90 @@
-import { Smartphone, MonitorPlay, ChefHat, PiggyBank, ArrowDown } from "lucide-react";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { CloudDownload, Store, Smartphone, BarChart3, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 const steps = [
   {
+    icon: CloudDownload,
+    step: "1. Deploy Platform",
+    description: "Install app & dashboard for your institution.",
+  },
+  {
+    icon: Store,
+    step: "2. Onboard Vendors",
+    description: "Set up menus, payments, and logistics.",
+  },
+  {
     icon: Smartphone,
-    step: "01",
-    title: "Customers Initiate Orders",
-    description: "Students, staff members, and employees access the SilloBite platform through any web-enabled device, explore comprehensive menu offerings, and submit orders directly from their personal devices.",
+    step: "3. Users Order",
+    description: "Students & employees order contact-free.",
   },
   {
-    icon: MonitorPlay,
-    step: "02",
-    title: "Real-Time POS Integration",
-    description: "Orders instantly appear on canteen point-of-sale displays and counter interfaces through WebSocket technology, enabling immediate acknowledgment and processing by service staff.",
-  },
-  {
-    icon: ChefHat,
-    step: "03",
-    title: "Preparation & Status Updates",
-    description: "Kitchen and counter personnel prepare ordered items, update preparation status in real-time, and customers receive live notifications when their orders are ready for collection.",
-  },
-  {
-    icon: PiggyBank,
-    step: "04",
-    title: "Automated Payment Reconciliation",
-    description: "All payment methods including UPI, card transactions, cash, and digital wallets are automatically tracked and reconciled, with comprehensive financial reporting available for each dining location.",
+    icon: BarChart3,
+    step: "4. Manage & Grow",
+    description: "Track performance, optimize dining operations.",
   },
 ];
 
 export const HowItWorksSection = () => {
-  const { ref, isVisible } = useScrollAnimation();
-
   return (
-    <section id="how-it-works" className="section-padding bg-gradient-to-b from-background to-card/50">
-      <div ref={ref} className="max-w-6xl mx-auto container-padding">
-        {/* Premium Header */}
-        <div
-          className={`text-center max-w-3xl mx-auto mb-20 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-        >
-          <h2 className="font-heading text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-6 leading-tight">
-            Simple Process,{" "}
-            <span className="bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent">
-              Powerful Results
-            </span>
-          </h2>
-          <p className="text-xl text-muted-foreground leading-relaxed font-light">
-            A streamlined workflow from order placement to fulfillment, engineered for operational excellence and customer satisfaction.
-          </p>
+    <section id="how-it-works" className="py-24 bg-white relative">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-16">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl md:text-4xl font-bold text-gray-800"
+          >
+            How It Works for Campuses & Companies
+          </motion.h2>
         </div>
 
-        {/* Elegant Vertical Timeline */}
-        <div className="relative">
-          {/* Vertical Connector Line - Desktop */}
-          <div
-            className={`hidden lg:block absolute left-12 top-0 bottom-0 w-1 bg-gradient-to-b from-primary/20 via-primary to-secondary/20 transition-all duration-1000 ${isVisible ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0"
-              }`}
-            style={{
-              transformOrigin: "top",
-              transitionDelay: "300ms"
-            }}
-          />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center relative max-w-6xl mx-auto gap-8 md:gap-4">
+          {/* Connector Line (Desktop) */}
+          <div className="hidden md:block absolute top-12 left-0 w-full h-0.5 bg-gray-200 -z-10 transform translate-y-1/2" />
 
-          {/* Steps */}
-          <div className="space-y-12 lg:space-y-16">
-            {steps.map((step, index) => {
-              const isEven = index % 2 === 0;
+          {steps.map((step, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.2 }}
+              className="flex flex-col items-center text-center flex-1 relative bg-white md:bg-transparent p-4 md:p-0 rounded-xl"
+            >
+              <div className="w-24 h-24 bg-white border-2 border-gray-100 rounded-2xl flex items-center justify-center mb-6 shadow-lg z-10 relative">
+                {/* Icon Color varies or stays consistent? Design shows colored icons. */}
+                {index === 0 && <step.icon className="w-10 h-10 text-blue-500" />}
+                {index === 1 && <step.icon className="w-10 h-10 text-orange-500" />}
+                {index === 2 && <step.icon className="w-10 h-10 text-purple-500" />}
+                {index === 3 && <step.icon className="w-10 h-10 text-green-500" />}
 
-              return (
-                <div
-                  key={step.step}
-                  className={`relative transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-                    }`}
-                  style={{ transitionDelay: `${200 + index * 150}ms` }}
-                >
-                  <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12">
-                    {/* Left Side - Even Steps */}
-                    <div className={`lg:w-1/2 ${isEven ? "lg:pr-12" : "lg:order-2 lg:pl-12"}`}>
-                      <div className="bg-gradient-to-br from-card via-card to-card/95 rounded-3xl p-8 md:p-10 border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] h-full">
-                        {/* Step Badge */}
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30 mb-6">
-                          <span className="text-primary font-bold text-sm">STEP {step.step}</span>
-                        </div>
+                {/* Small badge? No, simple icons. */}
+              </div>
 
-                        {/* Icon */}
-                        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 flex items-center justify-center mb-6 border border-primary/20 shadow-lg">
-                          <step.icon className="w-10 h-10 text-primary" />
-                        </div>
+              <h3 className="font-bold text-lg text-gray-800 mb-2">{step.step}</h3>
+              <p className="text-gray-500 text-sm max-w-[200px]">
+                {step.description}
+              </p>
 
-                        <h3 className="font-heading text-2xl md:text-3xl font-bold text-foreground mb-4">
-                          {step.title}
-                        </h3>
-                        <p className="text-muted-foreground leading-relaxed text-base">
-                          {step.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Center - Timeline Node */}
-                    <div className="absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0 lg:left-12 lg:translate-x-0 z-10">
-                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary via-primary/90 to-secondary flex items-center justify-center border-4 border-background shadow-2xl">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-background to-card flex items-center justify-center">
-                          <step.icon className="w-8 h-8 text-primary" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Side - Odd Steps */}
-                    <div className={`lg:w-1/2 ${isEven ? "lg:order-2 lg:pl-12" : "lg:pr-12"}`}>
-                      {/* Empty space for alternating layout */}
-                    </div>
-                  </div>
-
-                  {/* Mobile Arrow Connector */}
-                  {index < steps.length - 1 && (
-                    <div className="lg:hidden flex justify-center my-8">
-                      <div className="w-0.5 h-12 bg-gradient-to-b from-primary/40 via-primary to-primary/40 rounded-full" />
-                    </div>
-                  )}
+              {/* Mobile Arrows (below each step except last) */}
+              {index < steps.length - 1 && (
+                <div className="md:hidden mt-4 text-gray-300">
+                  <ArrowRight className="w-6 h-6 rotate-90" />
                 </div>
-              );
-            })}
-          </div>
+              )}
+
+              {/* Desktop Arrows (between steps) - handled by absolute positioning or flex gap? 
+                   The line handles the connection, arrows might be redundant visually if lines are clear.
+                   Design has arrows between icons. 
+               */}
+              {index < steps.length - 1 && (
+                <div className="hidden md:block absolute top-12 -right-1/2 transform translate-x-1/2 translate-y-1/2 text-gray-300 z-0">
+                  <ArrowRight className="w-6 h-6" />
+                </div>
+              )}
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>
