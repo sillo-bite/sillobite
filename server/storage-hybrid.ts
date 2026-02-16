@@ -241,6 +241,7 @@ export interface IStorage {
   createPayment(payment: InsertPayment): Promise<any>;
   updatePayment(id: string, payment: Partial<InsertPayment>): Promise<any>;
   updatePaymentByMerchantTxnId(merchantTransactionId: string, payment: Partial<InsertPayment>): Promise<any | undefined>;
+  getPaymentByRazorpayId(razorpayPaymentId: string): Promise<any | undefined>;
 
   // Complaints (MongoDB)
   getComplaints(): Promise<any[]>;
@@ -2767,6 +2768,25 @@ export class HybridStorage implements IStorage {
       console.error('Error rejecting offline order:', error);
       throw error;
     }
+  }
+
+
+  async getPaymentByRazorpayId(razorpayPaymentId: string): Promise<any | undefined> {
+    // Try to find payment by razorpayTransactionId
+    // Note: The field in our schema is `razorpayTransactionId`
+    // We should search for that.
+
+    // First try MongoDB
+    let payment = await Payment.findOne({ razorpayTransactionId: razorpayPaymentId });
+
+    if (payment) {
+      return payment.toObject ? payment.toObject() : payment;
+    }
+
+    // Fallback: Check if it's stored in metadata (unlikely for main ID but possible)
+    // Or maybe check by _id if the razorpayPaymentId was used as our ID? (Not how we do it)
+
+    return null;
   }
 
   async markOrderReady(orderId: string, counterId?: string) {
