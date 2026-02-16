@@ -1,4 +1,4 @@
-import { Queue, Worker, Job } from 'bullmq';
+import { Queue, Worker, Job, QueueEvents } from 'bullmq';
 import { getRedisClient } from '../config/redis';
 import { createRazorpayOrder } from '../../shared/razorpay';
 import { CheckoutSessionService } from '../checkout-session-service';
@@ -11,16 +11,18 @@ import { storage } from '../storage-hybrid';
  */
 let paymentQueue: Queue | null = null;
 let razorpayQueue: Queue | null = null;
+let paymentWorker: Worker | null = null;
+let razorpayWorker: Worker | null = null;
 
 /**
  * Get or create payment queue (lazy initialization)
  */
 async function getPaymentQueue(): Promise<Queue | null> {
   if (paymentQueue) return paymentQueue;
-  
+
   const { isRedisAvailable } = await import('../config/redis');
   const available = await isRedisAvailable();
-  
+
   if (!available) {
     return null;
   }
@@ -41,10 +43,7 @@ async function getPaymentQueue(): Promise<Queue | null> {
         age: 86400, // Keep failed jobs for 24 hours
       },
     },
-    limiter: {
-      max: parseInt(process.env.PAYMENT_QUEUE_MAX_JOBS || '50'), // Process 50 payments per second
-      duration: 1000, // Per second
-    },
+    // limiter is not a valid option for Queue, it belongs to Worker
   });
 
   return paymentQueue;
@@ -55,10 +54,10 @@ async function getPaymentQueue(): Promise<Queue | null> {
  */
 async function getRazorpayQueue(): Promise<Queue | null> {
   if (razorpayQueue) return razorpayQueue;
-  
+
   const { isRedisAvailable } = await import('../config/redis');
   const available = await isRedisAvailable();
-  
+
   if (!available) {
     return null;
   }
@@ -79,10 +78,7 @@ async function getRazorpayQueue(): Promise<Queue | null> {
         age: 86400,
       },
     },
-    limiter: {
-      max: parseInt(process.env.RAZORPAY_QUEUE_MAX_JOBS || '10'), // 10 Razorpay API calls per second (throttling)
-      duration: 1000,
-    },
+    // limiter is not a valid option for Queue, it belongs to Worker
   });
 
   return razorpayQueue;
@@ -117,7 +113,7 @@ export interface RazorpayOrderJobData {
 export async function queuePaymentInitiation(data: PaymentJobData): Promise<Job<PaymentJobData> | null> {
   const queue = await getPaymentQueue();
   if (!queue) return null;
-  
+
   return await queue.add('initiate-payment', data, {
     jobId: data.idempotencyKey, // Use idempotency key as job ID to prevent duplicates
     priority: 1, // Normal priority
@@ -131,7 +127,7 @@ export async function queuePaymentInitiation(data: PaymentJobData): Promise<Job<
 export async function queueRazorpayOrder(data: RazorpayOrderJobData): Promise<Job<RazorpayOrderJobData> | null> {
   const queue = await getRazorpayQueue();
   if (!queue) return null;
-  
+
   return await queue.add('create-razorpay-order', data, {
     priority: 1,
   });
@@ -143,59 +139,109 @@ export async function queueRazorpayOrder(data: RazorpayOrderJobData): Promise<Jo
 async function initializeWorkers() {
   const { isRedisAvailable } = await import('../config/redis');
   const available = await isRedisAvailable();
-  
+
   if (!available || paymentWorker) return; // Already initialized or Redis unavailable
 
   paymentWorker = new Worker<PaymentJobData>(
     'payment-processing',
     async (job: Job<PaymentJobData>) => {
-    const { amount, customerName, orderData, idempotencyKey, checkoutSessionId, merchantOrderId } = job.data;
+      const { amount, customerName, orderData, idempotencyKey, checkoutSessionId, merchantOrderId } = job.data;
 
-    console.log(`🔄 Processing payment job: ${job.id} for checkout session ${checkoutSessionId}`);
+      console.log(`🔄 Processing payment job: ${job.id} for checkout session ${checkoutSessionId}`);
 
-    try {
-      // Validate checkout session
-      const session = await CheckoutSessionService.getSession(checkoutSessionId);
-      if (!session) {
-        throw new Error(`Checkout session ${checkoutSessionId} not found`);
-      }
+      try {
+        // Validate checkout session
+        const session = await CheckoutSessionService.getSession(checkoutSessionId);
+        if (!session) {
+          throw new Error(`Checkout session ${checkoutSessionId} not found`);
+        }
 
-      const isActive = await CheckoutSessionService.isSessionActive(checkoutSessionId);
-      if (!isActive) {
-        throw new Error(`Checkout session ${checkoutSessionId} is not active`);
-      }
+        const isActive = await CheckoutSessionService.isSessionActive(checkoutSessionId);
+        if (!isActive) {
+          throw new Error(`Checkout session ${checkoutSessionId} is not active`);
+        }
 
-      // Check for duplicate payment
-      const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
-      if (sessionDuplicateCheck.isDuplicate) {
-        throw new Error(`Duplicate payment request for checkout session ${checkoutSessionId}`);
-      }
+        // Check for duplicate payment
+        const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
+        if (sessionDuplicateCheck.isDuplicate) {
+          throw new Error(`Duplicate payment request for checkout session ${checkoutSessionId}`);
+        }
 
-      // Create Razorpay order via queue (throttled)
-      const razorpayJob = await queueRazorpayOrder({
-        amount,
-        currency: 'INR',
-        merchantOrderId,
-        notes: {
-          customerName,
-          canteenId: orderData.canteenId || '',
-          checkoutSessionId: checkoutSessionId,
-        },
-      });
-
-      if (!razorpayJob) {
-        // Queue not available, create Razorpay order directly
-        const razorpayOrder = await createRazorpayOrder(
+        // Create Razorpay order via queue (throttled)
+        const razorpayJob = await queueRazorpayOrder({
           amount,
-          'INR',
+          currency: 'INR',
           merchantOrderId,
-          {
+          notes: {
             customerName,
             canteenId: orderData.canteenId || '',
             checkoutSessionId: checkoutSessionId,
+          },
+        });
+
+        if (!razorpayJob) {
+          // Queue not available, create Razorpay order directly
+          const razorpayOrder = await createRazorpayOrder(
+            amount,
+            'INR',
+            merchantOrderId,
+            {
+              customerName,
+              canteenId: orderData.canteenId || '',
+              checkoutSessionId: checkoutSessionId,
+            }
+          );
+
+          return {
+            success: true,
+            merchantTransactionId: merchantOrderId,
+            razorpayOrderId: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency,
+          };
+        }
+
+        // Wait for Razorpay order creation
+        // We need QueueEvents to wait for job completion
+        const queueEvents = new QueueEvents('razorpay-api', { connection: getRedisClient() });
+        const razorpayResult = await razorpayJob.waitUntilFinished(queueEvents) as any;
+        await queueEvents.close();
+
+        if (!razorpayResult || !razorpayResult.success) {
+          throw new Error(`Razorpay order creation failed: ${razorpayResult?.error || 'Unknown error'}`);
+        }
+
+        const razorpayOrder = razorpayResult.data;
+
+        // Update checkout session status
+        await CheckoutSessionService.updateStatus(
+          checkoutSessionId,
+          'payment_initiated',
+          {
+            ...orderData,
+            razorpayOrderId: razorpayOrder.id,
+            merchantTransactionId: merchantOrderId,
+            amount: amount,
+            idempotencyKey: idempotencyKey || null,
+            paymentInitiatedAt: new Date().toISOString(),
           }
         );
-        
+
+        // Store payment record
+        await storage.createPayment({
+          merchantTransactionId: merchantOrderId,
+          amount: amount * 100, // Store in paise
+          status: 'pending',
+          canteenId: orderData.canteenId,
+          checksum: '',
+          metadata: JSON.stringify({
+            ...orderData,
+            razorpayOrderId: razorpayOrder.id,
+            checkoutSessionId: checkoutSessionId,
+            idempotencyKey: idempotencyKey || null,
+          }),
+        });
+
         return {
           success: true,
           merchantTransactionId: merchantOrderId,
@@ -203,66 +249,19 @@ async function initializeWorkers() {
           amount: razorpayOrder.amount,
           currency: razorpayOrder.currency,
         };
-      }
+      } catch (error) {
+        console.error(`❌ Payment job ${job.id} failed:`, error);
 
-      // Wait for Razorpay order creation
-      const razorpayResult = await razorpayJob.waitUntilFinished() as any;
-
-      if (!razorpayResult || !razorpayResult.success) {
-        throw new Error(`Razorpay order creation failed: ${razorpayResult?.error || 'Unknown error'}`);
-      }
-
-      const razorpayOrder = razorpayResult.data;
-
-      // Update checkout session status
-      await CheckoutSessionService.updateStatus(
-        checkoutSessionId,
-        'payment_initiated',
-        {
-          ...orderData,
-          razorpayOrderId: razorpayOrder.id,
-          merchantTransactionId: merchantOrderId,
-          amount: amount,
-          idempotencyKey: idempotencyKey || null,
-          paymentInitiatedAt: new Date().toISOString(),
+        // Update checkout session status on error
+        try {
+          await CheckoutSessionService.updateStatus(checkoutSessionId, 'payment_failed');
+        } catch (updateError) {
+          console.error('Error updating checkout session status:', updateError);
         }
-      );
 
-      // Store payment record
-      await storage.createPayment({
-        merchantTransactionId: merchantOrderId,
-        amount: amount * 100, // Store in paise
-        status: 'pending',
-        canteenId: orderData.canteenId,
-        checksum: '',
-        metadata: JSON.stringify({
-          ...orderData,
-          razorpayOrderId: razorpayOrder.id,
-          checkoutSessionId: checkoutSessionId,
-          idempotencyKey: idempotencyKey || null,
-        }),
-      });
-
-      return {
-        success: true,
-        merchantTransactionId: merchantOrderId,
-        razorpayOrderId: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-      };
-    } catch (error) {
-      console.error(`❌ Payment job ${job.id} failed:`, error);
-      
-      // Update checkout session status on error
-      try {
-        await CheckoutSessionService.updateStatus(checkoutSessionId, 'payment_failed');
-      } catch (updateError) {
-        console.error('Error updating checkout session status:', updateError);
+        throw error;
       }
-
-      throw error;
-    }
-  },
+    },
     {
       connection: getRedisClient(),
       concurrency: parseInt(process.env.PAYMENT_WORKER_CONCURRENCY || '10'), // Process 10 jobs concurrently
@@ -276,34 +275,34 @@ async function initializeWorkers() {
   razorpayWorker = new Worker<RazorpayOrderJobData>(
     'razorpay-api',
     async (job: Job<RazorpayOrderJobData>) => {
-    const { amount, currency, merchantOrderId, notes } = job.data;
+      const { amount, currency, merchantOrderId, notes } = job.data;
 
-    console.log(`🔄 Creating Razorpay order: ${merchantOrderId}`);
+      console.log(`🔄 Creating Razorpay order: ${merchantOrderId}`);
 
-    try {
-      const razorpayOrder = await createRazorpayOrder(
-        amount,
-        currency,
-        merchantOrderId,
-        notes
-      );
+      try {
+        const razorpayOrder = await createRazorpayOrder(
+          amount,
+          currency,
+          merchantOrderId,
+          notes
+        );
 
-      return {
-        success: true,
-        data: razorpayOrder,
-      };
-    } catch (error: any) {
-      console.error(`❌ Razorpay order creation failed for ${merchantOrderId}:`, error);
-      
-      // Check if it's a rate limit error from Razorpay
-      if (error.message?.includes('rate limit') || error.message?.includes('429')) {
-        // Retry with longer delay
-        throw new Error(`Razorpay API rate limit exceeded. Retrying...`);
+        return {
+          success: true,
+          data: razorpayOrder,
+        };
+      } catch (error: any) {
+        console.error(`❌ Razorpay order creation failed for ${merchantOrderId}:`, error);
+
+        // Check if it's a rate limit error from Razorpay
+        if (error.message?.includes('rate limit') || error.message?.includes('429')) {
+          // Retry with longer delay
+          throw new Error(`Razorpay API rate limit exceeded. Retrying...`);
+        }
+
+        throw error;
       }
-
-      throw error;
-    }
-  },
+    },
     {
       connection: getRedisClient(),
       concurrency: parseInt(process.env.RAZORPAY_WORKER_CONCURRENCY || '5'), // Process 5 Razorpay calls concurrently
@@ -315,19 +314,19 @@ async function initializeWorkers() {
   );
 
   // Worker event handlers
-  paymentWorker.on('completed', (job) => {
+  paymentWorker.on('completed', (job: Job) => {
     console.log(`✅ Payment job ${job.id} completed`);
   });
 
-  paymentWorker.on('failed', (job, err) => {
+  paymentWorker.on('failed', (job: Job | undefined, err: Error) => {
     console.error(`❌ Payment job ${job?.id} failed:`, err);
   });
 
-  razorpayWorker.on('completed', (job) => {
+  razorpayWorker.on('completed', (job: Job) => {
     console.log(`✅ Razorpay job ${job.id} completed`);
   });
 
-  razorpayWorker.on('failed', (job, err) => {
+  razorpayWorker.on('failed', (job: Job | undefined, err: Error) => {
     console.error(`❌ Razorpay job ${job?.id} failed:`, err);
   });
 }

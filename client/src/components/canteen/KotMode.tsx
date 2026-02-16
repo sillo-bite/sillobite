@@ -144,29 +144,7 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
-  // Handle deep linking/highlighting of orders
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const highlightOrderNumber = params.get('highlight');
-    if (highlightOrderNumber && orders.length > 0) {
-      // Small timeout to ensure DOM is rendered
-      setTimeout(() => {
-        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
-        if (element) {
-          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Add visual highlight
-          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
-          // Remove highlight after 5 seconds
-          setTimeout(() => {
-            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
-          }, 5000);
-        } else {
-          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
-        }
-      }, 1000);
-    }
-  }, [orders, window.location.search]);
+
 
   // Set page title
   useEffect(() => {
@@ -524,6 +502,30 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
     enabled: !!counterId && !!canteenId && menuItems.length > 0,
     // No polling - only WebSocket updates
   });
+
+  // Handle deep linking/highlighting of orders
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightOrderNumber = params.get('highlight');
+    if (highlightOrderNumber && orders.length > 0) {
+      // Small timeout to ensure DOM is rendered
+      setTimeout(() => {
+        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
+        if (element) {
+          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add visual highlight
+          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          }, 5000);
+        } else {
+          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
+        }
+      }, 1000);
+    }
+  }, [orders, window.location.search]);
 
   console.log('🍳 KotMode menu items data:', {
     menuItemsData,
@@ -1111,10 +1113,10 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                                 <div key={index} className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
                                     <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-600' :
-                                        isReady ? 'bg-green-500' : 'bg-yellow-500'
+                                      isReady ? 'bg-green-500' : 'bg-yellow-500'
                                       }`}></div>
                                     <span className={`font-medium ${isCompleted ? 'text-green-800' :
-                                        isReady ? 'text-green-700' : 'text-foreground'
+                                      isReady ? 'text-green-700' : 'text-foreground'
                                       }`}>
                                       {item.quantity}x {item.name}
                                     </span>
@@ -1296,10 +1298,10 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                                 <div key={index} className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
                                     <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-600' :
-                                        isReady ? 'bg-green-500' : 'bg-yellow-500'
+                                      isReady ? 'bg-green-500' : 'bg-yellow-500'
                                       }`}></div>
                                     <span className={`font-medium ${isCompleted ? 'text-green-800' :
-                                        isReady ? 'text-green-700' : 'text-foreground'
+                                      isReady ? 'text-green-700' : 'text-foreground'
                                       }`}>
                                       {item.quantity}x {item.name}
                                     </span>

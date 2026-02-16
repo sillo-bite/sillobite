@@ -8,7 +8,7 @@
 import { setPWAAuth, clearPWAAuth } from './pwaAuth';
 
 interface UserData {
-  id: string;
+  id: string | number;
   name: string;
   email?: string;
   role: string;
@@ -36,7 +36,7 @@ export const resolveUserSessionConflict = (
 
   // Create a deep copy of the user data to prevent mutation
   const resolvedUserData = JSON.parse(JSON.stringify(existingUser));
-  
+
   // Preserve organization/college data
   const organizationData = {
     collegeId: resolvedUserData.collegeId,
@@ -44,7 +44,7 @@ export const resolveUserSessionConflict = (
     organizationId: resolvedUserData.organizationId,
     organizationName: resolvedUserData.organizationName
   };
-  
+
   // Add restaurant context to the user data while preserving organization data
   const updatedUserData = {
     ...resolvedUserData,
@@ -75,7 +75,7 @@ export const securelyUpdateUserData = (userData: UserData, isTemporary: boolean 
     // Set restaurant context flag if it exists
     if (userData.restaurantId && userData.restaurantName && userData.tableNumber) {
       userData.hasRestaurantContext = true;
-      
+
       // Store restaurant context in a separate item for easier access
       localStorage.setItem('restaurant_context', JSON.stringify({
         restaurantId: userData.restaurantId,
@@ -90,10 +90,10 @@ export const securelyUpdateUserData = (userData: UserData, isTemporary: boolean 
       localStorage.setItem('temp_user_flag', 'true');
     } else {
       localStorage.setItem('user', JSON.stringify(userData));
-      
+
       // Update PWA auth for permanent users
       setPWAAuth(userData);
-      
+
       // Dispatch event to notify React components of auth state change
       window.dispatchEvent(new CustomEvent('userAuthChange'));
     }
@@ -123,24 +123,24 @@ export const cleanupTemporaryUserData = (): void => {
 export const clearRestaurantContext = (userData: UserData): UserData => {
   // Create a deep copy to prevent mutation
   const updatedUserData = JSON.parse(JSON.stringify(userData));
-  
+
   // Remove restaurant context fields
   delete updatedUserData.restaurantId;
   delete updatedUserData.restaurantName;
   delete updatedUserData.tableNumber;
   delete updatedUserData.hasRestaurantContext;
-  
+
   // Clear restaurant context from localStorage
   localStorage.removeItem('restaurant_context');
-  
+
   // Update user data in localStorage
   localStorage.setItem('user', JSON.stringify(updatedUserData));
-  
+
   // Update PWA auth
   setPWAAuth(updatedUserData);
-  
+
   console.log('✅ Restaurant context cleared from user data');
-  
+
   return updatedUserData;
 };
 
@@ -159,9 +159,9 @@ export const logConflictResolutionEvent = (event: {
     ...event,
     timestamp: new Date().toISOString(),
   };
-  
+
   console.log(`[Conflict Resolution] ${event.type}:`, logEntry);
-  
+
   // In a production environment, you might want to send this to a logging service
   // or analytics platform for monitoring and debugging
 };

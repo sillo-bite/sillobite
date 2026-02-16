@@ -31,7 +31,7 @@ export const queryClient = new QueryClient({
 });
 
 // Default fetcher function for API requests with timeout
-const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
+const apiRequest = async <T = any>(url: string, options?: RequestInit): Promise<T> => {
   // Create AbortController for timeout
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
@@ -87,6 +87,8 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
         const errorData = await response.json();
         if (errorData.error) {
           errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
         }
       } catch (e) {
         // If we can't parse the error response, use the default message
@@ -96,7 +98,7 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
 
     // Handle empty responses (like DELETE operations that return 204 No Content)
     if (response.status === 204 || response.headers.get('content-length') === '0') {
-      return null;
+      return null as any;
     }
 
     const contentType = response.headers.get('content-type');
@@ -104,7 +106,7 @@ const apiRequest = async (url: string, options?: RequestInit): Promise<any> => {
       return response.json();
     }
 
-    return response.text();
+    return response.text() as any;
   } catch (error) {
     clearTimeout(timeoutId);
     if ((error as any).name === 'AbortError') {

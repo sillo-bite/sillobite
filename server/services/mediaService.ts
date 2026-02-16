@@ -13,7 +13,7 @@ export class MediaService {
       if (!mongoose.connection.db) {
         throw new Error('MongoDB connection not established');
       }
-      this.bucket = new GridFSBucket(mongoose.connection.db, {
+      this.bucket = new GridFSBucket(mongoose.connection.db as any, {
         bucketName: 'mediaBanners'
       });
     }

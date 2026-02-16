@@ -262,8 +262,10 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
             };
 
             const updatedUserData = resolveUserSessionConflict(user, restaurantContext);
-            securelyUpdateUserData(updatedUserData, false);
-            login(updatedUserData);
+            if (updatedUserData) {
+              securelyUpdateUserData(updatedUserData, false);
+              login(updatedUserData as any);
+            }
             sessionStorage.removeItem('pendingQRTableData');
 
             setHasRestaurantContext(true);

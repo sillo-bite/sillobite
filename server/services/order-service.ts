@@ -281,7 +281,7 @@ export class OrderService {
         // We can just use storage directly here to avoid stock reduction logic complexity for failed orders.
         // OR use createOrder with forced skipStock?
         // Better to use storage directly for "failed" records as they are inert.
-        const order = await storage.createOrder(insertOrderSchema.parse(completeOrderData));
+        const order = await storage.createOrder(insertOrderSchema.parse(completeOrderData) as any);
 
         // Link payment to order
         if (merchantTransactionId && order && order.id) {
@@ -361,134 +361,136 @@ export class OrderService {
             }
         }
 
-        // 5. Broadcast WebSockets
-        try {
-            const wsManager = getWebSocketManager();
-            if (wsManager) {
-                // Logic to determine target counters for broadcast (KOT vs Store)
-                // This logic was complex in routes.ts (lines 5726-5764).
-                // We should implement it here.
-
-                const broadcastItems = orderItems; // Enriched items
-                let itemStatusByCounter = order.itemStatusByCounter;
+        // 5. Broadcast WebSockets (Fire-and-forget)
+        const wsManager = getWebSocketManager();
+        if (wsManager) {
+            new Promise<void>(async (resolve) => {
                 try {
-                    if (typeof itemStatusByCounter === 'string') itemStatusByCounter = JSON.parse(itemStatusByCounter);
-                } catch (e) { }
+                    // Logic to determine target counters for broadcast (KOT vs Store)
+                    // This logic was complex in routes.ts (lines 5726-5764).
+                    // We should implement it here.
 
-                const orderWithParsedData = {
-                    ...order,
-                    items: broadcastItems,
-                    itemStatusByCounter
-                };
-
-                // A. Broadcast to Canteen
-                wsManager.broadcastToCanteen(order.canteenId, 'new_order', orderWithParsedData);
-
-                // B. Broadcast to Counters
-                // We need the routing logic.
-                const allStoreCounterIds = orderData.allStoreCounterIds || [];
-                const allPaymentCounterIds = orderData.allPaymentCounterIds || [];
-                const allKotCounterIds = orderData.allKotCounterIds || [];
-
-                const hasMarkableItem = broadcastItems.some((i: any) => i.isMarkable);
-                const hasMarkableItemWithKot = broadcastItems.some((i: any) => i.isMarkable && i.kotCounterId);
-
-                const targetCounterIds = new Set<string>();
-
-                // Always Payment
-                allPaymentCounterIds.forEach((id: string) => targetCounterIds.add(id));
-
-                if (hasMarkableItem) {
-                    if (hasMarkableItemWithKot && allKotCounterIds.length > 0) {
-                        allKotCounterIds.forEach((id: string) => targetCounterIds.add(id));
-                        // Also store
-                        allStoreCounterIds.forEach((id: string) => targetCounterIds.add(id));
-                    } else {
-                        // Markable but no KOT -> Store
-                        allStoreCounterIds.forEach((id: string) => targetCounterIds.add(id));
-                    }
-                } else {
-                    // No markable -> Store
-                    allStoreCounterIds.forEach((id: string) => targetCounterIds.add(id));
-                }
-
-                // Add KOT for non-markable if needed?
-                if (!hasMarkableItem) {
-                    allKotCounterIds.forEach((id: string) => targetCounterIds.add(id));
-                }
-
-                const uniqueTargets = Array.from(targetCounterIds);
-                if (uniqueTargets.length > 0) {
-                    orderData.allCounterIds?.forEach((cid: string) => {
-                        // If checking uniqueTargets is tricky, we can just broadcast to ALL counters involved.
-                        // Routes.ts logic filtered specifically.
-                        if (uniqueTargets.includes(cid)) {
-                            wsManager.broadcastToCounter(cid, 'new_order', orderWithParsedData);
-                        }
-                    });
-                    // Or simpler:
-                    uniqueTargets.forEach(cid => wsManager.broadcastToCounter(cid, 'new_order', orderWithParsedData));
-                }
-            }
-        } catch (err) {
-            console.error(`❌ WebSocket broadcast failed for order ${orderNumber}:`, err);
-        }
-
-
-        // 6. Send Push Notifications
-        try {
-            console.log(`🔔 Triggering push notification for order ${orderNumber} to canteen ${orderData.canteenId}`);
-
-            // Fetch involved counters (Store and KOT) to get names
-            const involvedIds = Array.from(new Set([
-                ...(orderData.allStoreCounterIds || []),
-                ...(orderData.allKotCounterIds || [])
-            ]));
-
-            let involvedCounters = [];
-            if (involvedIds.length > 0) {
-                try {
-                    // Try fetching from 'storecounters' collection (common naming convention)
-                    let counters = [];
+                    const broadcastItems = orderItems; // Enriched items
+                    let itemStatusByCounter = order.itemStatusByCounter;
                     try {
-                        // Check if collection exists first to avoid error? No, just try find
-                        counters = await mongoose.connection.db.collection('storecounters').find({ id: { $in: involvedIds } }).toArray();
-                    } catch (e) { /* ignore */ }
+                        if (typeof itemStatusByCounter === 'string') itemStatusByCounter = JSON.parse(itemStatusByCounter);
+                    } catch (e) { }
 
-                    if (!counters || counters.length === 0) {
-                        try {
-                            // Try 'counters' collection
-                            counters = await mongoose.connection.db.collection('counters').find({ id: { $in: involvedIds } }).toArray();
-                        } catch (e) { /* ignore */ }
+                    const orderWithParsedData = {
+                        ...order,
+                        items: broadcastItems,
+                        itemStatusByCounter
+                    };
+
+                    // A. Broadcast to Canteen
+                    wsManager.broadcastToCanteen(order.canteenId, 'new_order', orderWithParsedData);
+
+                    // B. Broadcast to Counters
+                    // We need the routing logic.
+                    const allStoreCounterIds = orderData.allStoreCounterIds || [];
+                    const allPaymentCounterIds = orderData.allPaymentCounterIds || [];
+                    const allKotCounterIds = orderData.allKotCounterIds || [];
+
+                    const hasMarkableItem = broadcastItems.some((i: any) => i.isMarkable);
+                    const hasMarkableItemWithKot = broadcastItems.some((i: any) => i.isMarkable && i.kotCounterId);
+
+                    const targetCounterIds = new Set<string>();
+
+                    // Always Payment
+                    allPaymentCounterIds.forEach((id: string) => targetCounterIds.add(id));
+
+                    if (hasMarkableItem) {
+                        if (hasMarkableItemWithKot && allKotCounterIds.length > 0) {
+                            allKotCounterIds.forEach((id: string) => targetCounterIds.add(id));
+                            // Also store
+                            allStoreCounterIds.forEach((id: string) => targetCounterIds.add(id));
+                        } else {
+                            // Markable but no KOT -> Store
+                            allStoreCounterIds.forEach((id: string) => targetCounterIds.add(id));
+                        }
+                    } else {
+                        // No markable -> Store
+                        allStoreCounterIds.forEach((id: string) => targetCounterIds.add(id));
                     }
 
-                    if (counters && counters.length > 0) {
-                        involvedCounters = counters.map((c: any) => ({ id: c.id, name: c.name }));
+                    // Add KOT for non-markable if needed?
+                    if (!hasMarkableItem) {
+                        allKotCounterIds.forEach((id: string) => targetCounterIds.add(id));
+                    }
+
+                    const uniqueTargets = Array.from(targetCounterIds);
+                    if (uniqueTargets.length > 0) {
+                        uniqueTargets.forEach(cid => wsManager.broadcastToCounter(cid, 'new_order', orderWithParsedData));
                     }
                 } catch (err) {
-                    console.error('⚠️ Failed to fetch counter names for push notification:', err);
+                    console.error(`❌ WebSocket broadcast failed for order ${orderNumber}:`, err);
+                }
+                resolve();
+            }).catch(err => console.error(`❌ WebSocket async error for order ${orderNumber}:`, err));
+        }
+
+
+        // 6. Send Push Notifications (Fire-and-forget)
+        new Promise<void>(async (resolve) => {
+            try {
+                console.log(`🔔 Triggering push notification for order ${orderNumber} to canteen ${orderData.canteenId}`);
+
+                // Fetch involved counters (Store and KOT) to get names
+                const involvedIds = Array.from(new Set([
+                    ...(orderData.allStoreCounterIds || []),
+                    ...(orderData.allKotCounterIds || [])
+                ]));
+
+                let involvedCounters: { id: string, name: string }[] = [];
+                if (involvedIds.length > 0) {
+                    try {
+                        // Try fetching from 'storecounters' collection (common naming convention)
+                        let counters: any[] = [];
+                        try {
+                            // Check if collection exists first to avoid error? No, just try find
+                            if (mongoose.connection.db) {
+                                counters = await mongoose.connection.db.collection('storecounters').find({ id: { $in: involvedIds } }).toArray();
+                            }
+                        } catch (e) { /* ignore */ }
+
+                        if (!counters || counters.length === 0) {
+                            try {
+                                // Try 'counters' collection
+                                if (mongoose.connection.db) {
+                                    counters = await mongoose.connection.db.collection('counters').find({ id: { $in: involvedIds } }).toArray();
+                                }
+                            } catch (e) { /* ignore */ }
+                        }
+
+                        if (counters && counters.length > 0) {
+                            involvedCounters = counters.map((c: any) => ({ id: c.id, name: c.name }));
+                        }
+                    } catch (err) {
+                        console.error('⚠️ Failed to fetch counter names for push notification:', err);
+                    }
+
+                    // Fallback for any IDs not found in DB
+                    const foundIds = involvedCounters.map(c => c.id);
+                    involvedIds.forEach(id => {
+                        if (!foundIds.includes(id as string)) {
+                            involvedCounters.push({ id: id as string, name: `Counter ${id}` });
+                        }
+                    });
                 }
 
-                // Fallback for any IDs not found in DB
-                const foundIds = involvedCounters.map(c => c.id);
-                involvedIds.forEach(id => {
-                    if (!foundIds.includes(id as string)) {
-                        involvedCounters.push({ id: id as string, name: `Counter ${id}` });
-                    }
-                });
+                await webPushService.sendNewOrderNotification(
+                    orderNumber,
+                    orderData.customerName,
+                    orderData.amount,
+                    orderData.canteenId,
+                    involvedCounters
+                );
+                console.log(`📲 Push notification sent for order ${orderNumber}`);
+            } catch (err) {
+                console.error(`❌ Push notification failed for order ${orderNumber}:`, err);
             }
-
-            await webPushService.sendNewOrderNotification(
-                orderNumber,
-                orderData.customerName,
-                orderData.amount,
-                orderData.canteenId,
-                involvedCounters
-            );
-            console.log(`📲 Push notification sent for order ${orderNumber}`);
-        } catch (err) {
-            console.error(`❌ Push notification failed for order ${orderNumber}:`, err);
-        }
+            resolve();
+        }).catch(err => console.error(`❌ Push notification async error for order ${orderNumber}:`, err));
 
         return order;
     }

@@ -54,6 +54,7 @@ export function PosCheckoutDialog({
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [showOfflineConfirm, setShowOfflineConfirm] = useState(false);
   const [showQRPayment, setShowQRPayment] = useState(false);
+  const [stockError, setStockError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [canteenCharges, setCanteenCharges] = useState<any[]>([]);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
@@ -343,8 +344,8 @@ export function PosCheckoutDialog({
       razorpayRef.current = new (window as any).Razorpay(options);
       isPaymentInProgressRef.current = true;
       razorpayRef.current.open();
-      // Close our dialog to allow Razorpay modal to be interactable
-      onOpenChange(false);
+      // Keep dialog open to maintain state
+      // onOpenChange(false);
     };
     script.onerror = () => {
       toast.error('Failed to load payment gateway');
@@ -382,11 +383,11 @@ export function PosCheckoutDialog({
           onOrderCreated();
         }
       } else {
-        toast.error('Order creation failed. Please contact support.');
+        setStockError(orderResponse.message || 'Order creation failed. Please contact support.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Order creation error:', error);
-      toast.error('Failed to create order. Please contact support.');
+      setStockError(error.message || 'Failed to create order. Please contact support.');
     } finally {
       setIsLoading(false);
     }
@@ -403,7 +404,8 @@ export function PosCheckoutDialog({
 
       // Show QR payment screen
       setShowQRPayment(true);
-      onOpenChange(false);
+      // Keep dialog open to maintain state
+      // onOpenChange(false);
     } else {
       // For offline payment, show confirmation dialog
       setShowOfflineConfirm(true);
@@ -440,11 +442,12 @@ export function PosCheckoutDialog({
         }
       } else {
         console.error('❌ Order creation failed:', orderResponse);
-        toast.error(orderResponse.message || 'Order creation failed. Please try again.');
+        setStockError(orderResponse.message || 'Order creation failed. Please try again.');
       }
     } catch (error: any) {
       console.error('❌ Offline order creation error:', error);
-      toast.error(error.message || 'Failed to create order. Please try again.');
+      const msg = error.message || 'Failed to create order. Please try again.';
+      setStockError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -583,7 +586,7 @@ export function PosCheckoutDialog({
     },
     onSuccess: (updatedOrder) => {
       toast.success('Order marked as ready!');
-      setCreatedOrder(prevOrder => ({
+      setCreatedOrder((prevOrder: any) => ({
         ...prevOrder,
         ...updatedOrder,
         orderNumber: updatedOrder.orderNumber || prevOrder?.orderNumber,
@@ -622,7 +625,7 @@ export function PosCheckoutDialog({
     },
     onSuccess: (updatedOrder) => {
       toast.success('Order marked as out for delivery!');
-      setCreatedOrder(prevOrder => ({
+      setCreatedOrder((prevOrder: any) => ({
         ...prevOrder,
         ...updatedOrder,
         orderNumber: updatedOrder.orderNumber || prevOrder?.orderNumber,
@@ -971,7 +974,7 @@ export function PosCheckoutDialog({
                 {/* Action Buttons */}
                 <div className="flex flex-wrap gap-3 pt-4">
                   <OwnerButton
-                    variant="outline"
+                    variant="secondary"
                     onClick={handlePrintReceipt}
                     className="flex-1 flex items-center justify-center gap-2"
                     disabled={isPrinting}
@@ -1183,6 +1186,36 @@ export function PosCheckoutDialog({
             />
           )}
         </div>
+
+        {/* Stock Error Popup */}
+        <AlertDialog open={!!stockError} onOpenChange={(open) => {
+          if (!open) {
+            setStockError(null);
+            onOpenChange(false);
+            queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
+          }
+        }}>
+          <AlertDialogContent className="max-w-sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+                <AlertTriangle className="h-5 w-5" />
+                Order Failed
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm text-gray-700">
+                {stockError}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => {
+                setStockError(null);
+                onOpenChange(false);
+                queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
+              }}>
+                OK
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </Card>
     </>
   );

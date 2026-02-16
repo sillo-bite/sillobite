@@ -28,6 +28,7 @@ interface CanteenBid {
   yourBid?: number;
   bidStatus?: 'pending' | 'closed' | 'paid' | 'active';
   paymentStatus?: 'pending' | 'completed' | 'failed';
+  bidId?: string;
 }
 
 export default function PositionBidding({ canteenId }: PositionBiddingProps) {
@@ -57,7 +58,7 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
     queryKey: ['bidding-institutions', canteenId],
     queryFn: async () => {
       const institutions: Institution[] = [];
-      
+
       // Fetch organizations
       if (canteen?.organizationIds && canteen.organizationIds.length > 0) {
         for (const orgId of canteen.organizationIds) {
@@ -76,7 +77,7 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
           }
         }
       }
-      
+
       // Fetch colleges
       if (canteen?.collegeIds && canteen.collegeIds.length > 0) {
         for (const collegeId of canteen.collegeIds) {
@@ -95,7 +96,7 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
           }
         }
       }
-      
+
       return institutions;
     },
     enabled: !!canteen,
@@ -106,25 +107,25 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
     queryKey: ['bidding-canteens', selectedInstitution?.id, selectedInstitution?.type, targetDate],
     queryFn: async () => {
       if (!selectedInstitution) return null;
-      
+
       const endpoint = selectedInstitution.type === 'organization'
         ? `/api/system-settings/canteens/by-organization/${selectedInstitution.id}`
         : `/api/system-settings/canteens/by-college/${selectedInstitution.id}`;
-      
+
       const response = await apiRequest(endpoint);
       const canteens = response?.canteens || [];
-      
+
       // Fetch all bids for this institution and date
       const bidsResponse = await apiRequest(
         `/api/bidding/bids?institutionId=${selectedInstitution.id}&institutionType=${selectedInstitution.type}&targetDate=${targetDate.toISOString()}`
       );
       const allBids = bidsResponse?.bids || [];
-      
+
       // Create a map of canteenId -> bid
-      const bidMap = new Map(allBids.map((bid: any) => [bid.canteenId, bid]));
-      
+      const bidMap = new Map<string, any>(allBids.map((bid: any) => [bid.canteenId, bid]));
+
       // Merge canteens with their bids
-      const canteensWithBids = canteens.map((canteen: any) => {
+      const canteensWithBids: CanteenBid[] = canteens.map((canteen: any) => {
         const bid = bidMap.get(canteen.id);
         return {
           ...canteen,
@@ -135,9 +136,9 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
           bidId: bid?.bidId,
         };
       });
-      
+
       // Sort by current bid amount (highest first), then by priority
-      return canteensWithBids.sort((a, b) => {
+      return canteensWithBids.sort((a: CanteenBid, b: CanteenBid) => {
         if (b.currentBid !== a.currentBid) {
           return (b.currentBid || 0) - (a.currentBid || 0);
         }
@@ -179,11 +180,11 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
   const biddingCloseTime = new Date(targetDate);
   biddingCloseTime.setDate(biddingCloseTime.getDate() - 1);
   biddingCloseTime.setHours(13, 0, 0, 0); // 1 PM day before
-  
+
   const paymentDueTime = new Date(targetDate);
   paymentDueTime.setDate(paymentDueTime.getDate() - 1);
   paymentDueTime.setHours(15, 0, 0, 0); // 3 PM day before
-  
+
   const isBiddingOpen = now < biddingCloseTime;
   const isPaymentWindow = now >= biddingCloseTime && now < paymentDueTime;
   const isAfterPaymentWindow = now >= paymentDueTime;
@@ -194,7 +195,7 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
       alert('Please enter a valid bid amount');
       return;
     }
-    
+
     if (confirm(`Place a bid of ₹${(amount / 100).toFixed(2)} for position?`)) {
       createBidMutation.mutate({ amount, canteenId: canteenIdForBid });
     }
@@ -315,7 +316,7 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
             {biddingCanteens.map((canteen, index) => {
               const isYourCanteen = canteen.id === canteenId;
               const bidAmount = bidAmounts[canteen.id] || 0;
-              
+
               return (
                 <Card key={canteen.id}>
                   <CardContent className="pt-6">
@@ -368,7 +369,7 @@ export default function PositionBidding({ canteenId }: PositionBiddingProps) {
                           </div>
                         </div>
                       </div>
-                      
+
                       {isBiddingOpen && (
                         <div className="ml-4 flex items-end space-x-2">
                           <div>

@@ -55,7 +55,7 @@ class OrderStatusPollingQueue {
       // Check if request is debounced
       const lastRequest = this.lastRequestTime.get(orderId);
       const now = Date.now();
-      
+
       if (lastRequest && (now - lastRequest) < this.config.debounceTime) {
         // Request is debounced, return existing promise if available
         const existingRequest = this.queue.get(orderId);
@@ -139,7 +139,7 @@ class OrderStatusPollingQueue {
    * Process queue with batching and concurrency control
    * Industry Standard: Efficient batch processing with rate limiting
    */
-  private async processQueue(): void {
+  private async processQueue(): Promise<void> {
     // Prevent concurrent processing
     if (this.isProcessing || this.queue.size === 0) {
       return;
@@ -179,7 +179,7 @@ class OrderStatusPollingQueue {
     // Batch process orders
     try {
       const results = await this.batchPollOrders(ordersToProcess);
-      
+
       // Resolve requests
       ordersToProcess.forEach((orderId, index) => {
         const request = this.queue.get(orderId);
@@ -230,10 +230,10 @@ class OrderStatusPollingQueue {
           const errorData = await response.json().catch(() => ({}));
           const retryAfter = errorData.retryAfter || 5;
           console.warn(`⚠️ Rate limit hit, will retry after ${retryAfter} seconds`);
-          
+
           // Wait and retry once
           await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-          
+
           // Retry the request
           const retryResponse = await fetch('/api/orders/poll-status', {
             method: 'POST',
@@ -243,27 +243,27 @@ class OrderStatusPollingQueue {
             body: JSON.stringify({ orderIds }),
             signal: AbortSignal.timeout(10000),
           });
-          
+
           if (!retryResponse.ok) {
             throw new Error(`Rate limit exceeded. Please wait before trying again.`);
           }
-          
+
           const retryData = await retryResponse.json();
           return orderIds.map((orderId) => {
-            return retryData.orders?.find((order: any) => 
+            return retryData.orders?.find((order: any) =>
               order.id === orderId || order.orderNumber === orderId
             ) || null;
           });
         }
-        
+
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      
+
       // Return results in same order as requested
       return orderIds.map((orderId) => {
-        return data.orders?.find((order: any) => 
+        return data.orders?.find((order: any) =>
           order.id === orderId || order.orderNumber === orderId
         ) || null;
       });

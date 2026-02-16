@@ -122,7 +122,7 @@ export function useAuth() {
         const validationPromise = (async () => {
           try {
             console.log("🔍 Validating user against database...");
-            const response = await fetch(`/api/users/${authState.user.id}/validate`, {
+            const response = await fetch(`/api/users/${authState.user?.id}/validate`, {
               cache: 'default', // Use browser cache if available
               headers: {
                 'Cache-Control': 'max-age=60' // Cache for 60 seconds

@@ -5,10 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
-import { 
-  Trophy, 
-  HelpCircle, 
-  ExternalLink, 
+import {
+  Trophy,
+  HelpCircle,
+  ExternalLink,
   CheckCircle2,
   AlertCircle,
   FileText,
@@ -52,8 +52,8 @@ export default function ChallengeDetailsModal({
   if (!challenge) return null;
 
   const hasStarted = (challenge.completedQuestions || 0) > 0;
-  const progressPercentage = challenge.totalQuestions > 0 
-    ? Math.round((challenge.completedQuestions || 0) / challenge.totalQuestions * 100) 
+  const progressPercentage = challenge.totalQuestions > 0
+    ? Math.round((challenge.completedQuestions || 0) / challenge.totalQuestions * 100)
     : 0;
 
   const handleStartClick = () => {
@@ -86,7 +86,7 @@ export default function ChallengeDetailsModal({
             {/* Tags */}
             <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
               {challenge.tags.map((tag, index) => (
-                <Badge 
+                <Badge
                   key={index}
                   variant="outline"
                   className={`text-xs px-2 py-0.5 ${isDark ? 'border-gray-600 text-gray-300 bg-gray-800/50' : 'border-gray-300 text-gray-700 bg-gray-100'}`}
@@ -131,10 +131,9 @@ export default function ChallengeDetailsModal({
                     </span>
                   </div>
                   <div className={`w-full rounded-full h-2 ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                    <div 
-                      className={`h-2 rounded-full transition-all ${
-                        isDark ? 'bg-blue-500' : 'bg-blue-600'
-                      }`}
+                    <div
+                      className={`h-2 rounded-full transition-all ${isDark ? 'bg-blue-500' : 'bg-blue-600'
+                        }`}
                       style={{ width: `${progressPercentage}%` }}
                     />
                   </div>
@@ -149,9 +148,8 @@ export default function ChallengeDetailsModal({
                   href={challenge.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`inline-flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm font-medium ${
-                    isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
-                  }`}
+                  className={`inline-flex items-center space-x-1.5 sm:space-x-2 text-xs sm:text-sm font-medium ${isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                    }`}
                 >
                   <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="truncate">Open Challenge Link</span>
@@ -192,7 +190,7 @@ export default function ChallengeDetailsModal({
                     {challenge.termsAndConditions}
                   </p>
                 </div>
-                
+
                 {/* Terms Acceptance Checkbox */}
                 <div className="mt-3 sm:mt-4 flex items-start space-x-2 sm:space-x-3">
                   <input
@@ -238,7 +236,7 @@ export default function ChallengeDetailsModal({
           )}
           <Button
             onClick={handleStartClick}
-            disabled={challenge.termsAndConditions && !acceptedTerms}
+            disabled={!!challenge.termsAndConditions && !acceptedTerms}
             size="sm"
             className={`flex-1 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2 h-auto ${isDark ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'} disabled:opacity-50 disabled:cursor-not-allowed`}
           >

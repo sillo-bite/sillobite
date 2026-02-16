@@ -12,6 +12,7 @@ interface User {
   department?: string;
   currentStudyYear?: number;
   isPassed?: boolean;
+  isTemporary?: boolean;
 }
 
 export function useUserFromCache() {

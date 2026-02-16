@@ -7,11 +7,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Utensils, MapPin, Users, Clock, AlertCircle, CheckCircle } from 'lucide-react';
 import { createTempUser } from '@/utils/tempUser';
 import { useUserFromCache } from '@/hooks/useUserFromCache';
-import { 
-  resolveUserSessionConflict, 
-  securelyUpdateUserData, 
+import {
+  resolveUserSessionConflict,
+  securelyUpdateUserData,
   cleanupTemporaryUserData,
-  logConflictResolutionEvent 
+  logConflictResolutionEvent
 } from '@/utils/sessionConflictResolver';
 
 interface TableAccessData {
@@ -67,16 +67,18 @@ export default function TableAccessPage() {
       // Check if user is already authenticated (not temporary)
       if (existingUser && !existingUser.isTemporary) {
         console.log('✅ Existing authenticated user detected, applying restaurant context and redirecting to home');
-        
+
         // Apply restaurant context to existing user
         const updatedUserData = resolveUserSessionConflict(existingUser, restaurantContext);
-        
+
         // Securely update user data with restaurant context
-        securelyUpdateUserData(updatedUserData, false);
-        
+        if (updatedUserData) {
+          securelyUpdateUserData(updatedUserData, false);
+        }
+
         // Dispatch event to notify auth state change
         window.dispatchEvent(new CustomEvent('userAuthChange'));
-        
+
         // Small delay to ensure localStorage is written before redirect
         setTimeout(() => {
           // Redirect directly to home page with full reload to ensure state sync
@@ -87,7 +89,7 @@ export default function TableAccessPage() {
 
       // No existing user - redirect to login page with QR table data stored
       console.log('🔐 No authenticated user found, redirecting to login page for QR code access...');
-      
+
       // Store table data in sessionStorage for use on login page
       const qrTableData = {
         restaurantId: tableData.restaurant.id,
@@ -96,14 +98,14 @@ export default function TableAccessPage() {
         hash: params?.hash,
         timestamp: Date.now()
       };
-      
+
       sessionStorage.setItem('pendingQRTableData', JSON.stringify(qrTableData));
-      
+
       // Redirect to login page
       setLocation('/login?fromQR=true');
     }
   }, [tableData, loading, error, params?.hash, setLocation, existingUser, isUserLoading]);
-  
+
   // Ensure restaurant context is preserved when navigating away
   useEffect(() => {
     // Clean up function to ensure context is preserved when component unmounts
@@ -115,7 +117,7 @@ export default function TableAccessPage() {
           restaurantName: tableData.restaurant.name,
           tableNumber: tableData.table.tableNumber
         };
-        
+
         // Ensure user data has restaurant context before navigating away
         const currentUserData = localStorage.getItem('user');
         if (currentUserData) {
@@ -144,7 +146,7 @@ export default function TableAccessPage() {
       // TODO: Replace with actual API call
       // For now, we'll simulate the API call
       const response = await fetch(`/api/table-access/${restaurantId}/${tableNumber}/${hash}`);
-      
+
       if (!response.ok) {
         throw new Error('Invalid QR code or table not found');
       }
@@ -161,48 +163,50 @@ export default function TableAccessPage() {
 
   const handleStartOrder = async () => {
     if (!tableData) return;
-    
+
     try {
       setLoading(true);
       setStatusMessage({ type: 'info', message: 'Preparing your session...' });
       console.log('🍽️ Preparing session for table access:', tableData.table.tableNumber);
-      
+
       const restaurantContext = {
         restaurantId: tableData.restaurant.id,
         restaurantName: tableData.restaurant.name,
         tableNumber: tableData.table.tableNumber
       };
-      
+
       // Check for existing authenticated user first
       if (existingUser && !existingUser.isTemporary) {
         logConflictResolutionEvent({
           type: 'conflict_detected',
-          userId: existingUser.id,
+          userId: existingUser.id.toString(),
           restaurantId: tableData.restaurant.id,
           tableNumber: tableData.table.tableNumber
         });
-        
+
         console.log('🔍 Existing authenticated user detected:', existingUser);
         console.log('✅ Prioritizing existing user over temporary session');
-        setStatusMessage({ 
-          type: 'success', 
-          message: 'Using your existing account for this session' 
+        setStatusMessage({
+          type: 'success',
+          message: 'Using your existing account for this session'
         });
-        
+
         // Resolve the conflict using our utility
         const updatedUserData = resolveUserSessionConflict(existingUser, restaurantContext);
-        
+
         // Securely update user data and clean up temporary artifacts
-        securelyUpdateUserData(updatedUserData, false);
-        
+        if (updatedUserData) {
+          securelyUpdateUserData(updatedUserData, false);
+        }
+
         // Log the successful conflict resolution
         logConflictResolutionEvent({
           type: 'existing_user_prioritized',
-          userId: existingUser.id,
+          userId: existingUser.id.toString(),
           restaurantId: tableData.restaurant.id,
           tableNumber: tableData.table.tableNumber
         });
-        
+
         // Add a small delay to show the success message before redirecting
         setTimeout(() => {
           // Force a refresh when redirecting to ensure context is applied
@@ -210,25 +214,25 @@ export default function TableAccessPage() {
         }, 1000);
         return;
       }
-      
+
       setStatusMessage({ type: 'info', message: 'Creating temporary session...' });
-      
+
       // Prepare request data with existing user information for conflict resolution
       const requestData = {
         restaurantId: restaurantContext.restaurantId,
         tableNumber: restaurantContext.tableNumber,
         restaurantName: restaurantContext.restaurantName,
         existingUserId: existingUser?.id,
-        existingUserData: existingUser ? { 
+        existingUserData: existingUser ? {
           id: existingUser.id,
           name: existingUser.name,
           email: existingUser.email,
           role: existingUser.role
         } : null
       };
-      
+
       console.log('📊 Request data:', requestData);
-      
+
       // Create server session with conflict resolution
       const response = await fetch('/api/temp-session/create', {
         method: 'POST',
@@ -239,15 +243,15 @@ export default function TableAccessPage() {
       });
 
       console.log('📡 Response status:', response.status);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Server error response:', errorText);
-        
+
         // Log the error for debugging purposes
         logConflictResolutionEvent({
           type: 'error',
-          userId: existingUser?.id,
+          userId: existingUser?.id?.toString(),
           restaurantId: restaurantContext.restaurantId,
           tableNumber: restaurantContext.tableNumber,
           error: {
@@ -256,24 +260,24 @@ export default function TableAccessPage() {
             errorText
           }
         });
-        
+
         throw new Error(`Failed to create session: ${response.status} ${errorText}`);
       }
 
       const sessionData = await response.json();
       console.log('✅ Session created:', sessionData);
-      
+
 
       if (sessionData.existingUserPrioritized) {
         console.log('🔄 Server prioritized existing user:', sessionData.userData);
-        setStatusMessage({ 
-          type: 'success', 
-          message: 'Using your existing account for this session' 
+        setStatusMessage({
+          type: 'success',
+          message: 'Using your existing account for this session'
         });
-        
-        
+
+
         securelyUpdateUserData(sessionData.userData, false);
-        
+
         // Log the successful conflict resolution
         logConflictResolutionEvent({
           type: 'existing_user_prioritized',
@@ -284,13 +288,13 @@ export default function TableAccessPage() {
       } else {
         // Securely store temporary session data
         securelyUpdateUserData(sessionData.tempUser, true);
-        
+
         console.log('💾 Temporary session data stored in localStorage');
-        setStatusMessage({ 
-          type: 'success', 
-          message: 'Temporary session created successfully' 
+        setStatusMessage({
+          type: 'success',
+          message: 'Temporary session created successfully'
         });
-        
+
         // Log temporary user creation
         logConflictResolutionEvent({
           type: 'temp_user_created',
@@ -299,19 +303,19 @@ export default function TableAccessPage() {
           tableNumber: restaurantContext.tableNumber
         });
       }
-      
+
       console.log('🏠 Redirecting to home page...');
       // Add a small delay to show the success message before redirecting
       setTimeout(() => {
         // Force a refresh when redirecting to ensure context is applied
         window.location.href = '/';
       }, 1000);
-      
+
     } catch (error) {
       console.error('❌ Error creating session:', error);
-      setStatusMessage({ 
-        type: 'error', 
-        message: 'Failed to create session' 
+      setStatusMessage({
+        type: 'error',
+        message: 'Failed to create session'
       });
       setError(`Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setLoading(false);
@@ -347,11 +351,10 @@ export default function TableAccessPage() {
             </p>
           )}
           {statusMessage && (
-            <div className={`mt-4 text-sm ${
-              statusMessage.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' :
+            <div className={`mt-4 text-sm ${statusMessage.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' :
               statusMessage.type === 'error' ? 'text-destructive' :
-              statusMessage.type === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-primary'
-            }`}>
+                statusMessage.type === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-primary'
+              }`}>
               {statusMessage.message}
             </div>
           )}
@@ -371,12 +374,12 @@ export default function TableAccessPage() {
               <p className="text-muted-foreground mb-4">{error}</p>
               <Alert className="mb-4 bg-amber-50 dark:bg-amber-950/20">
                 <AlertDescription>
-                  {error.includes('conflict') 
+                  {error.includes('conflict')
                     ? 'We detected a conflict between your existing account and this session. Please try again or contact support if the issue persists.'
                     : 'There was a problem setting up your session. Please try scanning the QR code again.'}
                 </AlertDescription>
               </Alert>
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/'}
                 variant="outline"
               >
@@ -412,7 +415,7 @@ export default function TableAccessPage() {
               <h1 className="text-2xl font-bold text-gray-900">{restaurant.name}</h1>
               <p className="text-muted-foreground">Table {table.tableNumber}</p>
             </div>
-            <Badge 
+            <Badge
               variant={table.status === 'available' ? 'default' : 'secondary'}
               className="text-sm"
             >
@@ -453,7 +456,7 @@ export default function TableAccessPage() {
                     <p className="text-lg font-semibold capitalize">{table.tableType}</p>
                   </div>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Location</label>
                   <p className="text-lg font-semibold">{table.location}</p>
@@ -487,7 +490,7 @@ export default function TableAccessPage() {
                     <p className="text-green-600 mb-4">
                       You're now connected to Table {table.tableNumber}. Browse our menu and place your order.
                     </p>
-                    <Button 
+                    <Button
                       onClick={handleStartOrder}
                       size="lg"
                       className="bg-green-600 hover:bg-green-700"
@@ -517,12 +520,12 @@ export default function TableAccessPage() {
                   <label className="text-sm font-medium text-muted-foreground">Address</label>
                   <p className="text-sm">{restaurant.address}</p>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Contact</label>
                   <p className="text-sm">{restaurant.contactNumber}</p>
                 </div>
-                
+
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Operating Hours</label>
                   <p className="text-sm flex items-center space-x-1">

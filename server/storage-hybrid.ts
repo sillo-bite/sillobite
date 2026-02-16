@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { connectToMongoDB } from './mongodb';
 import {
-  User, InsertUser, UserRole
+  User, InsertUser as SharedInsertUser, UserRole
 } from "@shared/schema";
 import {
   Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter, UserAddress,
@@ -127,7 +127,7 @@ export type InsertUserAddress = {
 };
 
 // Convert MongoDB document to plain object
-function mongoToPlain<T>(doc: any): T {
+export function mongoToPlain<T>(doc: any): T {
   if (!doc) return doc;
   if (Array.isArray(doc)) {
     return doc.map(item => mongoToPlain(item)) as any;
@@ -427,8 +427,7 @@ export class HybridStorage implements IStorage {
     const user = await db.user.findFirst({
       where: {
         role: {
-          equals: role,
-          mode: 'insensitive'
+          equals: role as any, // Cast to any to allow string search on enum
         }
       }
     });
@@ -495,7 +494,7 @@ export class HybridStorage implements IStorage {
 
     const user = await db.user.update({
       where: { id },
-      data: updateData
+      data: updateData as any // Cast to any to handle Partial<InsertUser> vs UserUpdateInput mismatch
     });
     return user;
   }
@@ -607,13 +606,13 @@ export class HybridStorage implements IStorage {
       id: item._id,
       name: item.name,
       categoryId: item.categoryId,
-      categoryName: item.categoryId?.name || 'No category'
+      categoryName: (item.categoryId as any)?.name || 'No category'
     })));
     console.log('🔍 Total menu items found:', menuItems.length);
 
     // Add fallback category names for items without categories
     const itemsWithFallback = menuItems.map(item => {
-      const plainItem = mongoToPlain(item);
+      const plainItem: any = mongoToPlain(item);
       if (!plainItem.categoryId || !plainItem.categoryId.name) {
         // Add a default category based on item name or type
         plainItem.category = this.getDefaultCategoryName(plainItem.name);
@@ -656,7 +655,7 @@ export class HybridStorage implements IStorage {
 
     if (!item) return undefined;
 
-    const plainItem = mongoToPlain(item);
+    const plainItem: any = mongoToPlain(item);
     if (!plainItem.categoryId || !plainItem.categoryId.name) {
       plainItem.category = this.getDefaultCategoryName(plainItem.name);
     } else {
@@ -1296,7 +1295,7 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
     return await db.user.update({
       where: { id },
-      data: { role }
+      data: { role: role as any }
     });
   }
 
@@ -1308,7 +1307,7 @@ export class HybridStorage implements IStorage {
 
     return await db.user.update({
       where: { id },
-      data: { role: 'blocked_' + user.role } // Prefix role with 'blocked_'
+      data: { role: ('blocked_' + user.role) as any } // Cast to any to allow non-enum value
     });
   }
 
@@ -1324,7 +1323,7 @@ export class HybridStorage implements IStorage {
 
     return await db.user.update({
       where: { id },
-      data: { role: unblocked_role }
+      data: { role: unblocked_role as any }
     });
   }
 
@@ -2454,7 +2453,7 @@ export class HybridStorage implements IStorage {
   async getCountersByCanteen(canteenId: string) {
     try {
       const counters = await Counter.find({ canteenId }).sort({ createdAt: -1 });
-      return counters.map(counter => ({
+      return counters.map((counter: any) => ({
         id: counter._id.toString(),
         name: counter.name,
         code: counter.code,
@@ -2481,7 +2480,7 @@ export class HybridStorage implements IStorage {
 
       await counter.save();
       return {
-        id: counter._id.toString(),
+        id: (counter as any)._id.toString(),
         name: counter.name,
         code: counter.code,
         counterId: counter.counterId,
@@ -2489,7 +2488,7 @@ export class HybridStorage implements IStorage {
         type: counter.type,
         createdAt: counter.createdAt
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating counter:', error);
       if (error.code === 11000) {
         throw new Error('Counter code already exists for this canteen');
@@ -2505,7 +2504,7 @@ export class HybridStorage implements IStorage {
         return null;
       }
       return {
-        id: counter._id.toString(),
+        id: (counter as any)._id.toString(),
         name: counter.name,
         code: counter.code,
         counterId: counter.counterId,
@@ -2925,7 +2924,7 @@ export class HybridStorage implements IStorage {
 
           // Return store counter IDs that need to be notified
           // Convert to plain object first to ensure proper serialization
-          const plainOrder = mongoToPlain(order);
+          const plainOrder: any = mongoToPlain(order);
           return { ...plainOrder, _kotStoreCounters: Array.from(storeCounterIds) };
         } else {
           // Store counter: normal flow

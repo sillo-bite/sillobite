@@ -188,6 +188,7 @@ export type MediaBanner = {
   displayOrder: number;
   displayMode?: 'fit' | 'fill'; // How to display the image: fit (contain) or fill (cover)
   uploadedBy?: number; // User ID who uploaded
+  canteenId?: string;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -70,7 +70,7 @@ const PerformanceOptimizer: React.FC = () => {
       new PerformanceObserver((entryList) => {
         const entries = entryList.getEntries();
         entries.forEach(entry => {
-          console.log('FID:', entry.processingStart - entry.startTime);
+          console.log('FID:', (entry as any).processingStart - entry.startTime);
         });
       }).observe({ entryTypes: ['first-input'] });
 

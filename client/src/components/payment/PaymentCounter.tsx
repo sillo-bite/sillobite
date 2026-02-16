@@ -138,28 +138,7 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
 
   // Handle deep linking/highlighting of orders
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const highlightOrderNumber = params.get('highlight');
-    if (highlightOrderNumber && orders.length > 0) {
-      // Small timeout to ensure DOM is rendered
-      setTimeout(() => {
-        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
-        if (element) {
-          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // Add visual highlight
-          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
-          // Remove highlight after 5 seconds
-          setTimeout(() => {
-            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
-          }, 5000);
-        } else {
-          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
-        }
-      }, 1000);
-    }
-  }, [orders, window.location.search]);
+
 
   // Set page title
   useEffect(() => {
@@ -333,6 +312,30 @@ export default function PaymentCounter({ counterId, canteenId }: PaymentCounterP
     enabled: !!counterId && !!canteenId,
     // No polling - only WebSocket updates
   });
+
+  // Handle deep linking/highlighting of orders
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightOrderNumber = params.get('highlight');
+    if (highlightOrderNumber && orders.length > 0) {
+      // Small timeout to ensure DOM is rendered
+      setTimeout(() => {
+        const element = document.getElementById(`order-card-${highlightOrderNumber}`);
+        if (element) {
+          console.log(`🔦 Highlighting order ${highlightOrderNumber}`);
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add visual highlight
+          element.classList.add('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          // Remove highlight after 5 seconds
+          setTimeout(() => {
+            element.classList.remove('ring-4', 'ring-primary', 'ring-offset-2', 'z-10');
+          }, 5000);
+        } else {
+          console.log(`❌ Could not find element order-card-${highlightOrderNumber}`);
+        }
+      }, 1000);
+    }
+  }, [orders, window.location.search]);
 
   // Fetch menu items to check isMarkable property
   const { data: menuItemsData } = useQuery({
