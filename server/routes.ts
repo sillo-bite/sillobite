@@ -5083,43 +5083,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Try to handle standard payment using metadata (same logic as main webhook)
           // 1. Get payment record to access metadata (since payload entity notes might be limited)
-          // Actually, for standard payments, payload.entity.notes contains our metadata if we sent it there.
-          // In initiate, we send metadata as `notes`.
+          console.log(`📡 Fetching local payment record for ${razorpayPaymentId} to get metadata`);
 
-          if (notes && notes.cartItems) {
-            console.log('✅ Found cartItems in notes - attempting to create order from QR webhook endpoint');
+          try {
+            // Find the payment record using the Razorpay Order ID (order_...)
+            // The webhook payload has `entity.order_id` which matches what we stored in metadata.razorpayOrderId
+            const razorpayOrderId = entity.order_id;
+            let paymentRecord = null;
 
-            try {
-              // Extract merchantTransactionId
-              // In initiate, we usually set this as the receipt or id
-              // For robustness, we can try to find the payment record first
-              let merchantTransactionId = notes.merchantTransactionId;
+            if (razorpayOrderId) {
+              console.log(`📡 Searching for payment with Razorpay Order ID: ${razorpayOrderId}`);
+              paymentRecord = await storage.getPaymentByMetadataField('razorpayOrderId', razorpayOrderId);
+            } else {
+              // Determine logic if no order_id (e.g. direct QR scan?)
+              // In that case, we might need to rely on `notes` if present, or we can't link it.
+              // But for standard checkout, order_id is crucial.
+              console.log('⚠️ Webhook payload missing order_id - attempting fallback by payment ID (unlikely to work for new ops)');
+              paymentRecord = await storage.getPaymentByRazorpayId(razorpayPaymentId);
+            }
 
-              if (!merchantTransactionId) {
-                // Try to find payment by razorpay ID
-                // This might fail if payment record creation was slow, but usually initiate creates it first
-                const paymentRecord = await storage.getPaymentByRazorpayId(razorpayPaymentId);
-                if (paymentRecord) {
-                  merchantTransactionId = paymentRecord.merchantTransactionId;
-                } else {
-                  // Fallback to searching by metadata if possible, or just generate a temp ID if we trust the signature?
-                  // Better to rely on what we have. If we can't find txnId, we might create a new order with a generated one?
-                  // Let's use the razorpayPaymentId as fallback txnId if needed, but storage needs unique.
-                  merchantTransactionId = `adhoc_${razorpayPaymentId}`;
-                }
+            if (paymentRecord && paymentRecord.metadata) {
+              console.log(`✅ Found local payment record for ${razorpayPaymentId}`);
+
+              // 2. Parse the metadata
+              let metadata;
+              try {
+                metadata = typeof paymentRecord.metadata === 'string'
+                  ? JSON.parse(paymentRecord.metadata)
+                  : paymentRecord.metadata;
+              } catch (e) {
+                console.error('❌ Failed to parse payment metadata:', e);
               }
 
-              // Create order using service
-              // We pass `notes` as `orderData` since it contains our metadata
-              const newOrder = await orderService.createOrderFromPayment(notes, merchantTransactionId);
+              // 3. Check for cartItems or orderData (saved as flattened object in initiate)
+              // In initiate we save: ...orderData, razorpayOrderId, checkoutSessionId
+              if (metadata && (metadata.cartItems || metadata.items || metadata.customerId)) {
+                console.log('✅ Found order data in local payment metadata - attempting to create order');
 
-              console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from QR Webhook endpoint`);
-              return res.json({ success: true, message: 'Order created from webhook' });
+                const merchantTransactionId = paymentRecord.merchantTransactionId;
 
-            } catch (error) {
-              console.error('❌ Error creating order from QR webhook for standard payment:', error);
-              // Don't return error, let it fall through to 404 so we know it failed
+                // Create order using service
+                // We pass metadata as orderData since it contains what we saved
+                const newOrder = await orderService.createOrderFromPayment(metadata, merchantTransactionId);
+
+                console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) via QR Webhook fallback`);
+                return res.json({ success: true, message: 'Order created from webhook' });
+              } else {
+                console.warn('⚠️ Payment record found but missing required order data in metadata');
+              }
+            } else {
+              console.log(`⚠️ No local payment record found for ${razorpayPaymentId}`);
             }
+
+          } catch (error: any) {
+            console.error('❌ Error in QR webhook standard payment fallback:', error);
+            if (error.message && error.message.includes('Duplicate')) {
+              return res.json({ success: true, message: 'Order already exists' });
+            }
+            // Don't return error, let it fall through to 404
           }
         }
 
