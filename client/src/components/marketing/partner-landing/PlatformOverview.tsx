@@ -1,5 +1,6 @@
 import { Smartphone, Monitor, Store } from "lucide-react";
 import { motion } from "framer-motion";
+import Wave1 from "./svg/wave1";
 
 export const PlatformOverview = () => {
     const features = [
@@ -21,7 +22,7 @@ export const PlatformOverview = () => {
     ];
 
     return (
-        <section className="relative bg-[#FFB17A] pt-10 pb-32">
+        <section className="relative bg-[#9847D1] pt-10 pb-32">
             {/* Top Wave Divider (Inverted to mesh with Hero) is handled by Hero's bottom wave overlapping or simple background match */}
 
             <div className="container mx-auto px-4 text-center text-white relative z-10">
@@ -59,9 +60,7 @@ export const PlatformOverview = () => {
 
             {/* Bottom Wave Divider (Transition to White) */}
             <div className="absolute bottom-0 left-0 w-full leading-none z-20 translate-y-1">
-                <svg className="block w-full h-24 md:h-32 lg:h-40" viewBox="0 0 1440 320" preserveAspectRatio="none">
-                    <path fill="#ffffff" fillOpacity="1" d="M0,224L48,234.7C96,245,192,267,288,250.7C384,235,480,181,576,165.3C672,149,768,171,864,197.3C960,224,1056,256,1152,245.3C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-                </svg>
+                <Wave1 color="#ffffff" style={{ transform: 'scale(-1)' }} />
             </div>
         </section>
     );

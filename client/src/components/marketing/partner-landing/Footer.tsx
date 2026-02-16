@@ -10,11 +10,11 @@ export const Footer = () => {
           {/* Brand & Newsletter */}
           <div className="md:col-span-1 space-y-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FFB17A] to-[#9847D1] flex items-center justify-center text-white font-bold text-lg">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#9847D1] to-[#9847D1] flex items-center justify-center text-white font-bold text-lg">
                 C
               </div>
               <span className="text-xl font-bold">
-                Cafeteria <span className="text-[#FFB17A]">SaaS</span>
+                Cafeteria <span className="text-[#9847D1]">SaaS</span>
               </span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
