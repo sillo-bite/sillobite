@@ -1214,7 +1214,7 @@ export class HybridStorage implements IStorage {
 
   async getPaymentByMetadataField(field: string, value: string): Promise<any | undefined> {
     try {
-      const regex = new RegExp(`"${field}":"${value}"`, 'i');
+      const regex = new RegExp(`"${field}"\\s*:\\s*"${value}"`, 'i');
       const payment = await Payment.findOne({ metadata: { $regex: regex } });
       return payment ? mongoToPlain(payment) : undefined;
     } catch (error) {
@@ -2790,29 +2790,7 @@ export class HybridStorage implements IStorage {
   }
 
 
-  async getPaymentByMetadataField(field: string, value: string): Promise<any | undefined> {
-    // Search for payments where metadata contains the specific field-value pair
-    // Since metadata is a stringified JSON, we use regex for flexibility or parsing if possible.
-    // Ideally we should have stored metadata as an object, but for now we search the string.
 
-    // Construct a regex to find "field":"value" in the JSON string
-    // Be careful with escaping and formatting
-
-    try {
-      const payments = await Payment.find({
-        metadata: { $regex: `"${field}"\\s*:\\s*"${value}"`, $options: 'i' }
-      });
-
-      // Return the first match if found
-      if (payments && payments.length > 0) {
-        return payments[0].toObject ? payments[0].toObject() : payments[0];
-      }
-    } catch (error) {
-      console.error(`Error searching payment by metadata ${field}:`, error);
-    }
-
-    return undefined;
-  }
 
   async markOrderReady(orderId: string, counterId?: string) {
     try {
