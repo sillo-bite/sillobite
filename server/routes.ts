@@ -5079,8 +5079,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         if (!orderId && !qrCodeId) {
-          console.error('📡 No orderId or qrCodeId found in payment notes');
-          return res.status(400).json({ success: false, message: 'Missing order reference' });
+          console.log('📡 Standard payment webhook detected (no QR notes) - passing to main handler');
+          // FIX: Don't return error here, let the main handler (line 5347) process it using metadata
+          // Only return if it's explicitly a QR event but missing data, OR just let it fall through
         }
 
         // Find order by QR ID or order number
