@@ -1,30 +1,22 @@
 import { Navbar } from "./Navbar";
 import { HeroSection } from "./HeroSection";
-import { WhySilloBiteSection } from "./WhySilloBiteSection";
-import { WhoWeServeSection } from "./WhoWeServeSection";
+import { PlatformOverview } from "./PlatformOverview";
 import { HowItWorksSection } from "./HowItWorksSection";
 import { FeaturesSection } from "./FeaturesSection";
-import { AnalyticsSection } from "./AnalyticsSection";
-import { PartnersSection } from "./PartnersSection";
-import { FAQSection } from "./FAQSection";
-import { ContactSection } from "./ContactSection";
+import { TestimonialsSection } from "./TestimonialsSection";
 import { Footer } from "./Footer";
 import { Toaster } from "@/components/ui/toaster";
 
 const PartnerLandingPage = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <Navbar />
       <main>
         <HeroSection />
-        <WhySilloBiteSection />
-        <WhoWeServeSection />
+        <PlatformOverview />
         <HowItWorksSection />
         <FeaturesSection />
-        <AnalyticsSection />
-        <PartnersSection />
-        <FAQSection />
-        <ContactSection />
+        <TestimonialsSection />
       </main>
       <Footer />
       <Toaster />

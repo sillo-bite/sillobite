@@ -1,202 +1,167 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Users, TrendingUp, Globe, ArrowUpRight } from "lucide-react";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { ArrowRight, BarChart3, PieChart, Users, Smartphone, ShoppingBag } from "lucide-react";
+import { motion } from "framer-motion";
 
 export const HeroSection = () => {
-  const { ref, isVisible } = useScrollAnimation({ threshold: 0.2 });
-
-  const scrollToContact = () => {
-    const element = document.querySelector("#contact");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
   return (
-    <section id="hero" className="relative min-h-screen flex items-center pt-20 md:pt-24 overflow-hidden">
-      {/* Premium background decoration with gradients */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/10 via-primary/5 to-transparent blur-3xl" />
-        <div className="absolute top-1/2 -left-32 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-secondary/15 via-secondary/8 to-transparent blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-primary/8 to-secondary/8 blur-3xl" />
+    <section className="relative min-h-[90vh] bg-[#FFFBF7] overflow-hidden pt-32 pb-20">
+      {/* Abstract Background Blobs */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-[#9847D1] opacity-10 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#FFB17A] opacity-10 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/4 pointer-events-none" />
+
+      <div className="container mx-auto px-4 relative z-10">
+        <div className="text-center max-w-4xl mx-auto mb-16">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-5xl md:text-6xl lg:text-7xl font-bold text-[#2D3748] mb-6 leading-tight"
+          >
+            Streamline Campus & Corporate Dining with <span className="text-[#9847D1]">SilloBite.</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto"
+          >
+            A complete multi-vendor management platform for modern cafeterias.
+            Contactless ordering, powerful admin controls, and seamless vendor operations.
+          </motion.p>
+        </div>
+
+        {/* Hero Visual Composition */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="relative max-w-5xl mx-auto h-[400px] md:h-[500px] lg:h-[600px]"
+        >
+          {/* Dashboard Mockup (Back) */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full md:w-[90%] h-full bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden hidden md:block">
+            {/* Dashboard Header */}
+            <div className="h-12 border-b border-gray-100 flex items-center px-4 gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-400" />
+              <div className="w-3 h-3 rounded-full bg-yellow-400" />
+              <div className="w-3 h-3 rounded-full bg-green-400" />
+            </div>
+            {/* Dashboard Content Mockup */}
+            <div className="p-6 grid grid-cols-12 gap-6 bg-gray-50/50 h-full">
+              <div className="col-span-2 space-y-4">
+                <div className="h-8 w-full bg-purple-100 rounded-md" />
+                <div className="h-4 w-3/4 bg-gray-200 rounded-md" />
+                <div className="h-4 w-5/6 bg-gray-200 rounded-md" />
+                <div className="h-4 w-4/6 bg-gray-200 rounded-md" />
+              </div>
+              <div className="col-span-10 grid grid-cols-3 gap-6">
+                {/* Stats Cards */}
+                <div className="bg-white p-4 rounded-xl shadow-sm">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-400">Total Revenue</span>
+                    <BarChart3 className="w-4 h-4 text-[#9847D1]" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-800">$12,450</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-400">Orders</span>
+                    <ShoppingBag className="w-4 h-4 text-[#FFB17A]" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-800">1,240</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl shadow-sm">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-sm text-gray-400">Active Users</span>
+                    <Users className="w-4 h-4 text-green-500" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-800">856</div>
+                </div>
+
+                {/* Main Chart Area */}
+                <div className="col-span-2 bg-white p-4 rounded-xl shadow-sm h-64 flex items-end gap-4 justify-between px-8 pb-4">
+                  {[40, 70, 45, 90, 60, 80, 50].map((h, i) => (
+                    <div key={i} className="w-8 bg-purple-100 rounded-t-md relative group">
+                      <div className="absolute bottom-0 w-full bg-[#FFB17A] rounded-t-md transition-all duration-1000" style={{ height: `${h}%` }} />
+                    </div>
+                  ))}
+                </div>
+                {/* Pie Chart Area */}
+                <div className="col-span-1 bg-white p-4 rounded-xl shadow-sm h-64 flex items-center justify-center relative">
+                  <div className="w-32 h-32 rounded-full border-[12px] border-[#9847D1] border-r-transparent rotate-45" />
+                  <div className="absolute text-center">
+                    <span className="text-2xl font-bold text-gray-800">85%</span>
+                    <span className="block text-xs text-gray-400">Satisfaction</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile App Mockup (Front) */}
+          <div className="absolute bottom-0 left-1/2 md:-translate-x-[120px] -translate-x-1/2 translate-y-20 w-[280px] h-[580px] bg-gray-900 rounded-[40px] border-8 border-gray-900 shadow-2xl overflow-hidden z-20 md:translate-y-12">
+            <div className="w-full h-full bg-white relative">
+              {/* Status Bar */}
+              <div className="h-8 bg-gray-100 flex items-center justify-between px-4 text-[10px] text-gray-500 font-medium">
+                <span>9:41</span>
+                <div className="flex gap-1">
+                  <div className="w-4 h-3 bg-gray-300 rounded-sm" />
+                  <div className="w-4 h-3 bg-gray-300 rounded-sm" />
+                </div>
+              </div>
+
+              {/* App Content */}
+              <div className="p-4">
+                <div className="flex justify-between items-center mb-6">
+                  <div className="w-8 h-8 rounded-full bg-gray-200" />
+                  <div className="text-sm font-bold text-gray-800">SilloBite</div>
+                  <ShoppingBag className="w-5 h-5 text-gray-400" />
+                </div>
+
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-800 leading-tight mb-2">What would you like to eat?</h3>
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    <div className="px-4 py-2 bg-[#9847D1] text-white rounded-full text-xs whitespace-nowrap">All</div>
+                    <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-full text-xs whitespace-nowrap">Pizza</div>
+                    <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-full text-xs whitespace-nowrap">Burger</div>
+                    <div className="px-4 py-2 bg-gray-100 text-gray-600 rounded-full text-xs whitespace-nowrap">Asian</div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="flex gap-4 p-3 rounded-xl bg-white shadow-md border border-gray-50/50">
+                      <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-800 text-sm">Spicy Chicken Burger</h4>
+                        <p className="text-xs text-gray-400 mb-2">Fast Food • 20 min</p>
+                        <div className="flex justify-between items-center w-32">
+                          <span className="font-bold text-[#9847D1]">$8.50</span>
+                          <div className="w-6 h-6 bg-[#FFB17A] rounded-full flex items-center justify-center text-white text-xs">+</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Nav */}
+              <div className="absolute bottom-0 w-full h-16 bg-white border-t border-gray-100 flex justify-around items-center px-6 text-gray-300">
+                <div className="text-[#9847D1]"><Smartphone className="w-6 h-6" /></div>
+                <div className="w-6 h-6 bg-gray-200 rounded-full" />
+                <div className="w-6 h-6 bg-gray-200 rounded-full" />
+                <div className="w-6 h-6 bg-gray-200 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
 
-      <div ref={ref} className="max-w-7xl mx-auto container-padding w-full relative z-10">
-        <div className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
-          {/* Left: Premium Content */}
-          <div className="space-y-10 lg:space-y-12">
-            <h1
-              className={`font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold leading-[1.1] text-foreground transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                }`}
-              style={{ transitionDelay: "100ms" }}
-            >
-              Revolutionize{" "}
-              <span className="relative inline-block">
-                <span className="relative z-10 bg-gradient-to-r from-primary via-primary to-secondary bg-clip-text text-transparent">
-                  Institutional Food Service
-                </span>
-                <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-primary/20 via-secondary/20 to-primary/20 blur-xl rounded-full" />
-              </span>
-            </h1>
-
-            <p
-              className={`text-xl md:text-2xl text-muted-foreground max-w-2xl leading-relaxed font-light transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                }`}
-              style={{ transitionDelay: "200ms" }}
-            >
-              SilloBite delivers an all-inclusive digital ecosystem for institutional dining operations. Seamlessly connecting educational institutions, healthcare facilities, and corporate campuses with cutting-edge ordering, payment processing, and operational management—all accessible instantly through any web browser.
-            </p>
-
-            <div
-              className={`flex flex-col sm:flex-row gap-4 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                }`}
-              style={{ transitionDelay: "300ms" }}
-            >
-              <Button
-                variant="hero"
-                size="xl"
-                onClick={scrollToContact}
-                className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-xl hover:shadow-2xl transition-all duration-300 w-full sm:w-auto"
-              >
-                <span className="relative z-10 flex items-center justify-center gap-2 text-sm sm:text-base px-2">
-                  <span className="hidden lg:inline">Schedule Your Personalized Consultation</span>
-                  <span className="hidden sm:inline lg:hidden">Schedule Consultation</span>
-                  <span className="sm:hidden">Get Started</span>
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform flex-shrink-0" />
-                </span>
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-              </Button>
-              <Button
-                variant="hero-outline"
-                size="xl"
-                onClick={scrollToContact}
-                className="border-2 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300 w-full sm:w-auto"
-              >
-                <span className="text-sm sm:text-base">Contact Us</span>
-              </Button>
-            </div>
-
-            <div
-              className={`flex flex-wrap items-center gap-8 pt-6 transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                }`}
-              style={{ transitionDelay: "400ms" }}
-            >
-              <div className="flex items-center gap-3 text-base text-muted-foreground">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-secondary/30 to-secondary/10 flex items-center justify-center border border-secondary/30 shadow-sm">
-                  <span className="text-secondary text-sm font-bold">✓</span>
-                </div>
-                <span className="font-medium">Zero Hardware Investment</span>
-              </div>
-              <div className="flex items-center gap-3 text-base text-muted-foreground">
-                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-secondary/30 to-secondary/10 flex items-center justify-center border border-secondary/30 shadow-sm">
-                  <span className="text-secondary text-sm font-bold">✓</span>
-                </div>
-                <span className="font-medium">Rapid Deployment in 24 Hours</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Abstract Data Flow Visualization */}
-          <div
-            className={`relative transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-12"
-              }`}
-            style={{ transitionDelay: "200ms" }}
-          >
-            {/* Main Container */}
-            <div className="relative w-full h-[500px] md:h-[600px]">
-              {/* Central Hub Circle */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-primary via-primary/90 to-secondary shadow-2xl border-4 border-background flex items-center justify-center z-20 animate-pulse-slow">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-background to-card/50 flex items-center justify-center">
-                  <Zap className="w-12 h-12 md:w-16 md:h-16 text-primary" />
-                </div>
-              </div>
-
-              {/* Orbiting Feature Cards */}
-              {[
-                { icon: Users, label: "Multi-User", angle: 0, delay: 0, color: "primary" },
-                { icon: TrendingUp, label: "Analytics", angle: 72, delay: 200, color: "secondary" },
-                { icon: Globe, label: "Web-Based", angle: 144, delay: 400, color: "primary" },
-                { icon: Zap, label: "Real-Time", angle: 216, delay: 600, color: "secondary" },
-                { icon: ArrowUpRight, label: "Scalable", angle: 288, delay: 800, color: "primary" },
-              ].map((feature, index) => {
-                const radius = 140;
-                const angleRad = (feature.angle * Math.PI) / 180;
-                const x = Math.cos(angleRad) * radius;
-                const y = Math.sin(angleRad) * radius;
-
-                return (
-                  <div
-                    key={index}
-                    className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-0"
-                      }`}
-                    style={{
-                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
-                      transitionDelay: `${feature.delay}ms`,
-                    }}
-                  >
-                    {/* Connection Line */}
-                    <div
-                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-px bg-gradient-to-b from-transparent via-primary/30 to-transparent origin-top"
-                      style={{
-                        height: `${radius}px`,
-                        transform: `translate(calc(-50% + ${x / 2}px), calc(-50% + ${y / 2}px)) rotate(${feature.angle}deg)`,
-                        transformOrigin: "top center",
-                      }}
-                    />
-
-                    {/* Feature Card */}
-                    <div
-                      className={`w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-card via-card to-card/95 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 flex flex-col items-center justify-center backdrop-blur-sm ${feature.color === "primary" ? "border-2 border-primary/30" : "border-2 border-secondary/30"
-                        }`}
-                    >
-                      <feature.icon
-                        className={`w-8 h-8 md:w-10 md:h-10 mb-1 ${feature.color === "primary" ? "text-primary" : "text-secondary"
-                          }`}
-                      />
-                      <span className="text-[10px] md:text-xs font-semibold text-foreground text-center px-1">
-                        {feature.label}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Floating Stats Bubbles */}
-              {[
-                { value: "24H", label: "Setup", top: "10%", left: "20%", delay: 1000 },
-                { value: "100%", label: "Web", top: "15%", right: "15%", delay: 1200 },
-                { value: "∞", label: "Scale", bottom: "20%", left: "10%", delay: 1400 },
-                { value: "0", label: "Hardware", bottom: "15%", right: "20%", delay: 1600 },
-              ].map((stat, index) => (
-                <div
-                  key={index}
-                  className={`absolute bg-gradient-to-br from-primary/20 via-primary/10 to-secondary/10 rounded-2xl p-4 md:p-5 border border-primary/20 shadow-lg backdrop-blur-sm transition-all duration-700 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                    }`}
-                  style={{
-                    top: stat.top,
-                    left: stat.left,
-                    right: stat.right,
-                    bottom: stat.bottom,
-                    transitionDelay: `${stat.delay}ms`,
-                  }}
-                >
-                  <div className="text-2xl md:text-3xl font-heading font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    {stat.value}
-                  </div>
-                  <div className="text-xs text-muted-foreground font-medium">{stat.label}</div>
-                </div>
-              ))}
-
-              {/* Animated Background Rings */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 md:w-80 md:h-80 rounded-full border border-primary/10 animate-spin-slow" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 md:w-96 md:h-96 rounded-full border border-secondary/10 animate-spin-slow" style={{ animationDirection: "reverse", animationDuration: "20s" }} />
-            </div>
-
-            {/* Decorative floating elements */}
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-gradient-to-br from-secondary/20 to-primary/20 rounded-full blur-2xl animate-pulse-slow opacity-60" />
-            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-full blur-2xl animate-pulse-slow opacity-60" style={{ animationDelay: "1s" }} />
-          </div>
-        </div>
+      {/* Purple Wave Divider */}
+      <div className="absolute bottom-0 left-0 w-full leading-none z-20">
+        <svg className="block w-full h-24 md:h-32 lg:h-48" viewBox="0 0 1440 320" preserveAspectRatio="none">
+          <path fill="#FFB17A" fillOpacity="1" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        </svg>
       </div>
     </section>
   );
