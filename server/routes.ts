@@ -5079,9 +5079,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         if (!orderId && !qrCodeId) {
-          console.log('📡 Standard payment webhook detected (no QR notes) - passing to main handler');
-          // FIX: Don't return error here, let the main handler (line 5347) process it using metadata
-          // Only return if it's explicitly a QR event but missing data, OR just let it fall through
+          console.log('📡 Standard payment webhook detected (no QR notes) - checking metadata');
+
+          // Try to handle standard payment using metadata (same logic as main webhook)
+          // 1. Get payment record to access metadata (since payload entity notes might be limited)
+          // Actually, for standard payments, payload.entity.notes contains our metadata if we sent it there.
+          // In initiate, we send metadata as `notes`.
+
+          if (notes && notes.cartItems) {
+            console.log('✅ Found cartItems in notes - attempting to create order from QR webhook endpoint');
+
+            try {
+              // Extract merchantTransactionId
+              // In initiate, we usually set this as the receipt or id
+              // For robustness, we can try to find the payment record first
+              let merchantTransactionId = notes.merchantTransactionId;
+
+              if (!merchantTransactionId) {
+                // Try to find payment by razorpay ID
+                // This might fail if payment record creation was slow, but usually initiate creates it first
+                const paymentRecord = await storage.getPaymentByRazorpayId(razorpayPaymentId);
+                if (paymentRecord) {
+                  merchantTransactionId = paymentRecord.merchantTransactionId;
+                } else {
+                  // Fallback to searching by metadata if possible, or just generate a temp ID if we trust the signature?
+                  // Better to rely on what we have. If we can't find txnId, we might create a new order with a generated one?
+                  // Let's use the razorpayPaymentId as fallback txnId if needed, but storage needs unique.
+                  merchantTransactionId = `adhoc_${razorpayPaymentId}`;
+                }
+              }
+
+              // Create order using service
+              // We pass `notes` as `orderData` since it contains our metadata
+              const newOrder = await orderService.createOrderFromPayment(notes, merchantTransactionId);
+
+              console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from QR Webhook endpoint`);
+              return res.json({ success: true, message: 'Order created from webhook' });
+
+            } catch (error) {
+              console.error('❌ Error creating order from QR webhook for standard payment:', error);
+              // Don't return error, let it fall through to 404 so we know it failed
+            }
+          }
         }
 
         // Find order by QR ID or order number
