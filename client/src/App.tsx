@@ -103,6 +103,7 @@ import { initAnalytics } from "./utils/analytics";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import QRHandlerPage from "./pages/QRHandlerPage";
+import { PWAProvider } from "@/contexts/PWAContext";
 
 
 
@@ -192,439 +193,441 @@ const App = () => {
                   <NotificationProvider>
                     <SEOHead />
                     <PerformanceOptimizer />
-                    <InstallPWA />
-                    <Router>
-                      <Switch>
-                        <Route path="/" component={PartnerLandingPage} />
-                        <Route path="/splashscreen" component={SplashScreen} />
-                        <Route path="/onboarding" component={OnboardingScreen} />
-                        <Route path="/login" component={LoginScreen} />
-                        <Route path="/auth/callback" component={OAuthCallback} />
-                        <Route path="/api/auth/google/callback" component={OAuthCallback} />
-                        <Route path="/profile-setup" component={ProfileSetupScreen} />
-                        <Route path="/profile/edit">
-                          <MaintenanceWrapper>
+                    <PWAProvider>
+                      <InstallPWA />
+                      <Router>
+                        <Switch>
+                          <Route path="/" component={PartnerLandingPage} />
+                          <Route path="/splashscreen" component={SplashScreen} />
+                          <Route path="/onboarding" component={OnboardingScreen} />
+                          <Route path="/login" component={LoginScreen} />
+                          <Route path="/auth/callback" component={OAuthCallback} />
+                          <Route path="/api/auth/google/callback" component={OAuthCallback} />
+                          <Route path="/profile-setup" component={ProfileSetupScreen} />
+                          <Route path="/profile/edit">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <ProfileEditPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/app">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <AppPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/dish/:dishId">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <DishDetailPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/checkout">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <CheckoutPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/payment-callback" component={PaymentCallbackPage} />
+                          <Route path="/retry-payment" component={RetryPaymentPage} />
+                          <Route path="/order-status/:orderId" component={OrderStatusPage} />
+                          <Route path="/order-detail/:orderId">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <OrderDetailPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/canteen-order-detail/:orderId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRole={UserRole.CANTEEN_OWNER}>
+                                <CanteenOrderDetailPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/reviews">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <UserReviewsPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/notifications">
                             <ProtectedRoute requireAuth={true}>
-                              <ProfileEditPage />
+                              <NotificationsPage />
                             </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/app">
-                          <MaintenanceWrapper>
+                          </Route>
+                          <Route path="/payment-methods">
                             <ProtectedRoute requireAuth={true}>
-                              <AppPage />
+                              <PaymentMethodsPage />
                             </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/dish/:dishId">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <DishDetailPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/checkout">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <CheckoutPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/payment-callback" component={PaymentCallbackPage} />
-                        <Route path="/retry-payment" component={RetryPaymentPage} />
-                        <Route path="/order-status/:orderId" component={OrderStatusPage} />
-                        <Route path="/order-detail/:orderId">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <OrderDetailPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/canteen-order-detail/:orderId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRole={UserRole.CANTEEN_OWNER}>
-                              <CanteenOrderDetailPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/reviews">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <UserReviewsPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/notifications">
-                          <ProtectedRoute requireAuth={true}>
-                            <NotificationsPage />
-                          </ProtectedRoute>
-                        </Route>
-                        <Route path="/payment-methods">
-                          <ProtectedRoute requireAuth={true}>
-                            <PaymentMethodsPage />
-                          </ProtectedRoute>
-                        </Route>
-                        <Route path="/search">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <SearchPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/privacy-policy" component={PrivacyPolicyPage} />
-                        <Route path="/terms-conditions" component={TermsConditionsPage} />
-                        <Route path="/table/:restaurantId/:tableNumber/:hash" component={TableAccessPage} />
-                        <Route path="/canteen-owner">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRole="canteen_owner">
-                              <CanteenOwnerDashboard />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/canteen-owner-dashboard/:canteenId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRole="canteen_owner">
-                              <CanteenOwnerDashboard />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/canteen-owner-dashboard/:canteenId/counters">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRole="canteen_owner">
-                              <CanteenOwnerCounterSelectionWrapper />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/canteen-owner-dashboard/:canteenId/counter/:counterId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRole="canteen_owner">
-                              <CounterInterfaceWrapper />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminDashboard />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CollegeAdminDashboard />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/students">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <StudentsPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/staff">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <StaffPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/users">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CollegeUsersPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/canteens">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CollegeCanteensPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/canteen/:id/monitor">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CollegeCanteenMonitor />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/reports">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CollegeReportsPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/college-admin/settings">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CollegeSettingsPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/edit-admin-access/:userId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><EditAdminAccessPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/add-new-admin">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AddNewAdminPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/analytics">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminAnalyticsPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/reports">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminReportsPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/user-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminUserManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/organization-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminOrganizationManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/organization/:organizationId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><OrganizationAdminPanel /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/college-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminCollegeManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/college-management/:collegeId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminCollegeDetailsPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/system-settings">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminSystemSettingsPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/canteen-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><CanteenManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/restaurant-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><RestaurantManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/payment-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminPaymentManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/notification-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminNotificationManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/content-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminContentManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/coupon-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminCouponManagement /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/challenge-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminChallengeManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/feedback-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminFeedbackManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/review-management">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminReviewManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/admin-access">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminAccessPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/database">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminDatabasePage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/login-issues">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AdminLoginIssues /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/payout-requests">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><PayoutRequestManagementPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
+                          </Route>
+                          <Route path="/search">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <SearchPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+                          <Route path="/terms-conditions" component={TermsConditionsPage} />
+                          <Route path="/table/:restaurantId/:tableNumber/:hash" component={TableAccessPage} />
+                          <Route path="/canteen-owner">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRole="canteen_owner">
+                                <CanteenOwnerDashboard />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/canteen-owner-dashboard/:canteenId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRole="canteen_owner">
+                                <CanteenOwnerDashboard />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/canteen-owner-dashboard/:canteenId/counters">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRole="canteen_owner">
+                                <CanteenOwnerCounterSelectionWrapper />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/canteen-owner-dashboard/:canteenId/counter/:counterId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRole="canteen_owner">
+                                <CounterInterfaceWrapper />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminDashboard />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CollegeAdminDashboard />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/students">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <StudentsPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/staff">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <StaffPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/users">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CollegeUsersPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/canteens">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CollegeCanteensPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/canteen/:id/monitor">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CollegeCanteenMonitor />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/reports">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CollegeReportsPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/college-admin/settings">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CollegeSettingsPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/edit-admin-access/:userId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><EditAdminAccessPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/add-new-admin">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AddNewAdminPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/analytics">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminAnalyticsPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/reports">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminReportsPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/user-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminUserManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/organization-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminOrganizationManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/organization/:organizationId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><OrganizationAdminPanel /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/college-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminCollegeManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/college-management/:collegeId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminCollegeDetailsPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/system-settings">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminSystemSettingsPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/canteen-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><CanteenManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/restaurant-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><RestaurantManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/payment-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminPaymentManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/notification-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminNotificationManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/content-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminContentManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/coupon-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminCouponManagement /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/challenge-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminChallengeManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/feedback-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminFeedbackManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/review-management">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminReviewManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/admin-access">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminAccessPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/database">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminDatabasePage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/login-issues">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AdminLoginIssues /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/payout-requests">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><PayoutRequestManagementPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
 
-                        {/* Canteen Admin Routes */}
-                        <Route path="/admin/canteen/:canteenId/:page?">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CanteenAdminWrapper />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/canteen/:canteenId/counter/:counterId">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <CounterInterfaceWrapper />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/quick-picks">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <ViewAllQuickPicksPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/help-support" component={HelpSupportPage} />
-                        <Route path="/about" component={AboutPage} />
-                        <Route path="/feedback">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requireAuth={true}>
-                              <FeedbackPage />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
+                          {/* Canteen Admin Routes */}
+                          <Route path="/admin/canteen/:canteenId/:page?">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CanteenAdminWrapper />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/canteen/:canteenId/counter/:counterId">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <CounterInterfaceWrapper />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/quick-picks">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <ViewAllQuickPicksPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/help-support" component={HelpSupportPage} />
+                          <Route path="/about" component={AboutPage} />
+                          <Route path="/feedback">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requireAuth={true}>
+                                <FeedbackPage />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
 
-                        <Route path="/admin/user-management/send-email">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><SendEmailPage /></AdminLayout>
+                          <Route path="/admin/user-management/send-email">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><SendEmailPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/user-management/add-loyalty-points">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><AddLoyaltyPointsPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/user-management/apply-discount">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><ApplyDiscountPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/user-management/send-warning">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><SendWarningPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/user-management/export-data">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><ExportUserDataPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/admin/user-management/import-users">
+                            <MaintenanceWrapper allowAdminAccess={true}>
+                              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
+                                <AdminLayout><ImportUsersPage /></AdminLayout>
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/rate-review">
+                            <ProtectedRoute requireAuth={true}>
+                              <RateReviewPage />
                             </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/user-management/add-loyalty-points">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><AddLoyaltyPointsPage /></AdminLayout>
+                          </Route>
+                          <Route path="/barcode-scanner">
+                            <ProtectedRoute requireAuth={true}>
+                              <BarcodeScannerPage />
                             </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/user-management/apply-discount">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><ApplyDiscountPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/user-management/send-warning">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><SendWarningPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/user-management/export-data">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><ExportUserDataPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/admin/user-management/import-users">
-                          <MaintenanceWrapper allowAdminAccess={true}>
-                            <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.SUPER_ADMIN]}>
-                              <AdminLayout><ImportUsersPage /></AdminLayout>
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/rate-review">
-                          <ProtectedRoute requireAuth={true}>
-                            <RateReviewPage />
-                          </ProtectedRoute>
-                        </Route>
-                        <Route path="/barcode-scanner">
-                          <ProtectedRoute requireAuth={true}>
-                            <BarcodeScannerPage />
-                          </ProtectedRoute>
-                        </Route>
-                        <Route path="/delivery-portal">
-                          <MaintenanceWrapper>
-                            <ProtectedRoute requiredRole={UserRole.DELIVERY_PERSON}>
-                              <DeliveryPersonPortal />
-                            </ProtectedRoute>
-                          </MaintenanceWrapper>
-                        </Route>
-                        <Route path="/qr/:type/:qrId" component={QRHandlerPage} />
-                        <Route path="/index" component={Index} />
-                        <Route path="/test" component={TestPage} />
-                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                        <Route component={NotFound} />
-                      </Switch>
-                    </Router>
+                          </Route>
+                          <Route path="/delivery-portal">
+                            <MaintenanceWrapper>
+                              <ProtectedRoute requiredRole={UserRole.DELIVERY_PERSON}>
+                                <DeliveryPersonPortal />
+                              </ProtectedRoute>
+                            </MaintenanceWrapper>
+                          </Route>
+                          <Route path="/qr/:type/:qrId" component={QRHandlerPage} />
+                          <Route path="/index" component={Index} />
+                          <Route path="/test" component={TestPage} />
+                          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                          <Route component={NotFound} />
+                        </Switch>
+                      </Router>
+                    </PWAProvider>
                   </NotificationProvider>
                 </FavoritesProvider>
               </CanteenProvider>

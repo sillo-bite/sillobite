@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "./svg/logo";
+import { usePWA } from "@/contexts/PWAContext";
 const navLinks = [
   { label: "Product", href: "#product" },
   { label: "Solutions", href: "#solutions" },
@@ -14,6 +15,7 @@ const navLinks = [
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { installPWA, isInstalled } = usePWA();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -86,7 +88,7 @@ export const Navbar = () => {
               <a
                 key={link.label}
                 href={link.href}
-                className={`text-sm font-medium text-gray-600 hover:text-[#9847D1] transition-colors ${isScrolled ? "text-[#9847D1]" : "text-[#fffbf7]"}`}
+                className={`text-sm font-medium  hover:text-[#9847D1] transition-colors ${isScrolled ? 'text-gray-600' : 'text-[#fffbf7]'}`}
               >
                 {link.label}
               </a>
@@ -97,17 +99,20 @@ export const Navbar = () => {
           <div className="hidden md:flex items-center gap-4">
             <Button
               variant="ghost"
-              className={`text-[#9847D1] hover:text-[#553C9A] hover:bg-purple-50 font-medium rounded-full px-6 ${isScrolled ? "text-[#9847D1]" : "text-[#fffbf7]"}`}
-              onClick={() => window.open("/login", "_blank")}
+              className={`text-[#9847D1]  font-medium rounded-full px-6 ${isScrolled ? 'text-gray-600 hover:text-[#fffbf7] hover:bg-[#9847D1]' : 'text-[#fffbf7] hover:bg-[#fffbf7] hover:text-[#9847D1]'}`}
+              onClick={() => window.location.href = "/splashscreen?pwa=true"}
             >
-              Login
+              Open App
             </Button>
-            <Button
-              className="bg-[#9847D1] hover:bg-[#E05E15] text-white font-medium rounded-full px-6 shadow-md hover:shadow-lg transition-all"
-              onClick={() => window.open("/demo", "_blank")}
-            >
-              Get a Demo
-            </Button>
+            {!isInstalled && (
+              <Button
+                variant="ghost"
+                className={`font-medium px-6 shadow-md hover:shadow-lg rounded-full transition-all ${isScrolled ? 'text-gray-600 hover:text-[#fffbf7] hover:bg-[#9847D1] bg-[#9847D1] text-[#fffbf7]' : 'text-[#9847D1] bg-[#fffbf7] hover:bg-[#9fffbf7] hover:text-[#9847D1]'}`}
+                onClick={() => installPWA()}
+              >
+                Install App
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
