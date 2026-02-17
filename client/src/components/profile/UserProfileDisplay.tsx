@@ -1,4 +1,3 @@
-```typescript
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, School, Briefcase, Hash, Calendar, GraduationCap, Building } from "lucide-react";
@@ -33,7 +32,7 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
   const { data: departmentsData } = useDepartments();
   // Fetch colleges to get full names
   const { data: collegesData } = useColleges();
-  
+
   const getDepartmentFullName = (departmentCode: string) => {
     const department = departmentsData?.departments?.find(dept => dept.code === departmentCode);
     return department?.name || departmentCode;
@@ -43,7 +42,7 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
     const college = collegesData?.colleges?.find(college => college.id === collegeId);
     return college?.name || collegeId;
   };
-  
+
   const getRoleDisplay = (role: string) => {
     switch (role) {
       case 'student':
@@ -76,19 +75,19 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
             <span className="text-sm text-gray-600">Name</span>
             <span className="font-medium text-gray-900">{user.name}</span>
           </div>
-          
+
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-gray-600">Email</span>
             <span className="font-medium text-sm text-gray-900">{user.email}</span>
           </div>
-          
+
           {user.phoneNumber && (
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-600">Phone</span>
               <span className="font-medium text-gray-900">{user.phoneNumber}</span>
             </div>
           )}
-          
+
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-gray-600">Role</span>
             <Badge className="bg-gray-100 text-gray-700 border-gray-200">
@@ -104,11 +103,11 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center text-lg font-semibold text-gray-900">
               <School className="w-5 h-5 mr-2 text-gray-600" />
-              {user.role === UserRole.STUDENT ? 'Academic Information' : 
-               user.role === UserRole.EMPLOYEE ? 'Employee Information' : 
-               user.role === UserRole.CONTRACTOR ? 'Contractor Information' :
-               user.role === UserRole.VISITOR ? 'Visitor Information' :
-               user.role === UserRole.GUEST ? 'Guest Information' : 'Information'}
+              {user.role === UserRole.STUDENT ? 'Academic Information' :
+                user.role === UserRole.EMPLOYEE ? 'Employee Information' :
+                  user.role === UserRole.CONTRACTOR ? 'Contractor Information' :
+                    user.role === UserRole.VISITOR ? 'Visitor Information' :
+                      user.role === UserRole.GUEST ? 'Guest Information' : 'Information'}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -133,7 +132,7 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
                 <span className="font-mono font-medium text-gray-900">{user.registerNumber}</span>
               </div>
             )}
-            
+
             {user.department && (
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Department</span>
@@ -145,7 +144,7 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
                 </div>
               </div>
             )}
-            
+
             {user.currentStudyYear && (
               <div className="flex items-center justify-between py-2">
                 <span className="text-sm text-gray-600">Current Year</span>
@@ -155,10 +154,10 @@ export default function UserProfileDisplay({ user }: UserProfileDisplayProps) {
                 </Badge>
               </div>
             )}
-            
+
             <div className="flex items-center justify-between py-2">
               <span className="text-sm text-gray-600">Status</span>
-              <Badge className={user.isPassed 
+              <Badge className={user.isPassed
                 ? "bg-green-100 text-green-700 border-green-200"
                 : "bg-blue-100 text-blue-700 border-blue-200"
               }>
