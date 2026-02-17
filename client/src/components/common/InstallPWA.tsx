@@ -1,237 +1,40 @@
-import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { X, Smartphone, AlertCircle, PlusSquare } from 'lucide-react';
-import {
-  isPWAAlreadyInstalled,
-  markPWAAsInstalled,
-  shouldPreventInstallation,
-  isMobileDevice
-} from '@/utils/pwaInstallTracker';
-
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[];
-  readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed';
-    platform: string;
-  }>;
-  prompt(): Promise<void>;
-}
-
-declare global {
-  interface WindowEventMap {
-    beforeinstallprompt: BeforeInstallPromptEvent;
-  }
-}
+import { usePWA } from '@/contexts/PWAContext';
+import { isMobileDevice } from '@/utils/pwaInstallTracker';
 
 export function InstallPWA() {
   const [location] = useLocation();
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
-  const [isSafari, setIsSafari] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [preventInstallation, setPreventInstallation] = useState(false);
+  const {
+    showInstallBanner,
+    setShowInstallBanner,
+    isInstalled,
+    showInstructions,
+    setShowInstructions,
+    isIOS,
+    isAndroid,
+    isSafari,
+    installPWA,
+    preventInstallation,
+    dismissBanner
+  } = usePWA();
 
-  useEffect(() => {
-    let isMounted = true;
-    let iosTimer: NodeJS.Timeout | null = null;
-    let generalTimer: NodeJS.Timeout | null = null;
-    let handleBeforeInstallPrompt: ((e: BeforeInstallPromptEvent) => void) | null = null;
-    let handleAppInstalled: (() => void) | null = null;
-
-    const setupInstallPrompts = async () => {
-      setIsChecking(true);
-
-      // Check if app is already installed using comprehensive detection
-      const alreadyInstalled = await isPWAAlreadyInstalled();
-
-      if (alreadyInstalled) {
-        if (isMounted) {
-          setIsInstalled(true);
-          setIsChecking(false);
-        }
-        return;
-      }
-
-      // For mobile devices, check if we should prevent installation
-      const shouldPrevent = await shouldPreventInstallation();
-      if (shouldPrevent) {
-        if (isMounted) {
-          setPreventInstallation(true);
-          setIsInstalled(true);
-          setIsChecking(false);
-        }
-        return;
-      }
-
-      if (!isMounted) return;
-
-      setIsChecking(false);
-
-      // Only set up install prompts if not already installed and not prevented
-      if (isInstalled || preventInstallation) {
-        return;
-      }
-
-      // Detect device type and browser
-      const iosDetected = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      const androidDetected = /Android/.test(navigator.userAgent);
-      const isSafariBrowser = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-
-      if (isMounted) {
-        setIsIOS(iosDetected);
-        setIsAndroid(androidDetected);
-        setIsSafari(isSafariBrowser);
-      }
-
-      const isInStandaloneMode = (window.navigator as any).standalone;
-
-      // For iOS: Only show install banner if we're sure it's not already installed
-      // Double-check installation status before showing banner
-      if (iosDetected) {
-        // Re-check installation status specifically for iOS
-        const recheckInstalled = await isPWAAlreadyInstalled();
-        if (recheckInstalled) {
-          if (isMounted) {
-            setPreventInstallation(true);
-            setIsInstalled(true);
-          }
-          return;
-        }
-
-        // Only show banner if not in standalone mode and not already installed
-        if (!isInStandaloneMode && isSafariBrowser) {
-          iosTimer = setTimeout(() => {
-            if (isMounted && !isInstalled && !preventInstallation) {
-              setShowInstallBanner(true);
-            }
-          }, 2000);
-        } else if (!isInStandaloneMode && !isSafariBrowser) {
-          iosTimer = setTimeout(() => {
-            if (isMounted && !isInstalled && !preventInstallation) {
-              setShowInstallBanner(true);
-            }
-          }, 3000);
-        }
-      }
-
-      // Listen for the beforeinstallprompt event
-      handleBeforeInstallPrompt = async (e: BeforeInstallPromptEvent) => {
-        // Double-check if installation should be prevented (mobile devices)
-        const shouldPrevent = await shouldPreventInstallation();
-        if (shouldPrevent) {
-          e.preventDefault();
-          if (isMounted) {
-            setPreventInstallation(true);
-            setIsInstalled(true);
-          }
-          return;
-        }
-
-        e.preventDefault();
-        if (isMounted) {
-          setDeferredPrompt(e);
-          setShowInstallBanner(true);
-          // Store deferredPrompt on window for landing page to access
-          (window as any).deferredPrompt = e;
-        }
-      };
-
-      // Listen for app installed event
-      handleAppInstalled = () => {
-        markPWAAsInstalled(); // Mark as installed in storage
-        if (isMounted) {
-          setIsInstalled(true);
-          setShowInstallBanner(false);
-          setDeferredPrompt(null);
-          // Clear from window
-          delete (window as any).deferredPrompt;
-        }
-      };
-
-      if (handleBeforeInstallPrompt) {
-        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      }
-      if (handleAppInstalled) {
-        window.addEventListener('appinstalled', handleAppInstalled);
-      }
-
-      // Show install banner after a delay if no install prompt is available
-      generalTimer = setTimeout(() => {
-        if (isMounted && !deferredPrompt && !isInstalled && !preventInstallation) {
-          setShowInstallBanner(true);
-        }
-      }, 3000);
-    };
-
-    setupInstallPrompts();
-
-    return () => {
-      isMounted = false;
-      if (iosTimer) clearTimeout(iosTimer);
-      if (generalTimer) clearTimeout(generalTimer);
-      if (handleBeforeInstallPrompt) {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      }
-      if (handleAppInstalled) {
-        window.removeEventListener('appinstalled', handleAppInstalled);
-      }
-    };
-  }, [deferredPrompt, isInstalled, preventInstallation]);
-
-  const handleInstallClick = async () => {
-    // Final check before allowing installation
-    if (isMobileDevice()) {
-      const shouldPrevent = await shouldPreventInstallation();
-      if (shouldPrevent) {
-        setPreventInstallation(true);
-        setIsInstalled(true);
-        return;
-      }
-    }
-
-    if (deferredPrompt) {
-      // Show the install prompt
-      try {
-        await deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-
-        if (outcome === 'accepted') {
-          // Mark as installed immediately (appinstalled event will also fire)
-          markPWAAsInstalled();
-          setDeferredPrompt(null);
-          setShowInstallBanner(false);
-          // Clear from window
-          delete (window as any).deferredPrompt;
-        }
-      } catch (error) {
-        console.error('Error showing install prompt:', error);
-      }
-    } else {
-      // Show manual installation instructions
-      setShowInstructions(true);
-    }
-  };
-
-  const handleDismiss = () => {
-    setShowInstallBanner(false);
-    // Remember dismissal for this session
-    sessionStorage.setItem('pwa-install-dismissed', 'true');
-  };
-
-  // Don't show install banner on landing page (root route) or home page
+  // Don't show install banner on landing page (root route) or home page if configured so
+  // Use pure string matching or startswith
   if (location === '/' || location === '/landing' || location === '/app' || location.startsWith('/app/')) {
     return null;
   }
 
-  // Don't show banner if checking, already installed, prevented, or previously dismissed
-  if (isChecking || isInstalled || preventInstallation || sessionStorage.getItem('pwa-install-dismissed')) {
+  // Don't show banner if already installed, prevented, or previously dismissed
+  if (isInstalled || preventInstallation || sessionStorage.getItem('pwa-install-dismissed')) {
     // Show a message if installation is prevented on mobile
     if (preventInstallation && isMobileDevice()) {
+      // Logic for showing "Already Installed" message on mobile
+      // This might be better handled by a user action, but keeping original logic:
+      // The original logic returned this JSX if preventInstallation && isMobileDevice() was true
+      // and checking/installed/prevented/dismissed was true.
+      // But only if it wasn't hidden by route.
       return (
         <div className="fixed top-4 left-4 right-4 z-50 bg-card border border-border rounded-lg shadow-lg p-4 max-w-sm mx-auto">
           <div className="flex items-center space-x-3">
@@ -349,7 +152,7 @@ export function InstallPWA() {
 
         <div className="flex items-center gap-2">
           <Button
-            onClick={handleInstallClick}
+            onClick={installPWA}
             size="sm"
             className="h-9 rounded-full px-4 text-xs font-semibold shadow-lg hover:shadow-xl"
             data-testid="button-install-pwa"
@@ -363,7 +166,7 @@ export function InstallPWA() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={handleDismiss}
+            onClick={dismissBanner}
             className="h-9 w-9 rounded-full text-muted-foreground hover:text-card-foreground"
           >
             <X className="h-4 w-4" />
