@@ -117,19 +117,10 @@ export const Navbar = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center gap-3">
-            <Button
-              className={`rounded-full h-8 px-4 text-xs font-bold shadow-md transition-colors ${!isScrolled
-                ? "bg-white text-[#9847D1] hover:bg-gray-100"
-                : "bg-[#9847D1] text-white hover:bg-[#8035b5]"
-                }`}
-              onClick={() => window.open("/splashscreen?pwa=true", "_self")}
-            >
-              Open App
-            </Button>
             <button
 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-gray-600 hover:text-gray-900 p-2"
+              className={`absolute top-4 right-4 md:hidden  p-2 ${isScrolled ? 'text-gray-600 hover:text-gray-900' : 'text-[#fffbf7] hover:text-[#9847D1]'}`}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

@@ -7,7 +7,8 @@ import { TestimonialsSection } from "./TestimonialsSection";
 import { Footer } from "./Footer";
 import { Toaster } from "@/components/ui/toaster";
 import Wave1 from "./svg/wave1";
-
+import { Button } from "@/components/ui/button";
+import { FloatingOpen } from "./FloatingOpen";
 const PartnerLandingPage = () => {
   return (
     <div className="min-h-screen bg-white">
@@ -19,6 +20,7 @@ const PartnerLandingPage = () => {
       <Navbar />
 
       <main>
+        <FloatingOpen />
         <HeroSection />
         <PlatformOverview />
         <HowItWorksSection />
