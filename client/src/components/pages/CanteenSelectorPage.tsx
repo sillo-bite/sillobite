@@ -148,45 +148,45 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             <div className={`backdrop-blur-md pt-12 px-6`}>
                 <div className="max-w-4xl mx-auto">
                     {/* Header with Navigation */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex-1">
+                    <div className="flex items-center justify-between mb-6 gap-3">
+                        <div className="flex-1 min-w-0">
                             {/* Location Selector Button */}
                             <button
                                 onClick={() => setShowLocationSelector(true)}
-                                className={`group flex items-center w-auto p-1 rounded-2xl transition-all duration-200`}
+                                className={`group flex items-center w-full md:w-auto p-1 rounded-2xl transition-all duration-200`}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2.5 rounded-xl transition-all duration-200 ${resolvedTheme === 'dark'
+                                <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+                                    <div className={`p-2 md:p-2.5 rounded-xl transition-all duration-200 shrink-0 ${resolvedTheme === 'dark'
                                         ? 'bg-primary/10 text-primary group-hover:bg-primary/20'
                                         : 'bg-primary/10 text-primary group-hover:bg-primary/20'
                                         }`}>
-                                        <MapPin className="w-5 h-5" />
+                                        <MapPin className="w-4 h-4 md:w-5 md:h-5" />
                                     </div>
                                     <div className="text-left flex-1 min-w-0">
-                                        <div className="text-xs text-muted-foreground mb-0.5">Current Location</div>
-                                        <div className="text-lg font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent truncate max-w-[200px]">
+                                        <div className="text-[10px] md:text-xs text-muted-foreground mb-0.5 whitespace-nowrap">Current Location</div>
+                                        <div className="text-base md:text-lg font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent truncate w-full pr-1">
                                             {getLocationDisplay()}
                                         </div>
                                     </div>
                                 </div>
-                                <ChevronDown className={`w-5 h-5 ml-2 transition-transform duration-200 group-hover:translate-y-0.5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                <ChevronDown className={`w-4 h-4 md:w-5 md:h-5 ml-1 md:ml-2 shrink-0 transition-transform duration-200 group-hover:translate-y-0.5 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                                     }`} />
                             </button>
                         </div>
 
                         {/* Profile Navigation */}
-                        <div className="flex items-center mx-4">
+                        <div className="flex items-center shrink-0">
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => {
                                     window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
                                 }}
-                                className="rounded-full h-14 w-14 p-0 relative overflow-hidden group shadow-premium hover-scale-subtle"
+                                className="rounded-full h-11 w-11 md:h-14 md:w-14 p-0 relative overflow-hidden group shadow-premium hover-scale-subtle"
                                 aria-label="View Profile"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent group-hover:from-primary/30 group-hover:via-primary/20 transition-all duration-300"></div>
-                                <UserCircle2 className="w-9 h-9 relative z-10 text-primary" />
+                                <UserCircle2 className="w-7 h-7 md:w-9 md:h-9 relative z-10 text-primary" />
                             </Button>
                         </div>
                     </div>
