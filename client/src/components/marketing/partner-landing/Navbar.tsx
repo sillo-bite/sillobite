@@ -116,8 +116,18 @@ export const Navbar = () => {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-3">
+            <Button
+              className={`rounded-full h-8 px-4 text-xs font-bold shadow-md transition-colors ${!isScrolled
+                ? "bg-white text-[#9847D1] hover:bg-gray-100"
+                : "bg-[#9847D1] text-white hover:bg-[#8035b5]"
+                }`}
+              onClick={() => window.open("/splashscreen?pwa=true", "_self")}
+            >
+              Open App
+            </Button>
             <button
+
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-gray-600 hover:text-gray-900 p-2"
             >
@@ -134,32 +144,32 @@ export const Navbar = () => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
+            className={`md:hidden border-b border-gray-100 overflow-hidden ${isScrolled ? 'bg-white-70 text-gray-600 hover:text-[#fffbf7] hover:bg-[#9847D1]' : 'bg-[#9847D1] text-[#fffbf7] hover:bg-[#fffbf7] hover:text-[#9847D1]'}`}
           >
-            <div className="px-4 pt-2 pb-6 space-y-2">
+            <div className="px-4 pt-2 pb-6 space-y-2 flex flex-col items-center">
               {navLinks.map((link) => (
                 <a
                   key={link.label}
                   href={link.href}
-                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-[#9847D1] hover:bg-orange-50 rounded-md"
+                  className="block px-3 py-2 text-base font-medium rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="pt-4 flex flex-col gap-3">
+              <div className="pt-4 flex flex-row gap-3">
                 <Button
                   variant="outline"
-                  className={`w-full border-[#9847D1] text-[#9847D1] hover:bg-purple-50 rounded-full ${isScrolled ? "text-[#9847D1]" : "text-[#fffbf7]"}`}
-                  onClick={() => window.open("/login", "_blank")}
+                  className={`w-full border-[#9847D1] rounded-full text-[#9847D1]`}
+                  onClick={() => window.open("/splashscreen?pwa=true", "_blank")}
                 >
-                  Login
+                  Open App
                 </Button>
                 <Button
-                  className="w-full bg-[#9847D1] hover:bg-[#E05E15] text-white rounded-full"
+                  className="w-full bg-[#fffbf7] text-[#9847D1] rounded-full"
                   onClick={() => window.open("/demo", "_blank")}
                 >
-                  Get a Demo
+                  Install App
                 </Button>
               </div>
             </div>
