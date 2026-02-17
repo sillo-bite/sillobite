@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight } from "lucide-react";
+import Logo from "./svg/logo";
 
 export const Footer = () => {
   return (
@@ -10,11 +11,14 @@ export const Footer = () => {
           {/* Brand & Newsletter */}
           <div className="md:col-span-1 space-y-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#9847D1] to-[#9847D1] flex items-center justify-center text-white font-bold text-lg">
-                C
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#fffbf7] to-[#fffbf7] flex items-center justify-center text-white font-bold text-lg">
+                <Logo
+                  color={"#9847D1"}
+                  ClassName="w-[clamp(25px,2vw,35px)] h-[clamp(25px,2vw,35px)]"
+                />
               </div>
-              <span className="text-xl font-bold">
-                Cafeteria <span className="text-[#9847D1]">SaaS</span>
+              <span className="text-xl font-bold text-[#fffbf7]">
+                Sillo<span className="text-[#9847D1]">Bite</span>
               </span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
