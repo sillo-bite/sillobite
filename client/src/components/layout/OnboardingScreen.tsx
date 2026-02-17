@@ -157,14 +157,15 @@ export default function OnboardingScreen() {
 
 
           {/* Next Button */}
-          <div className={`flex bg-primary items-center rounded-full ${currentSlide > 0 ? "ml-4" : "ml-8"}`}>
+          <div className={`flex bg-primary items-center rounded-full ${currentSlide > 0 ? "ml-4" : "ml-14"}`}>
             <button
               onClick={handleNext}
-              className="text-white text-md font-bold ml-4 py-1.5 w-[7ch] rounded-full transition-colors"
+              className="flex items-center text-white text-md font-bold ml-4 py-1.5 w-[7ch] rounded-full transition-colors"
             >
               {currentSlide === slides.length - 1 ? "Start" : "Next"}
+              <ArrowRight className="ml-2 text-white" />
             </button>
-            <ArrowRight className="mr-4 text-white" />
+
           </div>
         </div>
       </div>

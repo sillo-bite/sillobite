@@ -34,7 +34,7 @@ export const queryClient = new QueryClient({
 const apiRequest = async <T = any>(url: string, options?: RequestInit): Promise<T> => {
   // Create AbortController for timeout
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout for uploads
 
   try {
     // Get the API base URL

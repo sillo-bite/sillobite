@@ -25,6 +25,192 @@ const upload = multer({
   }
 });
 
+/**
+ * Upload canteen profile image
+ */
+router.post('/canteens/:id/profile-image', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updatedBy } = req.body;
+    const file = req.file;
+
+    console.log(`📸 Received upload request for canteen ${id}, file size: ${file?.size} bytes`);
+
+    if (!id) {
+      return res.status(400).json({ error: 'Canteen ID is required' });
+    }
+
+    if (!file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.canteens?.list) {
+      return res.status(404).json({ error: 'No canteens found' });
+    }
+
+    const canteenIndex = settings.canteens.list.findIndex((c) => c.id === id);
+    if (canteenIndex === -1) {
+      return res.status(404).json({ error: 'Canteen not found' });
+    }
+
+    // Upload to Cloudinary
+    // Use a folder specific to canteens
+    const result = await cloudinaryService.uploadImage(file.buffer, 'canteen-profiles');
+
+    if (!result || !result.secure_url) {
+      throw new Error('Failed to upload image to Cloudinary');
+    }
+
+    // Update canteen with new image URL
+    settings.canteens.list[canteenIndex].imageUrl = result.secure_url;
+    settings.canteens.list[canteenIndex].imagePublicId = result.public_id;
+    settings.canteens.list[canteenIndex].updatedAt = new Date();
+
+    settings.canteens.lastUpdatedBy = updatedBy;
+    settings.canteens.lastUpdatedAt = new Date();
+    settings.updatedAt = new Date();
+
+    await settings.save();
+
+    console.log(`🖼️ Canteen profile image updated for ${id}: ${result.secure_url}`);
+
+    res.json({
+      success: true,
+      imageUrl: result.secure_url,
+      canteen: settings.canteens.list[canteenIndex]
+    });
+  } catch (error) {
+    console.error('Error uploading canteen profile image:', error);
+    res.status(500).json({ error: 'Failed to upload profile image' });
+  }
+});
+
+/**
+ * Upload canteen logo (1:1 ratio)
+ */
+router.post('/canteens/:id/logo', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updatedBy } = req.body;
+    const file = req.file;
+
+    console.log(`📸 Received logo upload request for canteen ${id}, file size: ${file?.size} bytes`);
+
+    if (!id) {
+      return res.status(400).json({ error: 'Canteen ID is required' });
+    }
+
+    if (!file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.canteens?.list) {
+      return res.status(404).json({ error: 'No canteens found' });
+    }
+
+    const canteenIndex = settings.canteens.list.findIndex((c) => c.id === id);
+    if (canteenIndex === -1) {
+      return res.status(404).json({ error: 'Canteen not found' });
+    }
+
+    // Upload to Cloudinary
+    // Use a folder specific to canteen logos
+    const result = await cloudinaryService.uploadImage(file.buffer, 'canteen-logos');
+
+    if (!result || !result.secure_url) {
+      throw new Error('Failed to upload image to Cloudinary');
+    }
+
+    // Update canteen with new logo URL
+    settings.canteens.list[canteenIndex].logoUrl = result.secure_url;
+    settings.canteens.list[canteenIndex].logoPublicId = result.public_id;
+    settings.canteens.list[canteenIndex].updatedAt = new Date();
+
+    settings.canteens.lastUpdatedBy = updatedBy;
+    settings.canteens.lastUpdatedAt = new Date();
+    settings.updatedAt = new Date();
+
+    await settings.save();
+
+    console.log(`🖼️ Canteen logo updated for ${id}: ${result.secure_url}`);
+
+    res.json({
+      success: true,
+      logoUrl: result.secure_url,
+      canteen: settings.canteens.list[canteenIndex]
+    });
+  } catch (error) {
+    console.error('Error uploading canteen logo:', error);
+    res.status(500).json({ error: 'Failed to upload logo' });
+  }
+});
+
+/**
+ * Upload canteen banner (4:3 ratio)
+ */
+router.post('/canteens/:id/banner', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { updatedBy } = req.body;
+    const file = req.file;
+
+    console.log(`📸 Received banner upload request for canteen ${id}, file size: ${file?.size} bytes`);
+
+    if (!id) {
+      return res.status(400).json({ error: 'Canteen ID is required' });
+    }
+
+    if (!file) {
+      return res.status(400).json({ error: 'Image file is required' });
+    }
+
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+
+    if (!settings || !settings.canteens?.list) {
+      return res.status(404).json({ error: 'No canteens found' });
+    }
+
+    const canteenIndex = settings.canteens.list.findIndex((c) => c.id === id);
+    if (canteenIndex === -1) {
+      return res.status(404).json({ error: 'Canteen not found' });
+    }
+
+    // Upload to Cloudinary
+    // Use a folder specific to canteen banners
+    const result = await cloudinaryService.uploadImage(file.buffer, 'canteen-banners');
+
+    if (!result || !result.secure_url) {
+      throw new Error('Failed to upload image to Cloudinary');
+    }
+
+    // Update canteen with new banner URL
+    settings.canteens.list[canteenIndex].bannerUrl = result.secure_url;
+    settings.canteens.list[canteenIndex].bannerPublicId = result.public_id;
+    settings.canteens.list[canteenIndex].updatedAt = new Date();
+
+    settings.canteens.lastUpdatedBy = updatedBy;
+    settings.canteens.lastUpdatedAt = new Date();
+    settings.updatedAt = new Date();
+
+    await settings.save();
+
+    console.log(`🖼️ Canteen banner updated for ${id}: ${result.secure_url}`);
+
+    res.json({
+      success: true,
+      bannerUrl: result.secure_url,
+      canteen: settings.canteens.list[canteenIndex]
+    });
+  } catch (error) {
+    console.error('Error uploading canteen banner:', error);
+    res.status(500).json({ error: 'Failed to upload banner' });
+  }
+});
+
 // MongoDB model for SystemSettings
 const SystemSettingsSchema = new mongoose.Schema({
   maintenanceMode: {
@@ -335,6 +521,10 @@ const SystemSettingsSchema = new mongoose.Schema({
       description: { type: String },
       imageUrl: { type: String }, // URL for the canteen profile picture
       imagePublicId: { type: String }, // Cloudinary Public ID
+      logoUrl: { type: String }, // URL for the canteen logo (1:1 ratio)
+      logoPublicId: { type: String }, // Cloudinary Public ID for logo
+      bannerUrl: { type: String }, // URL for the canteen banner (4:3 ratio)
+      bannerPublicId: { type: String }, // Cloudinary Public ID for banner
       location: { type: String },
       contactNumber: { type: String },
       email: { type: String },
@@ -383,7 +573,7 @@ const SystemSettingsSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
-const SystemSettingsModel = mongoose.model('SystemSettings', SystemSettingsSchema);
+const SystemSettingsModel = mongoose.model<SystemSettings>('SystemSettings', SystemSettingsSchema);
 
 /**
  * Test storage connectivity
@@ -496,6 +686,9 @@ router.get('/', async (req, res) => {
               updatedAt: new Date()
             }
           ]
+        },
+        organizations: {
+          list: []
         }
       };
 
@@ -641,7 +834,8 @@ router.get('/maintenance-status/:userId', async (req, res) => {
     const maintenanceMode = settings.maintenanceMode;
 
     // Check if user is admin, super admin, or canteen owner (they bypass maintenance)
-    if (user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN || user.role === UserRole.CANTEEN_OWNER || user.role === 'canteen-owner') {
+    const userRole = user.role as string;
+    if (userRole === UserRole.ADMIN || userRole === UserRole.SUPER_ADMIN || userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
       return res.json({
         showMaintenance: false,
         reason: 'User has admin/canteen owner privileges'
@@ -660,7 +854,7 @@ router.get('/maintenance-status/:userId', async (req, res) => {
 
       case 'specific':
         // Check if user's registerNumber or staffId is in the specific list
-        const userIdentifier = user.role === UserRole.STUDENT ? user.registerNumber : user.staffId;
+        const userIdentifier = (user.role as string) === UserRole.STUDENT ? user.registerNumber : user.staffId;
         shouldShowMaintenance = maintenanceMode.specificUsers.includes(userIdentifier || '');
         reason = shouldShowMaintenance
           ? `User ${userIdentifier} is specifically targeted`
@@ -854,6 +1048,9 @@ router.patch('/maintenance', async (req, res) => {
           buildTimestamp: Date.now()
         },
         colleges: {
+          list: []
+        },
+        organizations: {
           list: []
         },
         canteens: {
@@ -1105,13 +1302,15 @@ router.post('/colleges', async (req, res) => {
             code,
             isActive,
             adminEmail,
-            activeRoles,
             departments: [],
             createdAt: new Date(),
             updatedAt: new Date()
           }]
         },
         canteens: {
+          list: []
+        },
+        organizations: {
           list: []
         }
       };
@@ -1139,7 +1338,6 @@ router.post('/colleges', async (req, res) => {
         code,
         isActive,
         adminEmail,
-        activeRoles,
         departments: [],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -1534,14 +1732,14 @@ router.get('/admin/my-college', async (req, res) => {
     }
 
     // Find college where adminEmail matches user email
-    let college = settings.colleges.list.find((c: any) =>
+    let college = settings.colleges.list.find((c) =>
       c.adminEmail && c.adminEmail.toLowerCase() === user.email.toLowerCase()
     );
 
     // Fallback: Check if user has a college assigned in their profile
     if (!college && user.college) {
       // flexible match: check if user.college matches college code OR college name
-      college = settings.colleges.list.find((c: any) =>
+      college = settings.colleges.list.find((c) =>
         (c.code && c.code === user.college) ||
         (c.name && c.name === user.college) ||
         (c.id === user.college) // strict id match just in case
@@ -1625,7 +1823,7 @@ router.post('/colleges/:collegeId/departments', async (req, res) => {
     const college = settings.colleges.list[collegeIndex];
 
     // Check if department code already exists in this college
-    const existingDept = college.departments.find((dept: any) => dept.code === code);
+    const existingDept = college.departments.find((dept) => dept.code === code);
     if (existingDept) {
       return res.status(409).json({ error: 'Department code already exists in this college' });
     }
@@ -1690,7 +1888,7 @@ router.put('/colleges/:collegeId/departments/:deptCode', async (req, res) => {
     }
 
     const college = settings.colleges.list[collegeIndex];
-    const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
+    const deptIndex = college.departments.findIndex((dept) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
@@ -1752,7 +1950,7 @@ router.delete('/colleges/:collegeId/departments/:deptCode', async (req, res) => 
     }
 
     const college = settings.colleges.list[collegeIndex];
-    const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
+    const deptIndex = college.departments.findIndex((dept) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
@@ -1807,21 +2005,21 @@ router.get('/institutions', async (req, res) => {
       organizationsCount: settings.organizations?.list?.length || 0
     });
 
-    let institutions = [];
+    let institutions: any[] = [];
 
     if (type === 'college') {
       institutions = settings.colleges?.list || [];
-      console.log(`📚 Found ${institutions.length} colleges:`, institutions.map((c: any) => ({ id: c.id, name: c.name, code: c.code, isActive: c.isActive })));
+      console.log(`📚 Found ${institutions.length} colleges:`, institutions.map((c) => ({ id: c.id, name: c.name, code: c.code, isActive: c.isActive })));
 
       // Filter only active colleges
       institutions = institutions.filter((college: any) => college.isActive !== false);
-      console.log(`📚 Active colleges: ${institutions.length}`, institutions.map((c: any) => ({ id: c.id, name: c.name, code: c.code })));
+      console.log(`📚 Active colleges: ${institutions.length}`, institutions.map((c) => ({ id: c.id, name: c.name, code: c.code })));
     } else if (type === 'organization') {
       institutions = settings.organizations?.list || [];
       console.log(`🏢 Found ${institutions.length} organizations:`, institutions.map((o: any) => ({ id: o.id, name: o.name, code: o.code, isActive: o.isActive })));
 
       // Filter only active organizations
-      institutions = institutions.filter((org: any) => org.isActive !== false);
+      institutions = institutions.filter((org) => org.isActive !== false);
       console.log(`🏢 Active organizations: ${institutions.length}`, institutions.map((o: any) => ({ id: o.id, name: o.name, code: o.code })));
     }
 
@@ -1856,26 +2054,26 @@ router.get('/departments', async (req, res) => {
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    let departments = [];
+    let departments: any[] = [];
 
     if (institutionType === 'college') {
-      const college = settings.colleges?.list?.find((col: any) => col.id === institutionId);
+      const college = settings.colleges?.list?.find((col) => col.id === institutionId);
       console.log(`🏫 Looking for college with ID: ${institutionId}`);
-      console.log(`🏫 Available colleges:`, settings.colleges?.list?.map((c: any) => ({ id: c.id, name: c.name })));
+      console.log(`🏫 Available colleges:`, settings.colleges?.list?.map((c) => ({ id: c.id, name: c.name })));
       if (college) {
         departments = college.departments || [];
         console.log(`🏫 Found college "${college.name}" with ${departments.length} departments`);
         console.log(`🏫 All departments:`, departments.map((d: any) => ({ code: d.code, name: d.name, isActive: d.isActive })));
 
         // Filter only active departments
-        const activeDepartments = departments.filter((dept: any) => dept.isActive !== false);
+        const activeDepartments = departments.filter((dept) => dept.isActive !== false);
         console.log(`🏫 Active departments: ${activeDepartments.length}`, activeDepartments.map((d: any) => ({ code: d.code, name: d.name })));
         departments = activeDepartments;
       } else {
         console.log(`🏫 College not found with ID: ${institutionId}`);
       }
     } else if (institutionType === 'organization') {
-      const organization = settings.organizations?.list?.find((org: any) => org.id === institutionId);
+      const organization = settings.organizations?.list?.find((org) => org.id === institutionId);
       console.log(`🏢 Looking for organization with ID: ${institutionId}`);
       console.log(`🏢 Available organizations:`, settings.organizations?.list?.map((o: any) => ({ id: o.id, name: o.name })));
       if (organization) {
@@ -1884,7 +2082,7 @@ router.get('/departments', async (req, res) => {
         console.log(`🏢 All departments:`, departments.map((d: any) => ({ code: d.code, name: d.name, isActive: d.isActive })));
 
         // Filter only active departments
-        const activeDepartments = departments.filter((dept: any) => dept.isActive !== false);
+        const activeDepartments = departments.filter((dept) => dept.isActive !== false);
         console.log(`🏢 Active departments: ${activeDepartments.length}`, activeDepartments.map((d: any) => ({ code: d.code, name: d.name })));
         departments = activeDepartments;
       } else {
@@ -1982,12 +2180,12 @@ router.get('/registration-formats', async (req, res) => {
         return res.status(404).json({ error: 'No colleges found' });
       }
 
-      const college = settings.colleges.list.find((col: any) => col.id === institutionId);
+      const college = settings.colleges.list.find((col) => col.id === institutionId);
       if (!college) {
         return res.status(404).json({ error: 'College not found' });
       }
 
-      const department = college.departments.find((dept: any) => dept.code === departmentCode);
+      const department = college.departments.find((dept) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this college' });
       }
@@ -2005,7 +2203,7 @@ router.get('/registration-formats', async (req, res) => {
         {
           $match: {
             "colleges.list.departments.registrationFormats.year": yearToUse,
-            [`colleges.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
+            [`colleges.list.departments.registrationFormats.formats.${role as string}.structure`]: { $exists: true, $ne: [] }
           }
         },
         {
@@ -2015,7 +2213,7 @@ router.get('/registration-formats', async (req, res) => {
             name: "$colleges.list.departments.registrationFormats.name",
             year: "$colleges.list.departments.registrationFormats.year",
             formats: {
-              [role]: `$colleges.list.departments.registrationFormats.formats.${role}`
+              [role as string]: `$colleges.list.departments.registrationFormats.formats.${role}`
             },
             createdAt: "$colleges.list.departments.registrationFormats.createdAt",
             updatedAt: "$colleges.list.departments.registrationFormats.updatedAt"
@@ -2032,12 +2230,12 @@ router.get('/registration-formats', async (req, res) => {
         return res.status(404).json({ error: 'No organizations found' });
       }
 
-      const organization = settings.organizations.list.find((org: any) => org.id === institutionId);
+      const organization = settings.organizations.list.find((org) => org.id === institutionId);
       if (!organization) {
         return res.status(404).json({ error: 'Organization not found' });
       }
 
-      const department = organization.departments.find((dept: any) => dept.code === departmentCode);
+      const department = organization.departments.find((dept) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this organization' });
       }
@@ -2050,7 +2248,7 @@ router.get('/registration-formats', async (req, res) => {
       }
 
       // Build the aggregation pipeline based on whether year filtering is needed
-      const aggregationPipeline = [
+      const aggregationPipeline: any[] = [
         { $match: { _id: settings._id } },
         { $unwind: "$organizations.list" },
         { $match: { "organizations.list.id": institutionId } },
@@ -2064,13 +2262,13 @@ router.get('/registration-formats', async (req, res) => {
         aggregationPipeline.push({
           $match: {
             "organizations.list.departments.registrationFormats.year": yearToUse,
-            [`organizations.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
+            [`organizations.list.departments.registrationFormats.formats.${role as string}.structure`]: { $exists: true, $ne: [] }
           }
         });
       } else {
         aggregationPipeline.push({
           $match: {
-            [`organizations.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
+            [`organizations.list.departments.registrationFormats.formats.${role as string}.structure`]: { $exists: true, $ne: [] }
           }
         });
       }
@@ -2082,7 +2280,7 @@ router.get('/registration-formats', async (req, res) => {
           name: "$organizations.list.departments.registrationFormats.name",
           year: "$organizations.list.departments.registrationFormats.year",
           formats: {
-            [role]: `$organizations.list.departments.registrationFormats.formats.${role}`
+            [role as string]: `$organizations.list.departments.registrationFormats.formats.${role as string}`
           },
           createdAt: "$organizations.list.departments.registrationFormats.createdAt",
           updatedAt: "$organizations.list.departments.registrationFormats.updatedAt"
@@ -2166,7 +2364,7 @@ router.get('/registration-formats', async (req, res) => {
       console.log(`📋 ===== END FORMAT ${index + 1} =====`);
     });
 
-    const responseData = {
+    const responseData: any = {
       success: true,
       formats: formats,
       institutionType,
@@ -2220,9 +2418,9 @@ router.get('/registration-formats', async (req, res) => {
       });
 
       // Log only the requested role format details
-      const requestedRoleFormat = format.formats?.[role];
+      const requestedRoleFormat = format.formats?.[role as string];
       if (requestedRoleFormat) {
-        console.log(`📋   ${role.toUpperCase()} Role Details:`, {
+        console.log(`📋   ${(role as string).toUpperCase()} Role Details:`, {
           totalLength: requestedRoleFormat.totalLength,
           structureLength: requestedRoleFormat.structure?.length || 0,
           example: requestedRoleFormat.example,
@@ -2261,7 +2459,7 @@ router.get('/colleges/:collegeId/qr-codes', async (req, res) => {
       return res.status(404).json({ error: 'No colleges found' });
     }
 
-    const college = settings.colleges.list.find((col: any) => col.id === collegeId);
+    const college = settings.colleges.list.find((col) => col.id === collegeId);
     if (!college) {
       return res.status(404).json({ error: 'College not found' });
     }
@@ -2302,7 +2500,7 @@ router.post('/colleges/:collegeId/qr-codes', async (req, res) => {
       return res.status(404).json({ error: 'No colleges found' });
     }
 
-    const collegeIndex = settings.colleges.list.findIndex((col: any) => col.id === collegeId);
+    const collegeIndex = settings.colleges.list.findIndex((col) => col.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
@@ -2372,7 +2570,7 @@ router.delete('/colleges/:collegeId/qr-codes/:qrId', async (req, res) => {
       return res.status(404).json({ error: 'No colleges found' });
     }
 
-    const collegeIndex = settings.colleges.list.findIndex((col: any) => col.id === collegeId);
+    const collegeIndex = settings.colleges.list.findIndex((col) => col.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
@@ -2418,13 +2616,13 @@ router.get('/colleges/:collegeId/departments/:deptCode/registration-formats', as
       return res.status(404).json({ error: 'No colleges found' });
     }
 
-    const collegeIndex = settings.colleges.list.findIndex((col: any) => col.id === collegeId);
+    const collegeIndex = settings.colleges.list.findIndex((col) => col.id === collegeId);
     if (collegeIndex === -1) {
       return res.status(404).json({ error: 'College not found' });
     }
 
     const college = settings.colleges.list[collegeIndex];
-    const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
+    const deptIndex = college.departments.findIndex((dept) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
@@ -2489,12 +2687,17 @@ router.post('/colleges/:collegeId/departments/:deptCode/registration-formats', a
     }
 
     const college = settings.colleges.list[collegeIndex];
-    const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
+    const deptIndex = college.departments.findIndex((dept) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
 
     const department = college.departments[deptIndex];
+
+    // Initialize registrationFormats if it doesn't exist
+    if (!department.registrationFormats) {
+      department.registrationFormats = [];
+    }
 
     // Check if format with this name already exists for this department (across all years)
     const existingFormatIndex = department.registrationFormats.findIndex((format: any) =>
@@ -2577,13 +2780,18 @@ router.put('/colleges/:collegeId/departments/:deptCode/registration-formats/:for
     }
 
     const college = settings.colleges.list[collegeIndex];
-    const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
+    const deptIndex = college.departments.findIndex((dept) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
 
     const department = college.departments[deptIndex];
     console.log('  - Department found:', deptCode);
+
+    if (!department.registrationFormats) {
+      return res.status(404).json({ error: 'Registration format not found' });
+    }
+
     console.log('  - Existing formats:', department.registrationFormats.map(f => ({ id: f.id, name: f.name, year: f.year })));
 
     const formatIndex = department.registrationFormats.findIndex((format: any) => format.id === formatId);
@@ -2620,7 +2828,7 @@ router.put('/colleges/:collegeId/departments/:deptCode/registration-formats/:for
       college: college,
       colleges: settings.colleges.list
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating registration format:', error);
     console.error('Error details:', {
       message: error.message,
@@ -2655,12 +2863,17 @@ router.delete('/colleges/:collegeId/departments/:deptCode/registration-formats/:
     }
 
     const college = settings.colleges.list[collegeIndex];
-    const deptIndex = college.departments.findIndex((dept: any) => dept.code === deptCode);
+    const deptIndex = college.departments.findIndex((dept) => dept.code === deptCode);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found in this college' });
     }
 
     const department = college.departments[deptIndex];
+
+    if (!department.registrationFormats) {
+      return res.status(404).json({ error: 'Registration format not found' });
+    }
+
     const formatIndex = department.registrationFormats.findIndex((format: any) => format.id === formatId);
     if (formatIndex === -1) {
       return res.status(404).json({ error: 'Registration format not found' });
@@ -2875,7 +3088,7 @@ router.get('/canteens/by-institution', async (req, res) => {
     }
 
     // Use MongoDB aggregation for efficient database-level filtering and pagination
-    const pipeline = [
+    const pipeline: any[] = [
       // Match the latest system settings document
       { $sort: { createdAt: -1 } },
       { $limit: 1 },
@@ -2989,7 +3202,7 @@ router.get('/canteens/by-institution', async (req, res) => {
       );
 
       // Remove null values (canteens that didn't match)
-      canteens = filteredCanteens.filter((c: any) => c !== null);
+      canteens = filteredCanteens.filter((c) => c !== null);
       console.log(`🏪 After category filtering: ${canteens.length} canteens match "${categoryFilter}"`);
     }
 
@@ -3206,6 +3419,9 @@ router.post('/canteens', async (req, res) => {
             createdAt: new Date(),
             updatedAt: new Date()
           }]
+        },
+        organizations: {
+          list: []
         }
       };
 
@@ -3523,7 +3739,7 @@ router.post('/migrate-canteen-ids', async (req, res) => {
       'payments'
     ];
 
-    const results = {};
+    const results: Record<string, any> = {};
 
     for (const collectionName of collections) {
       const collection = db.collection(collectionName);
@@ -3729,6 +3945,9 @@ router.post('/test-update-order', async (req, res) => {
     const NEW_CANTEEN_ID = 'canteen-1758205071111';
 
     const db = mongoose.connection.db;
+    if (!db) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
     const ordersCollection = db.collection('orders');
 
     // Find one order with old canteen ID
@@ -3781,7 +4000,7 @@ router.get('/organizations', async (req, res) => {
 
     // Ensure all organizations have activeRoles field and migrate if needed
     let needsMigration = false;
-    const organizationsWithRoles = settings.organizations.list.map((org: any) => {
+    const organizationsWithRoles = settings.organizations.list.map((org) => {
       if (!org.activeRoles) {
         needsMigration = true;
         return {
@@ -3901,7 +4120,7 @@ router.post('/organizations', async (req, res) => {
         };
       }
 
-      const existingOrganization = settings.organizations.list.find((org: any) => org.code === code);
+      const existingOrganization = settings.organizations.list.find((org) => org.code === code);
       if (existingOrganization) {
         return res.status(409).json({ error: 'Organization code already exists' });
       }
@@ -3962,7 +4181,7 @@ router.get('/organizations/:id', async (req, res) => {
       return res.status(404).json({ error: 'No organizations found' });
     }
 
-    const organization = settings.organizations.list.find((org: any) => org.id === id);
+    const organization = settings.organizations.list.find((org) => org.id === id);
 
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
@@ -3993,7 +4212,7 @@ router.put('/organizations/:id', async (req, res) => {
       return res.status(404).json({ error: 'No organizations found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === id);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === id);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
@@ -4050,7 +4269,7 @@ router.delete('/organizations/:id', async (req, res) => {
       return res.status(404).json({ error: 'No organizations found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === id);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === id);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
@@ -4100,7 +4319,7 @@ router.put('/organizations/:id/roles', async (req, res) => {
       return res.status(404).json({ error: 'No organizations found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === id);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === id);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
@@ -4134,7 +4353,7 @@ router.put('/organizations/:id/roles', async (req, res) => {
       organization: settings.organizations.list[orgIndex],
       organizations: settings.organizations.list
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating organization roles:', error);
     res.status(500).json({ error: 'Failed to update organization roles' });
   }
@@ -4165,13 +4384,13 @@ router.post('/organizations/:orgId/departments', async (req, res) => {
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
     // Check if department code already exists in this organization
-    const existingDepartment = settings.organizations.list[orgIndex].departments.find((dept: any) => dept.code === code);
+    const existingDepartment = settings.organizations.list[orgIndex].departments.find((dept) => dept.code === code);
     if (existingDepartment) {
       return res.status(409).json({ error: 'Department code already exists in this organization' });
     }
@@ -4233,19 +4452,19 @@ router.put('/organizations/:orgId/departments/:deptId', async (req, res) => {
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept: any) => dept.id === req.params.deptId);
+    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept) => dept.id === req.params.deptId);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found' });
     }
 
     // Check if department code already exists in this organization (excluding current department)
     if (code && code !== settings.organizations.list[orgIndex].departments[deptIndex].code) {
-      const existingDepartment = settings.organizations.list[orgIndex].departments.find((dept: any) => dept.code === code && dept.id !== req.params.deptId);
+      const existingDepartment = settings.organizations.list[orgIndex].departments.find((dept) => dept.code === code && dept.id !== req.params.deptId);
       if (existingDepartment) {
         return res.status(409).json({ error: 'Department code already exists in this organization' });
       }
@@ -4288,12 +4507,12 @@ router.delete('/organizations/:orgId/departments/:deptId', async (req, res) => {
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept: any) => dept.id === req.params.deptId);
+    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept) => dept.id === req.params.deptId);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found' });
     }
@@ -4341,16 +4560,16 @@ router.get('/organizations/:orgId/departments', async (req, res) => {
 
     console.log('🏢 [GET] Found system settings, organizations count:', settings.organizations?.list?.length || 0);
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       console.log('🏢 [GET] Organization not found:', req.params.orgId);
-      console.log('🏢 [GET] Available organizations:', settings.organizations.list.map((org: any) => org.id));
+      console.log('🏢 [GET] Available organizations:', settings.organizations.list.map((org) => org.id));
       return res.status(404).json({ error: 'Organization not found' });
     }
 
     const departments = settings.organizations.list[orgIndex].departments || [];
     console.log('🏢 [GET] Found departments:', departments.length);
-    console.log('🏢 [GET] Department details:', departments.map((dept: any) => ({ id: dept.id, code: dept.code, name: dept.name })));
+    console.log('🏢 [GET] Department details:', departments.map((dept) => ({ id: dept.id, code: dept.code, name: dept.name })));
 
     res.json({ departments });
   } catch (error) {
@@ -4371,12 +4590,12 @@ router.get('/organizations/:orgId/departments/:deptId/registration-formats', asy
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept: any) => dept.id === req.params.deptId);
+    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept) => dept.id === req.params.deptId);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found' });
     }
@@ -4409,12 +4628,12 @@ router.post('/organizations/:orgId/departments/:deptId/registration-formats', as
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept: any) => dept.id === req.params.deptId);
+    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept) => dept.id === req.params.deptId);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found' });
     }
@@ -4474,24 +4693,29 @@ router.put('/organizations/:orgId/departments/:deptId/registration-formats/:form
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept: any) => dept.id === req.params.deptId);
+    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept) => dept.id === req.params.deptId);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found' });
     }
 
-    const formatIndex = settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats?.findIndex((format: any) => format.id === req.params.formatId);
-    if (formatIndex === -1 || formatIndex === undefined) {
+    const department = settings.organizations.list[orgIndex].departments[deptIndex];
+    if (!department.registrationFormats) {
+      return res.status(404).json({ error: 'Registration format not found' });
+    }
+
+    const formatIndex = department.registrationFormats.findIndex((format: any) => format.id === req.params.formatId);
+    if (formatIndex === -1) {
       return res.status(404).json({ error: 'Registration format not found' });
     }
 
     // Check if format name already exists in this department (excluding current format)
-    if (name && name !== settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats[formatIndex].name) {
-      const existingFormat = settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats.find((format: any) => format.name === name && format.id !== req.params.formatId);
+    if (name && name !== department.registrationFormats[formatIndex].name) {
+      const existingFormat = department.registrationFormats.find((format: any) => format.name === name && format.id !== req.params.formatId);
       if (existingFormat) {
         return res.status(409).json({ error: 'Registration format name already exists in this department' });
       }
@@ -4502,7 +4726,7 @@ router.put('/organizations/:orgId/departments/:deptId/registration-formats/:form
     if (name !== undefined) updateData.name = name;
     if (formats !== undefined) updateData.formats = formats;
 
-    Object.assign(settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats[formatIndex], updateData);
+    Object.assign(department.registrationFormats[formatIndex], updateData);
 
     settings.organizations.list[orgIndex].departments[deptIndex].updatedAt = new Date();
     settings.organizations.list[orgIndex].updatedAt = new Date();
@@ -4532,23 +4756,28 @@ router.delete('/organizations/:orgId/departments/:deptId/registration-formats/:f
       return res.status(404).json({ error: 'System settings not found' });
     }
 
-    const orgIndex = settings.organizations.list.findIndex((org: any) => org.id === req.params.orgId);
+    const orgIndex = settings.organizations.list.findIndex((org) => org.id === req.params.orgId);
     if (orgIndex === -1) {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept: any) => dept.id === req.params.deptId);
+    const deptIndex = settings.organizations.list[orgIndex].departments.findIndex((dept) => dept.id === req.params.deptId);
     if (deptIndex === -1) {
       return res.status(404).json({ error: 'Department not found' });
     }
 
-    const formatIndex = settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats?.findIndex((format: any) => format.id === req.params.formatId);
-    if (formatIndex === -1 || formatIndex === undefined) {
+    const department = settings.organizations.list[orgIndex].departments[deptIndex];
+    if (!department.registrationFormats) {
+      return res.status(404).json({ error: 'Registration format not found' });
+    }
+
+    const formatIndex = department.registrationFormats.findIndex((format: any) => format.id === req.params.formatId);
+    if (formatIndex === -1) {
       return res.status(404).json({ error: 'Registration format not found' });
     }
 
     // Remove registration format
-    const deletedFormat = settings.organizations.list[orgIndex].departments[deptIndex].registrationFormats.splice(formatIndex, 1)[0];
+    const deletedFormat = department.registrationFormats.splice(formatIndex, 1)[0];
 
     settings.organizations.list[orgIndex].departments[deptIndex].updatedAt = new Date();
     settings.organizations.list[orgIndex].updatedAt = new Date();
@@ -4583,13 +4812,13 @@ router.get('/registration-formats/no-year', async (req, res) => {
       fullUrl: req.url
     });
 
-    if (!institutionType || !institutionId || !departmentCode || !role) {
-      console.log(`❌ Missing required parameters:`, { institutionType, institutionId, departmentCode, role });
-      return res.status(400).json({ error: 'All parameters are required: institutionType, institutionId, departmentCode, role' });
+    if (!institutionType || !institutionId || !departmentCode || !role || typeof role !== 'string') {
+      console.log(`❌ Missing or invalid parameters:`, { institutionType, institutionId, departmentCode, role });
+      return res.status(400).json({ error: 'All parameters are required and must be strings' });
     }
 
     // Only allow non-student roles for this endpoint
-    if (role === UserRole.STUDENT) {
+    if ((role as string) === UserRole.STUDENT) {
       return res.status(400).json({ error: 'This endpoint is for non-student roles only. Use /registration-formats for student roles.' });
     }
 
@@ -4604,12 +4833,12 @@ router.get('/registration-formats/no-year', async (req, res) => {
     let formats = [];
 
     if (institutionType === 'college') {
-      const college = settings.colleges?.list?.find((col: any) => col.id === institutionId);
+      const college = settings.colleges?.list?.find((col) => col.id === institutionId);
       if (!college) {
         return res.status(404).json({ error: 'College not found' });
       }
 
-      const department = college.departments.find((dept: any) => dept.code === departmentCode);
+      const department = college.departments.find((dept) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this college' });
       }
@@ -4626,7 +4855,7 @@ router.get('/registration-formats/no-year', async (req, res) => {
         { $unwind: "$colleges.list.departments.registrationFormats" },
         {
           $match: {
-            [`colleges.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
+            [`colleges.list.departments.registrationFormats.formats.${role as string}.structure`]: { $exists: true, $ne: [] }
           }
         },
         {
@@ -4636,24 +4865,24 @@ router.get('/registration-formats/no-year', async (req, res) => {
             name: "$colleges.list.departments.registrationFormats.name",
             year: "$colleges.list.departments.registrationFormats.year",
             formats: {
-              [role]: `$colleges.list.departments.registrationFormats.formats.${role}`
+              [role as string]: `$colleges.list.departments.registrationFormats.formats.${role as string}`
             },
             createdAt: "$colleges.list.departments.registrationFormats.createdAt",
             updatedAt: "$colleges.list.departments.registrationFormats.updatedAt"
           }
         }
-      ]);
+      ] as any[]);
 
       console.log(`📋 MongoDB query returned ${filteredFormats.length} matching formats`);
       formats = filteredFormats;
 
     } else if (institutionType === 'organization') {
-      const organization = settings.organizations?.list?.find((org: any) => org.id === institutionId);
+      const organization = settings.organizations?.list?.find((org) => org.id === institutionId);
       if (!organization) {
         return res.status(404).json({ error: 'Organization not found' });
       }
 
-      const department = organization.departments.find((dept: any) => dept.code === departmentCode);
+      const department = organization.departments.find((dept) => dept.code === departmentCode);
       if (!department) {
         return res.status(404).json({ error: 'Department not found in this organization' });
       }
@@ -4670,7 +4899,7 @@ router.get('/registration-formats/no-year', async (req, res) => {
         { $unwind: "$organizations.list.departments.registrationFormats" },
         {
           $match: {
-            [`organizations.list.departments.registrationFormats.formats.${role}.structure`]: { $exists: true, $ne: [] }
+            [`organizations.list.departments.registrationFormats.formats.${role as string}.structure`]: { $exists: true, $ne: [] }
           }
         },
         {
@@ -4680,13 +4909,13 @@ router.get('/registration-formats/no-year', async (req, res) => {
             name: "$organizations.list.departments.registrationFormats.name",
             year: "$organizations.list.departments.registrationFormats.year",
             formats: {
-              [role]: `$organizations.list.departments.registrationFormats.formats.${role}`
+              [role as string]: `$organizations.list.departments.registrationFormats.formats.${role as string}`
             },
             createdAt: "$organizations.list.departments.registrationFormats.createdAt",
             updatedAt: "$organizations.list.departments.registrationFormats.updatedAt"
           }
         }
-      ]);
+      ] as any[]);
 
       console.log(`📋 MongoDB query returned ${filteredFormats.length} matching formats`);
       formats = filteredFormats;
@@ -4777,7 +5006,7 @@ router.post('/organizations/:organizationId/qr-codes', async (req, res) => {
       return res.status(404).json({ error: 'No organizations found' });
     }
 
-    const organization = settings.organizations.list.find((org: any) => org.id === organizationId);
+    const organization = settings.organizations.list.find((org) => org.id === organizationId);
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
     }
@@ -4894,7 +5123,7 @@ router.get('/qr-codes/validate/:organizationId/:hash', async (req, res) => {
       return res.status(404).json({ error: 'Organization not found' });
     }
 
-    const organization = settings.organizations.list.find((org: any) => org.id === organizationId);
+    const organization = settings.organizations.list.find((org) => org.id === organizationId);
     if (!organization) {
       return res.status(404).json({ error: 'Organization not found' });
     }
@@ -4967,7 +5196,7 @@ router.get('/canteens/:canteenId', async (req, res) => {
       return res.status(404).json({ error: 'No canteens found' });
     }
 
-    const canteen = settings.canteens.list.find((c: any) => c.id === canteenId);
+    const canteen = settings.canteens.list.find((c) => c.id === canteenId);
 
     if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found' });
@@ -5011,7 +5240,7 @@ router.post('/canteens/:canteenId/profile-image', upload.single('image'), async 
       return res.status(404).json({ error: 'No canteens found' });
     }
 
-    const canteenIndex = settings.canteens.list.findIndex((c: any) => c.id === canteenId);
+    const canteenIndex = settings.canteens.list.findIndex((c) => c.id === canteenId);
     if (canteenIndex === -1) {
       // If image uploaded successfully but canteen not found, try to delete the image
       await cloudinaryService.deleteImage(result.public_id);
@@ -5043,4 +5272,4 @@ router.post('/canteens/:canteenId/profile-image', upload.single('image'), async 
   }
 });
 
-export default router;
+export default router;      
