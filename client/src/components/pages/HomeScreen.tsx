@@ -83,6 +83,25 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Sentinel for stickiness detection
+  const searchSentinelRef = useRef<HTMLDivElement>(null);
+  const [isSearchSticky, setIsSearchSticky] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsSearchSticky(!entry.isIntersecting);
+      },
+      { root: null, threshold: 0, rootMargin: '13px 0px 0px 0px' }
+    );
+
+    if (searchSentinelRef.current) {
+      observer.observe(searchSentinelRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
   // Update status bar to match header color
   useEffect(() => {
     if (resolvedTheme === 'dark') {
@@ -542,12 +561,12 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     return null; // Or a transparent loader
   }
 
-  // Search bar becomes sticky only when header is fully hidden
-  const isSearchSticky = scrollProgress >= 1;
+
+
 
   return (
     <>
-      <div className={`min-h-screen overflow-x-hidden ${'bg-background'
+      <div className={`min-h-screen ${'bg-background'
         }`} style={{ maxWidth: '100vw' }}>
         {/* Header Container - Scrolls normally, fades as it goes out of view */}
         <div
@@ -558,12 +577,12 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
         >
           {/* Top section - Canteen selector and profile */}
           <div className="px-4 pt-12 pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center flex-1 min-w-0 gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full mr-1 -ml-2"
+                  className="rounded-full shrink-0 -ml-2"
                   onClick={() => {
                     // Prefer explicit navigation handler if provided
                     if (onNavigateBack) {
@@ -575,35 +594,38 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                 >
                   <ArrowLeft className="w-5 h-5 text-foreground" />
                 </Button>
-                <div className="flex items-center ml-2 flex-1 overflow-hidden">
-                  <div className={`p-2 rounded-xl mr-3 transition-all duration-300 ${resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'
+
+                <div className="flex items-center flex-1 min-w-0 overflow-hidden">
+                  <div className={`p-1.5 md:p-2 rounded-xl mr-2 md:mr-3 shrink-0 transition-all duration-300 ${resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'
                     }`}>
-                    <Store className="w-4 h-4" />
+                    <Store className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   </div>
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase mb-0.5 leading-none">
+                  <div className="flex flex-col min-w-0 overflow-hidden">
+                    <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase mb-0.5 leading-none whitespace-nowrap">
                       Currently at
                     </span>
-                    <h2 className="text-lg font-bold truncate leading-tight tracking-tight text-foreground">
+                    <h2 className="text-base md:text-lg font-bold truncate leading-tight tracking-tight text-foreground pr-1">
                       {selectedCanteen?.name || 'Select Canteen'}
                     </h2>
                   </div>
                 </div>
+
                 {/* Exit Restaurant Button - Only shown when restaurant context exists */}
                 {hasRestaurantContext && restaurantInfo && (
                   <Button
                     onClick={handleExitRestaurant}
                     variant="outline"
-                    size="default"
-                    className="ml-2"
+                    size="sm"
+                    className="ml-1 shrink-0 hidden sm:flex"
                     title={`Exit ${restaurantInfo.name} - Table ${restaurantInfo.tableNumber}`}
                   >
-                    <XCircle className="w-5 h-5 mr-2" />
-                    <span className="text-sm font-medium">Exit {restaurantInfo.name}</span>
+                    <XCircle className="w-4 h-4 mr-2" />
+                    <span className="text-xs font-medium">Exit</span>
                   </Button>
                 )}
               </div>
-              <div className="flex items-center space-x-3 mr-2">
+
+              <div className="flex items-center shrink-0 gap-1 md:gap-3">
                 {/* Cart Icon - Always visible in header */}
                 <Button
                   variant="ghost"
@@ -611,152 +633,22 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
                   }}
-                  className="rounded-full h-12 w-12 p-0 relative group hover:bg-primary/10 transition-all duration-200"
+                  className="rounded-full h-10 w-10 md:h-12 md:w-12 p-0 relative group hover:bg-primary/10 transition-all duration-200"
                   aria-label={`View cart with ${getTotalItems()} items`}
                 >
-                  <ShoppingCart className="w-7 h-7 text-primary" />
+                  <ShoppingCart className="w-5 h-5 md:w-7 md:h-7 text-primary" />
                   {getTotalItems() > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-lg ring-2 ring-background">
+                    <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-4 w-4 md:h-5 md:w-5 flex items-center justify-center shadow-lg ring-2 ring-background">
                       {getTotalItems() > 99 ? '99+' : getTotalItems()}
                     </span>
                   )}
                 </Button>
 
-                {/* Profile Navigation */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
-                  }}
-                  className="rounded-full h-14 w-14 p-0 relative overflow-hidden group shadow-premium hover-scale-subtle"
-                  aria-label="View Profile"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent group-hover:from-primary/30 group-hover:via-primary/20 transition-all duration-300"></div>
-                  <UserCircle2 className="w-9 h-9 relative z-10 text-primary" />
-                </Button>
+
               </div>
             </div>
           </div>
         </div>
-
-        {/* Search Bar - Scrolls normally, becomes sticky only after header is gone */}
-        <div
-          className="px-4"
-          style={{
-            position: isSearchSticky ? 'fixed' : 'relative',
-            top: isSearchSticky ? 0 : 'auto',
-            left: 0,
-            right: 0,
-            zIndex: isSearchSticky ? 50 : 1,
-            paddingTop: isSearchSticky ? '12px' : '0',
-            paddingBottom: '16px',
-            // Background only when sticky
-            background: isSearchSticky
-              ? (resolvedTheme === 'dark'
-                ? 'rgba(15, 10, 24, 0.95)'
-                : 'rgba(255, 255, 255, 0.98)')
-              : 'transparent',
-            backdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
-            WebkitBackdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
-            borderBottom: isSearchSticky
-              ? (resolvedTheme === 'dark'
-                ? '1px solid rgba(255, 255, 255, 0.08)'
-                : '1px solid rgba(0, 0, 0, 0.06)')
-              : 'none',
-            boxShadow: isSearchSticky
-              ? '0 4px 20px rgba(0, 0, 0, 0.08)'
-              : 'none',
-            transition: 'background 0.2s ease-out, backdrop-filter 0.2s ease-out, box-shadow 0.2s ease-out',
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 group">
-              {/* Subtle glow effect on hover */}
-              <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 blur-xl pointer-events-none ${resolvedTheme === 'dark'
-                ? 'bg-primary/20'
-                : 'bg-primary/10'
-                }`} />
-
-              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10 w-5 h-5 transition-colors duration-150 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`} />
-
-              <input
-                type="text"
-                inputMode="search"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                placeholder="Search for dishes, categories..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (!isSearchActive && e.target.value) {
-                    setIsSearchActive(true);
-                  }
-                }}
-                onFocus={() => setIsSearchActive(true)}
-                className={`w-full rounded-2xl text-foreground placeholder:text-muted-foreground focus:outline-none relative py-3.5 pl-12 pr-10 text-sm transition-all duration-150 ${resolvedTheme === 'dark'
-                  ? 'bg-white/5 border border-white/10 hover:bg-white/8 hover:border-white/15 focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
-                  : 'bg-gray-100/80 border border-gray-200/60 hover:bg-gray-100 hover:border-gray-300/80 focus:ring-2 focus:ring-primary/20 focus:border-primary/50'
-                  }`}
-                style={{ WebkitAppearance: 'none' }}
-              />
-
-              {/* Clear button */}
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setDebouncedSearchQuery("");
-                    searchInputRef.current?.focus();
-                  }}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors ${resolvedTheme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-200 hover:bg-white/10'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
-                    }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Profile button - only visible when search bar is sticky */}
-            <div
-              style={{
-                opacity: isSearchSticky ? 1 : 0,
-                transform: `translateX(${isSearchSticky ? 0 : 20}px) scale(${isSearchSticky ? 1 : 0.8})`,
-                width: isSearchSticky ? '48px' : '0px',
-                minWidth: isSearchSticky ? '48px' : '0px',
-                overflow: 'hidden',
-                transition: 'opacity 0.2s ease-out, transform 0.2s ease-out, width 0.2s ease-out',
-              }}
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('appNavigateToProfile', {}));
-                }}
-                className={`rounded-full h-12 w-12 p-0 relative overflow-hidden group flex-shrink-0 transition-all duration-200 ${resolvedTheme === 'dark'
-                  ? 'bg-white/10 hover:bg-white/15 border border-white/10'
-                  : 'bg-primary/10 hover:bg-primary/15 border border-primary/20'
-                  }`}
-                aria-label="View Profile"
-                tabIndex={isSearchSticky ? 0 : -1}
-              >
-                <UserCircle2 className={`w-7 h-7 ${resolvedTheme === 'dark' ? 'text-primary-light' : 'text-primary'
-                  }`} />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Spacer - only needed when search bar is fixed to prevent content jump */}
-        {isSearchSticky && (
-          <div style={{ height: '72px' }} />
-        )}
 
         {/* Incomplete Profile Message */}
         {showIncompleteProfileMessage && !hasRestaurantContext && (
@@ -837,13 +729,102 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
         {/* Media Banner - Enhanced with animation */}
         {!showIncompleteProfileMessage && (
-          <div className="mt-6 animate-slide-up-fade" style={{ animationDelay: '200ms' }}>
+          <div className="mt-6 animate-slide-up-fade mb-4" style={{ animationDelay: '200ms' }}>
             <HomeMediaBanner banners={mediaBanners} isLoading={homeDataLoading} />
           </div>
         )}
 
+        {/* Sentinel for search sticky detection */}
+        <div ref={searchSentinelRef} className="absolute h-1 w-full pointer-events-none opacity-0" style={{ transform: 'translateY(-1px)' }} />
+
+        {/* Search Bar - Uses position: sticky for smooth behavior */}
+        <div
+          className="px-4"
+          style={{
+            position: isSearchSticky ? 'fixed' : 'relative',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 50,
+            paddingTop: isSearchSticky ? '12px' : '32px',
+            paddingBottom: '16px',
+            // Background only when sticky
+            background: isSearchSticky
+              ? (resolvedTheme === 'dark'
+                ? 'rgba(15, 10, 24, 0.95)'
+                : 'rgba(255, 255, 255, 0.98)')
+              : 'transparent',
+            backdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
+            WebkitBackdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
+            borderBottom: isSearchSticky
+              ? (resolvedTheme === 'dark'
+                ? '1px solid rgba(255, 255, 255, 0.08)'
+                : '1px solid rgba(0, 0, 0, 0.06)')
+              : 'none',
+            boxShadow: isSearchSticky
+              ? '0 4px 20px rgba(0, 0, 0, 0.08)'
+              : 'none',
+            transition: 'background 0.2s ease-out, backdrop-filter 0.2s ease-out, box-shadow 0.2s ease-out',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 group">
+              {/* Subtle glow effect on hover */}
+              <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 blur-xl pointer-events-none ${resolvedTheme === 'dark'
+                ? 'bg-primary/20'
+                : 'bg-primary/10'
+                }`} />
+
+              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10 w-5 h-5 transition-colors duration-150 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`} />
+
+              <input
+                type="text"
+                inputMode="search"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                placeholder="Search for dishes, categories..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (!isSearchActive && e.target.value) {
+                    setIsSearchActive(true);
+                  }
+                }}
+                onFocus={() => setIsSearchActive(true)}
+                className={`w-full rounded-2xl text-foreground placeholder:text-muted-foreground focus:outline-none relative py-3.5 pl-12 pr-10 text-sm transition-all duration-150 ${resolvedTheme === 'dark'
+                  ? 'bg-white/5 border border-white/10 hover:bg-white/8 hover:border-white/15 focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
+                  : 'bg-gray-100/80 border border-gray-200/60 hover:bg-gray-100 hover:border-gray-300/80 focus:ring-2 focus:ring-primary/20 focus:border-primary/50'
+                  }`}
+                style={{ WebkitAppearance: 'none' }}
+              />
+
+              {/* Clear button */}
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setDebouncedSearchQuery("");
+                    searchInputRef.current?.focus();
+                  }}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors ${resolvedTheme === 'dark'
+                    ? 'text-gray-400 hover:text-gray-200 hover:bg-white/10'
+                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
+                    }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+
+          </div>
+        </div>
+
         {/* Main Content Sections */}
-        <div className="px-4 mt-8 space-y-8">
+        <div className={`px-4 space-y-8 ${isSearchSticky ? 'mt-36' : 'mt-8'}`}>
           {/* Trending Now Section - Premium Design */}
           <ErrorBoundary>
             <section className="animate-slide-up-fade" style={{ animationDelay: '300ms' }}>

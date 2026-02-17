@@ -201,7 +201,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                     top: isSearchSticky ? 0 : 'auto',
                     left: 0,
                     right: 0,
-                    zIndex: isSearchSticky ? 50 : 1,
+                    zIndex: isSearchSticky ? 60 : 1,
                     paddingTop: isSearchSticky ? '12px' : '0',
                     marginLeft: isSearchSticky ? 'auto' : '0',
                     marginRight: isSearchSticky ? '0px' : '0',
@@ -333,9 +333,9 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                                 ? '1px solid rgba(255, 255, 255, 0.08)'
                                 : '1px solid rgba(0, 0, 0, 0.06)')
                             : 'none',
-                        // boxShadow: isCategorySticky
-                        //     ? '0 4px 20px rgba(0, 0, 0, 0.08)'
-                        //     : 'none',
+                        boxShadow: isCategorySticky
+                            ? '0 4px 20px rgba(0, 0, 0, 0.08)'
+                            : 'none',
                         transition: 'background 0.5s ease-out, backdrop-filter 0.5s ease-out, box-shadow 0.5s ease-out',
                     }}
                 >
