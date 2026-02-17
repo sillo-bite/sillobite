@@ -160,6 +160,23 @@
   animation: float-gentle 6s ease-in-out infinite;
 }
 
+/* Natural balanced floating animation */
+@keyframes float-natural {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float-natural {
+  animation: float-natural 4s ease-in-out infinite;
+}
+
 .animate-glow-pulse {
   animation: glow-pulse 3s ease-in-out infinite;
 }
