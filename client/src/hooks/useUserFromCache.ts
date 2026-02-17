@@ -9,6 +9,7 @@ interface User {
   role: UserRole | string;
   college?: string;
   organization?: string;
+  organizationId?: string;
   department?: string;
   currentStudyYear?: number;
   isPassed?: boolean;
