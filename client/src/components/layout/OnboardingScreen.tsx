@@ -77,7 +77,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <div className={`flex flex-col items-center justify-center relative overflow-hidden h-screen ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'}`}>
+    <div className={`flex flex-col items-center justify-center relative overflow-hidden h-[100dvh] ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'}`}>
 
       {/* Skip Button */}
       <div className="absolute top-6 right-6 z-10">
