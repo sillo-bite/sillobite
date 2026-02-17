@@ -83,6 +83,7 @@ import PosBilling from "@/components/canteen/PosBilling";
 import PayoutManagement from "@/components/canteen/PayoutManagement";
 import PositionBidding from "@/components/canteen/PositionBidding";
 import CanteenOwnerQRManager from "@/components/canteen/CanteenOwnerQRManager";
+import { ImageCropper } from "@/components/ui/ImageCropper";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { compressImage } from "@/utils/imageCompression";
 import { useToast } from "@/hooks/use-toast";
@@ -158,6 +159,8 @@ const getOrderStatusText = (status: string) => {
 export default function CanteenOwnerDashboardSidebar() {
   const [location, setLocation] = useLocation();
   const { canteenId } = useParams();
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const ownerSidebarDefaults: Record<string, boolean> = {
     overview: true,
     counters: true,
@@ -257,6 +260,18 @@ export default function CanteenOwnerDashboardSidebar() {
   const [showAllOrders, setShowAllOrders] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Logo upload state
+  const [showLogoCropper, setShowLogoCropper] = useState(false);
+  const [selectedLogo, setSelectedLogo] = useState<string | null>(null);
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Banner upload state
+  const [showBannerCropper, setShowBannerCropper] = useState(false);
+  const [selectedBanner, setSelectedBanner] = useState<string | null>(null);
+  const [isBannerUploading, setIsBannerUploading] = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   // Use the updated hook with canteenId
   const {
@@ -592,6 +607,12 @@ export default function CanteenOwnerDashboardSidebar() {
 
     try {
       setIsImageUploading(true);
+
+      // If the file is already a result of cropping (we can check by name or just process it), 
+      // we might skip re-compression if it's already small, but for consistency we can keep using compressImage 
+      // or just send it if we trust the cropper output.
+      // The previous logic used compressImage. Let's keep it but ensure we handle the file correctly.
+
       const compressedBlob = await compressImage(file, 20); // Compress to ~20KB
 
       if (!compressedBlob) {
@@ -599,7 +620,8 @@ export default function CanteenOwnerDashboardSidebar() {
       }
 
       // Convert Blob to File for upload
-      const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+      const fileName = file.name;
+      const compressedFile = new File([compressedBlob], fileName, { type: 'image/jpeg' });
 
       const formData = new FormData();
       formData.append('image', compressedFile);
@@ -612,7 +634,6 @@ export default function CanteenOwnerDashboardSidebar() {
 
       console.log("Upload response:", response);
 
-      // Force cache invalidation sequence
       // Force cache invalidation sequence
       await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens/by-college"] });
@@ -637,8 +658,196 @@ export default function CanteenOwnerDashboardSidebar() {
       });
     } finally {
       setIsImageUploading(false);
+      setShowCropper(false);
+      setSelectedImage(null);
     }
   };
+
+  const onSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setSelectedImage(reader.result?.toString() || null);
+        setShowCropper(true);
+      });
+      reader.readAsDataURL(file);
+      // Reset input value so same file can be selected again if needed
+      e.target.value = '';
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    const file = new File([croppedBlob], "cropped-profile.jpg", { type: "image/jpeg" });
+    await handleImageUpload(file);
+  };
+
+  const handleLogoUpload = async (file: File) => {
+    if (!file) return;
+
+    try {
+      setIsLogoUploading(true);
+
+      const compressedBlob = await compressImage(file, 20); // Compress to ~20KB
+
+      if (!compressedBlob) {
+        throw new Error("Compression failed");
+      }
+
+      // Check against limit (100KB)
+      if (compressedBlob.size > 100 * 1024) {
+        toast({
+          title: "Image Too Large",
+          description: `Unable to compress logo to under 100KB. Current size: ${formatBytes(compressedBlob.size)}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const fileName = file.name;
+      const compressedFile = new File([compressedBlob], fileName, { type: 'image/jpeg' });
+
+      const formData = new FormData();
+      formData.append('image', compressedFile);
+      formData.append('updatedBy', user?.id?.toString() || '0');
+
+      const response = await apiRequest(`/api/system-settings/canteens/${canteenId}/logo`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log("Logo upload response:", response);
+
+      // Force cache invalidation sequence
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens/by-college"] });
+
+      // Update specific canteen cache
+      await queryClient.refetchQueries({ queryKey: ["/api/system-settings/canteens", canteenId] });
+      await refetchCanteenSettings();
+
+      toast({
+        title: "Logo Updated",
+        description: `Successfully uploaded. Original: ${formatBytes(file.size)}, Compressed: ${formatBytes(compressedFile.size)}`,
+        variant: "default",
+      });
+
+    } catch (error) {
+      console.error("Logo upload failed:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload logo. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLogoUploading(false);
+      setShowLogoCropper(false);
+      setSelectedLogo(null);
+    }
+  };
+
+  const onSelectLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setSelectedLogo(reader.result?.toString() || null);
+        setShowLogoCropper(true);
+      });
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleLogoCropComplete = async (croppedBlob: Blob) => {
+    const file = new File([croppedBlob], "cropped-logo.jpg", { type: "image/jpeg" });
+    await handleLogoUpload(file);
+  };
+
+  const handleBannerUpload = async (file: File) => {
+    if (!file) return;
+
+    try {
+      setIsBannerUploading(true);
+
+      // Compress to ~100KB (target)
+      const compressedBlob = await compressImage(file, 100);
+
+      if (!compressedBlob) {
+        throw new Error("Compression failed");
+      }
+
+      // Check against limit (200KB)
+      if (compressedBlob.size > 200 * 1024) {
+        toast({
+          title: "Image Too Large",
+          description: `Unable to compress banner to under 200KB. Current size: ${formatBytes(compressedBlob.size)}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const fileName = file.name;
+      const compressedFile = new File([compressedBlob], fileName, { type: 'image/jpeg' });
+
+      const formData = new FormData();
+      formData.append('image', compressedFile);
+      formData.append('updatedBy', user?.id?.toString() || '0');
+
+      const response = await apiRequest(`/api/system-settings/canteens/${canteenId}/banner`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log("Banner upload response:", response);
+
+      // Force cache invalidation sequence
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/system-settings/canteens/by-college"] });
+
+      // Update specific canteen cache
+      await queryClient.refetchQueries({ queryKey: ["/api/system-settings/canteens", canteenId] });
+      await refetchCanteenSettings();
+
+      toast({
+        title: "Banner Updated",
+        description: `Successfully uploaded. Original: ${formatBytes(file.size)}, Compressed: ${formatBytes(compressedFile.size)}`,
+        variant: "default",
+      });
+
+    } catch (error) {
+      console.error("Banner upload failed:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload banner. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBannerUploading(false);
+      setShowBannerCropper(false);
+      setSelectedBanner(null);
+    }
+  };
+
+  const onSelectBanner = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        setSelectedBanner(reader.result?.toString() || null);
+        setShowBannerCropper(true);
+      });
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    }
+  };
+
+  const handleBannerCropComplete = async (croppedBlob: Blob) => {
+    const file = new File([croppedBlob], "cropped-banner.jpg", { type: "image/jpeg" });
+    await handleBannerUpload(file);
+  };
+
+
 
   // Debug logging for canteen image
   useEffect(() => {
@@ -652,11 +861,7 @@ export default function CanteenOwnerDashboardSidebar() {
     }
   }, [canteenData]);
 
-  const onSelectImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleImageUpload(e.target.files[0]);
-    }
-  };
+
 
   // Mutation to update favorite counter
   const updateFavoriteCounterMutation = useMutation({
@@ -3455,6 +3660,107 @@ export default function CanteenOwnerDashboardSidebar() {
                 </CardContent>
               </Card>
 
+
+              {/* Canteen Logo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <ImageIcon className="w-5 h-5" />
+                    <span>Canteen Logo</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative group">
+                      <Avatar className="w-20 h-20 border-2 border-border rounded-lg">
+                        <AvatarImage src={(canteenData as any)?.logoUrl} alt={canteenData?.name} className="object-contain" />
+                        <AvatarFallback className="text-lg bg-muted rounded-lg">
+                          {canteenData?.name?.substring(0, 2).toUpperCase() || "LG"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors transform translate-x-1/4 translate-y-1/4"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={isLogoUploading}
+                      >
+                        {isLogoUploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                      </button>
+                      <input
+                        type="file"
+                        ref={logoInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={onSelectLogo}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Brand Logo</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload your canteen logo (1:1 ratio).<br />
+                        Target: ~20KB, Limit: 100KB.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+
+              {/* Canteen Banner */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <ImageIcon className="w-5 h-5" />
+                    <span>Canteen Banner</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative group w-full max-w-[200px] aspect-[4/3]">
+                      <div className="w-full h-full border-2 border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                        {(canteenData as any)?.bannerUrl ? (
+                          <img
+                            src={(canteenData as any)?.bannerUrl}
+                            alt="Canteen Banner"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                        )}
+                      </div>
+                      <button
+                        className="absolute bottom-2 right-2 bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors"
+                        onClick={() => bannerInputRef.current?.click()}
+                        disabled={isBannerUploading}
+                      >
+                        {isBannerUploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                      </button>
+                      <input
+                        type="file"
+                        ref={bannerInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={onSelectBanner}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">Marketing Banner</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload a banner image (4:3 ratio).<br />
+                        Target: ~100KB, Limit: 200KB.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Account Section */}
               <Card>
                 <CardHeader>
@@ -4056,6 +4362,52 @@ export default function CanteenOwnerDashboardSidebar() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Image Cropper Modal */}
+      {
+        selectedImage && (
+          <ImageCropper
+            imageSrc={selectedImage}
+            isOpen={showCropper}
+            onClose={() => {
+              setShowCropper(false);
+              setSelectedImage(null);
+            }}
+            onCropComplete={handleCropComplete}
+            aspect={16 / 9} // Using 16:9 as a reasonable default for canteen banners/cards
+          />
+        )
+      }
+      {/* Logo Cropper */}
+      {
+        showLogoCropper && selectedLogo && (
+          <ImageCropper
+            imageSrc={selectedLogo}
+            isOpen={showLogoCropper}
+            onClose={() => {
+              setShowLogoCropper(false);
+              setSelectedLogo(null);
+            }}
+            onCropComplete={handleLogoCropComplete}
+            aspect={1} // 1:1 for logo
+          />
+        )
+      }
+      {/* Banner Cropper */}
+      {
+        showBannerCropper && selectedBanner && (
+          <ImageCropper
+            imageSrc={selectedBanner}
+            isOpen={showBannerCropper}
+            onClose={() => {
+              setShowBannerCropper(false);
+              setSelectedBanner(null);
+            }}
+            onCropComplete={handleBannerCropComplete}
+            aspect={4 / 3} // 4:3 for banner
+          />
+        )
+      }
+    </div >
   );
 }

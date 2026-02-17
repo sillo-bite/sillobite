@@ -369,6 +369,48 @@ export type SystemSettings = {
     lastUpdatedBy?: number;
     lastUpdatedAt?: Date;
   };
+  organizations: {
+    list: Array<{
+      id: string;
+      name: string;
+      code: string;
+      description?: string;
+      companyType?: string;
+      industry?: string;
+      location?: string;
+      contactEmail?: string;
+      contactPhone?: string;
+      isActive: boolean;
+      activeRoles?: Record<string, boolean>; // Object of active roles in this organization (e.g., { visitor: true, guest: false })
+      qrCodes?: Array<{
+        name: string;
+        code: string;
+        url: string;
+        targetType: string; // 'organization', 'department'
+        targetId: string; // organizationId or departmentId
+        createdAt: Date;
+      }>;
+      departments: Array<{
+        id: string;
+        code: string;
+        name: string;
+        isActive: boolean;
+        registrationFormats?: Array<{
+          id: string;
+          name: string;
+          formats: any; // Using any for now to avoid complex nested types duplication
+          createdAt: Date;
+          updatedAt: Date;
+        }>;
+        createdAt: Date;
+        updatedAt: Date;
+      }>;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    lastUpdatedBy?: number;
+    lastUpdatedAt?: Date;
+  };
   colleges: {
     list: Array<{
       id: string;
@@ -376,6 +418,15 @@ export type SystemSettings = {
       code: string;
 
       isActive: boolean;
+      activeRoles?: Record<string, boolean>; // Object of active roles in this college (e.g., { student: true, staff: false })
+      qrCodes?: Array<{
+        name: string;
+        code: string;
+        url: string;
+        targetType: string; // 'college', 'department'
+        targetId: string; // collegeId or departmentId
+        createdAt: Date;
+      }>;
       adminEmail?: string; // Admin email for college-specific notifications
       departments: Array<{
         code: string;
@@ -526,8 +577,13 @@ export type SystemSettings = {
       payAtCounterEnabled?: boolean; // Allow pay-at-counter option
       deliveryEnabled?: boolean; // Allow delivery orders
       priority?: number; // Priority for ordering (lower number = higher priority)
+      ownerSidebarConfig?: Record<string, boolean>; // Sidebar configuration for canteen owner
       imageUrl?: string; // Canteen profile picture URL
       imagePublicId?: string; // Canteen profile picture public ID
+      logoUrl?: string; // Canteen logo URL (1:1 ratio)
+      logoPublicId?: string; // Canteen logo public ID
+      bannerUrl?: string; // Canteen banner URL (4:3 ratio)
+      bannerPublicId?: string; // Canteen banner public ID
       createdAt: Date;
       updatedAt: Date;
     }>;
