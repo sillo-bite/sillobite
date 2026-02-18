@@ -23,6 +23,7 @@ import HomeScreenSkeleton from "@/components/pages/HomeScreenSkeleton";
 import CurrentOrderBottomSheet from "@/components/orders/CurrentOrderBottomSheet";
 import FloatingCart from "@/components/cart/FloatingCart";
 import { updateStatusBarColor } from "@/utils/statusBar";
+import { CanteenInfoCard } from "@/components/canteen/CanteenInfoCard";
 import { useLocation as useLocationContext } from "@/contexts/LocationContext";
 import { MapPin, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -610,13 +611,13 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
             }`}
         >
           {/* Top section - Canteen selector and profile */}
-          <div className="px-4 pt-12 pb-3">
+          <div className="px-4 pt-6 pb-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center flex-1 min-w-0 gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full shrink-0 -ml-2"
+                  className={`rounded-2xl shrink-0 -ml-2 w-12 h-12 md:w-14 md:h-14 transition-all duration-300 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'bg-white hover:bg-white/90 text-black shadow-lg backdrop-blur-sm' : 'hover:bg-accent'}`}
                   onClick={() => {
                     // Prefer explicit navigation handler if provided
                     if (onNavigateBack) {
@@ -626,23 +627,22 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                     }
                   }}
                 >
-                  <ArrowLeft className={`w-5 h-5 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-foreground'}`} />
+                  <ArrowLeft className={`w-7 h-7 md:w-8 md:h-8 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-black' : 'text-foreground'}`} />
                 </Button>
 
                 <div className="flex items-center flex-1 min-w-0 overflow-hidden">
                   <div className={`p-1.5 md:p-2 rounded-xl mr-2 md:mr-3 shrink-0 transition-all duration-300 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold
-                    ? 'bg-white/20 text-white backdrop-blur-sm'
-                    : resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'
+                    ? 'opacity-0 invisible w-0 p-0 mr-0'
+                    : `opacity-100 visible ${resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'}`
                     }`}>
                     <Store className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   </div>
-                  <div className="flex flex-col min-w-0 overflow-hidden">
-                    <span className={`text-[10px] font-bold tracking-widest uppercase mb-0.5 leading-none whitespace-nowrap ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white/80' : 'text-muted-foreground'
-                      }`}>
+                  <div className={`flex flex-col min-w-0 overflow-hidden transition-opacity duration-300 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'opacity-0 invisible' : 'opacity-100 visible'
+                    }`}>
+                    <span className="text-[10px] font-bold tracking-widest uppercase mb-0.5 leading-none whitespace-nowrap text-muted-foreground">
                       Currently at
                     </span>
-                    <h2 className={`text-base md:text-lg font-bold truncate leading-tight tracking-tight pr-1 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-foreground'
-                      }`}>
+                    <h2 className="text-base md:text-lg font-bold truncate leading-tight tracking-tight pr-1 text-foreground">
                       {selectedCanteen?.name || 'Select Canteen'}
                     </h2>
                   </div>
@@ -668,11 +668,11 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`rounded-full h-10 w-10 md:h-12 md:w-12 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
+                  className={`rounded-full h-12 w-12 md:h-14 md:w-14 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
                     }`}
                   onClick={() => setIsSearchActive(true)}
                 >
-                  <Search className={`w-5 h-5 md:w-7 md:h-7 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
+                  <Search className={`w-6 h-6 md:w-7 md:h-7 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
                     }`} />
                 </Button>
 
@@ -684,11 +684,11 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
                   }}
-                  className={`rounded-full h-10 w-10 md:h-12 md:w-12 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
+                  className={`rounded-full h-12 w-12 md:h-14 md:w-14 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
                     }`}
                   aria-label={`View cart with ${getTotalItems()} items`}
                 >
-                  <ShoppingCart className={`w-5 h-5 md:w-7 md:h-7 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
+                  <ShoppingCart className={`w-8 h-8 md:w-8 md:h-8 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
                     }`} />
                   {getTotalItems() > 0 && (
                     <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-4 w-4 md:h-5 md:w-5 flex items-center justify-center shadow-lg ring-2 ring-background">
@@ -724,7 +724,18 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
           )}
 
           {/* Main Scrolling Content */}
-          <div className="bg-background min-h-[50vh] pb-20 pt-4">
+          <div className="bg-background min-h-[50vh] pb-20 pt-4 relative z-20">
+            {/* Canteen Info Card Overlay - Inside background but pulled up */}
+            {selectedCanteen?.bannerUrl && (
+              <div className="px-4 -mt-16 mb-6">
+                <CanteenInfoCard
+                  className="shadow-xl"
+                  title={selectedCanteen.name}
+                  address={homeData?.canteenLocation}
+                  logoUrl={homeData?.canteenLogo}
+                />
+              </div>
+            )}
 
             {/* Incomplete Profile Message */}
             {showIncompleteProfileMessage && !hasRestaurantContext && (
@@ -804,11 +815,11 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
             </div>
 
             {/* Media Banner - Enhanced with animation */}
-            {!showIncompleteProfileMessage && (
+            {/* {!showIncompleteProfileMessage && (
               <div className="mt-6 animate-slide-up-fade mb-4" style={{ animationDelay: '200ms' }}>
                 <HomeMediaBanner banners={mediaBanners} isLoading={homeDataLoading} />
               </div>
-            )}
+            )} */}
 
             {/* Main Content Sections */}
             <div className="px-4 space-y-8 mt-8">
@@ -1218,7 +1229,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
         </div>
 
-      </div>
+      </div >
 
       {/* Floating Cart - Shows after live order animation completes, or always in search overlay */}
       < FloatingCart
