@@ -15,7 +15,8 @@ import { X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 // Helper function to create the cropped image
 async function createCroppedImg(
     imageSrc: string,
-    pixelCrop: Area
+    pixelCrop: Area,
+    outputType: string = 'image/jpeg'
 ): Promise<Blob | null> {
     const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
@@ -46,7 +47,7 @@ async function createCroppedImg(
     return new Promise((resolve) => {
         canvas.toBlob((blob) => {
             resolve(blob);
-        }, 'image/jpeg', 0.95);
+        }, outputType, 0.95);
     });
 }
 
@@ -65,6 +66,7 @@ interface ImageCropperProps {
     onClose: () => void;
     onCropComplete: (croppedImageBlob: Blob) => void;
     aspect?: number;
+    outputType?: string;
 }
 
 export function ImageCropper({
@@ -73,6 +75,7 @@ export function ImageCropper({
     onClose,
     onCropComplete,
     aspect = 16 / 9, // Default aspect ratio
+    outputType = 'image/jpeg',
 }: ImageCropperProps) {
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -98,7 +101,7 @@ export function ImageCropper({
         if (imageSrc && croppedAreaPixels) {
             try {
                 setIsLoading(true);
-                const croppedImage = await createCroppedImg(imageSrc, croppedAreaPixels);
+                const croppedImage = await createCroppedImg(imageSrc, croppedAreaPixels, outputType);
                 if (croppedImage) {
                     onCropComplete(croppedImage);
                     onClose(); // Close after successful crop
@@ -131,6 +134,7 @@ export function ImageCropper({
                             onCropChange={onCropChange}
                             onCropComplete={onCropCompleteHandler}
                             onZoomChange={onZoomChange}
+                            objectFit="contain"
                         />
                     )}
                 </div>

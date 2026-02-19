@@ -11,6 +11,7 @@ interface CanteenInfoCardProps {
     deliveryTime?: string;
     hasFreeDelivery?: boolean;
     logoUrl?: string;
+    contactNumber?: string;
 }
 
 export const CanteenInfoCard: React.FC<CanteenInfoCardProps> = ({
@@ -20,7 +21,8 @@ export const CanteenInfoCard: React.FC<CanteenInfoCardProps> = ({
     rating = 4.8,
     deliveryTime = "20-25 min",
     hasFreeDelivery = true,
-    logoUrl
+    logoUrl,
+    contactNumber
 }) => {
     return (
         <Card className={cn("w-full shadow-xl rounded-3xl overflow-visible border-none relative", className)}>
@@ -47,6 +49,15 @@ export const CanteenInfoCard: React.FC<CanteenInfoCardProps> = ({
                         <p className="text-sm text-muted-foreground text-center max-w-[250px] leading-tight">
                             {address}
                         </p>
+                    )}
+
+                    {contactNumber && (
+                        <div className="flex items-center space-x-1 mt-1">
+                            <span className="text-muted-foreground text-xs">📞</span>
+                            <a href={`tel:${contactNumber}`} className="text-xs font-medium text-primary hover:underline">
+                                {contactNumber}
+                            </a>
+                        </div>
                     )}
 
                     {/* Info Row: Rating, Time, Delivery */}

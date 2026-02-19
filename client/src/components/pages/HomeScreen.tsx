@@ -732,6 +732,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   className="shadow-xl"
                   title={selectedCanteen.name}
                   address={homeData?.canteenLocation}
+                  contactNumber={homeData?.canteenContactNumber}
                   logoUrl={homeData?.canteenLogo}
                 />
               </div>
