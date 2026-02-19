@@ -23,6 +23,7 @@ import HomeScreenSkeleton from "@/components/pages/HomeScreenSkeleton";
 import CurrentOrderBottomSheet from "@/components/orders/CurrentOrderBottomSheet";
 import FloatingCart from "@/components/cart/FloatingCart";
 import { updateStatusBarColor } from "@/utils/statusBar";
+import { CanteenInfoCard } from "@/components/canteen/CanteenInfoCard";
 import { useLocation as useLocationContext } from "@/contexts/LocationContext";
 import { MapPin, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -71,6 +72,25 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
   // Smooth scroll-based transition state (0 to 1)
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  // Dynamic scroll threshold based on banner height
+  const [scrollThreshold, setScrollThreshold] = useState(20);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // Banner is 1:1 aspect ratio, so height = width
+      if (selectedCanteen?.bannerUrl) {
+        setScrollThreshold(Math.max(20, window.innerWidth - 80));
+      } else {
+        setScrollThreshold(20);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [selectedCanteen?.bannerUrl]);
 
   // Track if live order bottom sheet is hidden due to scroll
   const [isLiveOrderHidden, setIsLiveOrderHidden] = useState(false);
@@ -83,24 +103,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Sentinel for stickiness detection
-  const searchSentinelRef = useRef<HTMLDivElement>(null);
-  const [isSearchSticky, setIsSearchSticky] = useState(false);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsSearchSticky(!entry.isIntersecting);
-      },
-      { root: null, threshold: 0, rootMargin: '13px 0px 0px 0px' }
-    );
-
-    if (searchSentinelRef.current) {
-      observer.observe(searchSentinelRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   // Update status bar to match header color
   useEffect(() => {
@@ -185,6 +188,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const scrollY = window.scrollY || window.pageYOffset;
+          setScrollTop(scrollY);
 
           // Calculate progress for header fade (0 to 1 as header scrolls out)
           const headerProgress = Math.min(1, scrollY / HEADER_HEIGHT);
@@ -568,21 +572,52 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     <>
       <div className={`min-h-screen ${'bg-background'
         }`} style={{ maxWidth: '100vw' }}>
+
+        {/* Canteen Banner Background - Fixed position with parallax effect */}
+        {selectedCanteen?.bannerUrl && (
+          <div className="fixed top-0 left-0 w-full aspect-[1/1] z-0 overflow-hidden pointer-events-none">
+            <div
+              className="w-full h-full relative"
+              style={{
+                //transform: `scale(${Math.max(1, 1 + scrollTop * 0.0005)})`, // Slight zoom in effect often looks better for parallax, let's try zoom IN first as requested "zoom out" might mean "pull back".
+                // Wait, user said "zooming oiyt". Usually means image gets smaller?
+                // "Zooming out" -> scale goes from 1.1 to 1? Or 1 to 0.9?
+                // Let's try 1 to 0.9 (shrinking).
+                // transform: `scale(${Math.max(0.9, 1 - scrollTop * 0.0005)})`,
+                // standard parallax usually moves element slower.
+                // Let's stick to the user's specific "zooming out".
+                transform: `scale(${Math.max(1, 1.2 - scrollTop * 0.0005)})`, // Start zoomed in (1.2) and zoom out to 1 as user scrolls
+                opacity: Math.max(0, 1 - scrollTop * 0.002), // Fade out
+                // We need to ensure it starts at 1.1 so it can zoom out.
+              }}
+            >
+              <img
+                src={selectedCanteen.bannerUrl}
+                alt={`${selectedCanteen.name} Banner`}
+                className="w-full h-full object-cover"
+              />
+              {/* Gradient Overlay for text readability - faded only at top, transparent at bottom */}
+              <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-transparent" />
+            </div>
+          </div>
+        )}
+
         {/* Header Container - Scrolls normally, fades as it goes out of view */}
+        {/* Header Container - Fixed & Adaptive */}
         <div
-          className="bg-background"
-          style={{
-            opacity: 1 - scrollProgress * 0.5, // Subtle fade as scrolling
-          }}
+          className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${scrollTop > scrollThreshold
+            ? (resolvedTheme === 'dark' ? 'bg-background/80 backdrop-blur-md shadow-sm border-b border-white/5' : 'bg-background/80 backdrop-blur-md shadow-sm border-b border-black/5')
+            : (selectedCanteen?.bannerUrl ? 'bg-transparent' : 'bg-background')
+            }`}
         >
           {/* Top section - Canteen selector and profile */}
-          <div className="px-4 pt-12 pb-3">
+          <div className="px-4 pt-6 pb-3">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center flex-1 min-w-0 gap-2">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full shrink-0 -ml-2"
+                  className={`rounded-2xl shrink-0 -ml-2 w-12 h-12 md:w-14 md:h-14 transition-all duration-300 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'bg-white hover:bg-white/90 text-black shadow-lg backdrop-blur-sm' : 'hover:bg-accent'}`}
                   onClick={() => {
                     // Prefer explicit navigation handler if provided
                     if (onNavigateBack) {
@@ -592,19 +627,22 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                     }
                   }}
                 >
-                  <ArrowLeft className="w-5 h-5 text-foreground" />
+                  <ArrowLeft className={`w-7 h-7 md:w-8 md:h-8 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-black' : 'text-foreground'}`} />
                 </Button>
 
                 <div className="flex items-center flex-1 min-w-0 overflow-hidden">
-                  <div className={`p-1.5 md:p-2 rounded-xl mr-2 md:mr-3 shrink-0 transition-all duration-300 ${resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'
+                  <div className={`p-1.5 md:p-2 rounded-xl mr-2 md:mr-3 shrink-0 transition-all duration-300 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold
+                    ? 'opacity-0 invisible w-0 p-0 mr-0'
+                    : `opacity-100 visible ${resolvedTheme === 'dark' ? 'bg-primary/10 text-primary' : 'bg-primary/10 text-primary'}`
                     }`}>
                     <Store className="w-3.5 h-3.5 md:w-4 md:h-4" />
                   </div>
-                  <div className="flex flex-col min-w-0 overflow-hidden">
-                    <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase mb-0.5 leading-none whitespace-nowrap">
+                  <div className={`flex flex-col min-w-0 overflow-hidden transition-opacity duration-300 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'opacity-0 invisible' : 'opacity-100 visible'
+                    }`}>
+                    <span className="text-[10px] font-bold tracking-widest uppercase mb-0.5 leading-none whitespace-nowrap text-muted-foreground">
                       Currently at
                     </span>
-                    <h2 className="text-base md:text-lg font-bold truncate leading-tight tracking-tight text-foreground pr-1">
+                    <h2 className="text-base md:text-lg font-bold truncate leading-tight tracking-tight pr-1 text-foreground">
                       {selectedCanteen?.name || 'Select Canteen'}
                     </h2>
                   </div>
@@ -626,6 +664,19 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
               </div>
 
               <div className="flex items-center shrink-0 gap-1 md:gap-3">
+                {/* Search Icon */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`rounded-full h-12 w-12 md:h-14 md:w-14 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
+                    }`}
+                  onClick={() => setIsSearchActive(true)}
+                >
+                  <Search className={`w-6 h-6 md:w-7 md:h-7 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
+                    }`} />
+                </Button>
+
+
                 {/* Cart Icon - Always visible in header */}
                 <Button
                   variant="ghost"
@@ -633,10 +684,12 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
                   }}
-                  className="rounded-full h-10 w-10 md:h-12 md:w-12 p-0 relative group hover:bg-primary/10 transition-all duration-200"
+                  className={`rounded-full h-12 w-12 md:h-14 md:w-14 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
+                    }`}
                   aria-label={`View cart with ${getTotalItems()} items`}
                 >
-                  <ShoppingCart className="w-5 h-5 md:w-7 md:h-7 text-primary" />
+                  <ShoppingCart className={`w-8 h-8 md:w-8 md:h-8 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
+                    }`} />
                   {getTotalItems() > 0 && (
                     <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-4 w-4 md:h-5 md:w-5 flex items-center justify-center shadow-lg ring-2 ring-background">
                       {getTotalItems() > 99 ? '99+' : getTotalItems()}
@@ -650,589 +703,539 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
           </div>
         </div>
 
-        {/* Incomplete Profile Message */}
-        {showIncompleteProfileMessage && !hasRestaurantContext && (
-          <div className="px-4 mt-4">
-            <Card className={`border-2 ${resolvedTheme === 'dark'
-              ? 'bg-blue-950/50 border-blue-800'
-              : 'bg-blue-50 border-blue-200'
-              }`}>
-              <CardContent className="pt-6 pb-6">
-                <div className="text-center space-y-4">
-                  <div className="flex justify-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-blue-900' : 'bg-blue-100'
-                      }`}>
-                      <CheckCircle className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-blue-300' : 'text-blue-600'
-                        }`} />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className={`text-xl font-bold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                      }`}>
-                      Thank You!
-                    </h3>
-                    <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                      You've successfully exited the restaurant session.
-                    </p>
-                  </div>
-                  <div className="pt-2 border-t border-current/20">
-                    <p className={`text-sm mb-4 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                      To continue using SilloBite, please complete your profile or scan a QR code at a restaurant table.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                      <Button
-                        onClick={() => {
-                          setShowIncompleteProfileMessage(false);
-                          setLocation('/profile/edit');
-                        }}
-                        className="bg-primary hover:bg-primary/90"
-                      >
-                        Complete Profile
-                      </Button>
-                      <Button
-                        onClick={() => setShowIncompleteProfileMessage(false)}
-                        variant="outline"
-                      >
-                        Dismiss
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+        {/* Spacer for Fixed Banner or Fixed Header */}
+        {selectedCanteen?.bannerUrl ? (
+          <div className="w-full aspect-[1/1] pointer-events-none" />
+        ) : (
+          <div className="w-full h-[88px] pointer-events-none" />
         )}
 
-        {/* Categories Section - Premium styling */}
-        <div className="mt-6 animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
-          <ErrorBoundary>
-            <CategoryCarousel
-              categories={categories}
-              isLoading={categoriesLoading}
-              isFetchingNextPage={isFetchingNextPage}
-              hasNextPage={hasNextPage}
-              totalCategories={totalCategories}
-              onScroll={(e) => {
-                const { scrollLeft, scrollWidth, clientWidth } = e.currentTarget;
-                const isNearEnd = scrollLeft + clientWidth >= scrollWidth - SCROLL_THRESHOLD;
-
-                if (isNearEnd && hasNextPage && !isFetchingNextPage) {
-                  fetchNextPage();
-                }
-              }}
-              createCategoryUrl={createCategoryUrl}
-            />
-          </ErrorBoundary>
-        </div>
-
-        {/* Media Banner - Enhanced with animation */}
-        {!showIncompleteProfileMessage && (
-          <div className="mt-6 animate-slide-up-fade mb-4" style={{ animationDelay: '200ms' }}>
-            <HomeMediaBanner banners={mediaBanners} isLoading={homeDataLoading} />
-          </div>
-        )}
-
-        {/* Sentinel for search sticky detection */}
-        <div ref={searchSentinelRef} className="absolute h-1 w-full pointer-events-none opacity-0" style={{ transform: 'translateY(-1px)' }} />
-
-        {/* Search Bar - Uses position: sticky for smooth behavior */}
-        <div
-          className="px-4"
-          style={{
-            position: isSearchSticky ? 'fixed' : 'relative',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50,
-            paddingTop: isSearchSticky ? '12px' : '32px',
-            paddingBottom: '16px',
-            // Background only when sticky
-            background: isSearchSticky
-              ? (resolvedTheme === 'dark'
-                ? 'rgba(15, 10, 24, 0.95)'
-                : 'rgba(255, 255, 255, 0.98)')
-              : 'transparent',
-            backdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
-            WebkitBackdropFilter: isSearchSticky ? 'blur(20px) saturate(180%)' : 'none',
-            borderBottom: isSearchSticky
-              ? (resolvedTheme === 'dark'
-                ? '1px solid rgba(255, 255, 255, 0.08)'
-                : '1px solid rgba(0, 0, 0, 0.06)')
-              : 'none',
-            boxShadow: isSearchSticky
-              ? '0 4px 20px rgba(0, 0, 0, 0.08)'
-              : 'none',
-            transition: 'background 0.2s ease-out, backdrop-filter 0.2s ease-out, box-shadow 0.2s ease-out',
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 group">
-              {/* Subtle glow effect on hover */}
-              <div className={`absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300 blur-xl pointer-events-none ${resolvedTheme === 'dark'
-                ? 'bg-primary/20'
-                : 'bg-primary/10'
-                }`} />
-
-              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none z-10 w-5 h-5 transition-colors duration-150 ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`} />
-
-              <input
-                type="text"
-                inputMode="search"
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                placeholder="Search for dishes, categories..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (!isSearchActive && e.target.value) {
-                    setIsSearchActive(true);
-                  }
-                }}
-                onFocus={() => setIsSearchActive(true)}
-                className={`w-full rounded-2xl text-foreground placeholder:text-muted-foreground focus:outline-none relative py-3.5 pl-12 pr-10 text-sm transition-all duration-150 ${resolvedTheme === 'dark'
-                  ? 'bg-white/5 border border-white/10 hover:bg-white/8 hover:border-white/15 focus:ring-2 focus:ring-primary/30 focus:border-primary/50'
-                  : 'bg-gray-100/80 border border-gray-200/60 hover:bg-gray-100 hover:border-gray-300/80 focus:ring-2 focus:ring-primary/20 focus:border-primary/50'
-                  }`}
-                style={{ WebkitAppearance: 'none' }}
-              />
-
-              {/* Clear button */}
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setDebouncedSearchQuery("");
-                    searchInputRef.current?.focus();
-                  }}
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full transition-colors ${resolvedTheme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-200 hover:bg-white/10'
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-200'
-                    }`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-
-          </div>
-        </div>
-
-        {/* Main Content Sections */}
-        <div className={`px-4 space-y-8 ${isSearchSticky ? 'mt-36' : 'mt-8'}`}>
-          {/* Trending Now Section - Premium Design */}
-          <ErrorBoundary>
-            <section className="animate-slide-up-fade" style={{ animationDelay: '300ms' }}>
-              {/* Section Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className={`text-xl font-bold tracking-tight ${resolvedTheme === 'dark' ? 'text-gray-50' : 'text-gray-900'
-                    }`}>Trending Now</h2>
-                  <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>Most popular right now</p>
-                </div>
-              </div>
-
-              {trendingItems.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {trendingItems.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="animate-card-entrance hover-lift"
-                      style={{
-                        animationDelay: `${400 + index * 80}ms`,
-                      }}
-                    >
-                      <MenuItemCard
-                        item={item}
-                        variant="trending"
-                        getDefaultCategoryName={getDefaultCategoryName}
-                        hideDescription={true}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : !homeDataLoading && (
-                <div className={`flex items-center justify-center py-6 px-4 rounded-2xl border-2 border-dashed transition-all ${resolvedTheme === 'dark'
-                  ? 'border-gray-700/50 bg-gradient-to-br from-gray-800/30 to-gray-900/30'
-                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'
-                  }`}>
-                  <TrendingUp className={`w-5 h-5 mr-3 ${resolvedTheme === 'dark' ? 'text-orange-400/60' : 'text-orange-500/60'
-                    }`} />
-                  <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
-                    Nothing trending right now
-                  </span>
-                </div>
-              )}
-            </section>
-          </ErrorBoundary>
-
-          {/* Quick Picks Section - Premium Design */}
-          <ErrorBoundary>
-            <section className="animate-slide-up-fade" style={{ animationDelay: '400ms' }}>
-              {/* Section Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className={`text-xl font-bold tracking-tight ${resolvedTheme === 'dark' ? 'text-gray-50' : 'text-gray-900'
-                    }`}>Quick Picks</h2>
-                  <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>Ready in minutes</p>
-                </div>
-              </div>
-
-              {quickPickItems.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {quickPickItems.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="animate-card-entrance hover-lift"
-                      style={{
-                        animationDelay: `${500 + index * 80}ms`,
-                      }}
-                    >
-                      <MenuItemCard
-                        item={item}
-                        variant="quickpick"
-                        getDefaultCategoryName={getDefaultCategoryName}
-                        hideDescription={true}
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : !homeDataLoading && (
-                <div className={`flex items-center justify-center py-6 px-4 rounded-2xl border transition-all ${resolvedTheme === 'dark'
-                  ? 'bg-gradient-to-br from-blue-900/20 to-cyan-900/10 border-blue-800/30'
-                  : 'bg-gradient-to-br from-blue-50 to-cyan-50/50 border-blue-100'
-                  }`}>
-                  <Zap className={`w-5 h-5 mr-3 ${resolvedTheme === 'dark' ? 'text-blue-400/60' : 'text-blue-500/60'
-                    }`} />
-                  <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-blue-300/80' : 'text-blue-600/80'
-                    }`}>
-                    Quick picks coming soon
-                  </span>
-                </div>
-              )}
-            </section>
-          </ErrorBoundary>
-
-          {/* Empty State - Only show when everything is empty */}
-          {!homeDataLoading && trendingItems.length === 0 && quickPickItems.length === 0 && categories.length === 0 && (
-            <div className={`text-center py-8 px-6 rounded-3xl border-2 border-dashed transition-all animate-slide-up-fade ${resolvedTheme === 'dark'
-              ? 'bg-gradient-to-br from-gray-800/30 to-gray-900/30 border-gray-700/50'
-              : 'bg-gradient-to-br from-gray-50 to-white border-gray-200'
-              }`} style={{ animationDelay: '600ms' }}>
-              <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${resolvedTheme === 'dark'
-                ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10'
-                : 'bg-gradient-to-br from-amber-100 to-yellow-50'
-                }`}>
-                <Sparkles className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-amber-400' : 'text-amber-600'
-                  }`} />
-              </div>
-              <h3 className={`text-lg font-bold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-                }`}>
-                Menu is being prepared
-              </h3>
-              <p className={`text-sm mb-5 max-w-xs mx-auto ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                We're setting up amazing items for you. Check back soon!
-              </p>
-              <Button
-                onClick={() => {
-                  refetchCategories();
-                  refetchHomeData();
-                }}
-                variant="outline"
-                size="default"
-                className={`rounded-xl px-6 transition-all hover:scale-105 ${resolvedTheme === 'dark'
-                  ? 'border-gray-600 hover:bg-gray-700/50 text-gray-200'
-                  : 'border-gray-300 hover:bg-gray-100 text-gray-800'
-                  }`}
-              >
-                Refresh
-              </Button>
+        {/* Content Wrapper with Upward Curve (Smile/Valley) */}
+        <div className={`relative z-10 ${selectedCanteen?.bannerUrl ? '-mt-12 md:-mt-20' : ''}`}>
+          {selectedCanteen?.bannerUrl && (
+            <div className="flex flex-row justify-between absolute top-0 left-0 w-full overflow-hidden transform -translate-y-full">
+              <svg width="27" height="16" viewBox="0 0 27 16" fill="none" style={{ transform: 'scaleX(-1)' }}>
+                <path d="M0 16.5C19 13.5 23 4.5 27 0L27 16.5H0Z" fill="currentColor" className="text-background" />
+              </svg>
+              <svg width="27" height="16" viewBox="0 0 27 16" fill="none">
+                <path d="M0 16.5C19 13.5 23 4.5 27 0L27 16.5H0Z" fill="currentColor" className="text-background" />
+              </svg>
             </div>
           )}
-        </div>
 
-        {/* Dynamic bottom spacing - only when cart has items (not just live orders) */}
-        {getTotalItems() > 0 && (
-          <div className="h-32"></div>
-        )}
-
-        {/* Smaller spacing for live orders only (no cart items) */}
-        {getTotalItems() === 0 && Array.isArray(homeData?.activeOrders) && homeData.activeOrders.length > 0 && (
-          <div className="h-20"></div>
-        )}
-
-      </div>
-
-      {/* Search Overlay */}
-      {isSearchActive && (
-        <div
-          className="fixed inset-0 z-[100] animate-in fade-in duration-200"
-          style={{
-            background: resolvedTheme === 'dark'
-              ? 'rgba(15, 10, 24, 0.98)'
-              : 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-          }}
-        >
-          {/* Search Header */}
-          <div
-            className="sticky top-0 z-10 px-4 pt-12 pb-4"
-            style={{
-              background: resolvedTheme === 'dark'
-                ? 'rgba(15, 10, 24, 0.95)'
-                : 'rgba(255, 255, 255, 0.95)',
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`rounded-full h-10 w-10 flex-shrink-0 ${resolvedTheme === 'dark'
-                  ? 'hover:bg-white/10 text-white'
-                  : 'hover:bg-gray-100 text-gray-700'
-                  }`}
-                onClick={closeSearch}
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-
-              {/* Search Input */}
-              <div className="relative flex-1">
-                <div
-                  className={`absolute -inset-0.5 rounded-xl opacity-0 focus-within:opacity-100 transition-opacity duration-300 blur-md pointer-events-none ${resolvedTheme === 'dark' ? 'bg-violet-500/30' : 'bg-violet-400/20'
-                    }`}
+          {/* Main Scrolling Content */}
+          <div className="bg-background min-h-[50vh] pb-20 pt-4 relative z-20">
+            {/* Canteen Info Card Overlay - Inside background but pulled up */}
+            {selectedCanteen?.bannerUrl && (
+              <div className="px-4 -mt-16 mb-6">
+                <CanteenInfoCard
+                  className="shadow-xl"
+                  title={selectedCanteen.name}
+                  address={homeData?.canteenLocation}
+                  logoUrl={homeData?.canteenLogo}
                 />
-
-                <div
-                  className={`relative flex items-center rounded-xl overflow-hidden transition-all duration-200 ${resolvedTheme === 'dark'
-                    ? 'bg-white/5 border border-white/10 focus-within:border-violet-500/50'
-                    : 'bg-white border border-gray-200 focus-within:border-violet-400 focus-within:shadow-lg'
-                    }`}
-                >
-                  <Search className={`ml-4 w-5 h-5 flex-shrink-0 pointer-events-none ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`} />
-
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    inputMode="search"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                    placeholder="Search dishes, categories..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`flex-1 py-3.5 px-3 bg-transparent outline-none text-[15px] w-full min-w-0 ${resolvedTheme === 'dark'
-                      ? 'text-white placeholder:text-gray-500'
-                      : 'text-gray-900 placeholder:text-gray-400'
-                      }`}
-                    style={{ WebkitAppearance: 'none' }}
-                  />
-
-                  {/* Loading indicator */}
-                  {isSearching && searchQuery && (
-                    <div className="pr-3">
-                      <Loader2 className={`w-4 h-4 animate-spin ${resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-500'
-                        }`} />
-                    </div>
-                  )}
-
-                  {/* Clear button */}
-                  {searchQuery && !isSearching && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setDebouncedSearchQuery("");
-                        searchInputRef.current?.focus();
-                      }}
-                      className={`pr-3 transition-colors ${resolvedTheme === 'dark'
-                        ? 'text-gray-500 hover:text-gray-300'
-                        : 'text-gray-400 hover:text-gray-600'
-                        }`}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Search Content */}
-          <div className="px-4 py-4 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
-            {hasSearchQuery ? (
-              <div className="animate-in fade-in duration-200">
-                {/* Results header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-1.5 rounded-lg ${resolvedTheme === 'dark' ? 'bg-violet-500/20' : 'bg-violet-100'
-                      }`}>
-                      <Search className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-600'
-                        }`} />
-                    </div>
-                    <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                      {isSearching ? 'Searching...' : (
-                        searchResults.length > 0
-                          ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
-                          : 'No results'
-                      )}
-                    </span>
-                  </div>
-                  {searchResults.length > 0 && (
-                    <span className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                      }`}>
-                      for "{debouncedSearchQuery}"
-                    </span>
-                  )}
-                </div>
-
-                {/* Results grid */}
-                {isSearchLoading && !searchResults.length ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {[...Array(4)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`rounded-2xl h-48 animate-pulse ${resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-gray-200'
-                          }`}
-                      />
-                    ))}
-                  </div>
-                ) : searchResults.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {searchResults.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="animate-in fade-in slide-in-from-bottom-2 duration-300"
-                        style={{ animationDelay: `${index * 50}ms` }}
-                      >
-                        <MenuItemCard
-                          item={item}
-                          getDefaultCategoryName={getDefaultCategoryName}
-                          hideDescription={true}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : !isSearching && (
-                  <div className={`text-center py-12 rounded-2xl ${resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'
-                    }`}>
-                    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
-                      }`}>
-                      <Search className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-gray-600' : 'text-gray-400'
-                        }`} />
-                    </div>
-                    <p className={`font-medium mb-1 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                      No dishes found
-                    </p>
-                    <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                      }`}>
-                      Try a different search term
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Popular Searches */}
-                <div className="animate-in fade-in duration-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={`p-1.5 rounded-lg ${resolvedTheme === 'dark' ? 'bg-rose-500/20' : 'bg-rose-100'
-                      }`}>
-                      <TrendingUp className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-rose-400' : 'text-rose-600'
-                        }`} />
-                    </div>
-                    <span className={`text-sm font-semibold ${resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
-                      }`}>
-                      Popular Searches
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {["Tea", "Coffee", "Snacks", "Chicken", "Rice", "Biryani", "Burger", "Pizza"].map((term) => (
-                      <button
-                        key={term}
-                        onClick={() => {
-                          setSearchQuery(term);
-                          setDebouncedSearchQuery(term);
-                        }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${resolvedTheme === 'dark'
-                          ? 'bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-violet-300 hover:from-violet-500/20 hover:to-fuchsia-500/20 border border-violet-500/20'
-                          : 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 hover:from-violet-100 hover:to-fuchsia-100 border border-violet-200'
-                          }`}
-                      >
-                        {term}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Categories */}
-                {categories.length > 0 && (
-                  <div className="animate-in fade-in duration-200" style={{ animationDelay: '100ms' }}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={`p-1.5 rounded-lg ${resolvedTheme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'
-                        }`}>
-                        <Sparkles className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
-                          }`} />
-                      </div>
-                      <span className={`text-sm font-semibold ${resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
-                        }`}>
-                        Categories
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {categories.filter(c => c.name !== 'all').slice(0, 8).map((category) => (
-                        <button
-                          key={category.id || (category as any)._id}
-                          onClick={() => {
-                            setSearchQuery(category.name);
-                            setDebouncedSearchQuery(category.name);
-                          }}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${resolvedTheme === 'dark'
-                            ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'
-                            }`}
-                        >
-                          {category.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Search tip */}
-                <div
-                  className={`text-center py-8 ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                    }`}
-                >
-                  <p className="text-sm">
-                    Type at least 2 characters to search
-                  </p>
-                </div>
               </div>
             )}
+
+            {/* Incomplete Profile Message */}
+            {showIncompleteProfileMessage && !hasRestaurantContext && (
+              <div className="px-4 mt-4">
+                <Card className={`border-2 ${resolvedTheme === 'dark'
+                  ? 'bg-blue-950/50 border-blue-800'
+                  : 'bg-blue-50 border-blue-200'
+                  }`}>
+                  <CardContent className="pt-6 pb-6">
+                    <div className="text-center space-y-4">
+                      <div className="flex justify-center">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-blue-900' : 'bg-blue-100'
+                          }`}>
+                          <CheckCircle className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-blue-300' : 'text-blue-600'
+                            }`} />
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className={`text-xl font-bold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                          }`}>
+                          Thank You!
+                        </h3>
+                        <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
+                          You've successfully exited the restaurant session.
+                        </p>
+                      </div>
+                      <div className="pt-2 border-t border-current/20">
+                        <p className={`text-sm mb-4 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
+                          To continue using SilloBite, please complete your profile or scan a QR code at a restaurant table.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                          <Button
+                            onClick={() => {
+                              setShowIncompleteProfileMessage(false);
+                              setLocation('/profile/edit');
+                            }}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            Complete Profile
+                          </Button>
+                          <Button
+                            onClick={() => setShowIncompleteProfileMessage(false)}
+                            variant="outline"
+                          >
+                            Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Categories Section - Premium styling */}
+            <div className="mt-6 animate-slide-up-fade" style={{ animationDelay: '100ms' }}>
+              <ErrorBoundary>
+                <CategoryCarousel
+                  categories={categories}
+                  isLoading={categoriesLoading}
+                  isFetchingNextPage={isFetchingNextPage}
+                  hasNextPage={hasNextPage}
+                  totalCategories={totalCategories}
+                  onScroll={(e) => {
+                    const { scrollLeft, scrollWidth, clientWidth } = e.currentTarget;
+                    const isNearEnd = scrollLeft + clientWidth >= scrollWidth - SCROLL_THRESHOLD;
+
+                    if (isNearEnd && hasNextPage && !isFetchingNextPage) {
+                      fetchNextPage();
+                    }
+                  }}
+                  createCategoryUrl={createCategoryUrl}
+                />
+              </ErrorBoundary>
+            </div>
+
+            {/* Media Banner - Enhanced with animation */}
+            {/* {!showIncompleteProfileMessage && (
+              <div className="mt-6 animate-slide-up-fade mb-4" style={{ animationDelay: '200ms' }}>
+                <HomeMediaBanner banners={mediaBanners} isLoading={homeDataLoading} />
+              </div>
+            )} */}
+
+            {/* Main Content Sections */}
+            <div className="px-4 space-y-8 mt-8">
+              {/* Trending Now Section - Premium Design */}
+              <ErrorBoundary>
+                <section className="animate-slide-up-fade" style={{ animationDelay: '300ms' }}>
+                  {/* Section Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className={`text-xl font-bold tracking-tight ${resolvedTheme === 'dark' ? 'text-gray-50' : 'text-gray-900'
+                        }`}>Trending Now</h2>
+                      <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>Most popular right now</p>
+                    </div>
+                  </div>
+
+                  {trendingItems.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {trendingItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="animate-card-entrance hover-lift"
+                          style={{
+                            animationDelay: `${400 + index * 80}ms`,
+                          }}
+                        >
+                          <MenuItemCard
+                            item={item}
+                            variant="trending"
+                            getDefaultCategoryName={getDefaultCategoryName}
+                            hideDescription={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : !homeDataLoading && (
+                    <div className={`flex items-center justify-center py-6 px-4 rounded-2xl border-2 border-dashed transition-all ${resolvedTheme === 'dark'
+                      ? 'border-gray-700/50 bg-gradient-to-br from-gray-800/30 to-gray-900/30'
+                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'
+                      }`}>
+                      <TrendingUp className={`w-5 h-5 mr-3 ${resolvedTheme === 'dark' ? 'text-orange-400/60' : 'text-orange-500/60'
+                        }`} />
+                      <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
+                        Nothing trending right now
+                      </span>
+                    </div>
+                  )}
+                </section>
+              </ErrorBoundary>
+
+              {/* Quick Picks Section - Premium Design */}
+              <ErrorBoundary>
+                <section className="animate-slide-up-fade" style={{ animationDelay: '400ms' }}>
+                  {/* Section Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className={`text-xl font-bold tracking-tight ${resolvedTheme === 'dark' ? 'text-gray-50' : 'text-gray-900'
+                        }`}>Quick Picks</h2>
+                      <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`}>Ready in minutes</p>
+                    </div>
+                  </div>
+
+                  {quickPickItems.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      {quickPickItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="animate-card-entrance hover-lift"
+                          style={{
+                            animationDelay: `${500 + index * 80}ms`,
+                          }}
+                        >
+                          <MenuItemCard
+                            item={item}
+                            variant="quickpick"
+                            getDefaultCategoryName={getDefaultCategoryName}
+                            hideDescription={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : !homeDataLoading && (
+                    <div className={`flex items-center justify-center py-6 px-4 rounded-2xl border transition-all ${resolvedTheme === 'dark'
+                      ? 'bg-gradient-to-br from-blue-900/20 to-cyan-900/10 border-blue-800/30'
+                      : 'bg-gradient-to-br from-blue-50 to-cyan-50/50 border-blue-100'
+                      }`}>
+                      <Zap className={`w-5 h-5 mr-3 ${resolvedTheme === 'dark' ? 'text-blue-400/60' : 'text-blue-500/60'
+                        }`} />
+                      <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-blue-300/80' : 'text-blue-600/80'
+                        }`}>
+                        Quick picks coming soon
+                      </span>
+                    </div>
+                  )}
+                </section>
+              </ErrorBoundary>
+
+              {/* Empty State - Only show when everything is empty */}
+              {!homeDataLoading && trendingItems.length === 0 && quickPickItems.length === 0 && categories.length === 0 && (
+                <div className={`text-center py-8 px-6 rounded-3xl border-2 border-dashed transition-all animate-slide-up-fade ${resolvedTheme === 'dark'
+                  ? 'bg-gradient-to-br from-gray-800/30 to-gray-900/30 border-gray-700/50'
+                  : 'bg-gradient-to-br from-gray-50 to-white border-gray-200'
+                  }`} style={{ animationDelay: '600ms' }}>
+                  <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${resolvedTheme === 'dark'
+                    ? 'bg-gradient-to-br from-amber-500/20 to-yellow-500/10'
+                    : 'bg-gradient-to-br from-amber-100 to-yellow-50'
+                    }`}>
+                    <Sparkles className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-amber-400' : 'text-amber-600'
+                      }`} />
+                  </div>
+                  <h3 className={`text-lg font-bold mb-2 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                    }`}>
+                    Menu is being prepared
+                  </h3>
+                  <p className={`text-sm mb-5 max-w-xs mx-auto ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                    We're setting up amazing items for you. Check back soon!
+                  </p>
+                  <Button
+                    onClick={() => {
+                      refetchCategories();
+                      refetchHomeData();
+                    }}
+                    variant="outline"
+                    size="default"
+                    className={`rounded-xl px-6 transition-all hover:scale-105 ${resolvedTheme === 'dark'
+                      ? 'border-gray-600 hover:bg-gray-700/50 text-gray-200'
+                      : 'border-gray-300 hover:bg-gray-100 text-gray-800'
+                      }`}
+                  >
+                    Refresh
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Dynamic bottom spacing - only when cart has items (not just live orders) */}
+            {getTotalItems() > 0 && (
+              <div className="h-32"></div>
+            )}
+
+            {/* Smaller spacing for live orders only (no cart items) */}
+            {getTotalItems() === 0 && Array.isArray(homeData?.activeOrders) && homeData.activeOrders.length > 0 && (
+              <div className="h-20"></div>
+            )}
+
           </div>
+
+          {/* Search Overlay */}
+          {isSearchActive && (
+            <div
+              className="fixed inset-0 z-[100] animate-in fade-in duration-200"
+              style={{
+                background: resolvedTheme === 'dark'
+                  ? 'rgba(15, 10, 24, 0.98)'
+                  : 'rgba(255, 255, 255, 0.98)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+              }}
+            >
+              {/* Search Header */}
+              <div
+                className="sticky top-0 z-10 px-4 pt-12 pb-4"
+                style={{
+                  background: resolvedTheme === 'dark'
+                    ? 'rgba(15, 10, 24, 0.95)'
+                    : 'rgba(255, 255, 255, 0.95)',
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`rounded-full h-10 w-10 flex-shrink-0 ${resolvedTheme === 'dark'
+                      ? 'hover:bg-white/10 text-white'
+                      : 'hover:bg-gray-100 text-gray-700'
+                      }`}
+                    onClick={closeSearch}
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </Button>
+
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <div
+                      className={`absolute -inset-0.5 rounded-xl opacity-0 focus-within:opacity-100 transition-opacity duration-300 blur-md pointer-events-none ${resolvedTheme === 'dark' ? 'bg-violet-500/30' : 'bg-violet-400/20'
+                        }`}
+                    />
+
+                    <div
+                      className={`relative flex items-center rounded-xl overflow-hidden transition-all duration-200 ${resolvedTheme === 'dark'
+                        ? 'bg-white/5 border border-white/10 focus-within:border-violet-500/50'
+                        : 'bg-white border border-gray-200 focus-within:border-violet-400 focus-within:shadow-lg'
+                        }`}
+                    >
+                      <Search className={`ml-4 w-5 h-5 flex-shrink-0 pointer-events-none ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                        }`} />
+
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        inputMode="search"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        placeholder="Search dishes, categories..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`flex-1 py-3.5 px-3 bg-transparent outline-none text-[15px] w-full min-w-0 ${resolvedTheme === 'dark'
+                          ? 'text-white placeholder:text-gray-500'
+                          : 'text-gray-900 placeholder:text-gray-400'
+                          }`}
+                        style={{ WebkitAppearance: 'none' }}
+                      />
+
+                      {/* Loading indicator */}
+                      {isSearching && searchQuery && (
+                        <div className="pr-3">
+                          <Loader2 className={`w-4 h-4 animate-spin ${resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-500'
+                            }`} />
+                        </div>
+                      )}
+
+                      {/* Clear button */}
+                      {searchQuery && !isSearching && (
+                        <button
+                          onClick={() => {
+                            setSearchQuery("");
+                            setDebouncedSearchQuery("");
+                            searchInputRef.current?.focus();
+                          }}
+                          className={`pr-3 transition-colors ${resolvedTheme === 'dark'
+                            ? 'text-gray-500 hover:text-gray-300'
+                            : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Search Content */}
+              <div className="px-4 py-4 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
+                {hasSearchQuery ? (
+                  <div className="animate-in fade-in duration-200">
+                    {/* Results header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1.5 rounded-lg ${resolvedTheme === 'dark' ? 'bg-violet-500/20' : 'bg-violet-100'
+                          }`}>
+                          <Search className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-600'
+                            }`} />
+                        </div>
+                        <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
+                          {isSearching ? 'Searching...' : (
+                            searchResults.length > 0
+                              ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                              : 'No results'
+                          )}
+                        </span>
+                      </div>
+                      {searchResults.length > 0 && (
+                        <span className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                          }`}>
+                          for "{debouncedSearchQuery}"
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Results grid */}
+                    {isSearchLoading && !searchResults.length ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {[...Array(4)].map((_, i) => (
+                          <div
+                            key={i}
+                            className={`rounded-2xl h-48 animate-pulse ${resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-gray-200'
+                              }`}
+                          />
+                        ))}
+                      </div>
+                    ) : searchResults.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {searchResults.map((item, index) => (
+                          <div
+                            key={item.id}
+                            className="animate-in fade-in slide-in-from-bottom-2 duration-300"
+                            style={{ animationDelay: `${index * 50}ms` }}
+                          >
+                            <MenuItemCard
+                              item={item}
+                              getDefaultCategoryName={getDefaultCategoryName}
+                              hideDescription={true}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : !isSearching && (
+                      <div className={`text-center py-12 rounded-2xl ${resolvedTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'
+                        }`}>
+                        <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                          }`}>
+                          <Search className={`w-8 h-8 ${resolvedTheme === 'dark' ? 'text-gray-600' : 'text-gray-400'
+                            }`} />
+                        </div>
+                        <p className={`font-medium mb-1 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                          }`}>
+                          No dishes found
+                        </p>
+                        <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                          }`}>
+                          Try a different search term
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Popular Searches */}
+                    <div className="animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`p-1.5 rounded-lg ${resolvedTheme === 'dark' ? 'bg-rose-500/20' : 'bg-rose-100'
+                          }`}>
+                          <TrendingUp className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-rose-400' : 'text-rose-600'
+                            }`} />
+                        </div>
+                        <span className={`text-sm font-semibold ${resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                          }`}>
+                          Popular Searches
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {["Tea", "Coffee", "Snacks", "Chicken", "Rice", "Biryani", "Burger", "Pizza"].map((term) => (
+                          <button
+                            key={term}
+                            onClick={() => {
+                              setSearchQuery(term);
+                              setDebouncedSearchQuery(term);
+                            }}
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${resolvedTheme === 'dark'
+                              ? 'bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 text-violet-300 hover:from-violet-500/20 hover:to-fuchsia-500/20 border border-violet-500/20'
+                              : 'bg-gradient-to-r from-violet-50 to-fuchsia-50 text-violet-700 hover:from-violet-100 hover:to-fuchsia-100 border border-violet-200'
+                              }`}
+                          >
+                            {term}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Categories */}
+                    {categories.length > 0 && (
+                      <div className="animate-in fade-in duration-200" style={{ animationDelay: '100ms' }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className={`p-1.5 rounded-lg ${resolvedTheme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                            }`}>
+                            <Sparkles className={`w-4 h-4 ${resolvedTheme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'
+                              }`} />
+                          </div>
+                          <span className={`text-sm font-semibold ${resolvedTheme === 'dark' ? 'text-gray-200' : 'text-gray-800'
+                            }`}>
+                            Categories
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {categories.filter(c => c.name !== 'all').slice(0, 8).map((category) => (
+                            <button
+                              key={category.id || (category as any)._id}
+                              onClick={() => {
+                                setSearchQuery(category.name);
+                                setDebouncedSearchQuery(category.name);
+                              }}
+                              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${resolvedTheme === 'dark'
+                                ? 'bg-white/5 text-gray-300 hover:bg-white/10 border border-white/10'
+                                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'
+                                }`}
+                            >
+                              {category.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Search tip */}
+                    <div
+                      className={`text-center py-8 ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                        }`}
+                    >
+                      <p className="text-sm">
+                        Type at least 2 characters to search
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
-      )}
+
+      </div >
 
       {/* Floating Cart - Shows after live order animation completes, or always in search overlay */}
-      <FloatingCart
+      < FloatingCart
         hasActiveOrders={Array.isArray(homeData?.activeOrders) && homeData.activeOrders.length > 0}
-        showOnlyWhenLiveOrderHidden={!isSearchActive}
+        showOnlyWhenLiveOrderHidden={!isSearchActive
+        }
         isLiveOrderHidden={isSearchActive || showCartCard}
       />
 

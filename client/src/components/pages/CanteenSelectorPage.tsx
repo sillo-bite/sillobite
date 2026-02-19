@@ -406,7 +406,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                         ))}
                     </div>
                 ) : filteredCanteens.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {filteredCanteens.map((canteen) => (
                             <div
                                 key={canteen.id}
@@ -417,7 +417,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                                     }`}
                             >
                                 {/* Top: Large Image */}
-                                <div className="relative w-full h-40 overflow-hidden rounded-b-3xl">
+                                <div className="relative w-full aspect-[16/9] overflow-hidden rounded-b-3xl">
                                     {canteen.imageUrl ? (
                                         <img
                                             src={canteen.imageUrl}

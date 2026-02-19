@@ -4404,7 +4404,7 @@ export default function CanteenOwnerDashboardSidebar() {
               setSelectedBanner(null);
             }}
             onCropComplete={handleBannerCropComplete}
-            aspect={4 / 3} // 4:3 for banner
+            aspect={1} // 1:1 for banner
           />
         )
       }

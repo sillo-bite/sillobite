@@ -3123,7 +3123,9 @@ router.get('/canteens/by-institution', async (req, res) => {
           createdAt: '$canteens.list.createdAt',
           updatedAt: '$canteens.list.updatedAt',
           imageUrl: '$canteens.list.imageUrl', // Profile Picture URL
-          imagePublicId: '$canteens.list.imagePublicId' // Cloudinary Public ID
+          imagePublicId: '$canteens.list.imagePublicId', // Cloudinary Public ID
+          bannerUrl: '$canteens.list.bannerUrl', // Banner URL
+          bannerPublicId: '$canteens.list.bannerPublicId' // Banner Public ID
         }
       },
 
