@@ -10,11 +10,12 @@ export async function compressImage(
     file: File,
     targetSizeKB: number = 20,
     maxWidth: number = 800,
-    maxHeight: number = 800
+    maxHeight: number = 800,
+    outputType: string = 'image/webp'
 ): Promise<Blob | null> {
     return new Promise((resolve, reject) => {
         // If file is already small enough, return it (convert to blob)
-        if (file.size <= targetSizeKB * 1024) {
+        if (file.size <= targetSizeKB * 1024 && file.type === outputType) {
             resolve(file);
             return;
         }
@@ -56,7 +57,9 @@ export async function compressImage(
                 let minQuality = 0.1;
                 let maxQuality = 0.9;
                 let quality = 0.7;
-                let blob: Blob | null = null;
+                let bestBlob: Blob | null = null;
+                let bestSize = Infinity;
+
 
                 const attemptCompression = (q: number) => {
                     canvas.toBlob(
@@ -65,15 +68,22 @@ export async function compressImage(
                                 reject(new Error('Compression failed'));
                                 return;
                             }
-                            blob = b;
+
+                            // Keep track of the best blob we've found
+                            if (b.size < bestSize) {
+                                bestSize = b.size;
+                                bestBlob = b;
+                            }
+
+                            // If we met the target or hit minimum quality, return the best blob
                             if (b.size <= targetSizeKB * 1024 || q <= 0.1) {
-                                resolve(b);
+                                resolve(bestBlob || b);
                             } else {
                                 // Try lower quality
-                                attemptCompression(q - 0.1);
+                                attemptCompression(Math.max(0.1, q - 0.1));
                             }
                         },
-                        'image/jpeg',
+                        outputType, // Prefer WebP for transparency & compression
                         q
                     );
                 };
