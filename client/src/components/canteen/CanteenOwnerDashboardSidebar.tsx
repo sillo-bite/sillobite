@@ -602,7 +602,7 @@ export default function CanteenOwnerDashboardSidebar() {
     if (!file) return;
 
     if (file.size > 100 * 1024) { // > 100KB check
-      // Basic client-side check
+      // Basic client-side check - we will try to compress it below
     }
 
     try {
@@ -613,15 +613,25 @@ export default function CanteenOwnerDashboardSidebar() {
       // or just send it if we trust the cropper output.
       // The previous logic used compressImage. Let's keep it but ensure we handle the file correctly.
 
-      const compressedBlob = await compressImage(file, 20); // Compress to ~20KB
+      const compressedBlob = await compressImage(file, 20, 800, 800, 'image/webp'); // Compress to ~20KB
 
       if (!compressedBlob) {
         throw new Error("Compression failed");
       }
 
+      // Check against strict limit (100KB)
+      if (compressedBlob.size > 100 * 1024) {
+        toast({
+          title: "Image Too Large",
+          description: `Unable to compress profile image to under 100KB. Best possible size: ${formatBytes(compressedBlob.size)}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Convert Blob to File for upload
-      const fileName = file.name;
-      const compressedFile = new File([compressedBlob], fileName, { type: 'image/jpeg' });
+      const fileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+      const compressedFile = new File([compressedBlob], fileName, { type: 'image/webp' });
 
       const formData = new FormData();
       formData.append('image', compressedFile);
@@ -678,7 +688,7 @@ export default function CanteenOwnerDashboardSidebar() {
   };
 
   const handleCropComplete = async (croppedBlob: Blob) => {
-    const file = new File([croppedBlob], "cropped-profile.jpg", { type: "image/jpeg" });
+    const file = new File([croppedBlob], "cropped-profile.webp", { type: "image/webp" });
     await handleImageUpload(file);
   };
 
@@ -688,24 +698,24 @@ export default function CanteenOwnerDashboardSidebar() {
     try {
       setIsLogoUploading(true);
 
-      const compressedBlob = await compressImage(file, 20); // Compress to ~20KB
+      const compressedBlob = await compressImage(file, 20, 800, 800, 'image/webp'); // Compress to ~20KB
 
       if (!compressedBlob) {
         throw new Error("Compression failed");
       }
 
-      // Check against limit (100KB)
+      // Check against strict limit (100KB)
       if (compressedBlob.size > 100 * 1024) {
         toast({
           title: "Image Too Large",
-          description: `Unable to compress logo to under 100KB. Current size: ${formatBytes(compressedBlob.size)}`,
+          description: `Unable to compress logo to under 100KB. Best possible size: ${formatBytes(compressedBlob.size)}`,
           variant: "destructive",
         });
         return;
       }
 
-      const fileName = file.name;
-      const compressedFile = new File([compressedBlob], fileName, { type: 'image/jpeg' });
+      const fileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+      const compressedFile = new File([compressedBlob], fileName, { type: 'image/webp' });
 
       const formData = new FormData();
       formData.append('image', compressedFile);
@@ -760,7 +770,7 @@ export default function CanteenOwnerDashboardSidebar() {
   };
 
   const handleLogoCropComplete = async (croppedBlob: Blob) => {
-    const file = new File([croppedBlob], "cropped-logo.jpg", { type: "image/jpeg" });
+    const file = new File([croppedBlob], "cropped-logo.webp", { type: "image/webp" });
     await handleLogoUpload(file);
   };
 
@@ -771,24 +781,24 @@ export default function CanteenOwnerDashboardSidebar() {
       setIsBannerUploading(true);
 
       // Compress to ~100KB (target)
-      const compressedBlob = await compressImage(file, 100);
+      const compressedBlob = await compressImage(file, 100, 1200, 900, 'image/webp');
 
       if (!compressedBlob) {
         throw new Error("Compression failed");
       }
 
-      // Check against limit (200KB)
+      // Check against strict limit (200KB)
       if (compressedBlob.size > 200 * 1024) {
         toast({
           title: "Image Too Large",
-          description: `Unable to compress banner to under 200KB. Current size: ${formatBytes(compressedBlob.size)}`,
+          description: `Unable to compress banner to under 200KB. Best possible size: ${formatBytes(compressedBlob.size)}`,
           variant: "destructive",
         });
         return;
       }
 
-      const fileName = file.name;
-      const compressedFile = new File([compressedBlob], fileName, { type: 'image/jpeg' });
+      const fileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+      const compressedFile = new File([compressedBlob], fileName, { type: 'image/webp' });
 
       const formData = new FormData();
       formData.append('image', compressedFile);
@@ -3623,15 +3633,22 @@ export default function CanteenOwnerDashboardSidebar() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center space-x-4">
-                    <div className="relative group">
-                      <Avatar className="w-20 h-20 border-2 border-border">
-                        <AvatarImage src={canteenData?.imageUrl} alt={canteenData?.name} className="object-cover" />
-                        <AvatarFallback className="text-lg bg-muted">
-                          {canteenData?.name?.substring(0, 2).toUpperCase() || "CN"}
-                        </AvatarFallback>
-                      </Avatar>
+                    <div className="relative group w-32 aspect-[16/9]">
+                      <div className="w-full h-full border-2 border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+                        {canteenData?.imageUrl ? (
+                          <img
+                            src={canteenData.imageUrl}
+                            alt={canteenData?.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-lg font-bold text-muted-foreground">
+                            {canteenData?.name?.substring(0, 2).toUpperCase() || "CN"}
+                          </div>
+                        )}
+                      </div>
                       <button
-                        className="absolute bottom-0 right-0 bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors"
+                        className="absolute bottom-[-10px] right-[-10px] bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isImageUploading}
                       >
@@ -3652,8 +3669,8 @@ export default function CanteenOwnerDashboardSidebar() {
                     <div>
                       <h3 className="font-semibold text-foreground">{canteenData?.name || "My Canteen"}</h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Upload a profile picture. Max 100KB original,<br />
-                        auto-compressed to ~20KB.
+                        Upload a profile picture (16:9). Supports transparent<br />
+                        PNG/WebP. Max size: 100KB.
                       </p>
                     </div>
                   </div>
@@ -3700,8 +3717,8 @@ export default function CanteenOwnerDashboardSidebar() {
                     <div>
                       <h3 className="font-semibold text-foreground">Brand Logo</h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Upload your canteen logo (1:1 ratio).<br />
-                        Target: ~20KB, Limit: 100KB.
+                        Upload your canteen logo (1:1). Supports transparent<br />
+                        PNG/WebP. Max size: 100KB.
                       </p>
                     </div>
                   </div>
@@ -3719,7 +3736,7 @@ export default function CanteenOwnerDashboardSidebar() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center space-x-4">
-                    <div className="relative group w-full max-w-[200px] aspect-[4/3]">
+                    <div className="relative group w-32 aspect-square">
                       <div className="w-full h-full border-2 border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
                         {(canteenData as any)?.bannerUrl ? (
                           <img
@@ -3732,7 +3749,7 @@ export default function CanteenOwnerDashboardSidebar() {
                         )}
                       </div>
                       <button
-                        className="absolute bottom-2 right-2 bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors"
+                        className="absolute bottom-[-10px] right-[-10px] bg-primary text-primary-foreground p-1.5 rounded-full shadow-md hover:bg-primary/90 transition-colors"
                         onClick={() => bannerInputRef.current?.click()}
                         disabled={isBannerUploading}
                       >
@@ -3753,8 +3770,8 @@ export default function CanteenOwnerDashboardSidebar() {
                     <div>
                       <h3 className="font-semibold text-foreground">Marketing Banner</h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Upload a banner image (4:3 ratio).<br />
-                        Target: ~100KB, Limit: 200KB.
+                        Upload a marketing banner (1:1). Supports transparent<br />
+                        PNG/WebP. Max size: 200KB.
                       </p>
                     </div>
                   </div>
@@ -4374,7 +4391,8 @@ export default function CanteenOwnerDashboardSidebar() {
               setSelectedImage(null);
             }}
             onCropComplete={handleCropComplete}
-            aspect={16 / 9} // Using 16:9 as a reasonable default for canteen banners/cards
+            aspect={16 / 9} // 16:9 for profile picture
+            outputType="image/webp"
           />
         )
       }
@@ -4390,6 +4408,7 @@ export default function CanteenOwnerDashboardSidebar() {
             }}
             onCropComplete={handleLogoCropComplete}
             aspect={1} // 1:1 for logo
+            outputType="image/webp"
           />
         )
       }
@@ -4405,6 +4424,7 @@ export default function CanteenOwnerDashboardSidebar() {
             }}
             onCropComplete={handleBannerCropComplete}
             aspect={1} // 1:1 for banner
+            outputType="image/webp"
           />
         )
       }

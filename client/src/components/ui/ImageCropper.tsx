@@ -15,7 +15,8 @@ import { X, Check, ZoomIn, ZoomOut } from 'lucide-react';
 // Helper function to create the cropped image
 async function createCroppedImg(
     imageSrc: string,
-    pixelCrop: Area
+    pixelCrop: Area,
+    outputType: string = 'image/jpeg'
 ): Promise<Blob | null> {
     const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
@@ -31,22 +32,33 @@ async function createCroppedImg(
     canvas.height = pixelCrop.height;
 
     // draw cropped image onto canvas
-    ctx.drawImage(
-        image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        pixelCrop.width,
-        pixelCrop.height
-    );
+    // Draw the image onto the canvas, handling potential out-of-bounds crop (padding)
+    const sourceX = Math.max(0, pixelCrop.x);
+    const sourceY = Math.max(0, pixelCrop.y);
+    const sourceWidth = Math.min(image.width, pixelCrop.x + pixelCrop.width) - sourceX;
+    const sourceHeight = Math.min(image.height, pixelCrop.y + pixelCrop.height) - sourceY;
+
+    const destX = sourceX - pixelCrop.x;
+    const destY = sourceY - pixelCrop.y;
+
+    if (sourceWidth > 0 && sourceHeight > 0) {
+        ctx.drawImage(
+            image,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            destX,
+            destY,
+            sourceWidth,
+            sourceHeight
+        );
+    }
 
     return new Promise((resolve) => {
         canvas.toBlob((blob) => {
             resolve(blob);
-        }, 'image/jpeg', 0.95);
+        }, outputType, 0.95);
     });
 }
 
@@ -65,6 +77,7 @@ interface ImageCropperProps {
     onClose: () => void;
     onCropComplete: (croppedImageBlob: Blob) => void;
     aspect?: number;
+    outputType?: string;
 }
 
 export function ImageCropper({
@@ -73,6 +86,7 @@ export function ImageCropper({
     onClose,
     onCropComplete,
     aspect = 16 / 9, // Default aspect ratio
+    outputType = 'image/jpeg',
 }: ImageCropperProps) {
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -98,7 +112,7 @@ export function ImageCropper({
         if (imageSrc && croppedAreaPixels) {
             try {
                 setIsLoading(true);
-                const croppedImage = await createCroppedImg(imageSrc, croppedAreaPixels);
+                const croppedImage = await createCroppedImg(imageSrc, croppedAreaPixels, outputType);
                 if (croppedImage) {
                     onCropComplete(croppedImage);
                     onClose(); // Close after successful crop
@@ -131,6 +145,9 @@ export function ImageCropper({
                             onCropChange={onCropChange}
                             onCropComplete={onCropCompleteHandler}
                             onZoomChange={onZoomChange}
+                            objectFit="contain"
+                            restrictPosition={false}
+                            minZoom={0.5}
                         />
                     )}
                 </div>
@@ -140,7 +157,7 @@ export function ImageCropper({
                         <ZoomOut className="w-4 h-4 text-muted-foreground" />
                         <Slider
                             value={[zoom]}
-                            min={1}
+                            min={0.5}
                             max={3}
                             step={0.1}
                             onValueChange={(value) => setZoom(value[0])}
