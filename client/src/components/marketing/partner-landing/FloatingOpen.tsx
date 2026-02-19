@@ -48,7 +48,7 @@ export const FloatingOpen = () => {
                             group flex items-center gap-3
                             relative overflow-hidden
                         `}
-                        onClick={() => window.open("/splashscreen?pwa=true", "_self")}
+                        onClick={() => window.open("/splashscreen?pwa=true&utm_source=pwa", "_self")}
                     >
                         {/* Subtle shimmer effect */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-premium-shimmer" />

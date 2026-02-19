@@ -152,7 +152,7 @@ export const Navbar = () => {
                 <Button
                   variant="outline"
                   className={`w-full border-[#9847D1] rounded-full text-[#9847D1]`}
-                  onClick={() => window.open("/splashscreen?pwa=true", "_blank")}
+                  onClick={() => window.open("/splashscreen?pwa=true&utm_source=pwa", "_blank")}
                 >
                   Open App
                 </Button>
