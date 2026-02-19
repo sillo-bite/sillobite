@@ -1300,10 +1300,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get coding challenges enabled status from canteen settings
       let codingChallengesEnabled = false;
+      let canteenLocation = '';
+      let canteenContactNumber = '';
+      let canteenLogo = '';
       if ((systemSettings as any)?.canteens?.list) {
         const canteen = (systemSettings as any).canteens.list.find((c: any) => c.id === canteenId);
         if (canteen) {
           codingChallengesEnabled = canteen.codingChallengesEnabled ?? false;
+          canteenLocation = canteen.location || '';
+          canteenContactNumber = canteen.contactNumber || '';
+          canteenLogo = canteen.logoUrl || '';
         }
       }
 
@@ -1344,6 +1350,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quickPicks: formatItems(quickPicks),
         activeOrders: activeOrders || [], // User's active orders (already formatted)
         codingChallengesEnabled: codingChallengesEnabled, // Content settings
+        canteenLocation,
+        canteenContactNumber,
+        canteenLogo,
         timestamp: new Date().toISOString()
       };
 

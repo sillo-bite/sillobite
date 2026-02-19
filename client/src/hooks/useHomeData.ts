@@ -19,6 +19,9 @@ interface HomeDataResponse {
   quickPicks: MenuItem[];
   activeOrders: Order[]; // User's active orders
   codingChallengesEnabled?: boolean; // Content settings from canteen
+  canteenLocation?: string;
+  canteenContactNumber?: string;
+  canteenLogo?: string;
   timestamp: string;
 }
 
