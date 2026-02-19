@@ -100,7 +100,7 @@ export const Navbar = () => {
             <Button
               variant="ghost"
               className={`text-[#9847D1]  font-medium rounded-full px-6 ${isScrolled ? 'text-gray-600 hover:text-[#fffbf7] hover:bg-[#9847D1]' : 'text-[#fffbf7] hover:bg-[#fffbf7] hover:text-[#9847D1]'}`}
-              onClick={() => window.location.href = "/splashscreen?pwa=true"}
+              onClick={() => window.open("/splashscreen?pwa=true", "_blank")}
             >
               Open App
             </Button>
@@ -158,7 +158,7 @@ export const Navbar = () => {
                 </Button>
                 <Button
                   className="w-full bg-[#fffbf7] text-[#9847D1] rounded-full"
-                  onClick={() => window.open("/demo", "_blank")}
+                  onClick={() => installPWA()}
                 >
                   Install App
                 </Button>
