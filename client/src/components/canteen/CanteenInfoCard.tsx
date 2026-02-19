@@ -61,15 +61,15 @@ export const CanteenInfoCard: React.FC<CanteenInfoCardProps> = ({
                         </div>
                         {hasFreeDelivery && (
                             <div className="flex items-center space-x-1">
-                                <span className="text-orange-500 text-lg">🛵</span>
-                                <span className="text-sm font-medium text-foreground">Free Delivery</span>
+                                <span className="text-orange-500 text-lg">💳</span>
+                                <span className="text-sm font-medium text-foreground">Pay Online</span>
                             </div>
                         )}
                     </div>
 
                     {/* Categories Chips (Placeholder for now) */}
                     <div className="flex flex-wrap justify-center gap-2 mt-4">
-                        {["Burger", "Pizza", "Fast Food"].map((cat) => (
+                        {["Fresh", "Healthy", "Harmless"].map((cat) => (
                             <div key={cat} className="bg-muted/50 px-3 py-1 rounded-full text-xs font-medium text-muted-foreground">
                                 {cat}
                             </div>
