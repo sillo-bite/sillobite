@@ -32,17 +32,28 @@ async function createCroppedImg(
     canvas.height = pixelCrop.height;
 
     // draw cropped image onto canvas
-    ctx.drawImage(
-        image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        pixelCrop.width,
-        pixelCrop.height
-    );
+    // Draw the image onto the canvas, handling potential out-of-bounds crop (padding)
+    const sourceX = Math.max(0, pixelCrop.x);
+    const sourceY = Math.max(0, pixelCrop.y);
+    const sourceWidth = Math.min(image.width, pixelCrop.x + pixelCrop.width) - sourceX;
+    const sourceHeight = Math.min(image.height, pixelCrop.y + pixelCrop.height) - sourceY;
+
+    const destX = sourceX - pixelCrop.x;
+    const destY = sourceY - pixelCrop.y;
+
+    if (sourceWidth > 0 && sourceHeight > 0) {
+        ctx.drawImage(
+            image,
+            sourceX,
+            sourceY,
+            sourceWidth,
+            sourceHeight,
+            destX,
+            destY,
+            sourceWidth,
+            sourceHeight
+        );
+    }
 
     return new Promise((resolve) => {
         canvas.toBlob((blob) => {
@@ -135,6 +146,8 @@ export function ImageCropper({
                             onCropComplete={onCropCompleteHandler}
                             onZoomChange={onZoomChange}
                             objectFit="contain"
+                            restrictPosition={false}
+                            minZoom={0.5}
                         />
                     )}
                 </div>
@@ -144,7 +157,7 @@ export function ImageCropper({
                         <ZoomOut className="w-4 h-4 text-muted-foreground" />
                         <Slider
                             value={[zoom]}
-                            min={1}
+                            min={0.5}
                             max={3}
                             step={0.1}
                             onValueChange={(value) => setZoom(value[0])}
