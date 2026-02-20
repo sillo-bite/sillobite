@@ -13,6 +13,8 @@ import { useLocation } from '@/contexts/LocationContext';
 import { useCart } from '@/contexts/CartContext';
 import CurrentOrderBottomSheet from '@/components/orders/CurrentOrderBottomSheet';
 import FloatingCart from '@/components/cart/FloatingCart';
+import { usePaginatedActiveOrders } from '@/hooks/usePaginatedActiveOrders';
+
 
 interface CanteenSelectorPageProps {
     onCanteenSelect: (canteenId?: string) => void;
@@ -36,6 +38,10 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
     const { user } = useAuthSync();
     const { selectedLocationName } = useLocation();
     const { getTotalItems } = useCart();
+    // Detect active orders for current user - pass user.id to filter by customerId (security fix)
+    const userCustomerId = user?.id ? Number(user.id) : undefined;
+    const { orders: activeOrders, refetch: refetchActiveOrders } = usePaginatedActiveOrders(1, 100, undefined, userCustomerId, !!userCustomerId);
+    const hasActiveOrders = Array.isArray(activeOrders) && activeOrders.length > 0;
     const [searchQuery, setSearchQuery] = useState('');
     const [showLocationSelector, setShowLocationSelector] = useState(false);
     const [isSearchSticky, setIsSearchSticky] = useState(false);
@@ -577,11 +583,19 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                 }
             </div >
 
-            {/* Floating Cart */}
-            <FloatingCart />
+            {/* Floating Cart - shown if cart has items, hidden when live orders are visible */}
+            <FloatingCart
+                skipCanteenCheck={true}
+                showOnlyWhenLiveOrderHidden={true}
+                isLiveOrderHidden={!hasActiveOrders}
+            />
 
             {/* Live Orders Bottom Sheet - real-time via WebSocket, hides on scroll down */}
-            <CurrentOrderBottomSheet forceHidden={isScrollingDown} />
+            <CurrentOrderBottomSheet
+                activeOrders={Array.isArray(activeOrders) ? activeOrders : []}
+                refetchOrders={refetchActiveOrders}
+                forceHidden={isScrollingDown}
+            />
         </>
     );
 }

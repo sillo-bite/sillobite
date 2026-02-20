@@ -68,7 +68,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
   const { selectedLocationType, selectedLocationId, isLoading: isLocationLoading } = useLocationContext();
-  const { getTotalItems } = useCart();
+  const { getTotalItems, getCartCanteenId } = useCart();
 
   // Smooth scroll-based transition state (0 to 1)
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -677,25 +677,25 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                 </Button>
 
 
-                {/* Cart Icon - Always visible in header */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-                  }}
-                  className={`rounded-full h-12 w-12 md:h-14 md:w-14 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
-                    }`}
-                  aria-label={`View cart with ${getTotalItems()} items`}
-                >
-                  <ShoppingCart className={`w-8 h-8 md:w-8 md:h-8 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
-                    }`} />
-                  {getTotalItems() > 0 && (
+                {/* Cart Icon - Only visible when cart has items for the current canteen */}
+                {getTotalItems() > 0 && getCartCanteenId() === selectedCanteen?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+                    }}
+                    className={`rounded-full h-12 w-12 md:h-14 md:w-14 p-0 relative group transition-all duration-200 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'hover:bg-white/20' : 'hover:bg-primary/10'
+                      }`}
+                    aria-label={`View cart with ${getTotalItems()} items`}
+                  >
+                    <ShoppingCart className={`w-8 h-8 md:w-8 md:h-8 ${selectedCanteen?.bannerUrl && scrollTop <= scrollThreshold ? 'text-white' : 'text-primary'
+                      }`} />
                     <span className="absolute -top-1 -right-1 bg-primary text-white text-[10px] font-bold rounded-full h-4 w-4 md:h-5 md:w-5 flex items-center justify-center shadow-lg ring-2 ring-background">
                       {getTotalItems() > 99 ? '99+' : getTotalItems()}
                     </span>
-                  )}
-                </Button>
+                  </Button>
+                )}
 
 
               </div>

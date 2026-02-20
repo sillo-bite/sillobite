@@ -10,9 +10,9 @@ import LazyImage from "@/components/common/LazyImage";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { Clock, ChevronRight, Package } from "lucide-react";
 
-function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: { 
-  order: Order; 
-  isHomePage: boolean; 
+function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
+  order: Order;
+  isHomePage: boolean;
   formatCurrency: (amount: number) => string;
   menuItemsMap?: Map<string, any>;
 }) {
@@ -22,8 +22,8 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   const orderItems = useMemo(() => {
     if (!order?.items) return [];
     try {
-      const parsed = typeof order.items === 'string' 
-        ? JSON.parse(order.items) 
+      const parsed = typeof order.items === 'string'
+        ? JSON.parse(order.items)
         : order.items;
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
@@ -38,20 +38,20 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   // Get the appropriate image based on order type
   const itemImage = useMemo(() => {
     const targetItem = firstItem;
-    
+
     if (!targetItem) return null;
-    
+
     if (targetItem.imageUrl) {
       return targetItem.imageUrl;
     }
-    
+
     if (menuItemsMap && menuItemsMap.size > 0 && targetItem.id) {
       const menuItem = menuItemsMap.get(String(targetItem.id));
       if (menuItem?.imageUrl) {
         return menuItem.imageUrl;
       }
     }
-    
+
     return null;
   }, [firstItem, menuItemsMap]);
 
@@ -96,34 +96,31 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   const statusInfo = getStatusInfo(order.status);
 
   return (
-    <div 
-      className={`w-full overflow-hidden relative rounded-2xl transition-all duration-300 ${
-        resolvedTheme === 'dark'
-          ? 'bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 border border-gray-700/50'
-          : 'bg-gradient-to-br from-white/95 via-gray-50/95 to-white/95 border border-gray-200/50'
-      }`}
+    <div
+      className={`w-full overflow-hidden relative rounded-2xl transition-all duration-300 ${resolvedTheme === 'dark'
+        ? 'bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 border border-gray-700/50'
+        : 'bg-gradient-to-br from-white/95 via-gray-50/95 to-white/95 border border-gray-200/50'
+        }`}
       style={{
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: resolvedTheme === 'dark' 
+        boxShadow: resolvedTheme === 'dark'
           ? '0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
           : '0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8)',
       }}
     >
       {/* Subtle gradient overlay for depth */}
-      <div className={`absolute inset-0 pointer-events-none rounded-2xl ${
-        resolvedTheme === 'dark'
-          ? 'bg-gradient-to-r from-[#724491]/10 via-transparent to-[#724491]/5'
-          : 'bg-gradient-to-r from-[#724491]/5 via-transparent to-[#724491]/3'
-      }`} />
-      
+      <div className={`absolute inset-0 pointer-events-none rounded-2xl ${resolvedTheme === 'dark'
+        ? 'bg-gradient-to-r from-[#724491]/10 via-transparent to-[#724491]/5'
+        : 'bg-gradient-to-r from-[#724491]/5 via-transparent to-[#724491]/3'
+        }`} />
+
       <div className="flex items-center p-3 relative">
         {/* Image with premium styling */}
         <div className="relative flex-shrink-0 mr-3">
-          <div 
-            className={`w-14 h-14 rounded-xl overflow-hidden ${
-              resolvedTheme === 'dark' ? 'ring-2 ring-gray-700/50' : 'ring-2 ring-gray-200/50'
-            }`}
+          <div
+            className={`w-14 h-14 rounded-xl overflow-hidden ${resolvedTheme === 'dark' ? 'ring-2 ring-gray-700/50' : 'ring-2 ring-gray-200/50'
+              }`}
             style={{
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             }}
@@ -134,22 +131,20 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
                 alt={itemNames}
                 className="w-full h-full object-cover"
                 placeholder={
-                  <div className={`w-full h-full flex items-center justify-center ${
-                    resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
-                  }`}>
+                  <div className={`w-full h-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                    }`}>
                     <Package className="w-6 h-6 text-muted-foreground" />
                   </div>
                 }
               />
             ) : (
-              <div className={`w-full h-full flex items-center justify-center ${
-                resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
-              }`}>
+              <div className={`w-full h-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
+                }`}>
                 <Package className="w-6 h-6 text-muted-foreground" />
               </div>
             )}
           </div>
-          
+
           {/* Item count badge */}
           {isBulkOrder && (
             <div className="absolute -bottom-1 -right-1 bg-[#724491] text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center shadow-lg border-2 border-background">
@@ -164,31 +159,27 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
           <div className="flex items-center gap-2 mb-1">
             <div className="flex items-center gap-1.5">
               <div className={`w-2 h-2 rounded-full ${statusInfo.color} ${statusInfo.pulse ? 'animate-pulse' : ''}`} />
-              <span className={`text-xs font-semibold ${
-                resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+              <span className={`text-xs font-semibold ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                }`}>
                 {statusInfo.text}
               </span>
             </div>
-            <div className={`flex items-center gap-1 text-xs ${
-              resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-            }`}>
+            <div className={`flex items-center gap-1 text-xs ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+              }`}>
               <Clock className="w-3 h-3" />
               <span>~15 min</span>
             </div>
           </div>
-          
+
           {/* Item names */}
-          <p className={`text-sm font-bold truncate mb-0.5 ${
-            resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-          }`}>
+          <p className={`text-sm font-bold truncate mb-0.5 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+            }`}>
             {itemNames}
           </p>
-          
+
           {/* Price */}
-          <p className={`text-base font-bold ${
-            resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
+          <p className={`text-base font-bold ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
+            }`}>
             {formatCurrency(order.amount || 0)}
           </p>
         </div>
@@ -230,19 +221,19 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
   const isHomePage = location === "/app" || location.startsWith("/app");
 
   const { orders: fallbackOrders, isLoading: fallbackLoading, error: fallbackError, refetch: fallbackRefetch } = usePaginatedActiveOrders(
-    1, 
+    1,
     100,
     undefined,
-    undefined,
+    user?.id ? Number(user.id) : undefined, // Security: always filter by current user's ID
     isHomePage && !!user && !propActiveOrders
   );
-  
+
   const activeOrders = useMemo(() => {
     const prop = Array.isArray(propActiveOrders) ? propActiveOrders : null;
     const fallback = Array.isArray(fallbackOrders) ? fallbackOrders : [];
     return prop || fallback || [];
   }, [propActiveOrders, fallbackOrders]);
-  
+
   const isLoading = propActiveOrders ? false : fallbackLoading;
   const error = propActiveOrders ? null : fallbackError;
   const refetch = refetchOrders || fallbackRefetch;
@@ -279,11 +270,11 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
       if (itemIdsNeedingImages.length === 0 || canteenIds.length === 0) {
         return [];
       }
-      
+
       const canteenId = canteenIds[0];
       const response = await fetch(`/api/menu?canteenId=${canteenId}&limit=100`);
       if (!response.ok) return [];
-      
+
       const data = await response.json();
       return data.items || data || [];
     },
@@ -321,14 +312,14 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
   };
 
   const hasMultipleOrders = activeOrders.length > 1;
-  
+
   // Use forceHidden prop to control visibility (controlled by parent based on header state)
   const isVisible = !forceHidden;
 
   return (
     <div
       className="fixed left-0 right-0 z-[9998] px-3"
-      style={{ 
+      style={{
         bottom: '16px',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         transform: isVisible ? 'translateY(0)' : 'translateY(calc(100% + 40px))',
@@ -338,7 +329,7 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
     >
       {/* Ambient glow effect */}
       {activeOrders.length > 0 && (
-        <div 
+        <div
           className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none"
           style={{
             background: 'linear-gradient(135deg, rgba(114, 68, 145, 0.5), rgba(139, 90, 175, 0.4), rgba(114, 68, 145, 0.3))',
@@ -347,15 +338,14 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
           }}
         />
       )}
-      
+
       <div className="w-full relative">
         {isLoading ? (
-          <div 
-            className={`flex flex-col items-center justify-center py-6 px-4 w-full rounded-[20px] ${
-              resolvedTheme === 'dark'
-                ? 'bg-gray-900/90 border border-gray-700/50'
-                : 'bg-white/90 border border-gray-200/50'
-            }`}
+          <div
+            className={`flex flex-col items-center justify-center py-6 px-4 w-full rounded-[20px] ${resolvedTheme === 'dark'
+              ? 'bg-gray-900/90 border border-gray-700/50'
+              : 'bg-white/90 border border-gray-200/50'
+              }`}
             style={{
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',

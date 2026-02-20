@@ -27,6 +27,8 @@ export interface Canteen {
   updatedAt: Date;
   imageUrl?: string; // URL for the canteen profile picture
   imagePublicId?: string; // Cloudinary Public ID
+  logoUrl?: string; // URL for the canteen logo
+  logoPublicId?: string; // Cloudinary Public ID for logo
   bannerUrl?: string; // Canteen banner URL (4:3 ratio)
   bannerPublicId?: string; // Canteen banner public ID
   ownerSidebarConfig?: Record<string, boolean>;
