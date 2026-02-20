@@ -7,6 +7,7 @@ const router = express.Router();
 import multer from 'multer';
 import { cloudinaryService } from "../services/cloudinaryService";
 import { OrderService } from "../services/order-service";
+import { CanteenEntity, Category, MenuItem, Order } from "../models/mongodb-models";
 
 const orderService = new OrderService();
 
@@ -74,6 +75,9 @@ router.post('/canteens/:id/profile-image', upload.single('image'), async (req, r
 
     await settings.save();
 
+    // Also update CanteenEntity collection
+    await CanteenEntity.updateOne({ id }, { $set: { imageUrl: result.secure_url, imagePublicId: result.public_id, updatedAt: new Date() } });
+
     console.log(`🖼️ Canteen profile image updated for ${id}: ${result.secure_url}`);
 
     res.json({
@@ -136,6 +140,9 @@ router.post('/canteens/:id/logo', upload.single('image'), async (req, res) => {
 
     await settings.save();
 
+    // Also update CanteenEntity collection
+    await CanteenEntity.updateOne({ id }, { $set: { logoUrl: result.secure_url, logoPublicId: result.public_id, updatedAt: new Date() } });
+
     console.log(`🖼️ Canteen logo updated for ${id}: ${result.secure_url}`);
 
     res.json({
@@ -197,6 +204,9 @@ router.post('/canteens/:id/banner', upload.single('image'), async (req, res) => 
     settings.updatedAt = new Date();
 
     await settings.save();
+
+    // Also update CanteenEntity collection
+    await CanteenEntity.updateOne({ id }, { $set: { bannerUrl: result.secure_url, bannerPublicId: result.public_id, updatedAt: new Date() } });
 
     console.log(`🖼️ Canteen banner updated for ${id}: ${result.secure_url}`);
 
@@ -3041,15 +3051,13 @@ router.get('/canteens/by-restaurant/:restaurantId', async (req, res) => {
 
 /**
  * Get canteens by institution (college or organization) with pagination
- * Used for preloading canteens on profile setup completion
+ * OPTIMIZED: Uses dedicated CanteenEntity collection + batch metadata fetching
  */
 router.get('/canteens/by-institution', async (req, res) => {
   try {
     const { institutionType, institutionId, limit = 5, offset = 0, category } = req.query;
 
-    console.log(`🏪 Fetching canteens for ${institutionType} ${institutionId} (limit: ${limit}, offset: ${offset}, category: ${category || 'none'})`)
-
-      ;
+    console.log(`🏪 Fetching canteens for ${institutionType} ${institutionId} (limit: ${limit}, offset: ${offset}, category: ${category || 'none'})`);
 
     if (!institutionType || !institutionId) {
       return res.status(400).json({ error: 'institutionType and institutionId are required' });
@@ -3059,221 +3067,190 @@ router.get('/canteens/by-institution', async (req, res) => {
     const offsetNum = parseInt(offset as string) || 0;
     const categoryFilter = category as string | undefined;
 
-    // Build the match condition based on institution type
-    // Support both array-based (new) and single value (legacy) matching
-    let matchCondition = {};
+    // Build query filter for the dedicated CanteenEntity collection
+    let filter: any = { isActive: { $ne: false } };
     if (institutionType === 'college') {
-      matchCondition = {
-        $or: [
-          { 'canteens.list.collegeIds': institutionId }, // New: check if in array
-          { 'canteens.list.collegeId': institutionId }    // Legacy: check single value
-        ],
-        'canteens.list.isActive': { $ne: false }
-      };
+      filter.$or = [
+        { collegeIds: institutionId },
+        { collegeId: institutionId }
+      ];
     } else if (institutionType === 'organization') {
-      matchCondition = {
-        $or: [
-          { 'canteens.list.organizationIds': institutionId }, // New: check if in array
-          { 'canteens.list.organizationId': institutionId }   // Legacy: check single value
-        ],
-        'canteens.list.isActive': { $ne: false }
-      };
+      filter.$or = [
+        { organizationIds: institutionId },
+        { organizationId: institutionId }
+      ];
     } else if (institutionType === 'restaurant') {
-      matchCondition = {
-        'canteens.list.restaurantId': institutionId,
-        'canteens.list.isActive': { $ne: false }
-      };
+      filter.restaurantId = institutionId;
     } else {
       return res.status(400).json({ error: 'Invalid institutionType. Must be "college", "organization", or "restaurant"' });
     }
 
-    // Use MongoDB aggregation for efficient database-level filtering and pagination
-    const pipeline: any[] = [
-      // Match the latest system settings document
-      { $sort: { createdAt: -1 } },
-      { $limit: 1 },
+    // Get total count and paginated results in parallel
+    const [total, canteensRaw] = await Promise.all([
+      CanteenEntity.countDocuments(filter),
+      CanteenEntity.find(filter)
+        .sort({ priority: 1, name: 1 })
+        .skip(offsetNum)
+        .limit(limitNum)
+        .lean()
+    ]);
 
-      // Unwind the canteens array
-      { $unwind: '$canteens.list' },
-
-      // Match canteens by institution type and active status
-      { $match: matchCondition },
-
-      // Project only the canteen fields we need
-      {
-        $project: {
-          _id: '$canteens.list._id',
-          id: '$canteens.list.id',
-          name: '$canteens.list.name',
-          code: '$canteens.list.code',
-          description: '$canteens.list.description',
-          location: '$canteens.list.location',
-          contactNumber: '$canteens.list.contactNumber',
-          email: '$canteens.list.email',
-          canteenOwnerEmail: '$canteens.list.canteenOwnerEmail',
-          collegeId: '$canteens.list.collegeId', // Legacy field
-          collegeIds: '$canteens.list.collegeIds', // New array field
-          organizationId: '$canteens.list.organizationId', // Legacy field
-          organizationIds: '$canteens.list.organizationIds', // New array field
-          restaurantId: '$canteens.list.restaurantId',
-          type: '$canteens.list.type',
-          operatingHours: '$canteens.list.operatingHours',
-          isActive: '$canteens.list.isActive',
-          priority: { $ifNull: ['$canteens.list.priority', 0] }, // Default to 0 if not set
-          createdAt: '$canteens.list.createdAt',
-          updatedAt: '$canteens.list.updatedAt',
-          imageUrl: '$canteens.list.imageUrl', // Profile Picture URL
-          imagePublicId: '$canteens.list.imagePublicId', // Cloudinary Public ID
-          bannerUrl: '$canteens.list.bannerUrl', // Banner URL
-          bannerPublicId: '$canteens.list.bannerPublicId' // Banner Public ID
-        }
-      },
-
-      // Sort by priority (lower number = higher priority), then by name
-      { $sort: { priority: 1, name: 1 } },
-
-      // Group to get total count and paginated results
-      {
-        $facet: {
-          totalCount: [{ $count: 'count' }],
-          canteens: [
-            { $skip: offsetNum },
-            { $limit: limitNum }
-          ]
-        }
-      }
-    ];
-
-    console.log(`🏪 Executing MongoDB aggregation pipeline for ${institutionType} ${institutionId}`);
-
-    const result = await SystemSettingsModel.aggregate(pipeline);
-
-    if (!result || result.length === 0) {
-      return res.json({ canteens: [], total: 0, hasMore: false, limit: limitNum, offset: offsetNum });
-    }
-
-    const total = result[0].totalCount[0]?.count || 0;
-    let canteens = result[0].canteens || [];
     const hasMore = offsetNum + limitNum < total;
+    let canteens: any[] = canteensRaw.map((c: any) => {
+      const obj = { ...c };
+      // Ensure 'id' field is always present
+      if (!obj.id && obj._id) obj.id = obj._id.toString();
+      delete obj._id;
+      delete obj.__v;
+      return obj;
+    });
 
-    console.log(`🏪 MongoDB aggregation result: ${total} total canteens, returning ${canteens.length} canteens (hasMore: ${hasMore})`);
+    console.log(`🏪 CanteenEntity query result: ${total} total, returning ${canteens.length} (hasMore: ${hasMore})`);
 
-    // Apply category filtering if category is provided
-    if (categoryFilter) {
+    // Apply category filtering if provided (batch approach)
+    if (categoryFilter && canteens.length > 0) {
       console.log(`🏪 Applying category filter: ${categoryFilter}`);
-      console.log(`🏪 Total canteens before filtering: ${canteens.length}`);
+      const canteenIds = canteens.map((c: any) => c.id);
 
-      const { Category, MenuItem } = await import('../models/mongodb-models');
+      // Batch: find matching categories and menu items for ALL canteens at once
+      const [matchingCategories, matchingMenuItems] = await Promise.all([
+        Category.find({
+          canteenId: { $in: canteenIds },
+          name: { $regex: categoryFilter, $options: 'i' }
+        }).lean(),
+        MenuItem.find({
+          canteenId: { $in: canteenIds },
+          name: { $regex: categoryFilter, $options: 'i' }
+        }).lean()
+      ]);
 
-      // Filter canteens based on category
-      const filteredCanteens = await Promise.all(
-        canteens.map(async (canteen: any) => {
-          try {
-            const canteenIdentifier = canteen.id || canteen._id;
-            console.log(`🏪 Checking canteen: ${canteen.name} (ID: ${canteenIdentifier})`);
+      // Build a set of matching canteen IDs
+      const matchedIds = new Set<string>();
+      matchingCategories.forEach((cat: any) => matchedIds.add(cat.canteenId));
+      matchingMenuItems.forEach((item: any) => matchedIds.add(item.canteenId));
 
-            // Check if canteen has matching category
-            const hasMatchingCategory = await Category.findOne({
-              canteenId: canteenIdentifier,
-              name: { $regex: categoryFilter, $options: 'i' } // Case-insensitive match
-            });
-
-            if (hasMatchingCategory) {
-              console.log(`🏪 ✅ Canteen "${canteen.name}" matches via category: ${hasMatchingCategory.name}`);
-              return canteen;
-            }
-
-            // Check if any menu item name contains the category as substring
-            const hasMatchingMenuItem = await MenuItem.findOne({
-              canteenId: canteenIdentifier,
-              name: { $regex: categoryFilter, $options: 'i' } // Case-insensitive substring match
-            });
-
-            if (hasMatchingMenuItem) {
-              console.log(`🏪 ✅ Canteen "${canteen.name}" matches via menu item: ${hasMatchingMenuItem.name}`);
-              return canteen;
-            }
-
-            console.log(`🏪 ❌ Canteen "${canteen.name}" does NOT match category "${categoryFilter}"`);
-            return null; // No match found
-          } catch (error) {
-            console.error(`Error filtering canteen ${canteen.id}:`, error);
-            return null;
-          }
-        })
-      );
-
-      // Remove null values (canteens that didn't match)
-      canteens = filteredCanteens.filter((c) => c !== null);
+      canteens = canteens.filter((c: any) => matchedIds.has(c.id));
       console.log(`🏪 After category filtering: ${canteens.length} canteens match "${categoryFilter}"`);
     }
 
-    // Fetch trending items for each canteen (up to 4 items)
-    const canteensWithTrending = await Promise.all(
-      canteens.map(async (canteen: any) => {
-        try {
-          const trendingItems = await orderService.getTrendingItems(canteen.id);
-          // Extract name and price, limit to 4 items
-          const trendingItemsData = trendingItems
-            .slice(0, 4)
-            .map((item: any) => ({
-              name: item.name,
-              price: item.price
-            }))
-            .filter((item: any) => item.name && item.price !== undefined); // Filter out invalid items
+    if (canteens.length > 0) {
+      const canteenIds = canteens.map((c: any) => c.id);
 
-          return {
-            ...canteen,
-            trendingItems: trendingItemsData
-          };
-        } catch (error) {
-          console.error(`Error fetching trending items for canteen ${canteen.id}:`, error);
-          // Return canteen with empty trending items on error
-          return {
-            ...canteen,
-            trendingItems: []
-          };
+      // BATCH: Fetch trending items + categories for ALL canteens in parallel
+      const [trendingByCanteen, categoriesByCanteen] = await Promise.all([
+        // Trending items: fetch manually-marked trending items in one query
+        MenuItem.find({
+          canteenId: { $in: canteenIds },
+          isTrending: true,
+          available: true
+        }).select('canteenId name price').lean(),
+
+        // Categories: fetch top categories for all canteens in one query
+        Category.find({
+          canteenId: { $in: canteenIds }
+        }).select('canteenId name').sort({ name: 1 }).lean()
+      ]);
+
+      // Group trending items by canteenId (limit 4 per canteen)
+      const trendingMap = new Map<string, { name: string; price: number }[]>();
+      for (const item of trendingByCanteen) {
+        const key = (item as any).canteenId;
+        if (!trendingMap.has(key)) trendingMap.set(key, []);
+        const arr = trendingMap.get(key)!;
+        if (arr.length < 4) {
+          arr.push({ name: (item as any).name, price: (item as any).price });
         }
-      })
-    );
+      }
 
-    console.log(`🏪 Added trending items to ${canteensWithTrending.length} canteens`);
+      // Fallback: For canteens WITHOUT manual trending items, use sales history
+      const canteensWithoutTrending = canteenIds.filter(cid => !trendingMap.has(cid));
+      if (canteensWithoutTrending.length > 0) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Fetch categories for each canteen (up to 3 categories)
-    const { Category } = await import('../models/mongodb-models');
-    const canteensWithCategories = await Promise.all(
-      canteensWithTrending.map(async (canteen: any) => {
-        try {
-          // Fetch categories for this canteen
-          const categories = await Category.find({ canteenId: canteen.id })
-            .sort({ name: 1 })
-            .limit(3)
-            .lean();
+        // Batch fetch recent completed orders for ALL canteens needing fallback
+        const recentOrders = await Order.find({
+          canteenId: { $in: canteensWithoutTrending },
+          status: 'completed',
+          createdAt: { $gte: sevenDaysAgo }
+        }).select('canteenId items').lean();
 
-          // Extract only the names
-          const categoryNames = categories
-            .map((cat: any) => cat.name)
-            .filter((name: string) => name); // Filter out any undefined/null names
-
-          return {
-            ...canteen,
-            categories: categoryNames
-          };
-        } catch (error) {
-          console.error(`Error fetching categories for canteen ${canteen.id}:`, error);
-          // Return canteen with empty categories on error
-          return {
-            ...canteen,
-            categories: []
-          };
+        // Aggregate item counts per canteen
+        const salesByCanteen = new Map<string, Record<string, number>>();
+        for (const order of recentOrders) {
+          const cId = (order as any).canteenId;
+          if (!salesByCanteen.has(cId)) salesByCanteen.set(cId, {});
+          const counts = salesByCanteen.get(cId)!;
+          try {
+            const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+            if (Array.isArray(items)) {
+              for (const item of items) {
+                if (item.menuItemId) {
+                  const itemId = item.menuItemId.toString();
+                  counts[itemId] = (counts[itemId] || 0) + (item.quantity || 1);
+                }
+              }
+            }
+          } catch (e) { /* skip unparsable orders */ }
         }
-      })
-    );
 
-    console.log(`🏪 Added categories to ${canteensWithCategories.length} canteens`);
+        // Collect all top item IDs across all canteens (top 4 per canteen)
+        const allTopItemIds: string[] = [];
+        const topIdsByCanteen = new Map<string, string[]>();
+        for (const [cId, counts] of salesByCanteen) {
+          const topIds = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
+          topIdsByCanteen.set(cId, topIds);
+          allTopItemIds.push(...topIds);
+        }
+
+        if (allTopItemIds.length > 0) {
+          // Single batch query to fetch menu item details
+          const menuItems = await MenuItem.find({
+            _id: { $in: allTopItemIds }
+          }).select('canteenId name price').lean();
+
+          const menuItemMap = new Map<string, any>();
+          for (const mi of menuItems) {
+            menuItemMap.set((mi as any)._id.toString(), mi);
+          }
+
+          // Populate trendingMap for fallback canteens
+          for (const [cId, topIds] of topIdsByCanteen) {
+            const items: { name: string; price: number }[] = [];
+            for (const itemId of topIds) {
+              const mi = menuItemMap.get(itemId);
+              if (mi && mi.name && mi.price !== undefined) {
+                items.push({ name: mi.name, price: mi.price });
+              }
+            }
+            if (items.length > 0) trendingMap.set(cId, items);
+          }
+        }
+      }
+
+      // Group categories by canteenId (limit 3 per canteen)
+      const categoryMap = new Map<string, string[]>();
+      for (const cat of categoriesByCanteen) {
+        const key = (cat as any).canteenId;
+        if (!categoryMap.has(key)) categoryMap.set(key, []);
+        const arr = categoryMap.get(key)!;
+        if (arr.length < 3 && (cat as any).name) {
+          arr.push((cat as any).name);
+        }
+      }
+
+      // Merge metadata into canteens
+      canteens = canteens.map((canteen: any) => ({
+        ...canteen,
+        trendingItems: trendingMap.get(canteen.id) || [],
+        categories: categoryMap.get(canteen.id) || []
+      }));
+
+      console.log(`🏪 Batch-enriched ${canteens.length} canteens with trending items and categories`);
+    }
 
     res.json({
-      canteens: canteensWithCategories,
+      canteens,
       total,
       hasMore,
       limit: limitNum,
@@ -3287,18 +3264,13 @@ router.get('/canteens/by-institution', async (req, res) => {
 
 /**
  * Get canteen by owner email
+ * OPTIMIZED: Uses CanteenEntity collection
  */
 router.get('/canteens/by-owner/:email', async (req, res) => {
   try {
     const { email } = req.params;
 
-    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-
-    if (!settings || !settings.canteens?.list) {
-      return res.status(404).json({ error: 'No canteens found' });
-    }
-
-    const canteen = settings.canteens.list.find(c => c.canteenOwnerEmail === email);
+    const canteen = await CanteenEntity.findOne({ canteenOwnerEmail: email }).lean();
 
     if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found for this owner' });
@@ -3313,18 +3285,13 @@ router.get('/canteens/by-owner/:email', async (req, res) => {
 
 /**
  * Get canteen by ID
+ * OPTIMIZED: Uses CanteenEntity collection
  */
 router.get('/canteens/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-
-    if (!settings || !settings.canteens?.list) {
-      return res.status(404).json({ error: 'No canteens found' });
-    }
-
-    const canteen = settings.canteens.list.find(c => c.id === id);
+    const canteen = await CanteenEntity.findOne({ id }).lean();
 
     if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found' });
@@ -3340,6 +3307,7 @@ router.get('/canteens/:id', async (req, res) => {
 
 /**
  * Add a new canteen
+ * OPTIMIZED: Writes to both CanteenEntity collection AND SystemSettings for backward compatibility
  */
 router.post('/canteens', async (req, res) => {
   try {
@@ -3350,6 +3318,12 @@ router.post('/canteens', async (req, res) => {
 
     if (!name || !code) {
       return res.status(400).json({ error: 'Name and code are required' });
+    }
+
+    // Check if canteen code already exists in CanteenEntity collection
+    const existingCanteen = await CanteenEntity.findOne({ code }).lean();
+    if (existingCanteen) {
+      return res.status(409).json({ error: 'Canteen code already exists' });
     }
 
     // Handle backward compatibility: if collegeId/organizationId provided, convert to arrays
@@ -3370,113 +3344,56 @@ router.post('/canteens', async (req, res) => {
       "store-mode": true
     };
 
+    const canteenId = `canteen-${Date.now()}`;
+    const canteenData = {
+      id: canteenId,
+      name,
+      code,
+      description,
+      location,
+      contactNumber,
+      email,
+      canteenOwnerEmail,
+      collegeId, // Legacy field
+      collegeIds: finalCollegeIds,
+      organizationId, // Legacy field
+      organizationIds: finalOrganizationIds,
+      restaurantId,
+      type,
+      operatingHours,
+      isActive,
+      priority,
+      ownerSidebarConfig: defaultOwnerSidebarConfig,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Write to CanteenEntity collection (primary)
+    const newCanteen = new CanteenEntity(canteenData);
+    await newCanteen.save();
+
+    // Also write to SystemSettings for backward compatibility
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-
-    if (!settings) {
-      // Create default settings if none exist
-      const defaultSettings: InsertSystemSettings = {
-        maintenanceMode: {
-          isActive: false,
-          title: 'System Maintenance',
-          message: 'We are currently performing system maintenance. Please check back later.',
-          estimatedTime: '',
-          contactInfo: '',
-          targetingType: 'all',
-          specificUsers: [],
-          targetColleges: [],
-          targetDepartments: [],
-          targetYears: [],
-          yearType: 'current'
-        },
-        notifications: {
-          isEnabled: true
-        },
-        appVersion: {
-          version: '1.0.0',
-          buildTimestamp: Date.now()
-        },
-        colleges: {
-          list: []
-        },
-        canteens: {
-          list: [{
-            id: `canteen-${Date.now()}`,
-            name,
-            code,
-            description,
-            location,
-            contactNumber,
-            email,
-            canteenOwnerEmail,
-            collegeId, // Legacy field
-            collegeIds: finalCollegeIds,
-            organizationId, // Legacy field
-            organizationIds: finalOrganizationIds,
-            restaurantId,
-            type,
-            operatingHours,
-            isActive,
-            priority,
-            ownerSidebarConfig: defaultOwnerSidebarConfig,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }]
-        },
-        organizations: {
-          list: []
-        }
-      };
-
-      settings = new SystemSettingsModel(defaultSettings);
-      await settings.save();
-    } else {
-      // Check if canteen code already exists
-      const existingCanteen = settings.canteens?.list?.find((canteen: any) => canteen.code === code);
-      if (existingCanteen) {
-        return res.status(409).json({ error: 'Canteen code already exists' });
-      }
-
-      // Initialize canteens if it doesn't exist
+    if (settings) {
       if (!settings.canteens) {
         settings.canteens = { list: [] as any };
       }
-
-      settings.canteens.list.push({
-        id: `canteen-${Date.now()}`,
-        name,
-        code,
-        description,
-        location,
-        contactNumber,
-        email,
-        canteenOwnerEmail,
-        collegeId, // Legacy field
-        collegeIds: finalCollegeIds,
-        organizationId, // Legacy field
-        organizationIds: finalOrganizationIds,
-        restaurantId,
-        type,
-        operatingHours,
-        priority,
-        isActive,
-        ownerSidebarConfig: defaultOwnerSidebarConfig,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-
+      settings.canteens.list.push(canteenData as any);
       settings.canteens!.lastUpdatedBy = updatedBy;
       settings.canteens!.lastUpdatedAt = new Date();
+      settings.updatedAt = new Date();
+      await settings.save();
     }
-
-    settings.updatedAt = new Date();
-    await settings.save();
 
     console.log(`➕ New canteen added by user ${updatedBy || 'unknown'}: ${code} - ${name} - Colleges: ${finalCollegeIds.join(', ')} - Organizations: ${finalOrganizationIds.join(', ')}`);
 
+    // Return all canteens from CanteenEntity collection
+    const allCanteens = await CanteenEntity.find().lean();
+
     res.json({
       success: true,
-      canteen: { id: `canteen-${Date.now()}`, name, code, isActive, collegeIds: finalCollegeIds, organizationIds: finalOrganizationIds },
-      canteens: settings.canteens?.list || []
+      canteen: { id: canteenId, name, code, isActive, collegeIds: finalCollegeIds, organizationIds: finalOrganizationIds },
+      canteens: allCanteens
     });
   } catch (error) {
     console.error('Error adding canteen:', error);
@@ -3486,6 +3403,7 @@ router.post('/canteens', async (req, res) => {
 
 /**
  * Update a canteen
+ * OPTIMIZED: Updates CanteenEntity collection AND SystemSettings for backward compatibility
  */
 router.put('/canteens/:id', async (req, res) => {
   try {
@@ -3495,103 +3413,78 @@ router.put('/canteens/:id', async (req, res) => {
 
     console.log('Updating canteen:', { id, name, code, collegeId, organizationId, collegeIds, organizationIds, updatedBy, priority }); // Debug log
 
-    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-
-    if (!settings || !settings.canteens?.list) {
+    const canteen = await CanteenEntity.findOne({ id });
+    if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
 
-    const canteenIndex = settings.canteens.list.findIndex((canteen: any) => canteen.id === id);
-    if (canteenIndex === -1) {
-      return res.status(404).json({ error: 'Canteen not found' });
-    }
+    // Update fields on CanteenEntity
+    if (name !== undefined) canteen.name = name;
+    if (code !== undefined) canteen.code = code;
+    if (description !== undefined) canteen.description = description;
+    if (location !== undefined) canteen.location = location;
+    if (contactNumber !== undefined) canteen.contactNumber = contactNumber;
+    if (email !== undefined) canteen.email = email;
+    if (canteenOwnerEmail !== undefined) canteen.canteenOwnerEmail = canteenOwnerEmail;
 
-    // Update canteen
-    if (name !== undefined) {
-      settings.canteens.list[canteenIndex].name = name;
-    }
-    if (code !== undefined) {
-      settings.canteens.list[canteenIndex].code = code;
-    }
-    if (description !== undefined) {
-      settings.canteens.list[canteenIndex].description = description;
-    }
-    if (location !== undefined) {
-      settings.canteens.list[canteenIndex].location = location;
-    }
-    if (contactNumber !== undefined) {
-      settings.canteens.list[canteenIndex].contactNumber = contactNumber;
-    }
-    if (email !== undefined) {
-      settings.canteens.list[canteenIndex].email = email;
-    }
-    if (canteenOwnerEmail !== undefined) {
-      settings.canteens.list[canteenIndex].canteenOwnerEmail = canteenOwnerEmail;
-    }
     // Handle backward compatibility: if collegeId/organizationId provided, convert to arrays
     if (collegeIds !== undefined) {
-      settings.canteens.list[canteenIndex].collegeIds = collegeIds;
-      // Also update legacy field for backward compatibility
-      if (collegeIds.length > 0) {
-        settings.canteens.list[canteenIndex].collegeId = collegeIds[0];
-      }
+      canteen.collegeIds = collegeIds;
+      if (collegeIds.length > 0) canteen.collegeId = collegeIds[0];
     } else if (collegeId !== undefined) {
-      settings.canteens.list[canteenIndex].collegeId = collegeId;
-      // Convert single value to array if array doesn't exist
-      if (!settings.canteens.list[canteenIndex].collegeIds) {
-        settings.canteens.list[canteenIndex].collegeIds = [collegeId];
-      } else if (!settings.canteens.list[canteenIndex].collegeIds.includes(collegeId)) {
-        settings.canteens.list[canteenIndex].collegeIds.push(collegeId);
+      canteen.collegeId = collegeId;
+      if (!canteen.collegeIds || canteen.collegeIds.length === 0) {
+        canteen.collegeIds = [collegeId];
+      } else if (!canteen.collegeIds.includes(collegeId)) {
+        canteen.collegeIds.push(collegeId);
       }
     }
     if (organizationIds !== undefined) {
-      settings.canteens.list[canteenIndex].organizationIds = organizationIds;
-      // Also update legacy field for backward compatibility
-      if (organizationIds.length > 0) {
-        settings.canteens.list[canteenIndex].organizationId = organizationIds[0];
-      }
+      canteen.organizationIds = organizationIds;
+      if (organizationIds.length > 0) canteen.organizationId = organizationIds[0];
     } else if (organizationId !== undefined) {
-      settings.canteens.list[canteenIndex].organizationId = organizationId;
-      // Convert single value to array if array doesn't exist
-      if (!settings.canteens.list[canteenIndex].organizationIds) {
-        settings.canteens.list[canteenIndex].organizationIds = [organizationId];
-      } else if (!settings.canteens.list[canteenIndex].organizationIds.includes(organizationId)) {
-        settings.canteens.list[canteenIndex].organizationIds.push(organizationId);
+      canteen.organizationId = organizationId;
+      if (!canteen.organizationIds || canteen.organizationIds.length === 0) {
+        canteen.organizationIds = [organizationId];
+      } else if (!canteen.organizationIds.includes(organizationId)) {
+        canteen.organizationIds.push(organizationId);
       }
     }
-    if (restaurantId !== undefined) {
-      settings.canteens.list[canteenIndex].restaurantId = restaurantId;
-    }
-    if (type !== undefined) {
-      settings.canteens.list[canteenIndex].type = type;
-    }
-    if (operatingHours !== undefined) {
-      settings.canteens.list[canteenIndex].operatingHours = operatingHours;
-    }
-    if (isActive !== undefined) {
-      settings.canteens.list[canteenIndex].isActive = isActive;
-    }
+    if (restaurantId !== undefined) canteen.restaurantId = restaurantId;
+    if (type !== undefined) canteen.type = type;
+    if (operatingHours !== undefined) canteen.operatingHours = operatingHours;
+    if (isActive !== undefined) canteen.isActive = isActive;
     if (priority !== undefined) {
-      settings.canteens.list[canteenIndex].priority = priority;
+      canteen.priority = priority;
       console.log(`✏️ Updating canteen ${id} priority to: ${priority}`);
     }
-    settings.canteens.list[canteenIndex].updatedAt = new Date();
 
-    settings.canteens!.lastUpdatedBy = updatedBy;
-    settings.canteens!.lastUpdatedAt = new Date();
-    settings.updatedAt = new Date();
+    await canteen.save();
 
-    // Mark the canteens array as modified to ensure Mongoose saves nested changes
-    settings.markModified('canteens.list');
+    // Also update SystemSettings for backward compatibility
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+    if (settings && settings.canteens?.list) {
+      const canteenIndex = settings.canteens.list.findIndex((c: any) => c.id === id);
+      if (canteenIndex !== -1) {
+        // Copy all updated fields to SystemSettings
+        const updatedData = canteen.toObject();
+        Object.assign(settings.canteens.list[canteenIndex], updatedData);
+        settings.canteens!.lastUpdatedBy = updatedBy;
+        settings.canteens!.lastUpdatedAt = new Date();
+        settings.updatedAt = new Date();
+        settings.markModified('canteens.list');
+        await settings.save();
+      }
+    }
 
-    await settings.save();
+    console.log(`✏️ Canteen updated by user ${updatedBy || 'unknown'}: ${id} - Priority: ${canteen.priority} - Colleges: ${canteen.collegeIds?.join(', ') || 'none'} - Organizations: ${canteen.organizationIds?.join(', ') || 'none'}`);
 
-    console.log(`✏️ Canteen updated by user ${updatedBy || 'unknown'}: ${id} - Priority: ${settings.canteens.list[canteenIndex].priority} - Colleges: ${settings.canteens.list[canteenIndex].collegeIds?.join(', ') || 'none'} - Organizations: ${settings.canteens.list[canteenIndex].organizationIds?.join(', ') || 'none'}`);
+    const allCanteens = await CanteenEntity.find().lean();
 
     res.json({
       success: true,
-      canteen: settings.canteens.list[canteenIndex],
-      canteens: settings.canteens.list
+      canteen: canteen.toObject(),
+      canteens: allCanteens
     });
   } catch (error) {
     console.error('Error updating canteen:', error);
@@ -3601,6 +3494,7 @@ router.put('/canteens/:id', async (req, res) => {
 
 /**
  * Update canteen content settings
+ * OPTIMIZED: Updates CanteenEntity collection AND SystemSettings for backward compatibility
  */
 router.put('/canteens/:id/content-settings', async (req, res) => {
   try {
@@ -3609,29 +3503,16 @@ router.put('/canteens/:id/content-settings', async (req, res) => {
 
     console.log('Updating canteen content settings:', { id, codingChallengesEnabled, payAtCounterEnabled, deliveryEnabled, updatedBy });
 
-    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-
-    if (!settings || !settings.canteens?.list) {
+    const canteen = await CanteenEntity.findOne({ id });
+    if (!canteen) {
       return res.status(404).json({ error: 'Canteen not found' });
     }
 
-    const canteenIndex = settings.canteens.list.findIndex((canteen: any) => canteen.id === id);
-    if (canteenIndex === -1) {
-      return res.status(404).json({ error: 'Canteen not found' });
-    }
-
-    // Update content settings
-    if (codingChallengesEnabled !== undefined) {
-      settings.canteens.list[canteenIndex].codingChallengesEnabled = codingChallengesEnabled;
-    }
-    if (payAtCounterEnabled !== undefined) {
-      settings.canteens.list[canteenIndex].payAtCounterEnabled = payAtCounterEnabled;
-    }
-    if (deliveryEnabled !== undefined) {
-      settings.canteens.list[canteenIndex].deliveryEnabled = deliveryEnabled;
-    }
+    // Update content settings on CanteenEntity
+    if (codingChallengesEnabled !== undefined) canteen.codingChallengesEnabled = codingChallengesEnabled;
+    if (payAtCounterEnabled !== undefined) canteen.payAtCounterEnabled = payAtCounterEnabled;
+    if (deliveryEnabled !== undefined) canteen.deliveryEnabled = deliveryEnabled;
     if (ownerSidebarConfig !== undefined) {
-      // Merge with defaults to avoid losing keys
       const defaultOwnerSidebarConfig = {
         overview: true,
         counters: true,
@@ -3646,25 +3527,39 @@ router.put('/canteens/:id/content-settings', async (req, res) => {
         "position-bidding": true,
         "store-mode": true
       };
-      settings.canteens.list[canteenIndex].ownerSidebarConfig = {
+      canteen.ownerSidebarConfig = {
         ...defaultOwnerSidebarConfig,
         ...ownerSidebarConfig
       };
     }
 
-    settings.canteens.list[canteenIndex].updatedAt = new Date();
-    settings.canteens!.lastUpdatedBy = updatedBy;
-    settings.canteens!.lastUpdatedAt = new Date();
-    settings.updatedAt = new Date();
+    await canteen.save();
 
-    await settings.save();
+    // Also update SystemSettings for backward compatibility
+    let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+    if (settings && settings.canteens?.list) {
+      const canteenIndex = settings.canteens.list.findIndex((c: any) => c.id === id);
+      if (canteenIndex !== -1) {
+        if (codingChallengesEnabled !== undefined) settings.canteens.list[canteenIndex].codingChallengesEnabled = codingChallengesEnabled;
+        if (payAtCounterEnabled !== undefined) settings.canteens.list[canteenIndex].payAtCounterEnabled = payAtCounterEnabled;
+        if (deliveryEnabled !== undefined) settings.canteens.list[canteenIndex].deliveryEnabled = deliveryEnabled;
+        if (ownerSidebarConfig !== undefined) settings.canteens.list[canteenIndex].ownerSidebarConfig = canteen.ownerSidebarConfig;
+        settings.canteens.list[canteenIndex].updatedAt = new Date();
+        settings.canteens!.lastUpdatedBy = updatedBy;
+        settings.canteens!.lastUpdatedAt = new Date();
+        settings.updatedAt = new Date();
+        await settings.save();
+      }
+    }
 
     console.log(`✏️ Canteen content settings updated by user ${updatedBy || 'unknown'}: ${id} - Coding Challenges: ${codingChallengesEnabled ? 'enabled' : 'disabled'}`);
 
+    const allCanteens = await CanteenEntity.find().lean();
+
     res.json({
       success: true,
-      canteen: settings.canteens.list[canteenIndex],
-      canteens: settings.canteens.list
+      canteen: canteen.toObject(),
+      canteens: allCanteens
     });
   } catch (error) {
     console.error('Error updating canteen content settings:', error);
@@ -3674,44 +3569,46 @@ router.put('/canteens/:id/content-settings', async (req, res) => {
 
 /**
  * Delete a canteen
+ * OPTIMIZED: Deletes from CanteenEntity collection AND SystemSettings for backward compatibility
  */
 router.delete('/canteens/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updatedBy = req.body.updatedBy;
 
+    const deletedCanteen = await CanteenEntity.findOneAndDelete({ id }).lean();
+    if (!deletedCanteen) {
+      return res.status(404).json({ error: 'Canteen not found' });
+    }
+
+    // Also remove from SystemSettings for backward compatibility
     let settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
-
-    if (!settings || !settings.canteens?.list) {
-      return res.status(404).json({ error: 'Canteen not found' });
+    if (settings && settings.canteens?.list) {
+      const canteenIndex = settings.canteens.list.findIndex((c: any) => c.id === id);
+      if (canteenIndex !== -1) {
+        settings.canteens.list.splice(canteenIndex, 1);
+        settings.canteens!.lastUpdatedBy = updatedBy;
+        settings.canteens!.lastUpdatedAt = new Date();
+        settings.updatedAt = new Date();
+        await settings.save();
+      }
     }
-
-    const canteenIndex = settings.canteens.list.findIndex((canteen: any) => canteen.id === id);
-    if (canteenIndex === -1) {
-      return res.status(404).json({ error: 'Canteen not found' });
-    }
-
-    // Remove canteen
-    const deletedCanteen = settings.canteens.list.splice(canteenIndex, 1)[0];
-
-    settings.canteens!.lastUpdatedBy = updatedBy;
-    settings.canteens!.lastUpdatedAt = new Date();
-    settings.updatedAt = new Date();
-
-    await settings.save();
 
     console.log(`🗑️ Canteen deleted by user ${updatedBy || 'unknown'}: ${id} - ${deletedCanteen.name}`);
+
+    const allCanteens = await CanteenEntity.find().lean();
 
     res.json({
       success: true,
       deletedCanteen,
-      canteens: settings.canteens.list
+      canteens: allCanteens
     });
   } catch (error) {
     console.error('Error deleting canteen:', error);
     res.status(500).json({ error: 'Failed to delete canteen' });
   }
 });
+
 
 // Migration endpoint to update canteen IDs
 router.post('/migrate-canteen-ids', async (req, res) => {
@@ -3817,6 +3714,102 @@ router.post('/migrate-canteen-ids', async (req, res) => {
     });
   }
 });
+
+/**
+ * Migration endpoint: Copy canteens from SystemSettings.canteens.list to CanteenEntity collection
+ * This is idempotent - safe to call multiple times (uses upsert by canteen id)
+ */
+router.post('/migrate-canteens-to-collection', async (req, res) => {
+  try {
+    console.log('🔄 Starting canteen collection migration...');
+
+    const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 });
+    if (!settings || !settings.canteens?.list || settings.canteens.list.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No canteens found in SystemSettings to migrate',
+        migrated: 0,
+        skipped: 0
+      });
+    }
+
+    const canteensList = settings.canteens.list;
+    console.log(`📊 Found ${canteensList.length} canteens in SystemSettings`);
+
+    let migrated = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    // Use bulkWrite for efficiency
+    const bulkOps = canteensList.map((canteen: any) => {
+      const canteenData = {
+        id: canteen.id,
+        name: canteen.name,
+        code: canteen.code,
+        description: canteen.description,
+        imageUrl: canteen.imageUrl,
+        imagePublicId: canteen.imagePublicId,
+        logoUrl: canteen.logoUrl,
+        logoPublicId: canteen.logoPublicId,
+        bannerUrl: canteen.bannerUrl,
+        bannerPublicId: canteen.bannerPublicId,
+        location: canteen.location,
+        contactNumber: canteen.contactNumber,
+        email: canteen.email,
+        canteenOwnerEmail: canteen.canteenOwnerEmail,
+        collegeId: canteen.collegeId,
+        collegeIds: canteen.collegeIds || (canteen.collegeId ? [canteen.collegeId] : []),
+        organizationId: canteen.organizationId,
+        organizationIds: canteen.organizationIds || (canteen.organizationId ? [canteen.organizationId] : []),
+        restaurantId: canteen.restaurantId,
+        type: canteen.type,
+        operatingHours: canteen.operatingHours,
+        isActive: canteen.isActive !== false,
+        codingChallengesEnabled: canteen.codingChallengesEnabled || false,
+        payAtCounterEnabled: canteen.payAtCounterEnabled !== false,
+        deliveryEnabled: canteen.deliveryEnabled !== false,
+        ownerSidebarConfig: canteen.ownerSidebarConfig || {},
+        priority: canteen.priority || 0,
+        createdAt: canteen.createdAt || new Date(),
+        updatedAt: canteen.updatedAt || new Date()
+      };
+
+      return {
+        updateOne: {
+          filter: { id: canteen.id },
+          update: { $set: canteenData },
+          upsert: true
+        }
+      };
+    });
+
+    const bulkResult = await CanteenEntity.bulkWrite(bulkOps);
+    migrated = bulkResult.upsertedCount;
+    skipped = bulkResult.modifiedCount;
+
+    const totalInCollection = await CanteenEntity.countDocuments();
+
+    console.log(`🎉 Migration completed: ${migrated} new, ${skipped} updated, ${totalInCollection} total in collection`);
+
+    res.json({
+      success: true,
+      message: 'Canteen collection migration completed',
+      migrated,
+      skipped,
+      totalInSystemSettings: canteensList.length,
+      totalInCollection,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('❌ Canteen collection migration failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Migration failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 
 /**
  * Migration endpoint to update existing users with default college
