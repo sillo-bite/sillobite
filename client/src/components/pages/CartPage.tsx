@@ -31,7 +31,7 @@ export default function CartPage() {
   const [, setLocation] = useLocation();
   const { goToHome } = usePWANavigation();
   const { cart, updateQuantity, removeFromCart, getTotalPrice, getTotalItems, clearCart, getCartCanteenId, validateCartCanteen } = useCart();
-  const { selectedCanteen } = useCanteenContext();
+  const { selectedCanteen, availableCanteens } = useCanteenContext();
   const { resolvedTheme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
 
@@ -63,7 +63,7 @@ export default function CartPage() {
   const debouncedRefetchStock = React.useRef<NodeJS.Timeout | null>(null);
   const handleRefetchStock = React.useCallback(() => {
     if (debouncedRefetchStock.current) {
-      clearTimeout(debouncedRefetchStock.current); a
+      clearTimeout(debouncedRefetchStock.current);
     }
     debouncedRefetchStock.current = setTimeout(() => {
       console.log("🔄 Cart received order update, refreshing stock validation...");
@@ -332,6 +332,14 @@ export default function CartPage() {
               <div>
                 <h1 className={`text-xl font-bold ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
                   }`}>My Cart</h1>
+                {cart.length > 0 && (() => {
+                  const cartCanteen = availableCanteens.find(c => c.id === cartCanteenId) || (selectedCanteen?.id === cartCanteenId ? selectedCanteen : null);
+                  return cartCanteen ? (
+                    <p className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`}>
+                      {cartCanteen.name}
+                    </p>
+                  ) : null;
+                })()}
                 <p className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                   }`}>
                   {cart.length > 0 ? `${getTotalItems()} items` : "Your cart is empty"}
@@ -539,8 +547,8 @@ export default function CartPage() {
                         {/* Gradient Fade Overlay */}
                         {!showAllItems && cart.length > 5 && (
                           <div className={`absolute bottom-0 left-0 right-0 h-32 pointer-events-none bg-gradient-to-t ${resolvedTheme === 'dark'
-                              ? 'from-gray-900 via-gray-900/60 to-transparent'
-                              : 'from-white via-white/80 to-transparent'
+                            ? 'from-gray-900 via-gray-900/60 to-transparent'
+                            : 'from-white via-white/80 to-transparent'
                             }`} style={{ zIndex: 10 }} />
                         )}
                       </div>
