@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 
 export interface CartItem {
   id: string;
@@ -15,6 +15,11 @@ export interface CartItem {
   paymentCounterId?: string; // Payment counter ID for this menu item
 }
 
+export type CartPendingItem = {
+  item: { id: string | number; name: string; price: number; isVegetarian: boolean; canteenId: string; category?: string; description?: string; imageUrl?: string; storeCounterId?: string; paymentCounterId?: string };
+  quantity: number;
+};
+
 interface CartContextType {
   cart: CartItem[];
   addToCart: (item: { id: string | number; name: string; price: number; isVegetarian: boolean; canteenId: string; category?: string; description?: string; imageUrl?: string; storeCounterId?: string; paymentCounterId?: string }, quantity?: number) => void;
@@ -25,10 +30,15 @@ interface CartContextType {
   getTotalItems: () => number;
   getTotalPrice: () => number;
   clearCart: () => void;
-  getCartCanteenId: () => string | null; // Get the canteen ID for items in cart
-  clearCartForCanteen: (canteenId: string) => void; // Load cart for specific canteen
-  validateCartCanteen: (canteenId: string) => boolean; // Validate if cart items belong to current canteen
-  initializeCartForCanteen: (canteenId: string) => void; // Initialize cart for a specific canteen
+  getCartCanteenId: () => string | null;
+  clearCartForCanteen: (canteenId: string) => void;
+  validateCartCanteen: (canteenId: string) => boolean;
+  initializeCartForCanteen: (canteenId: string) => void;
+  // Canteen conflict detection
+  canteenConflict: boolean;
+  pendingItem: CartPendingItem | null;
+  confirmCanteenSwitch: () => void;
+  cancelCanteenSwitch: () => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -39,6 +49,15 @@ const CART_STORAGE_PREFIX = 'digital-canteen-cart-';
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [currentCanteenId, setCurrentCanteenId] = useState<string | null>(null);
+  const [canteenConflict, setCanteenConflict] = useState(false);
+  const [pendingItem, setPendingItem] = useState<CartPendingItem | null>(null);
+
+  // Refs to read current values without adding them as callback dependencies
+  // (prevents infinite re-render loops when CanteenContext uses initializeCartForCanteen in a useEffect)
+  const cartRef = useRef(cart);
+  const currentCanteenIdRef = useRef(currentCanteenId);
+  useEffect(() => { cartRef.current = cart; }, [cart]);
+  useEffect(() => { currentCanteenIdRef.current = currentCanteenId; }, [currentCanteenId]);
 
   // Get canteen-specific storage key
   const getCanteenStorageKey = (canteenId: string) => `${CART_STORAGE_PREFIX}${canteenId}`;
@@ -50,15 +69,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const savedCart = localStorage.getItem(storageKey);
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart);
-        
+
         // Validate cart items have string IDs (MongoDB ObjectIds) and correct canteenId
-        const isValidCart = Array.isArray(parsedCart) && 
-          parsedCart.every(item => 
-            typeof item.id === 'string' && 
-            item.id.length > 10 && 
+        const isValidCart = Array.isArray(parsedCart) &&
+          parsedCart.every(item =>
+            typeof item.id === 'string' &&
+            item.id.length > 10 &&
             item.canteenId === canteenId
           );
-        
+
         if (isValidCart) {
           setCart(parsedCart);
           setCurrentCanteenId(canteenId);
@@ -99,10 +118,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (currentCanteenId && cart.length >= 0) {
       saveCartForCanteen(currentCanteenId, cart);
       console.log(`🛒 Cart state updated for canteen ${currentCanteenId}:`, cart.length, 'items');
-      
+
       // Dispatch custom event for same-tab synchronization
-      window.dispatchEvent(new CustomEvent('cartUpdated', { 
-        detail: { canteenId: currentCanteenId, cart } 
+      window.dispatchEvent(new CustomEvent('cartUpdated', {
+        detail: { canteenId: currentCanteenId, cart }
       }));
     }
   }, [cart, currentCanteenId, saveCartForCanteen]);
@@ -114,21 +133,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!e.key || !e.key.startsWith(CART_STORAGE_PREFIX)) {
         return;
       }
-      
+
       // Extract canteen ID from storage key
       const canteenId = e.key.replace(CART_STORAGE_PREFIX, '');
-      
+
       // Only sync if it's for the current canteen
       if (canteenId === currentCanteenId && e.newValue) {
         try {
           const parsedCart = JSON.parse(e.newValue);
-          const isValidCart = Array.isArray(parsedCart) && 
-            parsedCart.every(item => 
-              typeof item.id === 'string' && 
-              item.id.length > 10 && 
+          const isValidCart = Array.isArray(parsedCart) &&
+            parsedCart.every(item =>
+              typeof item.id === 'string' &&
+              item.id.length > 10 &&
               item.canteenId === canteenId
             );
-          
+
           if (isValidCart) {
             console.log(`🔄 Cart synced from other tab for canteen ${canteenId}`);
             setCart(parsedCart);
@@ -141,7 +160,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // Listen for storage events (from other tabs)
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also listen for custom events (from same tab)
     const handleCartUpdate = (e: CustomEvent) => {
       // Ignore events from same tab to prevent loops
@@ -154,7 +173,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       }
     };
-    
+
     window.addEventListener('cartUpdated', handleCartUpdate as EventListener);
 
     return () => {
@@ -181,7 +200,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     window.addEventListener('userAuthChange', handleLogout);
-    
+
     // Also check if user was logged out by checking localStorage
     const checkUserLogout = () => {
       const user = localStorage.getItem('user');
@@ -201,9 +220,84 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [cart]);
 
+  // Internal helper to actually add the item to the cart (no conflict check)
+  const addItemInternal = useCallback((item: { id: string | number; name: string; price: number; isVegetarian: boolean; canteenId: string; category?: string; description?: string; imageUrl?: string; storeCounterId?: string; paymentCounterId?: string }, quantity: number) => {
+    const itemId = item.id.toString();
+
+    if (!currentCanteenId || currentCanteenId !== item.canteenId) {
+      console.log(`🛒 Switching from canteen ${currentCanteenId} to ${item.canteenId}`);
+      const storageKey = getCanteenStorageKey(item.canteenId);
+      let loadedCart: CartItem[] = [];
+
+      try {
+        const savedCart = localStorage.getItem(storageKey);
+        if (savedCart) {
+          const parsedCart = JSON.parse(savedCart);
+          const isValidCart = Array.isArray(parsedCart) &&
+            parsedCart.every(cartItem =>
+              typeof cartItem.id === 'string' &&
+              cartItem.id.length > 10 &&
+              cartItem.canteenId === item.canteenId
+            );
+          if (isValidCart) {
+            loadedCart = parsedCart;
+          }
+        }
+      } catch (error) {
+        console.error(`Failed to load cart for canteen ${item.canteenId}:`, error);
+      }
+
+      setCurrentCanteenId(item.canteenId);
+
+      setCart(currentCart => {
+        const baseCart = loadedCart.length > 0 ? loadedCart : currentCart;
+        const existingItemIndex = baseCart.findIndex(cartItem => cartItem.id === itemId);
+
+        let newCart: CartItem[];
+        if (existingItemIndex >= 0) {
+          newCart = baseCart.map((cartItem, index) =>
+            index === existingItemIndex
+              ? { ...cartItem, quantity: cartItem.quantity + quantity }
+              : cartItem
+          );
+        } else {
+          newCart = [...baseCart, {
+            ...item,
+            id: itemId,
+            quantity,
+            addedAt: Date.now()
+          }];
+        }
+        return newCart;
+      });
+    } else {
+      console.log('🛒 Adding item to same canteen cart');
+      setCart(currentCart => {
+        const existingItemIndex = currentCart.findIndex(cartItem => cartItem.id === itemId);
+
+        let newCart: CartItem[];
+        if (existingItemIndex >= 0) {
+          newCart = currentCart.map((cartItem, index) =>
+            index === existingItemIndex
+              ? { ...cartItem, quantity: cartItem.quantity + quantity }
+              : cartItem
+          );
+        } else {
+          newCart = [...currentCart, {
+            ...item,
+            id: itemId,
+            quantity,
+            addedAt: Date.now()
+          }];
+        }
+        return newCart;
+      });
+    }
+  }, [currentCanteenId, getCanteenStorageKey]);
+
   const addToCart = useCallback((item: { id: string | number; name: string; price: number; isVegetarian: boolean; canteenId: string; category?: string; description?: string; storeCounterId?: string; paymentCounterId?: string }, quantity = 1) => {
-    const itemId = item.id.toString(); // Ensure string ID
-    
+    const itemId = item.id.toString();
+
     console.log('🛒 CartContext addToCart called:', {
       itemId,
       itemName: item.name,
@@ -213,7 +307,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       storeCounterId: item.storeCounterId,
       paymentCounterId: item.paymentCounterId
     });
-    
+
     // Validate counter IDs are present (REQUIRED)
     if (!item.storeCounterId || !item.paymentCounterId) {
       console.error('❌ CartContext: Item missing counter IDs when adding to cart:', {
@@ -224,94 +318,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       throw new Error(`Counter IDs are required for "${item.name}". Please refresh the page and add the item again.`);
     }
-    
-    // If switching to a different canteen, or if no canteen is currently selected, load that canteen's cart first
-    if (!currentCanteenId || currentCanteenId !== item.canteenId) {
-      console.log(`🛒 Switching from canteen ${currentCanteenId} to ${item.canteenId}`);
-      // Load the cart synchronously first
-      const storageKey = getCanteenStorageKey(item.canteenId);
-      let loadedCart: CartItem[] = [];
-      
-      try {
-        const savedCart = localStorage.getItem(storageKey);
-        if (savedCart) {
-          const parsedCart = JSON.parse(savedCart);
-          const isValidCart = Array.isArray(parsedCart) && 
-            parsedCart.every(cartItem => 
-              typeof cartItem.id === 'string' && 
-              cartItem.id.length > 10 && 
-              cartItem.canteenId === item.canteenId
-            );
-          
-          if (isValidCart) {
-            loadedCart = parsedCart;
-          }
-        }
-      } catch (error) {
-        console.error(`Failed to load cart for canteen ${item.canteenId}:`, error);
-      }
-      
-      // Set the canteen ID and loaded cart
-      setCurrentCanteenId(item.canteenId);
-      
-      // Now add the item to the loaded cart
-      setCart(currentCart => {
-        // Use loaded cart if available, otherwise use current cart
-        const baseCart = loadedCart.length > 0 ? loadedCart : currentCart;
-        const existingItemIndex = baseCart.findIndex(cartItem => cartItem.id === itemId);
-        
-        let newCart: CartItem[];
-        if (existingItemIndex >= 0) {
-          // Item exists, increase quantity
-          newCart = baseCart.map((cartItem, index) =>
-            index === existingItemIndex
-              ? { ...cartItem, quantity: cartItem.quantity + quantity }
-              : cartItem
-          );
-        } else {
-          // New item, add to cart with timestamp
-          newCart = [...baseCart, { 
-            ...item, 
-            id: itemId, 
-            quantity,
-            addedAt: Date.now()
-          }];
-        }
-        
-        return newCart;
-      });
-    } else {
-      // Same canteen, add item normally
-      console.log('🛒 Adding item to same canteen cart');
-      setCart(currentCart => {
-        const existingItemIndex = currentCart.findIndex(cartItem => cartItem.id === itemId);
-        
-        let newCart: CartItem[];
-        if (existingItemIndex >= 0) {
-          // Item exists, increase quantity
-          console.log('🛒 Item exists, increasing quantity');
-          newCart = currentCart.map((cartItem, index) =>
-            index === existingItemIndex
-              ? { ...cartItem, quantity: cartItem.quantity + quantity }
-              : cartItem
-          );
-        } else {
-          // New item, add to cart with timestamp
-          console.log('🛒 New item, adding to cart');
-          newCart = [...currentCart, { 
-            ...item, 
-            id: itemId, 
-            quantity,
-            addedAt: Date.now()
-          }];
-        }
-        
-        console.log('🛒 New cart state:', newCart);
-        return newCart;
-      });
+
+    // Canteen conflict detection: if cart has items from a different canteen, prompt the user
+    if (currentCanteenId && currentCanteenId !== item.canteenId && cart.length > 0) {
+      console.log(`🛒 Canteen conflict detected: cart has items from ${currentCanteenId}, trying to add from ${item.canteenId}`);
+      setPendingItem({ item, quantity });
+      setCanteenConflict(true);
+      return; // Don't add yet — wait for user confirmation
     }
 
-  }, [currentCanteenId, getCanteenStorageKey]);
+    // No conflict, add directly
+    addItemInternal(item, quantity);
+  }, [currentCanteenId, cart.length, addItemInternal]);
 
   const removeFromCart = useCallback((itemId: string) => {
     setCart(currentCart => currentCart.filter(item => item.id !== itemId));
@@ -397,9 +415,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [currentCanteenId]);
 
   const initializeCartForCanteen = useCallback((canteenId: string) => {
-    console.log(`🛒 Initializing cart for canteen: ${canteenId}`);
+    const curCanteen = currentCanteenIdRef.current;
+    const curCartLen = cartRef.current.length;
+    console.log(`🛒 Initializing cart for canteen: ${canteenId}, current: ${curCanteen}, cart items: ${curCartLen}`);
+
+    // If the cart already has items from a DIFFERENT canteen, do NOT switch.
+    // The cart stays showing the old canteen's items until the user explicitly
+    // confirms a switch via the conflict dialog (triggered by addToCart).
+    if (curCanteen && curCanteen !== canteenId && curCartLen > 0) {
+      console.log(`🛒 Cart has ${curCartLen} items from canteen ${curCanteen} — keeping current cart (conflict will trigger on addToCart)`);
+      return;
+    }
+
+    // No items or same canteen — safe to load/switch
     loadCartForCanteen(canteenId);
   }, [loadCartForCanteen]);
+
+  // Confirm canteen switch: clear current cart and add the pending item
+  const confirmCanteenSwitch = useCallback(() => {
+    if (!pendingItem) return;
+
+    console.log('🛒 Confirming canteen switch — clearing cart and adding pending item');
+
+    // Clear the current canteen's cart from storage
+    if (currentCanteenId) {
+      const storageKey = getCanteenStorageKey(currentCanteenId);
+      localStorage.removeItem(storageKey);
+    }
+    localStorage.removeItem(CART_STORAGE_KEY);
+    setCart([]);
+    setCurrentCanteenId(null);
+
+    // Now add the pending item (will switch canteen context)
+    const { item, quantity } = pendingItem;
+    setPendingItem(null);
+    setCanteenConflict(false);
+
+    // Use setTimeout to ensure state is cleared before adding
+    setTimeout(() => {
+      addItemInternal(item, quantity);
+    }, 0);
+  }, [pendingItem, currentCanteenId, getCanteenStorageKey, addItemInternal]);
+
+  // Cancel canteen switch: discard the pending item
+  const cancelCanteenSwitch = useCallback(() => {
+    console.log('🛒 Canteen switch cancelled');
+    setPendingItem(null);
+    setCanteenConflict(false);
+  }, []);
 
   const value: CartContextType = {
     cart,
@@ -415,6 +478,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     clearCartForCanteen,
     validateCartCanteen,
     initializeCartForCanteen,
+    canteenConflict,
+    pendingItem,
+    confirmCanteenSwitch,
+    cancelCanteenSwitch,
   };
 
   return (

@@ -2231,6 +2231,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canteenId = req.query.canteenId as string;
       const customerId = req.query.customerId ? parseInt(req.query.customerId as string) : undefined;
 
+      // Security: require at least one filter to prevent leaking all users' orders
+      if (!canteenId && !customerId) {
+        return res.status(400).json({
+          message: "Either canteenId or customerId is required to fetch active orders"
+        });
+      }
+
       const result = await storage.getActiveOrdersPaginated(page, limit, canteenId, customerId);
 
       res.json(result);

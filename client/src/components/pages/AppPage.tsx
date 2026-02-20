@@ -8,6 +8,7 @@ import ProfilePage from "@/components/profile/ProfilePage";
 import OrdersPage from "@/components/orders/OrdersPage";
 import CodingChallengesPage from "./CodingChallengesPage";
 import FloatingCart from "@/components/cart/FloatingCart";
+import CanteenConflictDialog from "@/components/cart/CanteenConflictDialog";
 import { useNavigationHistory, type NavigationView } from "@/hooks/useNavigationHistory";
 import { useAuth } from "@/hooks/useAuth";
 import { UserRole } from "@shared/schema";
@@ -520,6 +521,9 @@ export default function AppPage() {
       {currentView === "menu" && (
         <FloatingCart />
       )}
+
+      {/* Canteen conflict dialog - shown when adding items from different canteen */}
+      <CanteenConflictDialog />
 
       {/* Exit app toast notification (Android) */}
       {showExitToast && (
