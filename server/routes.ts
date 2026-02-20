@@ -1290,12 +1290,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch user active orders separately if userId is provided
       let activeOrders: any[] = [];
       if (userId && !isNaN(userId)) {
-        activeOrders = await storage.getUserActiveOrders(userId);
-      }
-
-      // Ensure activeOrders is always an array
-      if (!Array.isArray(activeOrders)) {
-        activeOrders = [];
+        const allActiveOrders = await storage.getUserActiveOrders(userId);
+        // Filter to only orders for the selected canteen
+        activeOrders = Array.isArray(allActiveOrders)
+          ? allActiveOrders.filter((order: any) => order.canteenId === canteenId)
+          : [];
       }
 
       // Get coding challenges enabled status from canteen settings

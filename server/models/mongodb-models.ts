@@ -1309,3 +1309,93 @@ PositionBidSchema.pre('save', function (next) {
 
 export const PositionBid = mongoose.model<IPositionBid>('PositionBid', PositionBidSchema);
 
+// CanteenEntity Model - Dedicated collection for canteens (migrated from SystemSettings.canteens.list)
+export interface ICanteenEntity extends Document {
+  id: string; // Legacy string ID (e.g., 'canteen-1234567890')
+  name: string;
+  code: string;
+  description?: string;
+  imageUrl?: string;
+  imagePublicId?: string;
+  logoUrl?: string;
+  logoPublicId?: string;
+  bannerUrl?: string;
+  bannerPublicId?: string;
+  location?: string;
+  contactNumber?: string;
+  email?: string;
+  canteenOwnerEmail?: string;
+  collegeId?: string; // Legacy single value
+  collegeIds: string[]; // Array of college IDs this canteen serves
+  organizationId?: string; // Legacy single value
+  organizationIds: string[]; // Array of organization IDs this canteen serves
+  restaurantId?: string;
+  type?: string;
+  operatingHours?: {
+    open?: string;
+    close?: string;
+    days?: string[];
+  };
+  isActive: boolean;
+  codingChallengesEnabled: boolean;
+  payAtCounterEnabled: boolean;
+  deliveryEnabled: boolean;
+  ownerSidebarConfig?: Record<string, boolean>;
+  priority: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const CanteenEntitySchema = new Schema<ICanteenEntity>({
+  id: { type: String, required: true, unique: true }, // Legacy string ID
+  name: { type: String, required: true },
+  code: { type: String, required: true },
+  description: { type: String },
+  imageUrl: { type: String },
+  imagePublicId: { type: String },
+  logoUrl: { type: String },
+  logoPublicId: { type: String },
+  bannerUrl: { type: String },
+  bannerPublicId: { type: String },
+  location: { type: String },
+  contactNumber: { type: String },
+  email: { type: String },
+  canteenOwnerEmail: { type: String },
+  collegeId: { type: String }, // Legacy
+  collegeIds: { type: [String], default: [] },
+  organizationId: { type: String }, // Legacy
+  organizationIds: { type: [String], default: [] },
+  restaurantId: { type: String },
+  type: { type: String },
+  operatingHours: {
+    open: { type: String },
+    close: { type: String },
+    days: [{ type: String }]
+  },
+  isActive: { type: Boolean, default: true },
+  codingChallengesEnabled: { type: Boolean, default: false },
+  payAtCounterEnabled: { type: Boolean, default: true },
+  deliveryEnabled: { type: Boolean, default: true },
+  ownerSidebarConfig: { type: Schema.Types.Mixed, default: {} },
+  priority: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Indexes for efficient querying
+CanteenEntitySchema.index({ id: 1 }); // Already unique, explicit index for lookups
+CanteenEntitySchema.index({ collegeIds: 1, isActive: 1 }); // Multikey index for college filtering
+CanteenEntitySchema.index({ organizationIds: 1, isActive: 1 }); // Multikey index for organization filtering
+CanteenEntitySchema.index({ restaurantId: 1, isActive: 1 }); // Restaurant filter
+CanteenEntitySchema.index({ priority: 1, name: 1 }); // Sort order
+CanteenEntitySchema.index({ canteenOwnerEmail: 1 }); // Owner lookup
+CanteenEntitySchema.index({ code: 1 }, { unique: true }); // Unique code
+
+// Update updatedAt before saving
+CanteenEntitySchema.pre('save', function (next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+export const CanteenEntity = mongoose.model<ICanteenEntity>('CanteenEntity', CanteenEntitySchema);
+
