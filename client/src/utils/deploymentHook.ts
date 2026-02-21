@@ -14,10 +14,10 @@ export function useDeploymentDetection() {
 
         // Make queryClient globally available for cache clearing
         window.queryClient = queryClient;
-        
+
         // Check for new deployment
         const updateDetected = await CacheManager.checkForUpdate();
-        
+
         if (updateDetected) {
           // Show user-friendly notification
           console.log('📱 App updated! New features are now available.');
@@ -31,7 +31,7 @@ export function useDeploymentDetection() {
           AppUpdater.showServiceWorkerUpdateNotification();
           await CacheManager.activateWaitingServiceWorker();
         }
-        
+
       } catch (error) {
         // Only log errors in production
         const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
