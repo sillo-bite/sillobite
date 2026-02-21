@@ -582,19 +582,30 @@ export default function CartPage() {
         {/* Premium Floating Checkout Card */}
         {cart.length > 0 && (
           <div
-            className="fixed left-4 right-4 z-[9998]"
+            className={`fixed left-4 right-4 z-[9998] p-5 rounded-[28px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] ${resolvedTheme === 'dark' ? 'bg-[#1a1a1a] border border-gray-800' : 'bg-white'
+              }`}
             style={{
               bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
             }}
           >
-            {/* Ambient glow effect */}
-            <div
-              className="absolute inset-x-4 -bottom-2 h-20 rounded-3xl blur-2xl pointer-events-none"
-              style={{
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(168, 85, 247, 0.4), rgba(192, 132, 252, 0.3))',
-                opacity: 0.6,
-              }}
-            />
+            <div className="flex justify-between items-start mb-5 px-1">
+              <div className="flex flex-col">
+                <span className={`text-[15px] font-bold tracking-tight leading-tight ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                  {getTotalItems()} Selected Food
+                </span>
+                <span className={`text-[15px] font-bold tracking-tight leading-tight mt-0.5 ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                  Items
+                </span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className={`text-[15px] font-bold tracking-tight leading-tight ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
+                  Total Amount
+                </span>
+                <span className={`text-lg font-black mt-0.5 ${resolvedTheme === 'dark' ? 'text-white' : 'text-black'}`}>
+                  ₹{Number(getTotalPrice()).toFixed(2)}
+                </span>
+              </div>
+            </div>
 
             <button
               onClick={proceedToCheckout}
@@ -603,124 +614,26 @@ export default function CartPage() {
                 isValidatingForCheckout ||
                 !!(currentCanteenId && cart.length > 0 && !validateCartCanteen(currentCanteenId))
               }
-              className="relative w-full overflow-hidden rounded-[20px] transition-all duration-300 active:scale-[0.98] hover:scale-[1.005] group disabled:opacity-80 disabled:cursor-not-allowed"
+              className="w-full py-4 bg-primary rounded-full font-bold text-[16px] text-white transition-transform active:scale-[0.98] hover:scale-[1.02] disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.95) 0%, rgba(168, 85, 247, 0.95) 50%, rgba(147, 51, 234, 0.95) 100%)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                boxShadow: `
-                  0 20px 60px -15px rgba(139, 92, 246, 0.5),
-                  0 10px 30px -10px rgba(0, 0, 0, 0.3),
-                  inset 0 1px 0 rgba(255, 255, 255, 0.2),
-                  inset 0 -1px 0 rgba(0, 0, 0, 0.1)
-                `,
+                boxShadow: '0 8px 25px -6px var(--primary)',
               }}
             >
-              {/* Animated gradient overlay */}
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%, rgba(255, 255, 255, 0.05) 100%)',
-                }}
-              />
-
-              {/* Shimmer effect on hover - Only if not loading/disabled */}
-              {!(isStockLoading || isValidatingForCheckout) && (
-                <div
-                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent)',
-                  }}
-                />
+              {isStockLoading || isValidatingForCheckout ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>
+                    {isValidatingForCheckout ? 'Validating...' : 'Checking...'}
+                  </span>
+                </>
+              ) : !validationResult.isValid ? (
+                <>
+                  <AlertTriangle className="w-5 h-5" />
+                  <span>Stock Issues</span>
+                </>
+              ) : (
+                <span>Checkout</span>
               )}
-
-              {/* Content */}
-              <div className="relative flex items-center justify-between px-5 py-4">
-                {/* Left side - Image and Total info */}
-                <div className="flex items-center gap-4">
-                  {/* Icon/Image container with glass effect */}
-                  <div className="relative">
-                    {cart.length > 0 && cart[0].imageUrl ? (
-                      <div
-                        className="w-12 h-12 rounded-2xl overflow-hidden transition-transform duration-300 group-hover:scale-105"
-                        style={{
-                          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1)',
-                        }}
-                      >
-                        <img
-                          src={cart[0].imageUrl}
-                          alt={cart[0].name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1))',
-                          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1)',
-                        }}
-                      >
-                        <ShoppingBag className="w-5 h-5 text-white" strokeWidth={2.5} />
-                      </div>
-                    )}
-                    {/* Item count badge */}
-                    <div
-                      className="absolute -top-1.5 -right-1.5 h-6 min-w-6 px-1.5 rounded-full flex items-center justify-center"
-                      style={{
-                        background: 'linear-gradient(135deg, #ffffff, #f0f0f0)',
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.05)',
-                      }}
-                    >
-                      <span className="text-[11px] font-bold text-violet-600">
-                        {getTotalItems() > 99 ? '99+' : getTotalItems()}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-start gap-0.5">
-                    <span className="text-white/80 text-xs font-medium uppercase tracking-wider">
-                      Total to pay
-                    </span>
-                    <span className="text-white font-bold text-2xl tracking-tight">
-                      ₹{getTotalPrice()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Right side - Action Button Look */}
-                <div
-                  className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all duration-300 ${isStockLoading || isValidatingForCheckout
-                    ? 'bg-white/10'
-                    : 'bg-white/20 group-hover:bg-white/25 shadow-sm'
-                    }`}
-                >
-                  {isStockLoading || isValidatingForCheckout ? (
-                    <>
-                      <Loader2 className="w-5 h-5 text-white animate-spin" />
-                      <span className="text-white font-semibold text-base">
-                        {isValidatingForCheckout ? 'Validating...' : 'Checking...'}
-                      </span>
-                    </>
-                  ) : !validationResult.isValid ? (
-                    <>
-                      <AlertTriangle className="w-5 h-5 text-red-200" />
-                      <span className="text-white font-semibold text-base">
-                        Stock Issues
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-white font-bold text-lg tracking-tight">
-                        Checkout
-                      </span>
-                      <div className="w-6 h-6 rounded-full bg-white text-violet-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
-                        <ArrowRight className="w-4 h-4" strokeWidth={3} />
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
             </button>
           </div>
         )}
