@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { UserRole } from "@shared/schema";
 import { QueryClientProvider } from "@tanstack/react-query";

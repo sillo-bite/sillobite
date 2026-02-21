@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
-import { Ticket, X, Check, AlertCircle, Percent, IndianRupee } from "lucide-react";
+import { Ticket, X, Check, AlertCircle, Percent, IndianRupee, ChevronDown, ChevronUp } from "lucide-react";
 import { getUserIdFromStorage } from "@/utils/userStorage";
 
 interface CouponApplicatorProps {
@@ -34,6 +34,7 @@ export default function CouponApplicator({
   appliedCoupon
 }: CouponApplicatorProps) {
   const [couponCode, setCouponCode] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
   const [validationResult, setValidationResult] = useState<{
     valid: boolean;
     message: string;
@@ -149,51 +150,63 @@ export default function CouponApplicator({
   }
 
   return (
-    <Card className="bg-card border border-border shadow-lg">
-      <CardHeader className="pb-3">
-        <div className="flex items-center space-x-2">
-          <Ticket className="w-5 h-5 text-primary" />
-          <CardTitle className="text-sm font-medium text-foreground">Apply Coupon</CardTitle>
+    <Card className="bg-card border border-border shadow-lg overflow-hidden">
+      <CardHeader
+        className="py-4 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center space-x-2">
+            <Ticket className="w-5 h-5 text-primary" />
+            <CardTitle className="text-sm font-medium text-foreground">Apply Coupon</CardTitle>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex space-x-2">
-          <div className="flex-1">
-            <Input
-              placeholder="Enter coupon code"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              onKeyPress={handleKeyPress}
-              className="uppercase bg-background border-input text-foreground placeholder:text-muted-foreground"
-              disabled={validateCouponMutation.isPending}
-            />
+      {isExpanded && (
+        <CardContent className="space-y-4 pb-4">
+          <div className="flex space-x-2">
+            <div className="flex-1">
+              <Input
+                placeholder="Enter coupon code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                onKeyPress={handleKeyPress}
+                className="uppercase bg-background border-input text-foreground placeholder:text-muted-foreground"
+                disabled={validateCouponMutation.isPending}
+              />
+            </div>
+            <Button
+              onClick={handleApplyCoupon}
+              disabled={validateCouponMutation.isPending || !couponCode.trim()}
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              {validateCouponMutation.isPending ? "Checking..." : "Apply"}
+            </Button>
           </div>
-          <Button
-            onClick={handleApplyCoupon}
-            disabled={validateCouponMutation.isPending || !couponCode.trim()}
-            size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {validateCouponMutation.isPending ? "Checking..." : "Apply"}
-          </Button>
-        </div>
 
-        {validationResult && !validationResult.valid && (
-          <div className="flex items-start space-x-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-            <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-destructive">
-              {validationResult.message}
+          {validationResult && !validationResult.valid && (
+            <div className="flex items-start space-x-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+              <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-destructive">
+                {validationResult.message}
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs text-muted-foreground">
+            <div className="flex items-center space-x-1">
+              <Percent className="w-3 h-3" />
+              <span>Have a discount code? Apply it here to save on your order</span>
             </div>
           </div>
-        )}
-
-        <div className="text-xs text-muted-foreground">
-          <div className="flex items-center space-x-1">
-            <Percent className="w-3 h-3" />
-            <span>Have a discount code? Apply it here to save on your order</span>
-          </div>
-        </div>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }

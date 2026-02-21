@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Clock, CreditCard, HandCoins, Check, X, Truck, ShoppingBag, MapPin } from "lucide-react";
+import { ArrowLeft, Clock, CreditCard, HandCoins, Check, X, Truck, ShoppingBag, MapPin, ChevronUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useCart } from "@/contexts/CartContext";
 import { useWebPushNotifications } from "@/hooks/useWebPushNotifications";
@@ -27,10 +27,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import AddressSelectionDialog from "@/components/checkout/AddressSelectionDialog";
+import Lottie from "lottie-react";
+import takeawayAnimation from "@/lottiefiles/takeaway.json";
+import deliveryAnimation from "@/lottiefiles/Delivery Service-Delivery man.json";
+import upiPaymentAnimation from "@/lottiefiles/upiPayment.json";
+import offlinePaymentAnimation from "@/lottiefiles/offlinePayment.json";
 
 export default function CheckoutPage() {
   const [, setLocation] = useLocation();
   const [paymentMethod, setPaymentMethod] = useState("upi");
+  const [isPaymentMenuOpen, setIsPaymentMenuOpen] = useState(false);
   const [orderType, setOrderType] = useState<"delivery" | "takeaway">("takeaway");
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const [showNotificationDialog, setShowNotificationDialog] = useState(false);
@@ -38,6 +44,7 @@ export default function CheckoutPage() {
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{
+
     code: string;
     discountAmount: number;
     finalAmount: number;
@@ -46,7 +53,6 @@ export default function CheckoutPage() {
   const paymentValidRef = useRef(false);
   const addressSelectedRef = useRef(false); // Track if address was selected to prevent reset
   const queryClient = useQueryClient();
-
   // Checkout session management
   const [checkoutSessionId, setCheckoutSessionId] = useState<string | null>(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(1200); // 20 minutes in seconds
@@ -59,7 +65,7 @@ export default function CheckoutPage() {
   // Use cart context instead of reading from localStorage directly
   const { cart, clearCart, removeFromCart, getCartCanteenId, validateCartCanteen } = useCart();
   const { selectedCanteen } = useCanteenContext();
-  const userData = getUserFromStorage() || {};
+  const userData = (getUserFromStorage() || {}) as any;
 
   // Get canteen ID from cart or selected canteen
   const cartCanteenId = getCartCanteenId();
@@ -1100,29 +1106,60 @@ export default function CheckoutPage() {
                   setSelectedAddress(null);
                 }
               }}>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
-                    <RadioGroupItem value="takeaway" id="takeaway" className="border-primary text-primary data-[state=checked]:bg-primary" />
-                    <Label htmlFor="takeaway" className="flex-1 cursor-pointer">
-                      <div className="flex items-center">
-                        <ShoppingBag className="w-5 h-5 mr-3 text-primary" />
-                        <div>
-                          <p className="font-medium text-foreground">Takeaway</p>
-                          <p className="text-sm text-muted-foreground">Collect your order from the counter</p>
-                        </div>
+                <div className={`grid gap-4 ${allowDelivery ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="relative h-full">
+                    <RadioGroupItem value="takeaway" id="takeaway" className="sr-only" />
+                    <Label
+                      htmlFor="takeaway"
+                      className={`flex flex-col items-center justify-center h-full p-5 rounded-3xl cursor-pointer border-2 transition-all duration-300 active:scale-[0.98] ${orderType === 'takeaway'
+                        ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                        : 'border-transparent text-muted-foreground'
+                        }`}
+                    >
+                      <Lottie
+                        animationData={takeawayAnimation}
+                        loop={true}
+                        autoplay={true}
+                        className="w-16 h-16"
+                      />
+                      <div className="text-center">
+                        <p className={`font-bold text-[17px] mt-4 mb-1 tracking-tight ${orderType === 'takeaway' ? 'text-primary' : 'text-foreground'
+                          }`}>
+                          Takeaway
+                        </p>
+                        <p className={`text-xs leading-tight ${orderType === 'takeaway' ? 'text-primary/70' : 'text-muted-foreground'
+                          }`}>
+                          Collect from counter
+                        </p>
                       </div>
                     </Label>
                   </div>
+
                   {allowDelivery && (
-                    <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
-                      <RadioGroupItem value="delivery" id="delivery" className="border-primary text-primary data-[state=checked]:bg-primary" />
-                      <Label htmlFor="delivery" className="flex-1 cursor-pointer">
-                        <div className="flex items-center">
-                          <Truck className="w-5 h-5 mr-3 text-[#3b82f6]" />
-                          <div>
-                            <p className="font-medium text-foreground">Delivery</p>
-                            <p className="text-sm text-muted-foreground">Get your order delivered to your location</p>
-                          </div>
+                    <div className="relative h-full">
+                      <RadioGroupItem value="delivery" id="delivery" className="sr-only" />
+                      <Label
+                        htmlFor="delivery"
+                        className={`flex flex-col items-center justify-center h-full p-5 rounded-3xl cursor-pointer border-2 transition-all duration-300 active:scale-[0.98] ${orderType === 'delivery'
+                          ? 'border-[#3b82f6] bg-[#3b82f6]/5 shadow-md scale-[1.02]'
+                          : 'border-transparent text-muted-foreground'
+                          }`}
+                      >
+                        <Lottie
+                          animationData={deliveryAnimation}
+                          loop={true}
+                          autoplay={true}
+                          className="w-24 h-24"
+                        />
+                        <div className="text-center">
+                          <p className={`font-bold text-[17px] mb-1 tracking-tight ${orderType === 'delivery' ? 'text-[#3b82f6]' : 'text-foreground'
+                            }`}>
+                            Delivery
+                          </p>
+                          <p className={`text-[12px] font-medium leading-tight ${orderType === 'delivery' ? 'text-[#3b82f6]/70' : 'text-muted-foreground'
+                            }`}>
+                            To your location
+                          </p>
                         </div>
                       </Label>
                     </div>
@@ -1177,88 +1214,166 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          {/* Payment Method - High Priority */}
-          <Card className="bg-card border border-border shadow-lg">
-            <CardContent className="p-4">
-              <h3 className="font-semibold mb-4 flex items-center text-foreground">
-                <CreditCard className="w-5 h-5 mr-2 text-primary" />
-                Payment Method
-              </h3>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
-                    <RadioGroupItem value="upi" id="upi" className="border-primary text-primary data-[state=checked]:bg-primary" />
-                    <Label htmlFor="upi" className="flex-1 cursor-pointer">
-                      <div className="flex items-center">
-                        <CreditCard className="w-5 h-5 mr-3 text-primary" />
-                        <div>
-                          <p className="font-medium text-foreground">UPI Payment</p>
-                          <p className="text-sm text-muted-foreground">Google Pay, Razorpay, UPI, Cards</p>
-                        </div>
-                      </div>
-                    </Label>
-                    <span className="bg-[#22c55e] text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
-                      Recommended
-                    </span>
-                  </div>
-
-                  {allowPayAtCounter && (
-                    <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
-                      <RadioGroupItem value="offline" id="offline" className="border-primary text-primary data-[state=checked]:bg-primary" />
-                      <Label htmlFor="offline" className="flex-1 cursor-pointer">
-                        <div className="flex items-center">
-                          <HandCoins className="w-5 h-5 mr-3 text-[#f97316]" />
-                          <div>
-                            <p className="font-medium text-foreground">Pay at Counter</p>
-                            <p className="text-sm text-muted-foreground">Pay cash/card at the canteen counter</p>
-                          </div>
-                        </div>
-                      </Label>
-                      <span className="bg-[#f97316] text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap">
-                        Offline
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </RadioGroup>
-            </CardContent>
-          </Card>
+          {/* Payment Method card was moved to bottom drawer */}
         </div>
       </div>
 
-      {/* Place Order Button - Highest Priority */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 space-y-2 shadow-2xl z-50">
-        <Button
-          variant="food"
-          size="mobile"
-          className={`w-full bg-[#22c55e] hover:bg-[#16a34a] text-white transition-all ${paymentInProgress ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          onClick={handlePlaceOrder}
-          disabled={paymentInProgress || cart.length === 0 || !validationResult.isValid}
-        >
-          {paymentInProgress ? (
-            <>
-              <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              {paymentMethod === 'offline' ? 'Placing Order...' : 'Redirecting to Payment Gateway...'}
-            </>
-          ) : paymentMethod === 'offline' ? (
-            `Place Order • ${formatCurrency(total)}`
-          ) : (
-            `Pay Now • ${formatCurrency(total)}`
-          )}
-        </Button>
+      {/* Payment Menu Backdrop Overlay */}
+      <div
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 ${isPaymentMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsPaymentMenuOpen(false)}
+      />
 
-        {cart.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground">
+      {/* Place Order Button & Payment Method Selector */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50 pointer-events-auto rounded-t-2xl" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+
+        {/* Expanded Payment Options (Slides Up from Button) */}
+        <div className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isPaymentMenuOpen ? 'grid-rows-[1fr] opacity-100 mb-4' : 'grid-rows-[0fr] opacity-0 mb-0'
+          } grid`}>
+          <div className="min-h-0 rounded-[1.25rem] border border-border/50 p-2 shadow-inner">
+            <RadioGroup
+              value={paymentMethod}
+              onValueChange={(val) => {
+                setPaymentMethod(val);
+                setIsPaymentMenuOpen(false); // Auto-close on select
+              }}
+            >
+              <div className="grid gap-2">
+                <Label
+                  htmlFor="upi"
+                  className={`flex items-center space-x-3 p-3.5 border-2 rounded-2xl cursor-pointer transition-all active:scale-[0.98] ${paymentMethod === 'upi'
+                    ? 'border-primary bg-primary/5 shadow-sm scale-[1.01]'
+                    : 'border-transparent bg-background text-muted-foreground'
+                    }`}
+                >
+                  <Lottie
+                    animationData={upiPaymentAnimation}
+                    loop={true}
+                    autoplay={true}
+                    className="w-8 h-8"
+                  />
+                  <div className="flex-1">
+                    <p className={`font-bold text-[14px] tracking-tight ${paymentMethod === 'upi' ? 'text-primary' : 'text-foreground'}`}>Online Payment</p>
+                    <p className={`text-[11px] mt-0.5 ${paymentMethod === 'upi' ? 'text-primary/70' : 'text-muted-foreground/70'}`}>UPI, Cards & Wallets</p>
+                  </div>
+                  <RadioGroupItem value="upi" id="upi" className="sr-only" />
+                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'upi' ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                    }`}>
+                    {paymentMethod === 'upi' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />}
+                  </div>
+                </Label>
+
+                {allowPayAtCounter && (
+                  <Label
+                    htmlFor="offline"
+                    className={`flex items-center space-x-3 p-3.5 border-2 rounded-2xl cursor-pointer transition-all active:scale-[0.98] ${paymentMethod === 'offline'
+                      ? 'border-[#f97316] bg-[#f97316]/5 shadow-sm scale-[1.01]'
+                      : 'border-transparent bg-background text-muted-foreground'
+                      }`}
+                  >
+                    <Lottie
+                      animationData={offlinePaymentAnimation}
+                      loop={true}
+                      autoplay={true}
+                      className="w-12 h-12"
+                    />
+                    <div className="flex-1">
+                      <p className={`font-bold text-[14px] tracking-tight ${paymentMethod === 'offline' ? 'text-[#f97316]' : 'text-foreground'}`}>Pay at Counter</p>
+                      <p className={`text-[11px] mt-0.5 ${paymentMethod === 'offline' ? 'text-[#f97316]/70' : 'text-muted-foreground/70'}`}>Pay via cash/card at canteen</p>
+                    </div>
+                    <RadioGroupItem value="offline" id="offline" className="sr-only" />
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${paymentMethod === 'offline' ? 'border-[#f97316] bg-[#f97316]' : 'border-muted-foreground/30'
+                      }`}>
+                      {paymentMethod === 'offline' && <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />}
+                    </div>
+                  </Label>
+                )}
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full">
+          {/* Collapsed Payment Selector Button */}
+          <button
+            onClick={() => setIsPaymentMenuOpen(!isPaymentMenuOpen)}
+            className={`flex flex-col items-start justify-center h-[54px] px-3.5 rounded-[1.15rem] transition-all active:scale-[0.98] flex-shrink-0 min-w-[124px] bg-background border ${isPaymentMenuOpen ? ' border-[#9847D1]/80 shadow-inner' : 'border-[#9847D1]/50 shadow-sm'
+              }`}
+          >
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1 pl-1.5">
+              Pay Via
+              <ChevronUp className={`w-3 h-3 transition-transform duration-300 ${isPaymentMenuOpen ? 'rotate-180' : ''}`} />
+            </span>
+            <div className="flex items-center gap-1 -ml-1">
+              {paymentMethod === 'upi' ? (
+                <>
+                  <Lottie
+                    animationData={upiPaymentAnimation}
+                    loop={true}
+                    autoplay={true}
+                    className="w-7 h-7"
+                  />
+                  <span className="font-extrabold text-[14px] text-foreground tracking-tight">UPI/Card</span>
+                </>
+              ) : (
+                <>
+                  <Lottie
+                    animationData={offlinePaymentAnimation}
+                    loop={true}
+                    autoplay={true}
+                    className="w-7 h-7"
+                  />
+                  <span className="font-extrabold text-[14px] text-foreground tracking-tight">Counter</span>
+                </>
+              )}
+            </div>
+          </button>
+
+          {/* Place Order / Pay Now Action Button */}
+          <Button
+            variant="food"
+            size="mobile"
+            className="flex-1 h-[56px] rounded-2xl font-bold text-[16px] text-white transition-all active:scale-[0.98] shadow-lg disabled:opacity-80 disabled:cursor-not-allowed border-0"
+            onClick={handlePlaceOrder}
+            disabled={paymentInProgress || cart.length === 0 || !validationResult.isValid}
+            style={
+              !paymentInProgress && cart.length > 0 && validationResult.isValid
+                ? paymentMethod === 'offline'
+                  ? { backgroundColor: '#9847D1', boxShadow: '0 8px 25px -6px rgba(152, 71, 209, 0.5)' }
+                  : { backgroundColor: '#9847D1', boxShadow: '0 8px 25px -6px rgba(152, 71, 209, 0.5)' }
+                : { backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))' }
+            }
+          >
+            {paymentInProgress ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
+                <span>{paymentMethod === 'offline' ? 'Placing Order' : 'Redirecting...'}</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between w-full px-1">
+                <span className="drop-shadow-sm">
+                  {paymentMethod === 'offline' ? 'Place Order' : 'Pay Now'}
+                </span>
+                <div className="flex items-center gap-1.5 bg-white/20 py-1.5 px-3 rounded-xl backdrop-blur-md">
+                  <span className="font-black drop-shadow-sm tracking-wide">
+                    {formatCurrency(total)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </Button>
+        </div>
+
+        {/* Validation Errors underneath */}
+        {cart.length === 0 ? (
+          <p className="text-center text-[11px] font-medium text-muted-foreground mt-3">
             Your cart is empty. Add items to continue.
           </p>
-        )}
-
-        {!validationResult.isValid && cart.length > 0 && (
-          <p className="text-center text-sm text-[#f87171]">
-            Please resolve stock availability issues above to place your order.
+        ) : !validationResult.isValid ? (
+          <p className="text-center text-[11px] font-medium text-red-500 mt-3 bg-red-500/10 py-1.5 px-3 rounded-lg mx-auto w-fit">
+            Resolve stock issues to proceed.
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* Notification Permission Dialog */}
