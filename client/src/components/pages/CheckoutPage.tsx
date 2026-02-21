@@ -27,6 +27,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import AddressSelectionDialog from "@/components/checkout/AddressSelectionDialog";
+import Lottie from "lottie-react";
+import takeawayAnimation from "../../../public/lottiefiles/takeaway.json";
+import deliveryAnimation from "../../../public/lottiefiles/Delivery Service-Delivery man.json";
 
 export default function CheckoutPage() {
   const [, setLocation] = useLocation();
@@ -38,6 +41,7 @@ export default function CheckoutPage() {
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<{
+
     code: string;
     discountAmount: number;
     finalAmount: number;
@@ -1100,29 +1104,60 @@ export default function CheckoutPage() {
                   setSelectedAddress(null);
                 }
               }}>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
-                    <RadioGroupItem value="takeaway" id="takeaway" className="border-primary text-primary data-[state=checked]:bg-primary" />
-                    <Label htmlFor="takeaway" className="flex-1 cursor-pointer">
-                      <div className="flex items-center">
-                        <ShoppingBag className="w-5 h-5 mr-3 text-primary" />
-                        <div>
-                          <p className="font-medium text-foreground">Takeaway</p>
-                          <p className="text-sm text-muted-foreground">Collect your order from the counter</p>
-                        </div>
+                <div className={`grid gap-4 ${allowDelivery ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="relative h-full">
+                    <RadioGroupItem value="takeaway" id="takeaway" className="sr-only" />
+                    <Label
+                      htmlFor="takeaway"
+                      className={`flex flex-col items-center justify-center h-full p-5 rounded-3xl cursor-pointer border-2 transition-all duration-300 active:scale-[0.98] ${orderType === 'takeaway'
+                        ? 'border-primary bg-primary/5 shadow-md scale-[1.02]'
+                        : 'border-transparent text-muted-foreground'
+                        }`}
+                    >
+                      <Lottie
+                        animationData={takeawayAnimation}
+                        loop={true}
+                        autoplay={true}
+                        className="w-16 h-16"
+                      />
+                      <div className="text-center">
+                        <p className={`font-bold text-[17px] mt-4 mb-1 tracking-tight ${orderType === 'takeaway' ? 'text-primary' : 'text-foreground'
+                          }`}>
+                          Takeaway
+                        </p>
+                        <p className={`text-xs leading-tight ${orderType === 'takeaway' ? 'text-primary/70' : 'text-muted-foreground'
+                          }`}>
+                          Collect from counter
+                        </p>
                       </div>
                     </Label>
                   </div>
+
                   {allowDelivery && (
-                    <div className="flex items-center space-x-3 p-3 border border-border rounded-lg bg-card hover:bg-accent transition-colors">
-                      <RadioGroupItem value="delivery" id="delivery" className="border-primary text-primary data-[state=checked]:bg-primary" />
-                      <Label htmlFor="delivery" className="flex-1 cursor-pointer">
-                        <div className="flex items-center">
-                          <Truck className="w-5 h-5 mr-3 text-[#3b82f6]" />
-                          <div>
-                            <p className="font-medium text-foreground">Delivery</p>
-                            <p className="text-sm text-muted-foreground">Get your order delivered to your location</p>
-                          </div>
+                    <div className="relative h-full">
+                      <RadioGroupItem value="delivery" id="delivery" className="sr-only" />
+                      <Label
+                        htmlFor="delivery"
+                        className={`flex flex-col items-center justify-center h-full p-5 rounded-3xl cursor-pointer border-2 transition-all duration-300 active:scale-[0.98] ${orderType === 'delivery'
+                          ? 'border-[#3b82f6] bg-[#3b82f6]/5 shadow-md scale-[1.02]'
+                          : 'border-transparent text-muted-foreground'
+                          }`}
+                      >
+                        <Lottie
+                          animationData={deliveryAnimation}
+                          loop={true}
+                          autoplay={true}
+                          className="w-24 h-24"
+                        />
+                        <div className="text-center">
+                          <p className={`font-bold text-[17px] mb-1 tracking-tight ${orderType === 'delivery' ? 'text-[#3b82f6]' : 'text-foreground'
+                            }`}>
+                            Delivery
+                          </p>
+                          <p className={`text-[12px] font-medium leading-tight ${orderType === 'delivery' ? 'text-[#3b82f6]/70' : 'text-muted-foreground'
+                            }`}>
+                            To your location
+                          </p>
                         </div>
                       </Label>
                     </div>

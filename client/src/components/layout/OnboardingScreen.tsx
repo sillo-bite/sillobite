@@ -5,25 +5,32 @@ import { ArrowRight } from "lucide-react";
 import Lottie from "lottie-react";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const fastFoodAnimation = "/lottiefiles/Fast food.json";
+const favoritebitesAnimation = "/lottiefiles/favoritebites.json";
 const deliveryAppAnimation = "/lottiefiles/Food.json";
 const foodAnimation = "/lottiefiles/Beagle Fast Food.json";
+const CafeAnimation = "/lottiefiles/Cafe.json";
 
 const slides = [
   {
     id: 1,
-    title: "Favourite Bites",
-    description: "Discover your favorite bites delivered straight to your door.",
-    animation: fastFoodAnimation,
+    title: "Choose your vibe",
+    description: "Discover your favorite Stall and order your favorite Bite.",
+    animation: CafeAnimation,
   },
   {
     id: 2,
+    title: "Favourite Bites",
+    description: "Discover your favorite bites get it ready in minutes.",
+    animation: favoritebitesAnimation,
+  },
+  {
+    id: 3,
     title: "Explore Menu",
     description: "Discover a wide range of dishes from your Favorite Stores.",
     animation: deliveryAppAnimation,
   },
   {
-    id: 3,
+    id: 4,
     title: "Get Started",
     description: "Order your favorite food and get hussle free dining experience.",
     animation: foodAnimation,
