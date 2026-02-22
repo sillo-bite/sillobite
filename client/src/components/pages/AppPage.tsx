@@ -322,6 +322,11 @@ export default function AppPage() {
       updateUrl("home");
     };
 
+    const handleNavigateToSelector = () => {
+      navigateTo("selector");
+      updateUrl("selector");
+    };
+
     const handleNavigateHomeWithSearch = () => {
       navigateTo("home");
       updateUrl("home", { activateSearch: 'true' });
@@ -338,6 +343,7 @@ export default function AppPage() {
     window.addEventListener('appNavigateToChallenges' as any, handleNavigateToChallenges);
     window.addEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
     window.addEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
+    window.addEventListener('appNavigateToSelector' as any, handleNavigateToSelector);
 
     return () => {
       window.removeEventListener('appMenuCategoryChange' as any, handleCategoryChange);
@@ -351,6 +357,7 @@ export default function AppPage() {
       window.removeEventListener('appNavigateToChallenges' as any, handleNavigateToChallenges);
       window.removeEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
       window.removeEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
+      window.removeEventListener('appNavigateToSelector' as any, handleNavigateToSelector);
     };
   }, [navigateTo, navigateBack, history, currentView]);
 

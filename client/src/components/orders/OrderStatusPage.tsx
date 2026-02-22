@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, ChefHat, Package, Phone, ArrowLeft, Store, CreditCard, XCircle, AlertTriangle, RefreshCw, Truck } from "lucide-react";
+import { CheckCircle, Clock, ChefHat, Package, Phone, ArrowLeft, Store, CreditCard, XCircle, AlertTriangle, RefreshCw, Truck, ChevronDown, ChevronUp } from "lucide-react";
 import JsBarcode from 'jsbarcode';
 import { formatOrderIdDisplay } from "@shared/utils";
 import type { Order } from '@shared/schema';
@@ -67,6 +67,7 @@ export default function OrderStatusPage() {
   const { orderId } = useParams();
 
   const [lottieAnimData, setLottieAnimData] = useState<any>(null);
+  const [isOrderDetailsExpanded, setIsOrderDetailsExpanded] = useState(false);
 
   console.log('🔍 OrderStatusPage - Received orderId:', orderId);
 
@@ -74,26 +75,7 @@ export default function OrderStatusPage() {
   const urlParams = new URLSearchParams(window.location.search);
   const sourceContext = urlParams.get('from');
 
-  // Handle all back navigation scenarios (browser back, iOS swipe, Android back)
-  useEffect(() => {
-    // Override browser history behavior to always redirect to /app (home view)
-    const handleBackNavigation = (event: PopStateEvent) => {
-      event.preventDefault();
-      // Always navigate to /app (home view) regardless of how user tries to go back
-      setLocation('/app');
-    };
 
-    // Push a new state to handle back navigation
-    window.history.pushState({ page: 'order-status' }, '', window.location.href);
-
-    // Listen for popstate events (browser back, swipe gestures)
-    window.addEventListener('popstate', handleBackNavigation);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('popstate', handleBackNavigation);
-    };
-  }, [setLocation]);
 
   // OPTIMIZATION 3: Batch counter names fetching using React Query
   // Fetch counter names only when needed, with caching
@@ -244,7 +226,34 @@ export default function OrderStatusPage() {
   })();
 
   // Get canteen ID from the order to join the correct room
-  const orderCanteenId = finalOrder?.canteenId;
+  const orderCanteenId = urlParams.get('canteenId');
+
+  // Handle all back navigation scenarios (browser back, iOS swipe, Android back)
+  useEffect(() => {
+    // Override browser history behavior to intentionally redirect based on source context
+    const handleBackNavigation = (event: PopStateEvent) => {
+      event.preventDefault();
+
+      if (sourceContext === 'orders') {
+        setLocation('/app?view=orders');
+      } else if (sourceContext === 'home') {
+        setLocation(`/app?view=home&canteenId=${orderCanteenId}`);
+      } else {
+        setLocation('/app'); // Default to home view
+      }
+    };
+
+    // Push a new state to handle back navigation
+    window.history.pushState({ page: 'order-status' }, '', window.location.href);
+
+    // Listen for popstate events (browser back, swipe gestures)
+    window.addEventListener('popstate', handleBackNavigation);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('popstate', handleBackNavigation);
+    };
+  }, [setLocation, sourceContext, orderCanteenId]);
 
   // OPTIMIZATION 4: Progressive loading - fetch canteen data only after order loads
   const { data: canteenData, isLoading: canteenLoading } = useQuery({
@@ -413,19 +422,19 @@ export default function OrderStatusPage() {
   // Dynamic theme configuration based on order status and payment status
   const getThemeConfig = (status: string) => {
     // If payment is completed, use green theme for the entire page
-    if (isPaymentCompleted && (status === "preparing" || status === "ready" || status === "out_for_delivery" || status === "completed" || status === "delivered")) {
-      return {
-        bg: "bg-green-50 dark:bg-green-950/20",
-        headerBg: "bg-green-600 dark:bg-green-700",
-        iconBg: "bg-green-100 dark:bg-green-900/30",
-        iconColor: "text-green-600 dark:text-green-400",
-        progressColor: "[&>div]:bg-green-500",
-        borderColor: "border-green-200 dark:border-green-800",
-        buttonBg: "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800",
-        buttonText: "text-white",
-        theme: "green"
-      };
-    }
+    // if (isPaymentCompleted && (status === "preparing" || status === "ready" || status === "out_for_delivery" || status === "completed" || status === "delivered")) {
+    //   return {
+    //     bg: "bg-green-50 dark:bg-green-950/20",
+    //     headerBg: "bg-green-600 dark:bg-green-700",
+    //     iconBg: "bg-green-100 dark:bg-green-900/30",
+    //     iconColor: "text-green-600 dark:text-green-400",
+    //     progressColor: "[&>div]:bg-green-500",
+    //     borderColor: "border-green-200 dark:border-green-800",
+    //     buttonBg: "bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800",
+    //     buttonText: "text-white",
+    //     theme: "green"
+    //   };
+    // }
 
     switch (status?.toLowerCase()) {
       case "pending_payment":
@@ -440,14 +449,14 @@ export default function OrderStatusPage() {
           buttonText: "text-white",
           theme: "amber"
         };
-      case "pending":
+      case "ready":
         return {
-          bg: "bg-yellow-50 dark:bg-yellow-950/20",
-          headerBg: "bg-yellow-600 dark:bg-yellow-700",
+          bg: "bg-yellow-50 dark:bg-yellow-50",
+          headerBg: "bg-yellow-600 dark:bg-yellow-600",
           iconBg: "bg-yellow-100 dark:bg-yellow-900/30",
-          iconColor: "text-yellow-600 dark:text-yellow-400",
+          iconColor: "text-yellow-600 dark:text-yellow-600",
           progressColor: "[&>div]:bg-yellow-500",
-          borderColor: "border-yellow-200 dark:border-yellow-800",
+          borderColor: "border-yellow-200 dark:border-yellow-200",
           buttonBg: "bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800",
           buttonText: "text-white",
           theme: "yellow"
@@ -464,7 +473,7 @@ export default function OrderStatusPage() {
           buttonText: "text-white",
           theme: "orange"
         };
-      case "ready":
+      case "pending":
         return {
           bg: "bg-orange-50 dark:bg-orange-950/20",
           headerBg: "bg-orange-700 dark:bg-orange-800",
@@ -703,7 +712,15 @@ export default function OrderStatusPage() {
               size="icon"
               className="text-foreground hover:bg-secondary"
               title="Back to Home"
-              onClick={() => setLocation('/app')}
+              onClick={() => {
+                if (sourceContext === 'orders') {
+                  setLocation('/app?view=orders');
+                } else if (sourceContext === 'home') {
+                  setLocation(`/app?view=home&canteenId=${orderCanteenId}`);
+                } else {
+                  setLocation('/app'); // Default to home view
+                }
+              }}
             >
               <ArrowLeft className="w-8 h-8" />
             </Button>
@@ -737,7 +754,7 @@ export default function OrderStatusPage() {
 
             {/* Premium Active Progress Bar */}
             <div
-              className={`absolute top-1/2 -translate-y-1/2 h-[6px] rounded-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-1000 ease-out`}
+              className={`absolute top-1/2 -translate-y-1/2 h-[6px] rounded-full ${themeConfig.progressColor.replace('[&>div]:', '')} transition-all duration-1000 ease-out shadow-sm`}
               style={{
                 left: '1rem',
                 width: `calc((100% - 2rem) * ${Math.max(0, (statusSteps.filter(s => s.completed).length - 1) / (statusSteps.length - 1))})`
@@ -753,9 +770,9 @@ export default function OrderStatusPage() {
                   {/* Icon Node */}
                   <div
                     className={`w-8 h-8 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-700 shadow-sm ${isCurrent
-                      ? `${themeConfig.iconBg} ${themeConfig.iconColor} ring-4 ring-primary/20 scale-110`
+                      ? `${themeConfig.progressColor.replace('[&>div]:', '')} text-white`
                       : isCompleted
-                        ? `bg-primary text-primary-foreground`
+                        ? `${themeConfig.progressColor.replace('[&>div]:', '')} text-white`
                         : "bg-white dark:bg-gray-900 text-gray-300 dark:text-gray-600 border-2 border-dashed border-gray-200 dark:border-gray-800"
                       }`}
                   >
@@ -787,7 +804,12 @@ export default function OrderStatusPage() {
           <Lottie
             animationData={lottieAnimData}
             loop={true}
-            className="w-full h-full scale-[1.5] sm:scale-[2]"
+            className={`w-full h-full object-contain ${orderStatus === "ready"
+              ? "scale-[0.8] sm:scale-[0.9]" // shrink the very large paper bag
+              : (orderStatus === "completed" || orderStatus === "delivered")
+                ? "scale-[1.3] sm:scale-[1.5]" // increase the small tearing hand
+                : "scale-[1.1] sm:scale-[1.2]" // slightly scale the pot
+              }`}
             renderer={"svg" as any}
           />
         </div>
@@ -797,7 +819,7 @@ export default function OrderStatusPage() {
         </div>
       )}
 
-      <div className="px-4 pb-32">
+      <div className="px-4 pb-16">
         <div className="max-w-2xl mx-auto space-y-4">
           {/* Order Barcode - At the Top (Hidden for cancelled/rejected orders) */}
           {orderStatus !== "cancelled" && orderStatus !== "rejected" && (
@@ -806,38 +828,49 @@ export default function OrderStatusPage() {
               <div className={`p-3  mb-4 `}>
                 <BarcodeGenerator orderId={orderDetails.id} />
               </div>
-              <p className={`font-bold text-lg mb-3 ${themeConfig.iconColor}`}>Order ID: {orderDetails.orderNumber}</p>
+              <div className={`font-bold text-lg mb-3 flex items-center justify-center ${themeConfig.iconColor}`}>
+                <span>Order ID: </span>
+                <span className="ml-1">
+                  {orderDetails.orderNumber && orderDetails.orderNumber.length >= 4 ? (
+                    <>
+                      <span className="opacity-70 text-base">{orderDetails.orderNumber.slice(0, -4)}</span>
+                      <span className={`inline-block px-2 py-0.5 rounded-md ${themeConfig.iconBg} border ${themeConfig.borderColor} ml-1 font-black text-xl tracking-wider shadow-sm`}>
+                        {orderDetails.orderNumber.slice(-4)}
+                      </span>
+                    </>
+                  ) : (
+                    orderDetails.orderNumber
+                  )}
+                </span>
+              </div>
               {/* OTP Display - First 4 digits of barcode - Highlighted */}
               {orderDetails.id && orderDetails.id.length >= 4 && (() => {
                 const first4Digits = orderDetails.id.slice(0, 4);
                 const isDelivery = (finalOrder as any)?.orderType === 'delivery';
                 return (
                   <div className="my-4">
-                    <div className="bg-gradient-to-br from-primary/20 via-primary/15 to-primary/10 dark:from-primary/30 dark:via-primary/20 dark:to-primary/15 rounded-xl p-4 border-2 border-primary/30 dark:border-primary/40 shadow-lg">
-                      <p className="text-sm font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                    <div className={`${themeConfig.iconBg} rounded-xl p-4 border-2 ${themeConfig.borderColor} shadow-lg`}>
+                      <p className={`text-sm font-semibold mb-2 uppercase tracking-wide ${themeConfig.iconColor}`}>
                         {isDelivery ? '🚚 Delivery OTP' : '📦 Pickup OTP'}
                       </p>
-                      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-2 border-primary/50 dark:border-primary/60 shadow-inner">
-                        <p className={`text-5xl font-black ${themeConfig.iconColor} tracking-[0.2em] letter-spacing-wide`} style={{ letterSpacing: '0.3em' }}>
+                      <div className={`bg-white dark:bg-[#1f1429] rounded-lg p-4 border-2 ${themeConfig.borderColor} shadow-inner`}>
+                        <p className={`text-5xl font-black ${themeConfig.iconColor} tracking-[0.2em] text-center`} style={{ letterSpacing: '0.3em' }}>
                           {first4Digits}
                         </p>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2 font-medium">
+                      <p className={`text-xs mt-2 font-medium ${themeConfig.iconColor} opacity-80 text-center`}>
                         Show this OTP or scan the barcode above
                       </p>
                     </div>
                   </div>
                 );
               })()}
-              <p className="text-xs text-muted-foreground mt-2">
-                Show this barcode or OTP at the counter for verification
-              </p>
             </div>
           )}
 
           {/* Payment Confirmation Info (for offline orders) */}
           {(finalOrder as any)?.isOffline && (finalOrder as any)?.paymentConfirmedBy && (
-            <div className="bg-card dark:bg-[#1e1e1e] rounded-2xl p-4 border border-border">
+            <div className="bg-card dark:bg-[#1f1429] rounded-2xl p-4 border border-border">
               <h3 className={`font-semibold mb-3 flex items-center ${themeConfig.iconColor}`}>
                 <CreditCard className={`w-4 h-4 mr-2 ${themeConfig.iconColor}`} />
                 Payment Confirmation
@@ -859,148 +892,181 @@ export default function OrderStatusPage() {
 
 
           {/* Order Details */}
-          <div className="bg-card dark:bg-[#1e1e1e] rounded-2xl p-4 border border-border">
-            <h3 className={`font-semibold mb-3 flex items-center ${themeConfig.iconColor}`}>
-              <Store className={`w-4 h-4 mr-2 ${themeConfig.iconColor}`} />
-              Order Details
-            </h3>
-            <div className="space-y-3">
-              {orderDetails.items && orderDetails.items.length > 0 ? (
-                (() => {
-                  const counterGroups = groupItemsByCounter(finalOrder);
-                  return Object.entries(counterGroups).map(([counterId, items]) => (
-                    <div key={counterId} className="space-y-2">
-                      {/* Counter Header */}
-                      <div className="flex items-center justify-between pb-2 border-b border-border">
-                        <div className="flex items-center space-x-2">
-                          <Store className={`w-4 h-4 ${themeConfig.iconColor}`} />
-                          <span className={`font-medium text-sm ${themeConfig.iconColor}`}>
-                            {items[0]?.counterName || 'General'}
-                          </span>
-                        </div>
-                        {/* Counter Status Indicator */}
-                        <div className="flex items-center space-x-1">
-                          {(() => {
-                            const allItemsCompleted = items.every((item: any) =>
-                              getItemStatus(finalOrder, item.id, item.counterId, item) === 'completed'
-                            );
-                            const allItemsReady = items.every((item: any) => {
-                              const status = getItemStatus(finalOrder, item.id, item.counterId, item);
-                              return status === 'ready' || status === 'out_for_delivery' || status === 'completed';
-                            });
-                            const someItemsReady = items.some((item: any) => {
-                              const status = getItemStatus(finalOrder, item.id, item.counterId, item);
-                              return status === 'ready' || status === 'out_for_delivery' || status === 'completed';
-                            });
-
-                            if (allItemsCompleted) {
-                              return (
-                                <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
-                                  <CheckCircle className="w-4 h-4" />
-                                  <span className="text-xs font-medium">Delivered</span>
-                                </div>
-                              );
-                            } else if (allItemsReady) {
-                              return (
-                                <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
-                                  <CheckCircle className="w-4 h-4" />
-                                  <span className="text-xs font-medium">Ready</span>
-                                </div>
-                              );
-                            } else if (someItemsReady) {
-                              return (
-                                <div className="flex items-center space-x-1 text-yellow-600 dark:text-yellow-400">
-                                  <Clock className="w-4 h-4" />
-                                  <span className="text-xs font-medium">In Progress</span>
-                                </div>
-                              );
-                            } else {
-                              // Use theme color for preparing status
-                              return (
-                                <div className={`flex items-center space-x-1 ${themeConfig.iconColor}`}>
-                                  <Clock className="w-4 h-4" />
-                                  <span className="text-xs font-medium">Preparing</span>
-                                </div>
-                              );
-                            }
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Items for this counter */}
-                      <div className="space-y-2">
-                        {items.map((item: any, index: number) => {
-                          const itemStatus = getItemStatus(finalOrder, item.id, item.counterId, item);
-                          const isReady = itemStatus === 'ready' || itemStatus === 'out_for_delivery';
-                          const isCompleted = itemStatus === 'completed';
-                          const isOutForDelivery = itemStatus === 'out_for_delivery';
-                          const isPreparing = (itemStatus as string === 'preparing' || itemStatus === 'pending');
-                          return (
-                            <div key={index} className="flex justify-between items-center py-1">
-                              <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-green-600 dark:bg-green-500' :
-                                  isReady ? 'bg-green-500 dark:bg-green-400' :
-                                    isPreparing ? (
-                                      themeConfig.theme === 'amber' ? 'bg-amber-500 dark:bg-amber-400' :
-                                        themeConfig.theme === 'yellow' ? 'bg-yellow-500 dark:bg-yellow-400' :
-                                          themeConfig.theme === 'orange' ? 'bg-orange-500 dark:bg-orange-400' :
-                                            themeConfig.theme === 'green' ? 'bg-green-500 dark:bg-green-400' :
-                                              themeConfig.theme === 'red' ? 'bg-red-500 dark:bg-red-400' :
-                                                'bg-slate-500 dark:bg-slate-400'
-                                    ) : 'bg-yellow-500 dark:bg-yellow-400'
-                                  }`}></div>
-                                <span className={`text-sm truncate ${isCompleted ? 'text-green-700 dark:text-green-300 font-medium' :
-                                  isReady ? 'text-green-600 dark:text-green-400 font-medium' :
-                                    isPreparing ? `${themeConfig.iconColor} font-medium` : 'text-foreground'
-                                  }`}>
-                                  {item.name} x{item.quantity}
-                                </span>
-                                {isCompleted && (
-                                  <span className="bg-green-200 dark:bg-green-900/40 text-green-900 dark:text-green-200 text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2">
-                                    Delivered
-                                  </span>
-                                )}
-                                {isOutForDelivery && !isCompleted && (
-                                  <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2">
-                                    Out for Delivery
-                                  </span>
-                                )}
-                                {isReady && !isCompleted && !isOutForDelivery && (
-                                  <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2">
-                                    Ready
-                                  </span>
-                                )}
-                                {isPreparing && !isReady && !isCompleted && (
-                                  <span className={`${themeConfig.iconBg} ${themeConfig.iconColor} text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2`}>
-                                    Preparing
-                                  </span>
-                                )}
-                              </div>
-                              <span className={`font-semibold text-sm ml-3 flex-shrink-0 ${themeConfig.iconColor}`}>₹{item.price}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ));
-                })()
+          <div className="bg-card dark:bg-[#1f1429] rounded-2xl p-4 border border-border">
+            <button
+              onClick={() => setIsOrderDetailsExpanded(!isOrderDetailsExpanded)}
+              className="w-full flex justify-between items-center bg-transparent border-none p-0 focus:outline-none"
+            >
+              <h3 className={`font-semibold flex items-center ${themeConfig.iconColor}`}>
+                <Store className={`w-4 h-4 mr-2 ${themeConfig.iconColor}`} />
+                Order Details
+              </h3>
+              {isOrderDetailsExpanded ? (
+                <ChevronUp className={`w-5 h-5 ${themeConfig.iconColor}`} />
               ) : (
-                <div className="text-center text-muted-foreground py-4">
-                  No items found in this order
-                </div>
+                <ChevronDown className={`w-5 h-5 ${themeConfig.iconColor}`} />
               )}
-              <div className="border-t pt-3 mt-3 border-border">
-                <div className="flex justify-between items-center">
-                  <span className={`font-bold ${themeConfig.iconColor}`}>Total</span>
-                  <span className={`${themeConfig.iconColor} font-bold text-lg`}>₹{orderDetails.total}</span>
+            </button>
+            {isOrderDetailsExpanded && (
+              <div className="space-y-3 mt-4">
+                {orderDetails.items && orderDetails.items.length > 0 ? (
+                  (() => {
+                    const counterGroups = groupItemsByCounter(finalOrder);
+                    return Object.entries(counterGroups).map(([counterId, items]) => (
+                      <div key={counterId} className="space-y-2">
+                        {/* Counter Header */}
+                        <div className="flex items-center justify-between pb-2 border-b border-border">
+                          <div className="flex items-center space-x-2">
+                            <Store className={`w-4 h-4 ${themeConfig.iconColor}`} />
+                            <span className={`font-medium text-sm ${themeConfig.iconColor}`}>
+                              {counterId && counterId !== 'default' ? <CounterNameDisplay counterId={counterId} /> : 'General'}
+                            </span>
+                          </div>
+                          {/* Counter Status Indicator */}
+                          <div className="flex items-center space-x-1">
+                            {(() => {
+                              const allItemsCompleted = items.every((item: any) =>
+                                getItemStatus(finalOrder, item.id, item.counterId, item) === 'completed'
+                              );
+                              const allItemsReady = items.every((item: any) => {
+                                const status = getItemStatus(finalOrder, item.id, item.counterId, item);
+                                return status === 'ready' || status === 'out_for_delivery' || status === 'completed';
+                              });
+                              const someItemsReady = items.some((item: any) => {
+                                const status = getItemStatus(finalOrder, item.id, item.counterId, item);
+                                return status === 'ready' || status === 'out_for_delivery' || status === 'completed';
+                              });
+
+                              if (allItemsCompleted) {
+                                return (
+                                  <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span className="text-xs font-medium">Delivered</span>
+                                  </div>
+                                );
+                              } else if (allItemsReady) {
+                                return (
+                                  <div className="flex items-center space-x-1 text-green-600 dark:text-green-400">
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span className="text-xs font-medium">Ready</span>
+                                  </div>
+                                );
+                              } else if (someItemsReady) {
+                                return (
+                                  <div className="flex items-center space-x-1 text-yellow-600 dark:text-yellow-400">
+                                    <Clock className="w-4 h-4" />
+                                    <span className="text-xs font-medium">In Progress</span>
+                                  </div>
+                                );
+                              } else {
+                                // Use theme color for preparing status
+                                return (
+                                  <div className={`flex items-center space-x-1 ${themeConfig.iconColor}`}>
+                                    <Clock className="w-4 h-4" />
+                                    <span className="text-xs font-medium">Preparing</span>
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* Items for this counter */}
+                        <div className="space-y-2">
+                          {items.map((item: any, index: number) => {
+                            const itemStatus = getItemStatus(finalOrder, item.id, item.counterId, item);
+                            const isReady = itemStatus === 'ready' || itemStatus === 'out_for_delivery';
+                            const isCompleted = itemStatus === 'completed';
+                            const isOutForDelivery = itemStatus === 'out_for_delivery';
+                            const isPreparing = (itemStatus as string === 'preparing' || itemStatus === 'pending');
+                            return (
+                              <div key={index} className="flex justify-between items-center py-1">
+                                <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isCompleted ? 'bg-green-600 dark:bg-green-500' :
+                                    isReady ? 'bg-green-500 dark:bg-green-400' :
+                                      isPreparing ? (
+                                        themeConfig.theme === 'amber' ? 'bg-amber-500 dark:bg-amber-400' :
+                                          themeConfig.theme === 'yellow' ? 'bg-yellow-500 dark:bg-yellow-400' :
+                                            themeConfig.theme === 'orange' ? 'bg-orange-500 dark:bg-orange-400' :
+                                              themeConfig.theme === 'green' ? 'bg-green-500 dark:bg-green-400' :
+                                                themeConfig.theme === 'red' ? 'bg-red-500 dark:bg-red-400' :
+                                                  'bg-slate-500 dark:bg-slate-400'
+                                      ) : 'bg-yellow-500 dark:bg-yellow-400'
+                                    }`}></div>
+                                  <span className={`text-sm truncate ${isCompleted ? 'text-green-700 dark:text-green-300 font-medium' :
+                                    isReady ? 'text-green-600 dark:text-green-400 font-medium' :
+                                      isPreparing ? `${themeConfig.iconColor} font-medium` : 'text-foreground'
+                                    }`}>
+                                    {item.name} x{item.quantity}
+                                  </span>
+                                  {isCompleted && (
+                                    <span className="bg-green-200 dark:bg-green-900/40 text-green-900 dark:text-green-200 text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2">
+                                      Delivered
+                                    </span>
+                                  )}
+                                  {isOutForDelivery && !isCompleted && (
+                                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2">
+                                      Out for Delivery
+                                    </span>
+                                  )}
+                                  {isReady && !isCompleted && !isOutForDelivery && (
+                                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2">
+                                      Ready
+                                    </span>
+                                  )}
+                                  {isPreparing && !isReady && !isCompleted && (
+                                    <span className={`${themeConfig.iconBg} ${themeConfig.iconColor} text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ml-2`}>
+                                      Preparing
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`font-semibold text-sm ml-3 flex-shrink-0 ${themeConfig.iconColor}`}>₹{item.price}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ));
+                  })()
+                ) : (
+                  <div className="text-center text-muted-foreground py-4">
+                    No items found in this order
+                  </div>
+                )}
+                <div className="border-t pt-3 mt-3 border-border space-y-2">
+                  {(() => {
+                    const totalAmt = Number(orderDetails.total) || 0;
+                    const itemSubtotal = Number((finalOrder as any)?.itemsSubtotal) || totalAmt;
+                    const charges = Math.max(0, totalAmt - itemSubtotal);
+                    const chargePercentage = (finalOrder as any)?.canteenChargesPercentage || 0;
+
+                    return (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className={`${themeConfig.iconColor} font-bold`}>Item Subtotal</span>
+                          <span className={`${themeConfig.iconColor} font-bold`}>₹{itemSubtotal % 1 === 0 ? itemSubtotal : itemSubtotal.toFixed(2)}</span>
+                        </div>
+                        {charges > 0 && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className={`${themeConfig.iconColor}text-muted-foreground`}>Canteen Charges {chargePercentage > 0 ? `(+${chargePercentage}%)` : ''}</span>
+                            <span className={`${themeConfig.iconColor}`}>+₹{charges % 1 === 0 ? charges : charges.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                  <div className="flex justify-between items-center border-t border-dashed border-border/60 pt-2 mt-2">
+                    <span className={`font-bold ${themeConfig.iconColor}`}>Grand Total</span>
+                    <span className={`${themeConfig.iconColor} font-bold text-lg`}>₹{orderDetails.total}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Delivery Person Info */}
           {finalOrder?.deliveryPersonId && (
-            <div className="bg-card dark:bg-[#1e1e1e] rounded-2xl p-4 border border-border">
+            <div className="bg-card dark:bg-[#1f1429] rounded-2xl p-4 border border-border">
               <h3 className={`font-semibold mb-3 flex items-center ${themeConfig.iconColor}`}>
                 <Truck className={`w-4 h-4 mr-2 ${themeConfig.iconColor}`} />
                 Delivery Person Assigned
@@ -1017,7 +1083,7 @@ export default function OrderStatusPage() {
           )}
 
           {/* Pickup Location & Contact */}
-          <div className="bg-card dark:bg-[#1e1e1e] rounded-2xl p-4 border border-border space-y-4">
+          <div className="bg-card dark:bg-[#1f1429] rounded-2xl p-4 border border-border space-y-4">
             <div>
               <h3 className={`font-semibold mb-3 flex items-center ${themeConfig.iconColor}`}>
                 <Package className={`w-4 h-4 mr-2 ${themeConfig.iconColor}`} />
@@ -1046,6 +1112,13 @@ export default function OrderStatusPage() {
                   variant="outline"
                   size="sm"
                   className={`border-border ${themeConfig.iconColor}`}
+                  onClick={() => {
+                    const phoneNumber = canteenData?.contactNumber || canteenData?.phone;
+                    if (phoneNumber) {
+                      window.location.href = `tel:${phoneNumber}`;
+                    }
+                  }}
+                  disabled={!canteenData?.contactNumber && !(canteenData as any)?.phone}
                 >
                   <Phone className={`w-3.5 h-3.5 mr-1.5 ${themeConfig.iconColor}`} />
                   Call
@@ -1057,181 +1130,31 @@ export default function OrderStatusPage() {
       </div>
 
       {/* Action Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 border-t p-4 bg-card dark:bg-[#1e1e1e] border-border">
-        <div className="max-w-2xl mx-auto space-y-3">
-          {orderStatus === "pending_payment" ? (
-            <>
-              <p className="text-muted-foreground text-center text-sm mb-2">
-                Please proceed to the payment counter to complete your payment
-              </p>
-              <Button
-                variant="outline"
-                size="mobile"
-                className="w-full"
-                onClick={() => {
-                  // Navigate to /app first, then dispatch event to switch to menu view
-                  setLocation("/app");
-                  // Use setTimeout to ensure navigation happens before event dispatch
-                  setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                      detail: { category: 'all' }
-                    }));
-                  }, 100);
-                }}
-              >
-                Browse Menu
-              </Button>
-            </>
-          ) : orderStatus === "cancelled" ? (
-            <>
-              <div className="flex space-x-3">
-                <Button
-                  variant="outline"
-                  size="mobile"
-                  className="flex-1 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300"
-                  onClick={() => {
-                    // Navigate to /app first, then dispatch event to switch to menu view
-                    setLocation("/app");
-                    // Use setTimeout to ensure navigation happens before event dispatch
-                    setTimeout(() => {
-                      window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                        detail: { category: 'all' }
-                      }));
-                    }, 100);
-                  }}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  New Order
-                </Button>
-                <Button
-                  variant="outline"
-                  size="mobile"
-                  className="flex-1"
-                  onClick={() => setLocation("/app")}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Go Back
-                </Button>
-              </div>
-            </>
-          ) : orderStatus === "rejected" ? (
-            <>
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  <p className="text-sm font-medium text-red-800 dark:text-red-200">Order Rejected</p>
-                </div>
-                <p className="text-xs text-red-700 dark:text-red-300">
-                  Your order was rejected by the payment counter. You can place a new order or contact staff.
+      {(orderStatus === "pending_payment" || orderStatus === "rejected") && (
+        <div className="fixed bottom-0 left-0 right-0 border-t p-4 bg-card rounded-xl dark:bg-[#1f1429] border-border">
+          <div className="max-w-2xl mx-auto space-y-3">
+            {orderStatus === "pending_payment" ? (
+              <>
+                <p className="text-muted-foreground text-center text-sm mb-2">
+                  Please proceed to the payment counter to complete your payment
                 </p>
-              </div>
-              <div className="flex space-x-3">
-                <Button
-                  variant="outline"
-                  size="mobile"
-                  className="flex-1 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300"
-                  onClick={() => {
-                    // Navigate to /app first, then dispatch event to switch to menu view
-                    setLocation("/app");
-                    // Use setTimeout to ensure navigation happens before event dispatch
-                    setTimeout(() => {
-                      window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                        detail: { category: 'all' }
-                      }));
-                    }, 100);
-                  }}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  New Order
-                </Button>
-                <Button
-                  variant="outline"
-                  size="mobile"
-                  className="flex-1"
-                  onClick={() => setLocation("/app")}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Go Back
-                </Button>
-              </div>
-            </>
-          ) : orderStatus === "delivered" ? (
-            <Button
-              variant="food"
-              size="mobile"
-              className="w-full"
-              onClick={() => {
-                // Navigate to /app first, then dispatch event to switch to menu view
-                setLocation("/app");
-                // Use setTimeout to ensure navigation happens before event dispatch
-                setTimeout(() => {
-                  window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                    detail: { category: 'all' }
-                  }));
-                }, 100);
-              }}
-            >
-              Order Delivered - Browse Menu
-            </Button>
-          ) : orderStatus === "ready" ? (
-            <div className="flex space-x-3">
-              <Button
-                variant="outline"
-                size="mobile"
-                className="flex-1"
-                onClick={() => {
-                  // Navigate to /app first, then dispatch event to switch to menu view
-                  setLocation("/app");
-                  // Use setTimeout to ensure navigation happens before event dispatch
-                  setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                      detail: { category: 'all' }
-                    }));
-                  }, 100);
-                }}
-              >
-                Browse Menu
-              </Button>
-              <Button
-                variant="food"
-                size="mobile"
-                className="flex-1"
-                disabled
-              >
-                Ready for Pickup
-              </Button>
-            </div>
-          ) : (
-            <div className="flex space-x-3">
-              <Button
-                variant="outline"
-                size="mobile"
-                className="flex-1"
-                onClick={() => {
-                  // Navigate to /app first, then dispatch event to switch to menu view
-                  setLocation("/app");
-                  // Use setTimeout to ensure navigation happens before event dispatch
-                  setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('appNavigateToMenu', {
-                      detail: { category: 'all' }
-                    }));
-                  }, 100);
-                }}
-              >
-                Browse Menu
-              </Button>
-              <Button
-                variant="food"
-                size="mobile"
-                className="flex-1"
-                onClick={() => refetchOrder()}
-              >
-                Refresh Status
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+              </>
+            ) : orderStatus === "rejected" && (
+              <>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200">Order Rejected</p>
+                  </div>
+                  <p className="text-xs text-red-700 dark:text-red-300">
+                    Your order was rejected by the payment counter. You can place a new order or contact staff.
+                  </p>
+                </div>
+
+              </>
+            )}
+          </div>
+        </div>)}
     </div>
   );
 }
