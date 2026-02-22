@@ -1108,11 +1108,11 @@ export default function CanteenOwnerDashboardSidebar() {
   });
 
   // Calculate today's revenue
-  const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.amount || 0), 0);
+  const todayRevenue = todayOrders.reduce((sum, order) => sum + ((order.itemsSubtotal ?? order.amount) || 0), 0);
 
   // Calculate total revenue from all orders (for this page - note: this is page-specific)
   // For accurate total revenue, we'd need all orders, but for overview we'll use what we have
-  const totalRevenue = (paginatedOrders as any[]).reduce((sum, order) => sum + (order.amount || 0), 0);
+  const totalRevenue = (paginatedOrders as any[]).reduce((sum, order) => sum + ((order.itemsSubtotal ?? order.amount) || 0), 0);
 
   // Calculate yesterday's date for comparison
   const yesterday = new Date(today);
@@ -1125,7 +1125,7 @@ export default function CanteenOwnerDashboardSidebar() {
     return orderDate >= yesterday && orderDate <= yesterdayEnd;
   });
 
-  const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + (order.amount || 0), 0);
+  const yesterdayRevenue = yesterdayOrders.reduce((sum, order) => sum + ((order.itemsSubtotal ?? order.amount) || 0), 0);
 
   // Calculate trends
   const ordersTrend = yesterdayOrders.length > 0

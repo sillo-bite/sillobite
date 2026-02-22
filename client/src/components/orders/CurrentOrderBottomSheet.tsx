@@ -94,7 +94,10 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   };
 
   const statusInfo = getStatusInfo(order.status);
-
+  const urlParams = new URLSearchParams(window.location.search);
+  const curPage = urlParams.get('view');
+  // When on /app with no view param, or view=home, treat as home page
+  const isOnHomePage = !curPage || curPage === 'home';
   return (
     <div
       className={`w-full overflow-hidden relative rounded-2xl transition-all duration-300 ${resolvedTheme === 'dark'
@@ -190,7 +193,11 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
             e.stopPropagation();
             const orderId = order.orderNumber || order.id;
             if (orderId) {
-              setLocation(`/order-status/${orderId}`);
+              if (isOnHomePage) {
+                setLocation(`/order-status/${orderId}?from=home&canteenId=${order.canteenId}`);
+              } else {
+                setLocation(`/order-status/${orderId}`);
+              }
             }
           }}
           className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-gradient-to-r from-[#724491] to-[#8B5AAF] text-white text-xs font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
