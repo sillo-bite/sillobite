@@ -3197,7 +3197,7 @@ router.get('/canteens/by-institution', async (req, res) => {
         // Collect all top item IDs across all canteens (top 4 per canteen)
         const allTopItemIds: string[] = [];
         const topIdsByCanteen = new Map<string, string[]>();
-        for (const [cId, counts] of salesByCanteen) {
+        for (const [cId, counts] of Array.from(salesByCanteen.entries())) {
           const topIds = Object.keys(counts).sort((a, b) => counts[b] - counts[a]).slice(0, 4);
           topIdsByCanteen.set(cId, topIds);
           allTopItemIds.push(...topIds);
@@ -3215,7 +3215,7 @@ router.get('/canteens/by-institution', async (req, res) => {
           }
 
           // Populate trendingMap for fallback canteens
-          for (const [cId, topIds] of topIdsByCanteen) {
+          for (const [cId, topIds] of Array.from(topIdsByCanteen.entries())) {
             const items: { name: string; price: number }[] = [];
             for (const itemId of topIds) {
               const mi = menuItemMap.get(itemId);

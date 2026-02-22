@@ -234,9 +234,7 @@ export default function ProfilePage() {
               size="icon"
               className="text-white hover:bg-white/20 transition-all duration-200 rounded-full"
               onClick={() => {
-                // Dispatch custom event to navigate back using history
-                window.dispatchEvent(new CustomEvent('appNavigateBack', {}));
-                setLocation("/app");
+                window.dispatchEvent(new CustomEvent('appNavigateToSelector', {}));
               }}
             >
               <ArrowLeft className="w-5 h-5" />
@@ -328,8 +326,8 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold text-foreground">Account & Orders</h3>
 
             <Card className={`${resolvedTheme === 'dark'
-                ? 'bg-card border border-gray-800 shadow-sm'
-                : 'bg-white border border-gray-200 shadow-sm'
+              ? 'bg-card border border-gray-800 shadow-sm'
+              : 'bg-white border border-gray-200 shadow-sm'
               }`}>
               <CardContent className="p-0">
                 <button
@@ -465,8 +463,8 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold text-foreground">Preferences</h3>
 
             <Card className={`${resolvedTheme === 'dark'
-                ? 'bg-card border border-gray-800 shadow-sm'
-                : 'bg-white border border-gray-200 shadow-sm'
+              ? 'bg-card border border-gray-800 shadow-sm'
+              : 'bg-white border border-gray-200 shadow-sm'
               }`}>
               <CardContent className="p-0">
                 <div className="flex items-center justify-between p-4 border-b border-border">
@@ -513,8 +511,8 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold text-foreground">Help & Support</h3>
 
             <Card className={`${resolvedTheme === 'dark'
-                ? 'bg-card border border-gray-800 shadow-sm'
-                : 'bg-white border border-gray-200 shadow-sm'
+              ? 'bg-card border border-gray-800 shadow-sm'
+              : 'bg-white border border-gray-200 shadow-sm'
               }`}>
               <CardContent className="p-0">
                 <button
@@ -573,8 +571,8 @@ export default function ProfilePage() {
             <h3 className="text-lg font-semibold text-foreground">Account</h3>
 
             <Card className={`${resolvedTheme === 'dark'
-                ? 'bg-card border border-gray-800 shadow-sm'
-                : 'bg-white border border-gray-200 shadow-sm'
+              ? 'bg-card border border-gray-800 shadow-sm'
+              : 'bg-white border border-gray-200 shadow-sm'
               }`}>
               <CardContent className="p-0">
                 <button

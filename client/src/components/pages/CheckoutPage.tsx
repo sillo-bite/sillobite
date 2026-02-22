@@ -20,12 +20,22 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import AddressSelectionDialog from "@/components/checkout/AddressSelectionDialog";
 import Lottie from "lottie-react";
 import takeawayAnimation from "@/lottiefiles/takeaway.json";
@@ -43,6 +53,10 @@ export default function CheckoutPage() {
   const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<any>(null);
+  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
+  const [phoneNumberInput, setPhoneNumberInput] = useState("");
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+  const [showBackConfirmDialog, setShowBackConfirmDialog] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{
 
     code: string;
@@ -112,6 +126,13 @@ export default function CheckoutPage() {
     onCheckoutSessionStatusChange: (sessionId, status, timeRemaining) => {
       // Only process if it's for our session
       if (sessionId === checkoutSessionId) {
+        if (status === 'abandoned') {
+          localStorage.removeItem('currentCheckoutSessionId');
+          window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+          setLocation('/app?view=cart');
+          return;
+        }
+
         setSessionTimeLeft(timeRemaining);
 
         // If session expired, trigger timeout
@@ -477,6 +498,15 @@ export default function CheckoutPage() {
         const response = await apiRequest(`/api/checkout-sessions/${checkoutSessionId}/status`);
         if (response.success) {
           const serverTimeRemaining = response.timeRemaining || 0;
+          const serverStatus = response.status;
+
+          if (serverStatus === 'abandoned') {
+            localStorage.removeItem('currentCheckoutSessionId');
+            window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+            setLocation('/app?view=cart');
+            return;
+          }
+
           setSessionTimeLeft(serverTimeRemaining);
 
           // If server says session is expired, trigger timeout
@@ -548,6 +578,37 @@ export default function CheckoutPage() {
     removeFromCart(itemId);
   };
 
+  const handleSavePhone = async () => {
+    const numericPhone = phoneNumberInput.replace(/\D/g, '');
+    if (numericPhone.length < 10) {
+      alert("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+
+    setIsSavingPhone(true);
+    try {
+      const response = await apiRequest(`/api/users/${userData.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ phoneNumber: numericPhone })
+      });
+
+      if (response) {
+        // Update local storage so it persists
+        const updatedUser = { ...userData, ...response };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+
+        // Also update the userData variable manually for this render cycle
+        userData.phoneNumber = numericPhone;
+
+        setShowPhonePrompt(false);
+      }
+    } catch (error) {
+      alert("Failed to save mobile number. Please try again.");
+    } finally {
+      setIsSavingPhone(false);
+    }
+  };
+
   const handleRetryStockCheck = () => {
     refetchStock();
   };
@@ -555,6 +616,13 @@ export default function CheckoutPage() {
   const handlePlaceOrder = async () => {
     // Check stock validation first
     if (!validationResult.isValid) {
+      return;
+    }
+
+    // Check if user has a valid phone number
+    const userPhone = userData?.phoneNumber;
+    if (!userPhone || userPhone.replace(/\D/g, '').length < 10) {
+      setShowPhonePrompt(true);
       return;
     }
 
@@ -877,7 +945,7 @@ export default function CheckoutPage() {
 
                   // Navigate back to cart page
                   window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-                  setLocation('/app');
+                  setLocation('/app?view=cart');
                 }
               }
             };
@@ -979,8 +1047,7 @@ export default function CheckoutPage() {
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" onClick={() => {
-              window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-              setLocation('/app');
+              setShowBackConfirmDialog(true);
             }} className="text-foreground hover:bg-accent">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -1391,7 +1458,7 @@ export default function CheckoutPage() {
           setShowTimeoutDialog(false);
           localStorage.removeItem('currentCheckoutSessionId');
           window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-          setLocation('/app');
+          setLocation('/app?view=cart');
         }
       }}>
         <AlertDialogContent>
@@ -1412,7 +1479,7 @@ export default function CheckoutPage() {
                 setShowTimeoutDialog(false);
                 localStorage.removeItem('currentCheckoutSessionId');
                 window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-                setLocation('/app');
+                setLocation('/app?view=cart');
               }}
             >
               Return to Cart
@@ -1446,6 +1513,80 @@ export default function CheckoutPage() {
           userId={userData.id}
         />
       )}
+
+      {/* Phone Number Required Dialog */}
+      <Dialog open={showPhonePrompt} onOpenChange={setShowPhonePrompt}>
+        <DialogContent className="sm:max-w-md w-[95vw] rounded-xl z-[100] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Mobile Number Required</DialogTitle>
+            <DialogDescription>
+              We need a valid mobile number to communicate order updates with you.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2 py-4">
+            <div className="grid flex-1 gap-2">
+              <Label htmlFor="phoneNumber" className="sr-only">
+                Mobile Number
+              </Label>
+              <Input
+                id="phoneNumber"
+                type="tel"
+                inputMode="numeric"
+                placeholder="Enter 10-digit mobile number"
+                value={phoneNumberInput}
+                onChange={(e) => setPhoneNumberInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                maxLength={10}
+                className="text-lg py-6 tracking-widest text-center"
+              />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowPhonePrompt(false)}
+              disabled={isSavingPhone}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSavePhone}
+              disabled={isSavingPhone || phoneNumberInput.length < 10}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[100px]"
+            >
+              {isSavingPhone ? "Saving..." : "Save & Continue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Back Confirmation Dialog */}
+      <AlertDialog open={showBackConfirmDialog} onOpenChange={setShowBackConfirmDialog}>
+        <AlertDialogContent className="w-[90vw] max-w-sm rounded-[24px] p-6 gap-6 sm:rounded-[24px] z-[100]">
+          <AlertDialogHeader className="text-center sm:text-center space-y-3">
+            <AlertDialogTitle className="text-xl font-semibold">Leave Checkout?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-[15px] leading-relaxed text-muted-foreground">
+              Are you sure you want to go back? Your current checkout progress will be lost and your reserved items might be released if your session expires.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-3 w-full mt-2">
+            <AlertDialogAction
+              onClick={() => {
+                setShowBackConfirmDialog(false);
+                window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+                setLocation('/app?view=cart');
+              }}
+              className="w-full bg-[#e13a3a] hover:bg-[#c93434] text-white py-6 rounded-xl text-base font-semibold shadow-none"
+            >
+              Leave Checkout
+            </AlertDialogAction>
+            <AlertDialogCancel className="w-full mt-0 sm:mt-0 py-6 rounded-xl border-gray-100 bg-gray-50/50 hover:bg-gray-100 text-base font-semibold text-gray-700 shadow-none">
+              Stay
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
