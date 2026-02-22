@@ -188,8 +188,26 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
                                 </button>
                             </div>
 
-                            {/* Profile Navigation */}
-                            <div className="flex items-center shrink-0">
+                            {/* Profile & Cart Navigation */}
+                            <div className="flex items-center shrink-0 gap-2 md:gap-3">
+                                {getTotalItems() > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => {
+                                            window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+                                        }}
+                                        className="h-11 w-11 md:h-14 md:w-14 p-0 relative overflow-hidden flex items-center justify-center bg-transparent"
+                                        aria-label="View Cart"
+                                    >
+                                        <div className="relative z-10 flex items-center justify-center w-full h-full">
+                                            <ShoppingCart className="w-[22px] h-[22px] md:w-7 md:h-7 text-primary" />
+                                            <span className="absolute top-0 right-0.5 flex h-4 w-4 md:h-5 md:w-5 items-center justify-center rounded-full bg-[#e13a3a] text-[10px] md:text-xs font-bold text-white shadow-sm ring-2 ring-background">
+                                                {getTotalItems()}
+                                            </span>
+                                        </div>
+                                    </Button>
+                                )}
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -587,7 +605,7 @@ export default function CanteenSelectorPage({ onCanteenSelect }: CanteenSelector
             <FloatingCart
                 skipCanteenCheck={true}
                 showOnlyWhenLiveOrderHidden={true}
-                isLiveOrderHidden={!hasActiveOrders}
+                isLiveOrderHidden={!hasActiveOrders || isScrollingDown}
             />
 
             {/* Live Orders Bottom Sheet - real-time via WebSocket, hides on scroll down */}
