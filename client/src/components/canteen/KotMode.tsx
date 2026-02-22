@@ -43,6 +43,7 @@ interface Order {
   orderNumber: string;
   customerName: string;
   amount: number;
+  itemsSubtotal?: number;
   status: string;
   items: string;
   createdAt: Date;
@@ -1142,8 +1143,8 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                       {/* Compact Bottom Section with Action Button */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <div className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                            ₹{order.amount}
+                          <div className="text-xl font-bold text-warning">
+                            ₹{order.itemsSubtotal ?? order.amount}
                           </div>
                           <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                             <Clock className="h-3 w-3" />
@@ -1327,8 +1328,8 @@ export default function KotMode({ counterId, canteenId }: KotModeProps) {
                       {/* Compact Bottom Section with Action Button */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <div className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                            ₹{order.amount}
+                          <div className="text-xl font-bold text-success">
+                            ₹{order.itemsSubtotal ?? order.amount}
                           </div>
                           <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                             <Clock className="h-3 w-3" />

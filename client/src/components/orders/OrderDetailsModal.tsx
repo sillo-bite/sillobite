@@ -3,6 +3,8 @@ import { X, ChefHat, Receipt, User, CreditCard, Clock, Hash, QrCode, Truck, MapP
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatOrderIdDisplay } from '@shared/utils';
+import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 
 interface OrderDetailsModalProps {
   order: any;
@@ -12,11 +14,19 @@ interface OrderDetailsModalProps {
 }
 
 export default function OrderDetailsModal({ order, isOpen, onClose, onScanBarcode }: OrderDetailsModalProps) {
+  const { data: customerDetails, isLoading: customerLoading } = useQuery({
+    queryKey: ['/api/users', order?.customerId],
+    queryFn: () => apiRequest(`/api/users/${order?.customerId}`),
+    enabled: !!order?.customerId && isOpen,
+  });
+
   if (!isOpen || !order) return null;
+
+  const phoneNumber = order?.deliveryAddress?.phoneNumber || customerDetails?.phoneNumber || null;
 
   const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
   const formatted = formatOrderIdDisplay(order.orderNumber || order.id.toString());
-  
+
   // Debug: Log order data to check for deliveryAddress
   console.log('OrderDetailsModal - Order data:', {
     orderId: order.id,
@@ -28,7 +38,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onScanBarcod
     deliveryAddress: order.deliveryAddress,
     allOrderKeys: Object.keys(order) // Show all keys to debug
   });
-  
+
   // Check if it's a delivery order but address is missing
   const isDeliveryOrder = order.orderType === 'delivery' || order.status === 'out_for_delivery' || order.deliveryPersonId;
   if (isDeliveryOrder && !order.deliveryAddress) {
@@ -59,7 +69,7 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onScanBarcod
       'ready': { color: 'bg-success/20 text-success dark:bg-success/30 dark:text-success', text: 'Ready' },
       'completed': { color: 'bg-muted text-muted-foreground', text: 'Completed' }
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return (
       <Badge className={`${config.color} font-medium`}>
@@ -160,7 +170,15 @@ export default function OrderDetailsModal({ order, isOpen, onClose, onScanBarcod
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Customer:</span>
-                  <span className="text-sm font-medium text-foreground">{order.customerName}</span>
+                  <div className="text-right">
+                    <span className="block text-sm font-medium text-foreground">{order.customerName}</span>
+                    {phoneNumber && (
+                      <span className="block text-xs text-muted-foreground">{phoneNumber}</span>
+                    )}
+                    {customerLoading && order?.customerId && !phoneNumber && (
+                      <span className="block text-xs text-muted-foreground animate-pulse">Loading phone...</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Total Amount:</span>
