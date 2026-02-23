@@ -212,7 +212,7 @@ export default function FloatingCart({
       <div
         className="fixed left-3 right-3 z-[9999]"
         style={{
-          bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
           ...animationStyle,
         }}
       >
@@ -377,7 +377,7 @@ export default function FloatingCart({
     <div
       className="fixed left-3 right-3 z-[9999]"
       style={{
-        bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+        bottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
         ...animationStyle,
       }}
     >
