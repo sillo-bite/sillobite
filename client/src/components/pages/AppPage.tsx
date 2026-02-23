@@ -481,7 +481,16 @@ export default function AppPage() {
       {currentView === "home" && (
         <HomeScreen
           activateSearch={activateHomeSearch}
-          onSearchDeactivated={() => setActivateHomeSearch(false)}
+          onSearchDeactivated={() => {
+            if (activateHomeSearch) {
+              setActivateHomeSearch(false);
+              // Instead of calling navigateBack directly which doesn't have access to handleNavigateBack from the scoped event listeners,
+              // simply dispatch the appNavigateBack event that we already have listeners for.
+              window.dispatchEvent(new CustomEvent('appNavigateBack'));
+            } else {
+              setActivateHomeSearch(false);
+            }
+          }}
           onNavigateBack={() => handleNavigation('selector')}
         />
       )}

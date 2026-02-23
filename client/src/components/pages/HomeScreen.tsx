@@ -175,7 +175,8 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     setIsSearchActive(false);
     setSearchQuery("");
     setDebouncedSearchQuery("");
-  }, []);
+    onSearchDeactivated?.();
+  }, [onSearchDeactivated]);
 
   // Smooth scroll detection with progress tracking
   useEffect(() => {
@@ -605,7 +606,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
         {/* Header Container - Scrolls normally, fades as it goes out of view */}
         {/* Header Container - Fixed & Adaptive */}
         <div
-          className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${scrollTop > scrollThreshold
+          className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 ${isSearchActive ? 'opacity-0 invisible pointer-events-none' : ''} ${scrollTop > scrollThreshold
             ? (resolvedTheme === 'dark' ? 'bg-background/80 backdrop-blur-md shadow-sm border-b border-white/5' : 'bg-background/80 backdrop-blur-md shadow-sm border-b border-black/5')
             : (selectedCanteen?.bannerUrl ? 'bg-transparent' : 'bg-background')
             }`}
