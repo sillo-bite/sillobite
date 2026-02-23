@@ -776,17 +776,20 @@ export default function OrdersPage() {
               {sortedOrders.map((order) => {
                 const firstItem = getFirstItem(order);
                 const itemCount = getItemCount(order);
-                const orderPlacedTime = new Date(order.createdAt).toLocaleTimeString('en-IN', {
+                const orderPlacedDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
+                  day: '2-digit',
+                  month: 'short'
+                });
+                const orderPlacedTime = `${orderPlacedDate} / ${new Date(order.createdAt).toLocaleTimeString('en-IN', {
                   hour: '2-digit',
                   minute: '2-digit',
                   hour12: true
-                });
+                })}`;
 
                 return (
                   <div
                     key={order.id}
-                    onClick={() => setLocation(`/order-status/${order.orderNumber || order.barcode || order.id}?from=orders`)}
-                    className={`rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg ${resolvedTheme === 'dark'
+                    className={`rounded-2xl overflow-hidden transition-all duration-200 ${resolvedTheme === 'dark'
                       ? 'bg-[#1f1429] border border-gray-700/50 shadow-lg'
                       : 'bg-white border border-gray-100 shadow-md'
                       }`}
@@ -795,14 +798,25 @@ export default function OrdersPage() {
                     <div className="p-5">
                       {/* Top Section: Status Badge & Order Number */}
                       <div className="flex items-center justify-between mb-3">
-                        <Badge className={`${getStatusColor(order.status || 'pending')} px-3 py-1`}>
-                          <div className="flex items-center space-x-1">
-                            {getStatusIcon(order.status || 'pending')}
-                            <span className="capitalize text-xs font-medium whitespace-nowrap">
-                              {order.status === 'pending_payment' ? 'Payment Pending' : (order.status || 'Pending').replace('_', ' ')}
-                            </span>
-                          </div>
-                        </Badge>
+                        {(() => {
+                          const canteen = availableCanteens.find((c: any) => c.id === order.canteenId);
+                          const logoSrc = (canteen as any)?.logoUrl || canteen?.imageUrl || null;
+                          return (
+                            <div className={`w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border-2 ${resolvedTheme === 'dark' ? 'border-gray-600 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+                              {logoSrc ? (
+                                <img
+                                  src={logoSrc}
+                                  alt={canteen?.name || 'Canteen'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <span className="text-lg">🏪</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <span className="ml-1">
                           {order.orderNumber && order.orderNumber.length >= 4 ? (
                             <>

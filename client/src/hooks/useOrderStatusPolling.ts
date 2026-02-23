@@ -43,7 +43,7 @@ export function useOrderStatusPolling({
   const [isPolling, setIsPolling] = useState(false);
   const [lastPollTime, setLastPollTime] = useState<number | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  
+
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingRef = useRef(false);
   const orderIdRef = useRef(orderId);
@@ -73,13 +73,19 @@ export function useOrderStatusPolling({
     try {
       setError(null);
       const data = await pollingQueue.pollOrder(orderIdRef.current, 1);
-      
+
       if (data) {
         setLastPollTime(Date.now());
         onDataUpdate?.(data);
       }
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Polling failed');
+
+      // Ignore normal cancellation errors when polling is stopped
+      if (error.message === 'Polling cancelled') {
+        return;
+      }
+
       setError(error);
       onError?.(error);
       console.error('❌ Order status polling error:', error);

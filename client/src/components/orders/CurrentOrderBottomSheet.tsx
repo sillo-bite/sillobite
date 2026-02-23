@@ -5,6 +5,7 @@ import { usePaginatedActiveOrders } from "@/hooks/usePaginatedActiveOrders";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useCanteenContext } from "@/contexts/CanteenContext";
 import type { Order } from "@shared/schema";
 import LazyImage from "@/components/common/LazyImage";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
@@ -35,43 +36,58 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   const totalItemCount = orderItems.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0);
   const isBulkOrder = orderItems.length > 1;
 
-  // Get the appropriate image based on order type
-  const itemImage = useMemo(() => {
-    const targetItem = firstItem;
+  const { availableCanteens } = useCanteenContext();
 
-    if (!targetItem) return null;
+  // Get the canteen logo instead of item image
+  const displayImage = useMemo(() => {
+    const canteen = availableCanteens?.find((c: any) => c.id === order.canteenId);
+    return canteen?.logoUrl || canteen?.imageUrl || null;
+  }, [availableCanteens, order.canteenId]);
 
-    if (targetItem.imageUrl) {
-      return targetItem.imageUrl;
-    }
+  const canteenName = useMemo(() => {
+    const canteen = availableCanteens?.find((c: any) => c.id === order.canteenId);
+    return canteen?.name || 'Your Order';
+  }, [availableCanteens, order.canteenId]);
 
-    if (menuItemsMap && menuItemsMap.size > 0 && targetItem.id) {
-      const menuItem = menuItemsMap.get(String(targetItem.id));
-      if (menuItem?.imageUrl) {
-        return menuItem.imageUrl;
-      }
-    }
-
-    return null;
-  }, [firstItem, menuItemsMap]);
-
-  const itemNames = useMemo(() => {
-    if (!orderItems || orderItems.length === 0) return 'Your Order';
+  const formattedOrderItems = useMemo(() => {
+    if (!orderItems || orderItems.length === 0) return '';
     const uniqueItems = orderItems.reduce((acc: any[], item: any) => {
       if (item.name && item.name !== 'Item') {
         acc.push(item.name);
       }
       return acc;
     }, []);
-    if (uniqueItems.length === 0) return 'Your Order';
-    let displayItems = uniqueItems.slice(0, 2);
-    if (uniqueItems.length >= 3 && uniqueItems[0].length < 15) {
-      displayItems = uniqueItems.slice(0, 3);
+
+    if (uniqueItems.length === 0) return '';
+
+    // First item is shown fully
+    let result = uniqueItems[0];
+
+    // Add second item with truncation if it exists
+    if (uniqueItems.length > 1) {
+      const secondItem = uniqueItems[1];
+      const words = secondItem.split(' ');
+
+      let secondItemStr = '';
+      if (words.length === 1) {
+        // Just one word, so we have to truncate the first word
+        secondItemStr = words[0].substring(0, Math.ceil(words[0].length / 2)) + '..';
+      } else if (words.length > 1) {
+        // Two or more words: show first word fully, second word half
+        const firstWord = words[0];
+        const secondWord = words[1];
+        const truncatedSecondWord = secondWord.substring(0, Math.ceil(secondWord.length / 2)) + '..';
+        secondItemStr = `${firstWord} ${truncatedSecondWord}`;
+      }
+
+      result += `, ${secondItemStr}`;
+
+      // Add ellipsis if there are even more items
+      if (uniqueItems.length > 2) {
+        result += ', ..';
+      }
     }
-    let result = displayItems.join(', ');
-    if (uniqueItems.length > displayItems.length) {
-      result += '...';
-    }
+
     return result;
   }, [orderItems]);
 
@@ -79,13 +95,13 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   const getStatusInfo = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return { color: 'bg-amber-500', text: 'Pending', pulse: true };
+        return { color: 'bg-orange-800', text: 'Preparing', pulse: true };
       case 'confirmed':
         return { color: 'bg-blue-500', text: 'Confirmed', pulse: false };
       case 'preparing':
         return { color: 'bg-orange-500', text: 'Preparing', pulse: true };
       case 'ready':
-        return { color: 'bg-green-500', text: 'Ready', pulse: true };
+        return { color: 'bg-amber-300', text: 'Ready', pulse: true };
       case 'out_for_delivery':
         return { color: 'bg-purple-500', text: 'On the way', pulse: true };
       default:
@@ -96,13 +112,25 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
   const statusInfo = getStatusInfo(order.status);
   const urlParams = new URLSearchParams(window.location.search);
   const curPage = urlParams.get('view');
-  // When on /app with no view param, or view=home, treat as home page
-  const isOnHomePage = !curPage || curPage === 'home';
+  const validViews = ["home", "cart", "favorites", "menu", "profile", "orders", "challenges", "selector"];
+  const currentView = curPage && validViews.includes(curPage) ? curPage : 'selector';
+
   return (
     <div
-      className={`w-full overflow-hidden relative rounded-2xl transition-all duration-300 ${resolvedTheme === 'dark'
-        ? 'bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 border border-gray-700/50'
-        : 'bg-gradient-to-br from-white/95 via-gray-50/95 to-white/95 border border-gray-200/50'
+      onClick={(e) => {
+        e.stopPropagation();
+        const orderId = order.orderNumber || order.id;
+        if (orderId) {
+          if (isHomePage) {
+            setLocation(`/order-status/${orderId}?from=${currentView}&canteenId=${order.canteenId}`);
+          } else {
+            setLocation(`/order-status/${orderId}`);
+          }
+        }
+      }}
+      className={`w-full overflow-hidden relative rounded-2xl transition-all duration-300 cursor-pointer ${resolvedTheme === 'dark'
+        ? 'bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 border border-gray-700/50 hover:bg-gray-800'
+        : 'bg-gradient-to-br from-white/95 via-gray-50/95 to-white/95 border border-gray-200/50 hover:bg-gray-50'
         }`}
       style={{
         backdropFilter: 'blur(20px)',
@@ -128,10 +156,10 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             }}
           >
-            {itemImage ? (
+            {displayImage ? (
               <LazyImage
-                src={itemImage}
-                alt={itemNames}
+                src={displayImage}
+                alt={canteenName}
                 className="w-full h-full object-cover"
                 placeholder={
                   <div className={`w-full h-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
@@ -167,39 +195,29 @@ function OrderCard({ order, isHomePage, formatCurrency, menuItemsMap }: {
                 {statusInfo.text}
               </span>
             </div>
-            <div className={`flex items-center gap-1 text-xs ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+            <div className={`flex items-center gap-1 text-xs font-mono font-medium ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
               }`}>
-              <Clock className="w-3 h-3" />
-              <span>~15 min</span>
+              <span>#{String(order.orderNumber || order.id || "").slice(-4)}</span>
             </div>
           </div>
 
-          {/* Item names */}
-          <p className={`text-sm font-bold truncate mb-0.5 ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
-            }`}>
-            {itemNames}
-          </p>
-
-          {/* Price */}
-          <p className={`text-base font-bold ${resolvedTheme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>
-            {formatCurrency(order.amount || 0)}
-          </p>
+          {/* Canteen name and Items */}
+          <div className="flex flex-col mb-0.5">
+            <p className={`text-sm font-bold truncate ${resolvedTheme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+              }`}>
+              {canteenName}
+            </p>
+            {formattedOrderItems && (
+              <p className={`text-[10px] font-medium truncate ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`}>
+                ({formattedOrderItems})
+              </p>
+            )}
+          </div>
         </div>
 
-        {/* View Order Button */}
+        {/* View Order Button - decorative since entire card is clickable */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            const orderId = order.orderNumber || order.id;
-            if (orderId) {
-              if (isOnHomePage) {
-                setLocation(`/order-status/${orderId}?from=home&canteenId=${order.canteenId}`);
-              } else {
-                setLocation(`/order-status/${orderId}`);
-              }
-            }
-          }}
           className="flex-shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-gradient-to-r from-[#724491] to-[#8B5AAF] text-white text-xs font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           style={{
             boxShadow: '0 4px 14px rgba(114, 68, 145, 0.4)',
