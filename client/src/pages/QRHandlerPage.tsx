@@ -19,7 +19,12 @@ export default function QRHandlerPage() {
     const applyContextMutation = useMutation({
         mutationFn: async () => {
             if (!user || !qrId) return;
-            const res = await fetch(`/api/users/${user.id}/apply-qr-context`, {
+
+            const endpoint = qrType === 'canteen'
+                ? `/api/users/${user.id}/apply-canteen-qr-context`
+                : `/api/users/${user.id}/apply-qr-context`;
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ qrId })
@@ -31,9 +36,13 @@ export default function QRHandlerPage() {
             }
             return res.json();
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             // Hard reload to ensure all app context (sockets, cache) is fresh
-            window.location.href = '/app';
+            if (qrType === 'canteen' && data?.canteenId) {
+                window.location.href = `/app?view=home&canteenId=${data.canteenId}`;
+            } else {
+                window.location.href = '/app';
+            }
         },
         onError: (err: Error) => {
             setError(err.message);

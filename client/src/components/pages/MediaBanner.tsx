@@ -19,16 +19,16 @@ const CacheUtils = {
     try {
       const cached = localStorage.getItem(CACHE_CONFIG.BANNER_CACHE_KEY);
       if (!cached) return null;
-      
+
       const parsedCache = JSON.parse(cached);
       const now = Date.now();
-      
+
       // Check if cache is still valid
       if (now - parsedCache.timestamp > CACHE_CONFIG.CACHE_DURATION) {
         localStorage.removeItem(CACHE_CONFIG.BANNER_CACHE_KEY);
         return null;
       }
-      
+
       return parsedCache;
     } catch (error) {
       console.warn('Failed to get cached banners:', error);
@@ -111,25 +111,25 @@ export default function MediaBanner() {
       // If no cache, fetch from server
       console.log('Fetching fresh banner data from server');
       setIsUsingCache(false);
-      
+
       const response = await fetch('/api/media-banners', {
         headers: {
           'Cache-Control': 'max-age=1800', // 30 minutes browser cache
         }
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch media banners');
       }
-      
+
       const data = await response.json();
-      
+
       // Cache the fresh data
       CacheUtils.cacheBanners(data);
-      
+
       // Preload images
       CacheUtils.preloadImages(data);
-      
+
       return data;
     },
     staleTime: CACHE_CONFIG.STALE_TIME, // 15 minutes
@@ -141,7 +141,7 @@ export default function MediaBanner() {
 
   // Ensure type safety for banners array
   const banners: MediaBannerType[] = data || [];
-  
+
   // Check if there's only one banner for static behavior
   const isSingleBanner = banners.length === 1;
 
@@ -174,9 +174,9 @@ export default function MediaBanner() {
   // Handle transition end for cyclic queue
   const handleTransitionEnd = () => {
     console.log('Cyclic queue: Transition ended at index:', currentIndex);
-    
+
     if (!isTransitioning) return;
-    
+
     // Simple - just reset transitioning state, no jumps needed in cyclic queue
     setIsTransitioning(false);
     console.log('Cyclic queue: Ready for next transition');
@@ -186,30 +186,30 @@ export default function MediaBanner() {
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (isTransitioning || isSingleBanner || isDragging) return; // Prevent multiple simultaneous drags
-    
+
     e.preventDefault(); // Prevent default touch behavior
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     startXRef.current = clientX;
     setIsDragging(true);
     setDragOffset(0); // Reset drag offset
-    
+
     // Clear auto-slide when user starts interacting
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    
+
     console.log('Touch start at:', clientX, 'currentIndex:', currentIndex);
   };
 
   const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
     if (!isDragging || isSingleBanner) return; // Allow during transition for responsive feel
     e.preventDefault();
-    
+
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const diff = clientX - startXRef.current;
     const currentTime = Date.now();
-    
+
     // Calculate velocity for momentum
     if (lastDragTime > 0) {
       const timeDiff = currentTime - lastDragTime;
@@ -217,22 +217,22 @@ export default function MediaBanner() {
       setDragVelocity(velocity);
     }
     setLastDragTime(currentTime);
-    
+
     // Limit drag distance to prevent over-scrolling
     const maxDrag = slideWidth * 0.4; // Increased for more natural feel
     const limitedDiff = Math.max(-maxDrag, Math.min(maxDrag, diff));
-    
+
     setDragOffset(limitedDiff);
   };
 
   const handleTouchEnd = () => {
     if (!isDragging || isSingleBanner) return; // Disable for single banner
-    
+
     console.log('Touch end - dragOffset:', dragOffset, 'velocity:', dragVelocity, 'currentIndex:', currentIndex);
-    
+
     const threshold = 40; // Reduced threshold for more responsive swipes
     const velocityThreshold = 0.3; // Velocity threshold for momentum-based swipes
-    
+
     // Prevent multiple rapid swipes
     if (isTransitioning) {
       console.log('Already transitioning, ignoring touch end');
@@ -242,13 +242,13 @@ export default function MediaBanner() {
       setLastDragTime(0);
       return;
     }
-    
+
     // Check for momentum-based swipe or distance-based swipe
     const shouldSwipe = Math.abs(dragOffset) > threshold || Math.abs(dragVelocity) > velocityThreshold;
-    
+
     if (shouldSwipe) {
       console.log('Swipe detected! Direction:', dragOffset > 0 ? 'right (prev)' : 'left (next)');
-      
+
       // Use cyclic queue logic
       if (dragOffset > 0) {
         // Swipe right - go to previous in cyclic queue
@@ -259,7 +259,7 @@ export default function MediaBanner() {
         console.log('Swiping left - going to next');
         moveToNext();
       }
-      
+
       // Reset drag states
       setIsDragging(false);
       setDragOffset(0);
@@ -278,28 +278,28 @@ export default function MediaBanner() {
   // Cyclic queue functions
   const moveToNext = () => {
     if (isTransitioning || isDragging) return;
-    
+
     const nextIndex = (currentIndex + 1) % banners.length;
     console.log('Cyclic queue: Moving from', currentIndex, 'to', nextIndex);
-    
+
     setIsTransitioning(true);
     setCurrentIndex(nextIndex);
   };
-  
+
   const moveToPrev = () => {
     if (isTransitioning || isDragging) return;
-    
+
     const prevIndex = currentIndex === 0 ? banners.length - 1 : currentIndex - 1;
     console.log('Cyclic queue: Moving from', currentIndex, 'to', prevIndex);
-    
+
     setIsTransitioning(true);
     setCurrentIndex(prevIndex);
   };
-  
+
   // Move to specific slide (used for indicators)
   const moveToSlide = (index: number) => {
     if (isTransitioning || isDragging) return;
-    
+
     console.log('moveToSlide: Moving to index', index);
     setIsTransitioning(true);
     setCurrentIndex(index);
@@ -314,7 +314,7 @@ export default function MediaBanner() {
         console.log('Auto-slide: cyclic queue advancing from', currentIndex);
         moveToNext();
       }
-    }, 6000); // Increased to 6 seconds for more comfortable viewing
+    }, 3000); // Auto-slide every 3 seconds
 
     return () => {
       if (intervalRef.current) {
@@ -327,10 +327,10 @@ export default function MediaBanner() {
   // Update slide width on resize
   useEffect(() => {
     updateSlideWidth();
-    
+
     const handleResize = () => updateSlideWidth();
     window.addEventListener('resize', handleResize);
-    
+
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -362,9 +362,8 @@ export default function MediaBanner() {
     return (
       <div className="w-full py-6" data-testid="media-banner-container">
         <div className="relative w-full h-64 overflow-hidden mx-auto max-w-sm">
-          <div className={`flex items-center justify-center h-full rounded-2xl ${
-            resolvedTheme === 'dark' ? 'bg-transparent' : 'bg-gray-100'
-          }`}>
+          <div className={`flex items-center justify-center h-full rounded-2xl ${resolvedTheme === 'dark' ? 'bg-transparent' : 'bg-gray-100'
+            }`}>
             <div className="w-10 h-10 border-3 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
           </div>
         </div>
@@ -380,10 +379,10 @@ export default function MediaBanner() {
   // Use banners array directly with cyclic queue - no clones needed
   const extendedBanners = banners;
   const totalSlides = banners.length;
-  
+
   // Use container width as fallback when slideWidth is not calculated yet
   const effectiveSlideWidth = slideWidth || (containerRef.current?.getBoundingClientRect().width || 320);
-  
+
   // Debug logging
   console.log('Render - slideWidth:', slideWidth, 'effectiveSlideWidth:', effectiveSlideWidth, 'currentIndex:', currentIndex);
 
@@ -391,7 +390,7 @@ export default function MediaBanner() {
     <div className="w-full" data-testid="media-banner-container">
       {/* Full width carousel */}
       <div className="relative w-full aspect-[2/1] overflow-hidden">
-        <div 
+        <div
           ref={containerRef}
           className={`relative w-full h-full transition-all duration-300 ${isSingleBanner ? '' : 'cursor-grab active:cursor-grabbing hover:scale-[1.02]'}`}
           onTouchStart={isSingleBanner ? undefined : handleTouchStart}
@@ -403,15 +402,14 @@ export default function MediaBanner() {
           onMouseLeave={isSingleBanner ? undefined : handleTouchEnd}
         >
           {/* Card slides container */}
-          <div 
+          <div
             ref={slidesRef}
             className="flex h-full"
             style={{
-              transform: isSingleBanner 
-                ? 'translate3d(0px, 0, 0)' 
-                : `translate3d(-${currentIndex * effectiveSlideWidth}px, 0, 0)${
-                    isDragging ? ` translateX(${dragOffset}px)` : ''
-                  }`,
+              transform: isSingleBanner
+                ? 'translate3d(0px, 0, 0)'
+                : `translate3d(-${currentIndex * effectiveSlideWidth}px, 0, 0)${isDragging ? ` translateX(${dragOffset}px)` : ''
+                }`,
               transformOrigin: 'center center',
               transition: isDragging || isSingleBanner ? 'none' : 'transform 1000ms cubic-bezier(0.19, 1, 0.22, 1)', // Ultra-smooth easing
               willChange: isSingleBanner ? 'auto' : 'transform',
@@ -431,110 +429,106 @@ export default function MediaBanner() {
               } else {
                 uniqueKey = `real-${banner.id}`;
               }
-              
+
               return (
-              <div
-                key={uniqueKey}
-                className="h-full flex-shrink-0 flex items-center justify-center"
-                style={{ width: isSingleBanner ? '100%' : `${effectiveSlideWidth}px` }}
-                data-testid={`banner-card-${index}`}
-              >
-                {/* Image card with full size */}
-                <div className="overflow-hidden shadow-lg w-full h-full transition-opacity duration-300 ease-in-out">
-                  {/* Card Content */}
-                  {banner.type === 'video' ? (
-                    <video
-                      className="w-full h-full object-cover transition-opacity duration-500 ease-in-out"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        opacity: imagesLoaded[banner.id] ? 1 : 0
-                      }}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      data-testid={`video-${banner.id}`}
-                      onLoadedData={() => {
-                        handleImageLoad(banner.id, index);
-                        updateSlideWidth();
-                      }}
-                      onError={() => handleImageError(banner.id, index)}
-                    >
-                      <source 
+                <div
+                  key={uniqueKey}
+                  className="h-full flex-shrink-0 flex items-center justify-center"
+                  style={{ width: isSingleBanner ? '100%' : `${effectiveSlideWidth}px` }}
+                  data-testid={`banner-card-${index}`}
+                >
+                  {/* Image card with full size */}
+                  <div className="overflow-hidden shadow-lg w-full h-full transition-opacity duration-300 ease-in-out">
+                    {/* Card Content */}
+                    {banner.type === 'video' ? (
+                      <video
+                        className="w-full h-full object-cover transition-opacity duration-500 ease-in-out"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          opacity: imagesLoaded[banner.id] ? 1 : 0
+                        }}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        data-testid={`video-${banner.id}`}
+                        onLoadedData={() => {
+                          handleImageLoad(banner.id, index);
+                          updateSlideWidth();
+                        }}
+                        onError={() => handleImageError(banner.id, index)}
+                      >
+                        <source
+                          src={banner.cloudinaryUrl || `/api/media-banners/${banner.fileId}/file`}
+                          type={banner.mimeType}
+                        />
+                      </video>
+                    ) : (
+                      <img
                         src={banner.cloudinaryUrl || `/api/media-banners/${banner.fileId}/file`}
-                        type={banner.mimeType}
+                        alt={banner.originalName}
+                        className="w-full h-full object-cover transition-opacity duration-500 ease-in-out"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          opacity: imagesLoaded[banner.id] ? 1 : 0
+                        }}
+                        data-testid={`image-${banner.id}`}
+                        onLoad={() => {
+                          handleImageLoad(banner.id, index);
+                          updateSlideWidth();
+                        }}
+                        onError={() => handleImageError(banner.id, index)}
                       />
-                    </video>
-                  ) : (
-                    <img
-                      src={banner.cloudinaryUrl || `/api/media-banners/${banner.fileId}/file`}
-                      alt={banner.originalName}
-                      className="w-full h-full object-cover transition-opacity duration-500 ease-in-out"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        opacity: imagesLoaded[banner.id] ? 1 : 0
-                      }}
-                      data-testid={`image-${banner.id}`}
-                      onLoad={() => {
-                        handleImageLoad(banner.id, index);
-                        updateSlideWidth();
-                      }}
-                      onError={() => handleImageError(banner.id, index)}
-                    />
-                  )}
-                  
-                  
-                  {/* Error State */}
-                  {imagesLoaded[banner.id] === false && (
-                    <div className={`absolute inset-0 flex items-center justify-center ${
-                      resolvedTheme === 'dark' 
-                        ? 'bg-transparent text-gray-400' 
-                        : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500'
-                    }`}>
-                      <div className="text-center">
-                        <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${
-                          resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-300'
+                    )}
+
+
+                    {/* Error State */}
+                    {imagesLoaded[banner.id] === false && (
+                      <div className={`absolute inset-0 flex items-center justify-center ${resolvedTheme === 'dark'
+                          ? 'bg-transparent text-gray-400'
+                          : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-500'
                         }`}>
-                          <svg className={`w-6 h-6 fill="none" stroke="currentColor" viewBox="0 0 24 24" ${
-                            resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
-                          }`}>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                        <div className="text-center">
+                          <div className={`w-12 h-12 mx-auto mb-2 rounded-full flex items-center justify-center ${resolvedTheme === 'dark' ? 'bg-card' : 'bg-gray-300'
+                            }`}>
+                            <svg className={`w-6 h-6 fill="none" stroke="currentColor" viewBox="0 0 24 24" ${resolvedTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'
+                              }`}>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium">Content unavailable</span>
                         </div>
-                        <span className="text-sm font-medium">Content unavailable</span>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
               );
             })}
           </div>
-          
+
           {/* Card Indicators */}
           {banners.length > 1 && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
               {banners.map((_, index) => {
                 // Calculate real current index (subtract 1 for the cloned element at start)
                 const isActive = index === currentIndex;
-                
+
                 return (
-                <button
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-all duration-500 ease-out ${
-                    isActive
-                      ? 'bg-white scale-125 shadow-lg' 
-                      : 'bg-white/60 hover:bg-white/80'
-                  }`}
-                  onClick={() => {
-                    if (!isTransitioning && !isDragging) {
-                      moveToSlide(index + 1); // Add 1 for the cloned element at start
-                    }
-                  }}
-                  data-testid={`banner-indicator-${index}`}
-                />
+                  <button
+                    key={index}
+                    className={`w-2 h-2 rounded-full transition-all duration-500 ease-out ${isActive
+                        ? 'bg-white scale-125 shadow-lg'
+                        : 'bg-white/60 hover:bg-white/80'
+                      }`}
+                    onClick={() => {
+                      if (!isTransitioning && !isDragging) {
+                        moveToSlide(index + 1); // Add 1 for the cloned element at start
+                      }
+                    }}
+                    data-testid={`banner-indicator-${index}`}
+                  />
                 );
               })}
             </div>
