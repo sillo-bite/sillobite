@@ -225,8 +225,8 @@ export default function OrderStatusPage() {
     return false;
   })();
 
-  // Get canteen ID from the order to join the correct room
-  const orderCanteenId = urlParams.get('canteenId');
+  // Get canteen ID from URL params first, then fall back to the fetched order's canteenId
+  const orderCanteenId = urlParams.get('canteenId') || finalOrder?.canteenId || null;
 
   // Handle all back navigation scenarios (browser back, iOS swipe, Android back)
   useEffect(() => {
@@ -717,6 +717,8 @@ export default function OrderStatusPage() {
                   setLocation('/app?view=orders');
                 } else if (sourceContext === 'home') {
                   setLocation(`/app?view=home&canteenId=${orderCanteenId}`);
+                } else if (sourceContext === 'selector') {
+                  setLocation('/app?view=selector');
                 } else {
                   setLocation('/app'); // Default to home view
                 }
@@ -799,72 +801,79 @@ export default function OrderStatusPage() {
         </div>
       )}
       {/*Lottie files according to the status*/}
-      {lottieAnimData ? (
-        <div className="w-full max-w-sm mx-auto h-48 sm:h-32 flex items-center justify-center overflow-visible">
-          <Lottie
-            animationData={lottieAnimData}
-            loop={true}
-            className={`w-full h-full object-contain ${orderStatus === "ready"
-              ? "scale-[0.8] sm:scale-[0.9]" // shrink the very large paper bag
-              : (orderStatus === "completed" || orderStatus === "delivered")
-                ? "scale-[1.3] sm:scale-[1.5]" // increase the small tearing hand
-                : "scale-[1.1] sm:scale-[1.2]" // slightly scale the pot
-              }`}
-            renderer={"svg" as any}
-          />
-        </div>
-      ) : (
-        <div className="w-full max-w-sm mx-auto h-48 sm:h-64 my-4 flex justify-center items-center">
-          <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        </div>
-      )}
-
+      <div className="px-4">
+        {lottieAnimData ? (
+          <div className="w-full max-w-sm mx-auto h-48 sm:h-32 flex items-center justify-center overflow-visible">
+            <Lottie
+              animationData={lottieAnimData}
+              loop={true}
+              className={`w-full h-full object-contain ${orderStatus === "ready"
+                ? "scale-[0.8] sm:scale-[0.9]" // shrink the very large paper bag
+                : (orderStatus === "completed" || orderStatus === "delivered")
+                  ? "scale-[1.3] sm:scale-[1.5]" // increase the small tearing hand
+                  : "scale-[1.1] sm:scale-[1.2]" // slightly scale the pot
+                }`}
+              renderer={"svg" as any}
+            />
+          </div>
+        ) : (
+          <div className="w-full max-w-sm mx-auto h-48 sm:h-64 my-4 flex justify-center items-center">
+            <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          </div>
+        )}
+        {/* Order Barcode - At the Top (Hidden for cancelled/rejected orders) */}
+        {orderStatus !== "cancelled" && orderStatus !== "rejected" && (
+          <div className={`p-3  mb-4 `}>
+            <BarcodeGenerator orderId={orderDetails.id} />
+          </div>)
+        }
+      </div>
       <div className="px-4 pb-16">
         <div className="max-w-2xl mx-auto space-y-4">
-          {/* Order Barcode - At the Top (Hidden for cancelled/rejected orders) */}
+
           {orderStatus !== "cancelled" && orderStatus !== "rejected" && (
 
             <div className="text-center">
-              <div className={`p-3  mb-4 `}>
-                <BarcodeGenerator orderId={orderDetails.id} />
-              </div>
-              <div className={`font-bold text-lg mb-3 flex items-center justify-center ${themeConfig.iconColor}`}>
-                <span>Order ID: </span>
-                <span className="ml-1">
-                  {orderDetails.orderNumber && orderDetails.orderNumber.length >= 4 ? (
-                    <>
-                      <span className="opacity-70 text-base">{orderDetails.orderNumber.slice(0, -4)}</span>
-                      <span className={`inline-block px-2 py-0.5 rounded-md ${themeConfig.iconBg} border ${themeConfig.borderColor} ml-1 font-black text-xl tracking-wider shadow-sm`}>
-                        {orderDetails.orderNumber.slice(-4)}
-                      </span>
-                    </>
-                  ) : (
-                    orderDetails.orderNumber
-                  )}
-                </span>
-              </div>
-              {/* OTP Display - First 4 digits of barcode - Highlighted */}
-              {orderDetails.id && orderDetails.id.length >= 4 && (() => {
-                const first4Digits = orderDetails.id.slice(0, 4);
-                const isDelivery = (finalOrder as any)?.orderType === 'delivery';
-                return (
-                  <div className="my-4">
-                    <div className={`${themeConfig.iconBg} rounded-xl p-4 border-2 ${themeConfig.borderColor} shadow-lg`}>
-                      <p className={`text-sm font-semibold mb-2 uppercase tracking-wide ${themeConfig.iconColor}`}>
-                        {isDelivery ? '🚚 Delivery OTP' : '📦 Pickup OTP'}
-                      </p>
-                      <div className={`bg-white dark:bg-[#1f1429] rounded-lg p-4 border-2 ${themeConfig.borderColor} shadow-inner`}>
-                        <p className={`text-5xl font-black ${themeConfig.iconColor} tracking-[0.2em] text-center`} style={{ letterSpacing: '0.3em' }}>
-                          {first4Digits}
+
+              <div className="bg-card dark:bg-[#1f1429] rounded-2xl p-4 border border-border">
+                <div className={`font-bold text-lg mb-3 flex items-center justify-center ${themeConfig.iconColor}`}>
+                  <span>Order ID #</span>
+                  <span className="ml-1">
+                    {orderDetails.orderNumber && orderDetails.orderNumber.length >= 4 ? (
+                      <>
+                        <span className="opacity-70 text-base">{orderDetails.orderNumber.slice(0, -4)}</span>
+                        <span className={`inline-block px-2 py-0.5 rounded-md ${themeConfig.iconBg} border ${themeConfig.borderColor} ml-1 font-black text-xl tracking-wider shadow-sm`}>
+                          {orderDetails.orderNumber.slice(-4)}
+                        </span>
+                      </>
+                    ) : (
+                      orderDetails.orderNumber
+                    )}
+                  </span>
+                </div>
+                {/* OTP Display - First 4 digits of barcode - Highlighted */}
+                {orderDetails.id && orderDetails.id.length >= 4 && orderStatus !== 'completed' && orderStatus !== 'delivered' && (() => {
+                  const first4Digits = orderDetails.id.slice(0, 4);
+                  const isDelivery = (finalOrder as any)?.orderType === 'delivery';
+                  return (
+                    <div className="my-3 flex justify-center">
+                      <div className={`${themeConfig.iconBg} rounded-xl p-3 border-2 ${themeConfig.borderColor} shadow-md w-full max-w-[240px]`}>
+                        <p className={`text-xs font-semibold mb-2 uppercase tracking-wide ${themeConfig.iconColor} text-center`}>
+                          {isDelivery ? '🚚 Delivery OTP' : '📦 Pickup OTP'}
+                        </p>
+                        <div className={`bg-white dark:bg-[#1f1429] rounded-lg p-2.5 border-2 ${themeConfig.borderColor} shadow-inner`}>
+                          <p className={`text-3xl font-black ${themeConfig.iconColor} tracking-[0.2em] text-center`} style={{ letterSpacing: '0.2em' }}>
+                            {first4Digits}
+                          </p>
+                        </div>
+                        <p className={`text-[10px] mt-2 font-medium ${themeConfig.iconColor} opacity-80 text-center`}>
+                          Show this OTP or scan barcode above
                         </p>
                       </div>
-                      <p className={`text-xs mt-2 font-medium ${themeConfig.iconColor} opacity-80 text-center`}>
-                        Show this OTP or scan the barcode above
-                      </p>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
+              </div>
             </div>
           )}
 
