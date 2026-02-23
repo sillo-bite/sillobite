@@ -40,6 +40,30 @@ export default function QRHandlerPage() {
             return res.json();
         },
         onSuccess: (data) => {
+            // Update localStorage user with location data so LocationContext picks it up on /app load
+            // This is critical because useAuth skips DB validation for GUEST users
+            try {
+                const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                if (data?.collegeId) {
+                    storedUser.selectedLocationType = 'college';
+                    storedUser.selectedLocationId = data.collegeId;
+                    storedUser.college = data.collegeId;
+                    storedUser.collegeName = data.collegeName;
+                } else if (data?.locationType && data?.locationId) {
+                    storedUser.selectedLocationType = data.locationType;
+                    storedUser.selectedLocationId = data.locationId;
+                }
+                localStorage.setItem('user', JSON.stringify(storedUser));
+                // Also save location to localStorage for LocationContext fallback
+                localStorage.setItem('selectedLocation', JSON.stringify({
+                    type: storedUser.selectedLocationType,
+                    id: storedUser.selectedLocationId,
+                    name: data.collegeName || data.locationId || ''
+                }));
+            } catch (e) {
+                console.error('Failed to update localStorage with location data:', e);
+            }
+
             // Hard reload to ensure all app context (sockets, cache) is fresh
             if (qrType === 'canteen' && data?.canteenId) {
                 window.location.href = `/app?view=home&canteenId=${data.canteenId}`;
@@ -49,10 +73,15 @@ export default function QRHandlerPage() {
         },
         onError: async (err: Error) => {
             if ((err as any).status === 404 && err.message === 'User not found') {
-                console.log('👤 Backend reported user not found. Stale session detected, logging out.');
-                await logout();
+                console.log('👤 Backend reported user not found. Stale session detected, clearing session.');
+                // Don't call logout() here — it has a setTimeout that hard-redirects to /login,
+                // which would race with our redirect below and lose the QR params.
+                // Instead, clear the stale session manually.
+                localStorage.removeItem('user');
+                localStorage.removeItem('selectedLocation');
+                sessionStorage.clear();
                 const returnUrl = encodeURIComponent(window.location.pathname);
-                setLocation(`/login?redirect=${returnUrl}&fromQR=true&sessionExpired=true`);
+                window.location.href = `/onboarding?redirect=${returnUrl}&fromQR=true&sessionExpired=true`;
                 return;
             }
             setError(err.message);
@@ -69,7 +98,7 @@ export default function QRHandlerPage() {
             // Redirect to login with return URL
             // Using window.location.href for current full URL to ensure PWA/deep link context is kept if possible
             const returnUrl = encodeURIComponent(window.location.pathname);
-            setLocation(`/login?redirect=${returnUrl}&fromQR=true`);
+            setLocation(`/onboarding?redirect=${returnUrl}&fromQR=true`);
             return;
         }
 

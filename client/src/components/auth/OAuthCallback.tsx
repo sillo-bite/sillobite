@@ -57,6 +57,17 @@ export default function OAuthCallback() {
   }, [login]);
 
   const handleUserAuthentication = async (user: any) => {
+    // Helper: check for stored redirect URL (from QR code flow)
+    const getPostLoginRedirect = (): string | null => {
+      const authRedirect = sessionStorage.getItem('authRedirect');
+      if (authRedirect) {
+        sessionStorage.removeItem('authRedirect');
+        console.log('🔄 Found authRedirect in session:', authRedirect);
+        return decodeURIComponent(authRedirect);
+      }
+      return null;
+    };
+
     try {
       console.log('Starting user authentication for:', user.email);
 
@@ -265,9 +276,10 @@ export default function OAuthCallback() {
             // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
 
-            console.log('✅ Guest user created with organization context, redirecting to profile setup');
+            console.log('✅ Guest user created with organization context');
             setIsLoading(false);
-            setLocation(`/profile-setup?email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name)}`);
+            const redirect = getPostLoginRedirect();
+            setLocation(redirect || `/profile-setup?email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name)}`);
           } else if (createResponse.status === 409) {
             // User already exists (race condition - Google OAuth created user first)
             // Fetch the existing user and continue with the flow
@@ -322,8 +334,9 @@ export default function OAuthCallback() {
                 };
                 login(userDisplayData);
                 setIsLoading(false);
+                const redirect = getPostLoginRedirect();
                 setTimeout(() => {
-                  setLocation('/app');
+                  setLocation(redirect || '/app');
                 }, 100);
               }
             } else {
@@ -362,8 +375,9 @@ export default function OAuthCallback() {
             };
             login(userDisplayData);
             setIsLoading(false);
+            const redirect = getPostLoginRedirect();
             setTimeout(() => {
-              setLocation('/app');
+              setLocation(redirect || '/app');
             }, 100);
           } else if (createResponse.status === 409) {
             const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
@@ -378,8 +392,9 @@ export default function OAuthCallback() {
               };
               login(userDisplayData);
               setIsLoading(false);
+              const redirect2 = getPostLoginRedirect();
               setTimeout(() => {
-                setLocation('/app');
+                setLocation(redirect2 || '/app');
               }, 100);
             } else {
               const errData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
