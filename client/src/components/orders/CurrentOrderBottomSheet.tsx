@@ -345,7 +345,7 @@ export default function CurrentOrderBottomSheet({ activeOrders: propActiveOrders
     <div
       className="fixed left-0 right-0 z-[9998] px-3"
       style={{
-        bottom: '16px',
+        bottom: '8px',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         transform: isVisible ? 'translateY(0)' : 'translateY(calc(100% + 40px))',
         opacity: isVisible ? 1 : 0,
