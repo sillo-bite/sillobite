@@ -195,18 +195,18 @@ export default function PayoutRequestManagementPage() {
       } else {
         dateObj = date;
       }
-      
+
       // Check if date is valid
       if (!dateObj || isNaN(dateObj.getTime())) {
         return "N/A";
       }
-      
+
       // Additional check: ensure date is within reasonable range
       const year = dateObj.getFullYear();
       if (year < 1900 || year > 2100) {
         return "N/A";
       }
-      
+
       return format(dateObj, formatStr);
     } catch (error) {
       console.warn("Date formatting error:", error, "Date value:", date);
@@ -240,7 +240,7 @@ export default function PayoutRequestManagementPage() {
           <h1 className="text-3xl font-bold">Payout Request Management</h1>
           <p className="text-muted-foreground">Manage canteen owner payout requests and settlements</p>
         </div>
-        <Button onClick={refetchRequests} variant="outline" disabled={requestsLoading}>
+        <Button onClick={() => refetchRequests()} variant="outline" disabled={requestsLoading}>
           <RefreshCcw className={`w-4 h-4 mr-2 ${requestsLoading ? "animate-spin" : ""}`} />
           Refresh
         </Button>

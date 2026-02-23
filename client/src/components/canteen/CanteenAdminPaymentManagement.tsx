@@ -69,13 +69,13 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
     },
   });
 
-  const payments = paymentsData?.payments || [];
+  const payments: any[] = paymentsData?.payments || [];
   const totalCount = paymentsData?.totalCount || 0;
   const totalPages = paymentsData?.totalPages || 0;
 
   // Calculate stats from payments data
   const today = new Date().toDateString();
-  const todayPayments = payments.filter(payment => 
+  const todayPayments = payments.filter(payment =>
     new Date(payment.createdAt).toDateString() === today && payment.status === 'success'
   );
   const todayRevenue = todayPayments.reduce((sum, payment) => sum + payment.amount, 0);
@@ -188,7 +188,7 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
               <CreditCard className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No payments found</p>
               <p className="text-sm mt-2">
-                {debouncedSearchTerm || statusFilter !== 'all' 
+                {debouncedSearchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your search or filter criteria'
                   : 'No payment transactions for this canteen yet'
                 }

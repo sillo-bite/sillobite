@@ -17,11 +17,11 @@ import { VegIndicator } from "@/components/ui/VegIndicator";
 import ImageUpload from "@/components/ui/ImageUpload";
 import MenuAnalytics from "@/components/menu/MenuAnalytics";
 import type { MenuItem, Category } from "@shared/schema";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
   Loader2,
   X,
   ChefHat,
@@ -48,8 +48,8 @@ const CategoryIcon = ({ category }: { category: Category }) => {
   if (category.imageUrl) {
     return (
       <div className="w-8 h-8 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-        <img 
-          src={category.imageUrl} 
+        <img
+          src={category.imageUrl}
           alt={category.name}
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -64,7 +64,7 @@ const CategoryIcon = ({ category }: { category: Category }) => {
       </div>
     );
   }
-  
+
   if (category.icon) {
     return (
       <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-lg">
@@ -72,7 +72,7 @@ const CategoryIcon = ({ category }: { category: Category }) => {
       </div>
     );
   }
-  
+
   // Default fallback icon
   return (
     <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
@@ -135,7 +135,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     paymentCounterId: "",
     kotCounterId: ""
   });
-  
+
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [addOns, setAddOns] = useState<Array<{ name: string; price: string }>>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -152,7 +152,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
   // Pagination state - Use higher limit for menu management to show all items
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(1000); // Show all items by default in menu management
-  
+
   // Fetch menu items with pagination and server-side filtering
   const { data: menuData, isLoading: menuLoading, refetch: refetchMenuItems } = useQuery<{
     items: MenuItem[];
@@ -183,14 +183,14 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
         ...(selectedCategory !== 'all' && { category: selectedCategory }),
         ...(stockFilter !== 'all' && { stockFilter })
       });
-      
+
       console.log('📋 Menu Management - Fetching menu items:', {
         canteenId,
         page: currentPage,
         limit: itemsPerPage,
         params: params.toString()
       });
-      
+
       return apiRequest(`/api/menu?${params.toString()}`);
     },
     enabled: !!canteenId,
@@ -202,7 +202,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
 
   const menuItems = menuData?.items || [];
   const pagination = menuData?.pagination;
-  
+
   // Debug logging
   console.log('📋 Menu Management - Menu data received:', {
     canteenId,
@@ -216,7 +216,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
   // Categories pagination state
   const [categoriesPage, setCategoriesPage] = useState(1);
   const [categoriesPerPage, setCategoriesPerPage] = useState(50);
-  
+
   // Fetch categories with pagination and optimized caching
   const { data: categoriesData, isLoading: categoriesLoading, error: categoriesError } = useQuery<{
     items: Category[];
@@ -306,7 +306,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     },
     enabled: !!canteenId
   });
-  
+
   // Debug logging
   console.log('🔍 Admin Counters Data:', countersData);
   console.log('🔍 Admin Store Counters:', storeCounters);
@@ -342,7 +342,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     },
     onError: (error) => {
       console.error('Update error:', error);
-      }
+    }
   });
 
   // Add menu item mutation
@@ -361,7 +361,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     onSuccess: () => {
       // Use a more conservative approach to avoid multiple API calls
       setTimeout(() => {
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['/api/menu', canteenId],
           exact: false,
           refetchType: 'active' // Only refetch active queries
@@ -372,7 +372,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     },
     onError: (error) => {
       console.error('Add error:', error);
-      }
+    }
   });
 
   // Delete menu item mutation
@@ -385,16 +385,16 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     onSuccess: () => {
       // Use a more conservative approach to avoid multiple API calls
       setTimeout(() => {
-        queryClient.invalidateQueries({ 
+        queryClient.invalidateQueries({
           queryKey: ['/api/menu', canteenId],
           exact: false,
           refetchType: 'active' // Only refetch active queries
         });
       }, 100); // Small delay to batch invalidations
-      },
+    },
     onError: (error) => {
       console.error('Delete error:', error);
-      }
+    }
   });
 
   // Add category mutation
@@ -433,7 +433,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     },
     onError: (error) => {
       console.error('Delete category error:', error);
-      }
+    }
   });
 
   // Update category mutation
@@ -461,23 +461,23 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     mutationFn: async (data: { categoryId: string; image: File }) => {
       const formData = new FormData();
       formData.append('image', data.image);
-      
+
       const response = await fetch(`/api/categories/${data.categoryId}/image`, {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to upload image');
       }
-      
+
       return response.json();
     },
     onSuccess: (data) => {
-      setEditCategoryForm(prev => ({ 
-        ...prev, 
-        imageUrl: data.imageUrl, 
-        imagePublicId: data.imagePublicId 
+      setEditCategoryForm(prev => ({
+        ...prev,
+        imageUrl: data.imageUrl,
+        imagePublicId: data.imagePublicId
       }));
       setPendingCategoryImageFile(null);
     },
@@ -511,39 +511,39 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
         fileType: file.type,
         isFileValid: file instanceof File
       });
-      
+
       if (!(file instanceof File)) {
         console.error('❌ ADMIN: Not a valid File object:', file);
         throw new Error('Invalid file object');
       }
-      
+
       if (!id) {
         console.error('❌ ADMIN: No menu item ID provided');
         throw new Error('Menu item ID is required');
       }
-      
+
       const formData = new FormData();
       formData.append('image', file);
-      
+
       console.log('📸 ADMIN: FormData created', {
         hasImage: formData.has('image'),
         formDataKeys: Array.from(formData.keys())
       });
-      
+
       const url = `/api/menu/${id}/image`;
       console.log('📸 ADMIN: About to send fetch request', { url });
-      
+
       const response = await fetch(url, {
         method: 'POST',
         body: formData
       });
-      
+
       console.log('📸 ADMIN: Response received', {
         status: response.status,
         ok: response.ok,
         statusText: response.statusText
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ ADMIN: Upload failed', {
@@ -551,17 +551,17 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
           statusText: response.statusText,
           errorText
         });
-        
+
         let errorData;
         try {
           errorData = JSON.parse(errorText);
         } catch {
           errorData = { message: errorText || 'Upload failed' };
         }
-        
+
         throw new Error(errorData.message || `Upload failed: ${response.status} ${response.statusText}`);
       }
-      
+
       const responseData = await response.json();
       console.log('✅ ADMIN: Upload successful', responseData);
       return responseData;
@@ -570,7 +570,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       console.log('✅ ADMIN: Upload mutation success callback', data);
       queryClient.invalidateQueries({ queryKey: ['/api/menu', canteenId] });
       queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
-      
+
       // Update form state with new image data
       setEditForm(prev => ({
         ...prev,
@@ -594,18 +594,18 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       const response = await fetch(`/api/menu/${id}/image`, {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Delete failed' }));
         throw new Error(errorData.message || 'Delete failed');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/menu', canteenId] });
       queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
-      
+
       // Update form state to remove image data
       setEditForm(prev => ({
         ...prev,
@@ -623,16 +623,16 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     mutationFn: async (data: { categoryId: string; image: File }) => {
       const formData = new FormData();
       formData.append('image', data.image);
-      
+
       const response = await fetch(`/api/categories/${data.categoryId}/image`, {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to upload image');
       }
-      
+
       return response.json();
     },
     onSuccess: (data) => {
@@ -712,7 +712,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       imageUrl: "",
       imagePublicId: "",
       storeCounterId: "",
-      paymentCounterId: ""
+      paymentCounterId: "",
+      kotCounterId: ""
     });
     setAddOns([]);
     setPendingImageFile(null);
@@ -750,8 +751,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
             if (typeof item.categoryId === 'object' && (item.categoryId as any)?.name) {
               return (item.categoryId as any).name;
             }
-            const categoryIdToFind = typeof item.categoryId === 'string' 
-              ? item.categoryId 
+            const categoryIdToFind = typeof item.categoryId === 'string'
+              ? item.categoryId
               : (item.categoryId as any)?._id || (item.categoryId as any)?.id || String(item.categoryId);
             return categories.find(cat => cat.id === categoryIdToFind)?.name || '';
           })(),
@@ -863,7 +864,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
     try {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
-      
+
       // Check for parsing errors
       const parseError = xmlDoc.getElementsByTagName('parsererror')[0];
       if (parseError) {
@@ -889,8 +890,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
   };
 
   const importCategoriesCountersAndMenuItems = async (
-    categories: HTMLCollectionOf<Element>, 
-    counters: HTMLCollectionOf<Element>, 
+    categories: HTMLCollectionOf<Element>,
+    counters: HTMLCollectionOf<Element>,
     menuItems: HTMLCollectionOf<Element>
   ) => {
     try {
@@ -904,23 +905,23 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
         menuItemsCreated: 0,
         menuItemsSkipped: 0
       };
-      
+
       // Get all existing categories for this canteen
       const existingCategoriesResponse = await apiRequest(`/api/categories?canteenId=${canteenId}&limit=1000`);
       const existingCategories = existingCategoriesResponse.items || [];
-      
+
       // First, import categories (create if they don't exist)
       for (let i = 0; i < categories.length; i++) {
         const category = categories[i];
         const name = category.getElementsByTagName('name')[0]?.textContent;
-        
+
         if (name) {
           try {
             // Check if category already exists by exact name match
-            const existingCategory = existingCategories.find((cat: any) => 
+            const existingCategory = existingCategories.find((cat: any) =>
               cat.name.toLowerCase().trim() === name.toLowerCase().trim()
             );
-            
+
             if (!existingCategory) {
               // Create new category if it doesn't exist
               const response = await apiRequest('/api/categories', {
@@ -943,21 +944,21 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       // Get all existing counters for this canteen
       const existingCountersResponse = await apiRequest(`/api/counters?canteenId=${canteenId}`);
       const existingCounters = existingCountersResponse || [];
-      
+
       // Second, import counters (create if they don't exist)
       for (let i = 0; i < counters.length; i++) {
         const counter = counters[i];
         const name = counter.getElementsByTagName('name')[0]?.textContent;
         const code = counter.getElementsByTagName('code')[0]?.textContent;
         const type = counter.getElementsByTagName('type')[0]?.textContent;
-        
+
         if (name && code && type && ['payment', 'store', 'kot'].includes(type)) {
           try {
             // Check if counter already exists by code and type
-            const existingCounter = existingCounters.find((cnt: any) => 
+            const existingCounter = existingCounters.find((cnt: any) =>
               cnt.code.toUpperCase() === code.toUpperCase() && cnt.type === type
             );
-            
+
             if (!existingCounter) {
               // Create new counter if it doesn't exist
               const response = await apiRequest('/api/counters', {
@@ -980,7 +981,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       // Get all existing menu items for this canteen
       const existingMenuItemsResponse = await apiRequest(`/api/menu?canteenId=${canteenId}&limit=1000`);
       const existingMenuItems = existingMenuItemsResponse.items || [];
-      
+
       // Third, import menu items (create if they don't exist)
       for (let i = 0; i < menuItems.length; i++) {
         const item = menuItems[i];
@@ -1003,30 +1004,30 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
         if (name && price > 0 && categoryName) {
           // Check if menu item already exists by name and category
           const categoryId = categoryMap.get(categoryName);
-          const existingMenuItem = existingMenuItems.find((menuItem: any) => 
-            menuItem.name.toLowerCase().trim() === name.toLowerCase().trim() && 
+          const existingMenuItem = existingMenuItems.find((menuItem: any) =>
+            menuItem.name.toLowerCase().trim() === name.toLowerCase().trim() &&
             menuItem.categoryId === categoryId
           );
-          
+
           if (!existingMenuItem && categoryId) {
             // Validate that both store and payment counters are provided
             if (!storeCounterCode || !paymentCounterCode) {
               continue; // Skip this menu item
             }
-            
+
             const storeCounterId = counterMap.get(`${storeCounterCode}_store`);
             const paymentCounterId = counterMap.get(`${paymentCounterCode}_payment`);
             const kotCounterId = kotCounterCode ? counterMap.get(`${kotCounterCode}_kot`) : null;
-            
+
             // Validate that the counter IDs were found
             if (!storeCounterId) {
               continue; // Skip this menu item
             }
-            
+
             if (!paymentCounterId) {
               continue; // Skip this menu item
             }
-            
+
             try {
               await apiRequest('/api/menu', {
                 method: 'POST',
@@ -1065,7 +1066,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       // Show user-friendly summary
       const totalCreated = importStats.categoriesCreated + importStats.countersCreated + importStats.menuItemsCreated;
       const totalSkipped = importStats.categoriesSkipped + importStats.countersSkipped + importStats.menuItemsSkipped;
-      
+
       if (totalCreated > 0) {
         alert(`Import completed successfully!\n\nCreated: ${totalCreated} items\nSkipped (duplicates): ${totalSkipped} items`);
       } else if (totalSkipped > 0) {
@@ -1093,15 +1094,15 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
   const handleEditItem = (item: MenuItem) => {
     setEditingItem(item);
     setPendingImageFile(null); // Clear any pending file when editing
-    
+
     // Extract categoryId properly (handle both string and object formats)
-    const categoryIdToSet = typeof item.categoryId === 'string' 
-      ? item.categoryId 
+    const categoryIdToSet = typeof item.categoryId === 'string'
+      ? item.categoryId
       : (item.categoryId as any)?._id || (item.categoryId as any)?.id || String(item.categoryId);
-    
-    
+
+
     // Setting edit form categoryId
-    
+
     setEditForm({
       name: item.name,
       price: item.price.toString(),
@@ -1115,7 +1116,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       imageUrl: item.imageUrl || "",
       imagePublicId: item.imagePublicId || "",
       storeCounterId: item.storeCounterId || "",
-      paymentCounterId: item.paymentCounterId || ""
+      paymentCounterId: item.paymentCounterId || "",
+      kotCounterId: item.kotCounterId || ""
     });
     setAddOns(Array.isArray(item.addOns) ? item.addOns : []);
   };
@@ -1127,7 +1129,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
 
     // Extract the item ID properly (handle both id and _id formats)
     const itemId = editingItem?.id || (editingItem as any)?._id;
-    
+
     console.log('🔍 ADMIN DEBUG: editingItem:', editingItem);
     console.log('🔍 ADMIN DEBUG: itemId:', itemId);
     console.log('📸 ADMIN Pending Image File:', pendingImageFile ? {
@@ -1135,7 +1137,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       size: pendingImageFile.size,
       type: pendingImageFile.type
     } : 'None');
-    
+
     // Build item data, excluding the base64 preview imageUrl (which can be very large)
     // We only send imagePublicId if it exists (from a previously uploaded image)
     // New images are uploaded separately via the image upload endpoint
@@ -1148,14 +1150,14 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
       isVegetarian: editForm.isVegetarian,
       isMarkable: editForm.isMarkable,
       addOns: JSON.stringify(addOns), // Convert array to string for server
-      categoryId: typeof editForm.categoryId === 'string' 
-        ? editForm.categoryId 
+      categoryId: typeof editForm.categoryId === 'string'
+        ? editForm.categoryId
         : (editForm.categoryId as any)?._id || (editForm.categoryId as any)?.id || String(editForm.categoryId),
       storeCounterId: editForm.storeCounterId || undefined,
       paymentCounterId: editForm.paymentCounterId || undefined,
       ...(editingItem && itemId && { id: itemId }) // Only include id when editing and ID exists
     };
-    
+
     // Only include imagePublicId if it exists (from a previously uploaded image)
     // Don't include imageUrl as it's a base64 preview that can be very large
     if (editForm.imagePublicId && !pendingImageFile) {
@@ -1174,11 +1176,11 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
           alert('Error: Menu item ID not found. Please try again.');
           return;
         }
-        
+
         // First update the menu item
         await updateMenuItemMutation.mutateAsync(itemData);
         console.log('✅ ADMIN: Menu item updated successfully');
-        
+
         // Then handle image upload if there's a pending file
         if (pendingImageFile) {
           console.log('📸 ADMIN: Uploading pending image after saving menu item', {
@@ -1202,7 +1204,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
         // Adding new item
         const createdItem = await addMenuItemMutation.mutateAsync(itemData);
         console.log('✅ ADMIN: Menu item created successfully', createdItem);
-        
+
         // If there's a pending image file, upload it now
         if (pendingImageFile && createdItem?.id) {
           console.log('📸 ADMIN: Uploading pending image for new menu item:', {
@@ -1388,8 +1390,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
         <div className="flex items-center space-x-2">
           {/* Import/Export Buttons */}
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={exportToXML}
               className="flex items-center space-x-2"
             >
@@ -1404,7 +1406,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 disabled={isImporting}
               />
-              <Button 
+              <Button
                 variant="outline"
                 disabled={isImporting}
                 className="flex items-center space-x-2"
@@ -1423,17 +1425,17 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
               </Button>
             </div>
           </div>
-          
-          <Button 
-            variant="outline" 
+
+          <Button
+            variant="outline"
             onClick={() => setIsAddingItem(true)}
             className="flex items-center space-x-2"
           >
             <Plus className="h-4 w-4" />
             <span>Add Item</span>
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setIsAddingCategory(true)}
             className="flex items-center space-x-2"
           >
@@ -1731,7 +1733,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                     />
                   </div>
                 )}
-                
+
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Category:</span>
                   <span className="text-sm font-medium">
@@ -1742,51 +1744,50 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                         return (item.categoryId as any).name;
                       } else {
                         // Category is not populated, try to find it in categories array
-                        const categoryIdToFind = typeof item.categoryId === 'string' 
-                          ? item.categoryId 
+                        const categoryIdToFind = typeof item.categoryId === 'string'
+                          ? item.categoryId
                           : (item.categoryId as any)?._id || (item.categoryId as any)?.id || String(item.categoryId);
-                        
+
                         const category = categories.find(cat => cat.id === categoryIdToFind);
                         return category?.name || 'Unknown';
                       }
                     })()}
                   </span>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Price:</span>
                   <span className="text-lg font-bold text-primary">₹{item.price}</span>
                 </div>
-                
+
                 {item.stock !== null && (
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Stock:</span>
-                    <span className={`text-sm font-medium ${
-                      item.stock === 0 ? 'text-red-600' : 
-                      item.stock < 10 ? 'text-yellow-600' : 'text-green-600'
-                    }`}>
+                    <span className={`text-sm font-medium ${item.stock === 0 ? 'text-red-600' :
+                        item.stock < 10 ? 'text-yellow-600' : 'text-green-600'
+                      }`}>
                       {item.stock} {item.stock === 0 ? '(Out of Stock)' : item.stock < 10 ? '(Low Stock)' : ''}
                     </span>
                   </div>
                 )}
-                
+
                 {item.description && (
                   <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                 )}
-                
+
                 <div className="flex space-x-2 pt-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="flex-1"
                     onClick={() => handleEditItem(item)}
                   >
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="text-red-600 hover:text-red-700"
                     onClick={() => handleDeleteItem(item.id)}
                     disabled={deleteMenuItemMutation.isPending}
@@ -1859,14 +1860,14 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                     return (item.categoryId as any).name === category.name;
                   } else {
                     // Category is not populated, compare by ID
-                    const itemCategoryId = typeof item.categoryId === 'string' 
-                      ? item.categoryId 
+                    const itemCategoryId = typeof item.categoryId === 'string'
+                      ? item.categoryId
                       : (item.categoryId as any)?._id || (item.categoryId as any)?.id;
                     return itemCategoryId === category.id;
                   }
                 });
                 const isDeleting = deletingCategory === category.id;
-                
+
                 return (
                   <div key={category.id || `category-${index}`} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex-1 min-w-0">
@@ -1920,8 +1921,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
             <ChefHat className="h-16 w-16 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium mb-2">No menu items found</h3>
             <p className="text-muted-foreground mb-4">
-              {searchTerm || selectedCategory !== "all" || stockFilter !== "all" 
-                ? "Try adjusting your filters" 
+              {searchTerm || selectedCategory !== "all" || stockFilter !== "all"
+                ? "Try adjusting your filters"
                 : "Get started by adding your first menu item"}
             </p>
             <Button onClick={() => setIsAddingItem(true)}>
@@ -1949,7 +1950,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
               {editingItem ? 'Update the menu item details' : 'Add a new item to the menu'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -2051,8 +2052,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="storeCounter">Store Counter (Optional)</Label>
-                <Select 
-                  value={editForm.storeCounterId || ""} 
+                <Select
+                  value={editForm.storeCounterId || ""}
                   onValueChange={(value) => setEditForm({ ...editForm, storeCounterId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
@@ -2073,8 +2074,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
               </div>
               <div>
                 <Label htmlFor="paymentCounter">Payment Counter (Optional)</Label>
-                <Select 
-                  value={editForm.paymentCounterId || ""} 
+                <Select
+                  value={editForm.paymentCounterId || ""}
                   onValueChange={(value) => setEditForm({ ...editForm, paymentCounterId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
@@ -2099,8 +2100,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
             {kotCounters.length > 0 && (
               <div>
                 <Label htmlFor="kotCounter">KOT Counter (Optional)</Label>
-                <Select 
-                  value={editForm.kotCounterId || ""} 
+                <Select
+                  value={editForm.kotCounterId || ""}
                   onValueChange={(value) => setEditForm({ ...editForm, kotCounterId: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
@@ -2131,18 +2132,18 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                     fileType: file.type,
                     isFileValid: file instanceof File
                   });
-                  
+
                   // Validate file
                   if (!(file instanceof File)) {
                     console.error('❌ ADMIN: Invalid file object:', file);
                     alert('Error: Invalid file selected. Please try again.');
                     return;
                   }
-                  
+
                   // Store the file for later upload when saving
                   setPendingImageFile(file);
                   console.log('✅ ADMIN: File stored in pendingImageFile state');
-                  
+
                   // Create preview
                   const reader = new FileReader();
                   reader.onload = (e) => {
@@ -2163,7 +2164,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                   console.log('📸 ADMIN: Image removal requested');
                   setPendingImageFile(null);
                   setEditForm(prev => ({ ...prev, imageUrl: "", imagePublicId: "" }));
-                  
+
                   // If editing an existing item with an image, remove it from server
                   if (editingItem && editingItem.id && editingItem.imagePublicId) {
                     try {
@@ -2185,8 +2186,8 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsAddingItem(false);
                   setEditingItem(null);
@@ -2195,7 +2196,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleSaveItem}
                 disabled={updateMenuItemMutation.isPending || addMenuItemMutation.isPending || uploadImageMutation.isPending}
               >
@@ -2225,7 +2226,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
               Create a new category for menu items with optional icon and image.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="new-category-name">Category Name *</Label>
@@ -2236,7 +2237,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                 placeholder="Enter category name"
               />
             </div>
-            
+
             <div>
               <Label htmlFor="new-category-icon">Icon (Optional)</Label>
               <Input
@@ -2246,7 +2247,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                 placeholder="e.g., 🍕, 🍔, 🥗"
               />
             </div>
-            
+
             <div>
               <Label>Category Image (Optional)</Label>
               <ImageUpload
@@ -2257,10 +2258,10 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
                 maxSizeKB={50}
               />
             </div>
-            
+
             <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsAddingCategory(false);
                   setNewCategoryName("");
@@ -2273,7 +2274,7 @@ export default function CanteenAdminMenuManagement({ canteenId }: CanteenAdminMe
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleAddCategory}
                 disabled={!newCategoryName.trim() || addCategoryMutation.isPending || uploadNewCategoryImageMutation.isPending}
               >

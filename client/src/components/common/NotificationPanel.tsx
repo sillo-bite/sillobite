@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useReducedMotion } from '@/utils/dropdownAnimations';
-import { 
-  Bell, 
-  X, 
-  Package, 
-  Gift, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  Bell,
+  X,
+  Package,
+  Gift,
+  AlertCircle,
+  CheckCircle,
   Clock,
   ChevronRight
 } from 'lucide-react';
@@ -29,7 +29,7 @@ interface NotificationPanelProps {
   notifications: Notification[];
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
-  onClearAll: () => void;
+  onClearAll?: () => void;
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({
@@ -109,8 +109,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       case 'high':
         return 'border-l-destructive';
       case 'medium':
-        return resolvedTheme === 'dark' 
-          ? 'border-l-accent-foreground' 
+        return resolvedTheme === 'dark'
+          ? 'border-l-accent-foreground'
           : 'border-l-primary';
       default:
         return 'border-l-border';
@@ -119,31 +119,31 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
   const getNotificationBackground = (notification: Notification) => {
     const { type, read } = notification;
-    
+
     if (!read) {
       // Unread notifications - more prominent
       switch (type) {
         case 'order':
-          return resolvedTheme === 'dark' 
-            ? 'bg-muted/80 border-border' 
+          return resolvedTheme === 'dark'
+            ? 'bg-muted/80 border-border'
             : 'bg-accent/50 border-border';
         case 'promotion':
-          return resolvedTheme === 'dark' 
-            ? 'bg-muted/80 border-border' 
+          return resolvedTheme === 'dark'
+            ? 'bg-muted/80 border-border'
             : 'bg-accent/50 border-border';
         case 'system':
-          return resolvedTheme === 'dark' 
-            ? 'bg-muted/80 border-border' 
+          return resolvedTheme === 'dark'
+            ? 'bg-muted/80 border-border'
             : 'bg-accent/50 border-border';
         default:
-          return resolvedTheme === 'dark' 
-            ? 'bg-muted/80 border-border' 
+          return resolvedTheme === 'dark'
+            ? 'bg-muted/80 border-border'
             : 'bg-muted/50 border-border';
       }
     } else {
       // Read notifications - more subtle
-      return resolvedTheme === 'dark' 
-        ? 'bg-card/60 border-border' 
+      return resolvedTheme === 'dark'
+        ? 'bg-card/60 border-border'
         : 'bg-card/40 border-border';
     }
   };
@@ -154,7 +154,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    
+
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
@@ -169,7 +169,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 z-40 bg-black/20 transition-opacity duration-200"
         onClick={onClose}
       />
@@ -177,18 +177,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       {/* Notification Panel */}
       <div
         ref={panelRef}
-         className={`fixed top-20 right-4 w-[calc(100vw-2rem)] sm:w-80 z-50 rounded-xl shadow-xl border transition-all duration-300 ease-out bg-card border-border ${
-           prefersReducedMotion ? '' : 'animate-dropdown-enter'
-         }`}
-         style={{
-           transformOrigin: 'top right'
-         }}
+        className={`fixed top-20 right-4 w-[calc(100vw-2rem)] sm:w-80 z-50 rounded-xl shadow-xl border transition-all duration-300 ease-out bg-card border-border ${prefersReducedMotion ? '' : 'animate-dropdown-enter'
+          }`}
+        style={{
+          transformOrigin: 'top right'
+        }}
         tabIndex={-1}
         role="dialog"
         aria-label="Notifications"
         aria-modal="true"
       >
-            {/* Header */}
+        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-foreground" />
@@ -207,22 +206,22 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
-              {notifications.length > 0 && (
-                <button
+            {notifications.length > 0 && (
+              <button
                 onClick={onClearAll}
                 className="text-xs px-2 py-1 rounded transition-colors text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                >
-                  Clear all
-                </button>
-              )}
-              {unreadCount > 0 && (
-                <button
+              >
+                Clear all
+              </button>
+            )}
+            {unreadCount > 0 && (
+              <button
                 onClick={onMarkAllAsRead}
                 className="text-xs px-2 py-1 rounded transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  Mark all read
-                </button>
-              )}
+              >
+                Mark all read
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1 rounded transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -231,25 +230,24 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <X className="w-4 h-4" />
             </button>
           </div>
-            </div>
+        </div>
 
-         {/* Content */}
-         <div className="max-h-96 overflow-y-auto">
+        {/* Content */}
+        <div className="max-h-96 overflow-y-auto">
           {!notifications || notifications.length === 0 ? (
             <div className="p-6 text-center">
               <Bell className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 No notifications yet
               </p>
-                </div>
-              ) : (
+            </div>
+          ) : (
             <div className="p-2 space-y-2">
               {notifications?.map((notification, index) => (
-                 <div
-                      key={notification.id}
-                   className={`p-3 rounded-lg border-l-4 border transition-all duration-200 hover:scale-[1.02] cursor-pointer hover:bg-muted ${getPriorityColor(notification.priority)} ${getNotificationBackground(notification)} ${
-                     prefersReducedMotion ? '' : 'animate-dropdown-stagger'
-                   }`}
+                <div
+                  key={notification.id}
+                  className={`p-3 rounded-lg border-l-4 border transition-all duration-200 hover:scale-[1.02] cursor-pointer hover:bg-muted ${getPriorityColor(notification.priority)} ${getNotificationBackground(notification)} ${prefersReducedMotion ? '' : 'animate-dropdown-stagger'
+                    }`}
                   style={{
                     animationDelay: prefersReducedMotion ? '0ms' : `${index * 50}ms`
                   }}
@@ -264,17 +262,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <h4 className="text-sm font-medium text-foreground">
-                              {notification.title}
+                          {notification.title}
                         </h4>
                         {!notification.read && (
                           <div className="w-2 h-2 bg-destructive rounded-full flex-shrink-0 mt-1.5" />
                         )}
-                          </div>
+                      </div>
                       <p className="text-xs mt-1 text-muted-foreground">
                         {notification.description}
                       </p>
@@ -282,19 +280,19 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         <Clock className="w-3 h-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">
                           {formatTimestamp(notification.timestamp)}
-                              </span>
+                        </span>
                         {notification.actionUrl && (
                           <ChevronRight className="w-3 h-3 ml-auto text-muted-foreground" />
-                            )}
+                        )}
                       </div>
-                          </div>
-                        </div>
-                      </div>
-                  ))}
+                    </div>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-    </div>
+          )}
+        </div>
+      </div>
     </>
   );
 };

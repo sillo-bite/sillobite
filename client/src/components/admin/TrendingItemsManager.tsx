@@ -36,7 +36,7 @@ export function TrendingItemsManager({ canteenId, noCardWrapper = false }: Trend
   }>({
     queryKey: ["/api/menu", canteenId],
     queryFn: async () => {
-      const url = canteenId 
+      const url = canteenId
         ? `/api/menu?canteenId=${canteenId}&limit=1000` // Get all items for trending management
         : '/api/menu?limit=1000';
       const response = await apiRequest(url);
@@ -50,7 +50,7 @@ export function TrendingItemsManager({ canteenId, noCardWrapper = false }: Trend
   const menuItems = menuData?.items || [];
 
   const updateMenuItemMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<MenuItem> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<MenuItem> }) => {
       return apiRequest(`/api/menu/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
@@ -59,9 +59,9 @@ export function TrendingItemsManager({ canteenId, noCardWrapper = false }: Trend
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/menu"] });
-      },
+    },
     onError: () => {
-      },
+    },
   });
 
   const handleToggleTrending = (menuItem: MenuItem) => {

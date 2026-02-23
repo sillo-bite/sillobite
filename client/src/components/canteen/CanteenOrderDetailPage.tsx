@@ -2,7 +2,6 @@ import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useOrder } from '@/hooks/useOrder';
 import { UserRole } from "@shared/schema";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -320,7 +319,7 @@ export default function CanteenOrderDetailPage() {
                 <Separator />
 
                 {/* Role-specific details */}
-                {customerDetails.role === UserRole.STUDENT && (
+                {(customerDetails.role as string) === UserRole.STUDENT && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-muted-foreground flex items-center">
                       <GraduationCap className="w-4 h-4 mr-2" />
@@ -369,7 +368,7 @@ export default function CanteenOrderDetailPage() {
                   </div>
                 )}
 
-                {customerDetails.role === UserRole.STAFF && customerDetails.staffId && (
+                {(customerDetails.role as string) === UserRole.STAFF && customerDetails.staffId && (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-muted-foreground flex items-center">
                       <Building className="w-4 h-4 mr-2" />

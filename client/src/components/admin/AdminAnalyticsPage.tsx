@@ -4,12 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  DollarSign, 
-  Users, 
-  ShoppingCart, 
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Users,
+  ShoppingCart,
   Star,
   Clock,
   Target,
@@ -38,9 +38,9 @@ export default function AdminAnalyticsPage() {
 
   // Mock data for analytics page to avoid breaking existing functionality
   const analyticsData = dashboardStats || { totalRevenue: 0, totalUsers: 0, totalOrders: 0 };
-  const ordersData = [];
-  const usersData = [];
-  const menuData = [];
+  const ordersData: any[] = [];
+  const usersData: any[] = [];
+  const menuData: any[] = [];
 
   const isLoading = statsLoading;
 
@@ -79,9 +79,9 @@ export default function AdminAnalyticsPage() {
   // Calculate user retention (users who made orders in last 30 days)
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
+
   const activeRecentUsers = usersData?.filter((user: any) => {
-    const hasRecentOrder = ordersData?.some((order: any) => 
+    const hasRecentOrder = ordersData?.some((order: any) =>
       order.customerId === user.id && new Date(order.createdAt) >= thirtyDaysAgo
     );
     return hasRecentOrder;
@@ -131,7 +131,7 @@ export default function AdminAnalyticsPage() {
   // Calculate real popular items from order data
   const itemOrderCounts: any = {};
   const itemRevenues: any = {};
-  
+
   ordersData?.forEach((order: any) => {
     try {
       const orderItems = JSON.parse(order.items || '[]');
@@ -211,10 +211,10 @@ export default function AdminAnalyticsPage() {
   const refreshAnalyticsData = async () => {
     try {
       await refetchStats();
-      
+
       // Invalidate query cache to force fresh data
       queryClient.invalidateQueries({ queryKey: ['/api/admin/dashboard-stats'] });
-      
+
     } catch (error) {
       console.error('Error refreshing analytics data:', error);
     }
@@ -248,8 +248,8 @@ export default function AdminAnalyticsPage() {
           <h1 className="text-3xl font-bold text-foreground">Analytics Dashboard</h1>
           <p className="text-muted-foreground">Comprehensive insights into your canteen operations</p>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={refreshAnalyticsData}
           disabled={isLoading}
         >
@@ -306,8 +306,8 @@ export default function AdminAnalyticsPage() {
               <CardContent>
                 <div className="text-2xl font-bold text-success">{orderMetrics.completionRate}%</div>
                 <div className="w-full bg-muted rounded-full h-2 mt-2">
-                  <div 
-                    className="bg-success h-2 rounded-full" 
+                  <div
+                    className="bg-success h-2 rounded-full"
                     style={{ width: `${orderMetrics.completionRate}%` }}
                   ></div>
                 </div>

@@ -93,10 +93,11 @@ router.post('/register', async (req, res) => {
 
     // Create user in database with password hash
     const db = getPostgresDb();
+    const { role: validatedRole, ...restValidatedData } = validatedData;
     const newUser = await db.user.create({
       data: {
-        ...validatedData,
-        role: validatedData.role as UserRole,
+        ...restValidatedData,
+        role: validatedRole as string as any,
         passwordHash,
       }
     });

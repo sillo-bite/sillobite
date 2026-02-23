@@ -15,7 +15,7 @@ const UserReviewsPage = () => {
   const [sortBy, setSortBy] = useState("newest");
 
   // Get user info for API calls
-  const [userInfo, setUserInfo] = useState(null);
+  const [userInfo, setUserInfo] = useState<{ email: string; id?: string } | null>(null);
 
   // Fetch user info from localStorage
   useEffect(() => {
@@ -32,32 +32,32 @@ const UserReviewsPage = () => {
     enabled: !!userInfo?.email,
     queryFn: async () => {
       try {
-        const url = `/api/user-reviews?userEmail=${encodeURIComponent(userInfo.email)}`;
+        const url = `/api/user-reviews?userEmail=${encodeURIComponent(userInfo!.email)}`;
         console.log('Fetching user reviews from:', url);
-        
+
         const response = await fetch(url, {
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
           },
         });
-        
+
         console.log('Response status:', response.status);
         console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-        
+
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
           const text = await response.text();
           console.error('Non-JSON response received:', text.substring(0, 200));
           throw new Error(`Server returned ${contentType || 'unknown'} instead of JSON. Status: ${response.status}`);
         }
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Failed to fetch reviews:', response.status, errorText);
           throw new Error(`Failed to fetch reviews: ${response.status} ${errorText}`);
         }
-        
+
         const data = await response.json();
         console.log('Received reviews data:', data);
         return Array.isArray(data) ? data : [];
@@ -67,9 +67,6 @@ const UserReviewsPage = () => {
       }
     },
     retry: 1,
-    onError: (err) => {
-      console.error('User reviews query error:', err);
-    },
   });
 
   const renderStars = (rating: number) => {
@@ -90,19 +87,19 @@ const UserReviewsPage = () => {
     }
   };
 
-  const filteredAndSortedReviews = reviews
+  const filteredAndSortedReviews = (reviews as any[])
     .filter(review => {
       const itemName = review.itemName?.toLowerCase() || '';
       const comment = review.comment?.toLowerCase() || '';
       const canteenName = review.canteenName?.toLowerCase() || '';
       const searchLower = searchTerm.toLowerCase();
-      
+
       const matchesSearch = itemName.includes(searchLower) ||
-                           comment.includes(searchLower) ||
-                           canteenName.includes(searchLower);
-      
+        comment.includes(searchLower) ||
+        canteenName.includes(searchLower);
+
       const matchesRating = ratingFilter === "all" || (review.rating?.toString() === ratingFilter);
-      
+
       return matchesSearch && matchesRating;
     })
     .sort((a, b) => {
@@ -133,7 +130,7 @@ const UserReviewsPage = () => {
         },
         body: JSON.stringify({ isHelpful }),
       });
-      
+
       if (response.ok) {
         // Refetch reviews to get updated data
         window.location.reload(); // Simple refresh for now
@@ -145,8 +142,8 @@ const UserReviewsPage = () => {
 
   const stats = {
     totalReviews: reviews.length,
-    averageRating: reviews.length > 0 
-      ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length 
+    averageRating: reviews.length > 0
+      ? reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length
       : 0,
     totalHelpfulVotes: reviews.reduce((sum, review) => sum + (review.helpfulVotes || 0), 0)
   };
@@ -156,15 +153,15 @@ const UserReviewsPage = () => {
       {/* Header */}
       <div className="bg-[#724491] px-4 pt-12 pb-6 rounded-b-2xl">
         <div className="flex items-center justify-between mb-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-white hover:bg-white/20" 
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/20"
             onClick={() => {
               // Dispatch custom event to navigate back using history
               // Check if we came from Profile
               const fromProfile = sessionStorage.getItem('navigationFrom') === 'profile';
-              
+
               if (fromProfile) {
                 // Navigate back to Profile view
                 setLocation("/app");
@@ -261,11 +258,11 @@ const UserReviewsPage = () => {
                 {error.message}
               </div>
             )}
-            <Button 
+            <Button
               onClick={() => {
                 // Force refetch
                 window.location.reload();
-              }} 
+              }}
               variant="outline"
             >
               Try Again
@@ -282,12 +279,12 @@ const UserReviewsPage = () => {
                   <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-card-foreground mb-2">No reviews found</h3>
                   <p className="text-muted-foreground mb-4">
-                    {searchTerm || ratingFilter !== "all" 
-                      ? "Try adjusting your search or filters" 
+                    {searchTerm || ratingFilter !== "all"
+                      ? "Try adjusting your search or filters"
                       : "You haven't written any reviews yet"}
                   </p>
                   {!searchTerm && ratingFilter === "all" && (
-                    <Button 
+                    <Button
                       onClick={() => {
                         // Dispatch custom event to switch to orders view in AppPage
                         window.dispatchEvent(new CustomEvent('appNavigateToOrders', {}));
@@ -301,65 +298,65 @@ const UserReviewsPage = () => {
                 </CardContent>
               </Card>
             ) : (
-            filteredAndSortedReviews.map((review) => (
-              <Card key={review.id} className="hover:shadow-md transition-shadow bg-card">
-                <CardContent className="p-4">
-                  <div className="flex items-start space-x-3 mb-3">
-                    <img
-                      src={review.itemImage || '/placeholder.png'}
-                      alt={review.itemName || 'Item'}
-                      className="w-12 h-12 rounded-lg object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder.png';
-                      }}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-card-foreground">{review.itemName || 'Unnamed Item'}</h3>
-                        <Badge className={getStatusColor(review.status || 'pending')}>
-                          {review.status || 'pending'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{review.canteenName || 'Unknown Canteen'}</p>
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="flex items-center space-x-1">
-                          {renderStars(review.rating || 0)}
+              filteredAndSortedReviews.map((review) => (
+                <Card key={review.id} className="hover:shadow-md transition-shadow bg-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3 mb-3">
+                      <img
+                        src={review.itemImage || '/placeholder.png'}
+                        alt={review.itemName || 'Item'}
+                        className="w-12 h-12 rounded-lg object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.png';
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-card-foreground">{review.itemName || 'Unnamed Item'}</h3>
+                          <Badge className={getStatusColor(review.status || 'pending')}>
+                            {review.status || 'pending'}
+                          </Badge>
                         </div>
-                        <span className="text-sm text-muted-foreground">•</span>
-                        <span className="text-sm text-muted-foreground">{review.submittedAt || 'Unknown date'}</span>
+                        <p className="text-sm text-muted-foreground mb-2">{review.canteenName || 'Unknown Canteen'}</p>
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="flex items-center space-x-1">
+                            {renderStars(review.rating || 0)}
+                          </div>
+                          <span className="text-sm text-muted-foreground">•</span>
+                          <span className="text-sm text-muted-foreground">{review.submittedAt || 'Unknown date'}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  {review.comment && (
-                    <p className="text-card-foreground mb-3">{review.comment}</p>
-                  )}
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1">
-                        <ThumbsUp className="w-4 h-4" />
-                        <span>{review.helpfulVotes || 0} helpful</span>
+
+                    {review.comment && (
+                      <p className="text-card-foreground mb-3">{review.comment}</p>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                        <div className="flex items-center space-x-1">
+                          <ThumbsUp className="w-4 h-4" />
+                          <span>{review.helpfulVotes || 0} helpful</span>
+                        </div>
+                        {review.orderId && (
+                          <span>Order #{review.orderId}</span>
+                        )}
                       </div>
-                      {review.orderId && (
-                        <span>Order #{review.orderId}</span>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleHelpfulVote(review.id, true)}
+                          className="text-green-600 hover:bg-green-50"
+                        >
+                          <ThumbsUp className="w-4 h-4 mr-1" />
+                          Helpful
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleHelpfulVote(review.id, true)}
-                        className="text-green-600 hover:bg-green-50"
-                      >
-                        <ThumbsUp className="w-4 h-4 mr-1" />
-                        Helpful
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
         )}

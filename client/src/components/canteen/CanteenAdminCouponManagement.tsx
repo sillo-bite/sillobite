@@ -55,7 +55,7 @@ interface Coupon {
 export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdminCouponManagementProps) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
+
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -100,7 +100,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
       resetForm();
     },
     onError: (error: any) => {
-      }
+    }
   });
 
   // Update coupon mutation
@@ -117,7 +117,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
       setSelectedCoupon(null);
     },
     onError: (error: any) => {
-      }
+    }
   });
 
   // Delete coupon mutation
@@ -129,9 +129,9 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/canteens/${canteenId}/coupons`] });
-      },
+    },
     onError: (error: any) => {
-      }
+    }
   });
 
   // Toggle coupon status mutation
@@ -143,9 +143,9 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/canteens/${canteenId}/coupons`] });
-      },
+    },
     onError: (error: any) => {
-      }
+    }
   });
 
   const resetForm = () => {
@@ -244,8 +244,8 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
 
   const filteredCoupons = coupons.filter((coupon) => {
     const matchesSearch = coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         coupon.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
+      coupon.description.toLowerCase().includes(searchTerm.toLowerCase());
+
     let matchesStatus = true;
     if (statusFilter === "active") {
       matchesStatus = getStatusText(coupon) === "Active";
@@ -256,7 +256,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
     } else if (statusFilter === "scheduled") {
       matchesStatus = getStatusText(coupon) === "Scheduled";
     }
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -265,8 +265,8 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => setLocation(`/admin/canteen/${canteenId}`)}
             className="p-2"
             data-testid="button-back"
@@ -316,12 +316,12 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="discountType">Discount Type</Label>
-                    <Select 
-                      value={couponForm.discountType} 
+                    <Select
+                      value={couponForm.discountType}
                       onValueChange={(value: "percentage" | "fixed") => setCouponForm({ ...couponForm, discountType: value })}
                     >
                       <SelectTrigger data-testid="select-discount-type">
@@ -385,8 +385,8 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="assignmentType">Assignment Type</Label>
-                    <Select 
-                      value={couponForm.assignmentType} 
+                    <Select
+                      value={couponForm.assignmentType}
                       onValueChange={(value: "all" | "specific") => setCouponForm({ ...couponForm, assignmentType: value })}
                     >
                       <SelectTrigger data-testid="select-assignment-type">
@@ -424,7 +424,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <Switch 
+                  <Switch
                     checked={couponForm.isActive}
                     onCheckedChange={(checked) => setCouponForm({ ...couponForm, isActive: checked })}
                     data-testid="toggle-coupon-active"
@@ -463,7 +463,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -479,7 +479,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -495,7 +495,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
@@ -555,7 +555,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
               <Percent className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Coupons Found</h3>
               <p className="text-muted-foreground">
-                {coupons.length === 0 
+                {coupons.length === 0
                   ? "No coupons have been created for this canteen yet."
                   : "No coupons match your current filters."
                 }
@@ -590,13 +590,13 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
                     </Button>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                   <div>
                     <p className="text-xs text-muted-foreground">Discount</p>
                     <p className="font-medium">
-                      {coupon.discountType === "percentage" 
-                        ? `${coupon.discountValue}%` 
+                      {coupon.discountType === "percentage"
+                        ? `${coupon.discountValue}%`
                         : `₹${coupon.discountValue}`
                       }
                     </p>
@@ -614,21 +614,21 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
                     <p className="font-medium">{format(new Date(coupon.validUntil), "MMM dd, yyyy")}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                     <span className="flex items-center space-x-1">
                       <Users className="h-3 w-3" />
                       <span>{coupon.assignmentType === "all" ? "All Users" : `${coupon.assignedUsers?.length || 0} Users`}</span>
                     </span>
-                    {coupon.minimumOrderAmount > 0 && (
+                    {(coupon.minimumOrderAmount ?? 0) > 0 && (
                       <span className="flex items-center space-x-1">
                         <IndianRupee className="h-3 w-3" />
                         <span>Min ₹{coupon.minimumOrderAmount}</span>
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Button
                       size="sm"
@@ -713,12 +713,12 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-discountType">Discount Type</Label>
-                <Select 
-                  value={couponForm.discountType} 
+                <Select
+                  value={couponForm.discountType}
                   onValueChange={(value: "percentage" | "fixed") => setCouponForm({ ...couponForm, discountType: value })}
                 >
                   <SelectTrigger data-testid="select-edit-discount-type">
@@ -757,8 +757,8 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-assignmentType">Assignment Type</Label>
-                <Select 
-                  value={couponForm.assignmentType} 
+                <Select
+                  value={couponForm.assignmentType}
                   onValueChange={(value: "all" | "specific") => setCouponForm({ ...couponForm, assignmentType: value })}
                 >
                   <SelectTrigger data-testid="select-edit-assignment-type">
@@ -773,7 +773,7 @@ export default function CanteenAdminCouponManagement({ canteenId }: CanteenAdmin
             </div>
 
             <div className="flex items-center space-x-2">
-              <Switch 
+              <Switch
                 checked={couponForm.isActive}
                 onCheckedChange={(checked) => setCouponForm({ ...couponForm, isActive: checked })}
                 data-testid="toggle-edit-coupon-active"

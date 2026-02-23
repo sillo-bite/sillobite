@@ -4,7 +4,7 @@ import { ownerRadius, ownerShadows } from "./design-tokens";
 
 interface OwnerCardProps {
   children: ReactNode;
-  title?: string;
+  title?: ReactNode;
   description?: string;
   headerActions?: ReactNode;
   className?: string;
@@ -41,12 +41,12 @@ export default function OwnerCard({
     outlined: "bg-card border-2 border-border",
   };
 
-  const hoverStyles = hover 
-    ? "transition-shadow duration-200 hover:shadow-md" 
+  const hoverStyles = hover
+    ? "transition-shadow duration-200 hover:shadow-md"
     : "";
 
   return (
-    <Card 
+    <Card
       className={`${variantStyles[variant]} ${hoverStyles} ${className}`}
       style={{
         borderRadius: ownerRadius.card,

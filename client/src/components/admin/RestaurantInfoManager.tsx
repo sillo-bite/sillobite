@@ -56,7 +56,7 @@ export default function RestaurantInfoManager() {
 
   const [newAmenity, setNewAmenity] = useState("");
   const [newCuisineType, setNewCuisineType] = useState("");
-  
+
   // Employee form data
   const [employeeFormData, setEmployeeFormData] = useState<Partial<InsertRestaurantEmployee>>({
     restaurantId: "",
@@ -72,7 +72,7 @@ export default function RestaurantInfoManager() {
     isActive: true,
     assignedTables: []
   });
-  
+
   // Table form data
   const [tableFormData, setTableFormData] = useState<Partial<InsertRestaurantTable>>({
     restaurantId: "",
@@ -93,7 +93,7 @@ export default function RestaurantInfoManager() {
     isActive: true,
     qrCodeUrl: ""
   });
-  
+
   const [newSpecialFeature, setNewSpecialFeature] = useState("");
   const [customShiftStart, setCustomShiftStart] = useState("");
   const [customShiftEnd, setCustomShiftEnd] = useState("");
@@ -230,15 +230,15 @@ export default function RestaurantInfoManager() {
         website: formData.website?.trim() || undefined,
         description: formData.description?.trim() || undefined
       };
-      
+
       const validatedData = insertRestaurantSchema.parse(cleanedData);
-      
-      const url = editingRestaurant 
+
+      const url = editingRestaurant
         ? `/api/admin/restaurants/${editingRestaurant.id}`
         : "/api/admin/restaurants";
-      
+
       const method = editingRestaurant ? "PUT" : "POST";
-      
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -256,7 +256,7 @@ export default function RestaurantInfoManager() {
 
   const handleDelete = async (restaurantId: string) => {
     if (!confirm("Are you sure you want to delete this restaurant?")) return;
-    
+
     try {
       const response = await fetch(`/api/admin/restaurants/${restaurantId}`, {
         method: "DELETE"
@@ -308,27 +308,27 @@ export default function RestaurantInfoManager() {
       if (!selectedRestaurant) {
         throw new Error("Please select a restaurant first");
       }
-      
+
       // Prepare data with custom shift timing if applicable
       const employeeData = {
         ...employeeFormData,
         restaurantId: selectedRestaurant.id
       };
-      
+
       // Add custom shift timing if shift is custom
       if (employeeFormData.shift === "custom") {
         (employeeData as any).customShiftStart = customShiftStart;
         (employeeData as any).customShiftEnd = customShiftEnd;
       }
-      
+
       const validatedData = insertRestaurantEmployeeSchema.parse(employeeData);
-      
-      const url = editingEmployee 
+
+      const url = editingEmployee
         ? `/api/admin/employees/${editingEmployee.id}`
         : "/api/admin/employees";
-      
+
       const method = editingEmployee ? "PUT" : "POST";
-      
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -346,7 +346,7 @@ export default function RestaurantInfoManager() {
 
   const handleDeleteEmployee = async (employeeId: string) => {
     if (!confirm("Are you sure you want to delete this employee?")) return;
-    
+
     try {
       const response = await fetch(`/api/admin/employees/${employeeId}`, {
         method: "DELETE"
@@ -397,7 +397,7 @@ export default function RestaurantInfoManager() {
       isActive: employee.isActive,
       assignedTables: employee.assignedTables || []
     });
-    
+
     // Handle custom shift timing if it exists
     if (employee.shift === "custom" && (employee as any).customShiftStart && (employee as any).customShiftEnd) {
       setCustomShiftStart((employee as any).customShiftStart);
@@ -406,7 +406,7 @@ export default function RestaurantInfoManager() {
       setCustomShiftStart("");
       setCustomShiftEnd("");
     }
-    
+
     setEditingEmployee(employee);
     setIsAddingEmployee(false);
     setIsEmployeeDialogOpen(true);
@@ -418,22 +418,22 @@ export default function RestaurantInfoManager() {
       if (!selectedRestaurant) {
         throw new Error("Please select a restaurant first");
       }
-      
+
       const dataToSave = {
         ...tableFormData,
         restaurantId: selectedRestaurant.id,
         assignedWaiter: tableFormData.assignedWaiter === "none" ? "" : tableFormData.assignedWaiter,
         assignedHost: tableFormData.assignedHost === "none" ? "" : tableFormData.assignedHost
       };
-      
+
       const validatedData = insertRestaurantTableSchema.parse(dataToSave);
-      
-      const url = editingTable 
+
+      const url = editingTable
         ? `/api/admin/tables/${editingTable.id}`
         : "/api/admin/tables";
-      
+
       const method = editingTable ? "PUT" : "POST";
-      
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -451,7 +451,7 @@ export default function RestaurantInfoManager() {
 
   const handleDeleteTable = async (tableId: string) => {
     if (!confirm("Are you sure you want to delete this table?")) return;
-    
+
     try {
       const response = await fetch(`/api/admin/tables/${tableId}`, {
         method: "DELETE"
@@ -535,7 +535,7 @@ export default function RestaurantInfoManager() {
     try {
       // Get the current domain (localhost:5000 or production domain)
       const currentDomain = window.location.origin;
-      
+
       // Call the backend to generate a proper QR code URL with secure hash
       const response = await fetch('/api/admin/generate-qr-code', {
         method: 'POST',
@@ -554,7 +554,7 @@ export default function RestaurantInfoManager() {
       }
 
       const { qrCodeUrl } = await response.json();
-      
+
       setTableFormData(prev => ({
         ...prev,
         qrCodeUrl: qrCodeUrl
@@ -617,7 +617,7 @@ export default function RestaurantInfoManager() {
     const newDays = currentDays.includes(day)
       ? currentDays.filter(d => d !== day)
       : [...currentDays, day];
-    
+
     setFormData(prev => ({
       ...prev,
       operatingHours: {
@@ -779,9 +779,9 @@ export default function RestaurantInfoManager() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button 
-                      variant={selectedRestaurant?.id === restaurant.id ? "default" : "outline"} 
-                      size="sm" 
+                    <Button
+                      variant={selectedRestaurant?.id === restaurant.id ? "default" : "outline"}
+                      size="sm"
                       onClick={() => setSelectedRestaurant(selectedRestaurant?.id === restaurant.id ? null : restaurant)}
                     >
                       {selectedRestaurant?.id === restaurant.id ? "Hide Details" : "Manage"}
@@ -837,8 +837,8 @@ export default function RestaurantInfoManager() {
                     <div>
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="text-lg font-semibold">Employees ({restaurantEmployees.length})</h4>
-                        <Dialog 
-                          open={isEmployeeDialogOpen} 
+                        <Dialog
+                          open={isEmployeeDialogOpen}
                           onOpenChange={(open) => {
                             // Prevent dialog from closing when time picker is open
                             if (!open && showTimePicker) {
@@ -848,21 +848,21 @@ export default function RestaurantInfoManager() {
                           }}
                         >
                           <DialogTrigger asChild>
-                            <Button 
+                            <Button
                               onClick={() => {
                                 setIsAddingEmployee(true);
                                 setEditingEmployee(null);
                                 resetEmployeeForm();
                                 setIsEmployeeDialogOpen(true);
-                              }} 
-                              size="sm" 
+                              }}
+                              size="sm"
                               className="flex items-center space-x-1"
                             >
                               <Plus className="h-3 w-3" />
                               <span>Add Employee</span>
                             </Button>
                           </DialogTrigger>
-                          <DialogContent 
+                          <DialogContent
                             className="max-w-2xl max-h-[90vh] overflow-y-auto"
                             style={{ pointerEvents: showTimePicker ? 'none' : 'auto' }}
                           >
@@ -922,12 +922,12 @@ export default function RestaurantInfoManager() {
                                   <Select
                                     value={employeeFormData.department || "service"}
                                     onValueChange={(value) => {
-                                      const department = value as any;
+                                      const department = value as keyof typeof rolesByDepartment;
                                       const availableRoles = rolesByDepartment[department] || [];
-                                      setEmployeeFormData(prev => ({ 
-                                        ...prev, 
+                                      setEmployeeFormData(prev => ({
+                                        ...prev,
                                         department,
-                                        role: availableRoles.length > 0 ? availableRoles[0].value : undefined
+                                        role: (availableRoles.length > 0 ? availableRoles[0].value : undefined) as any
                                       }));
                                     }}
                                   >
@@ -995,7 +995,7 @@ export default function RestaurantInfoManager() {
                                     <Clock className="h-5 w-5 text-blue-600" />
                                     <h4 className="text-lg font-semibold text-blue-900">Custom Shift Timing</h4>
                                   </div>
-                                  
+
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Start Time */}
                                     <div className="space-y-3">
@@ -1119,9 +1119,9 @@ export default function RestaurantInfoManager() {
                                     id="emp-salary"
                                     type="number"
                                     value={employeeFormData.salary || ""}
-                                    onChange={(e) => setEmployeeFormData(prev => ({ 
-                                      ...prev, 
-                                      salary: e.target.value ? parseFloat(e.target.value) : undefined 
+                                    onChange={(e) => setEmployeeFormData(prev => ({
+                                      ...prev,
+                                      salary: e.target.value ? parseFloat(e.target.value) : undefined
                                     }))}
                                     placeholder="Enter salary"
                                   />
@@ -1132,9 +1132,9 @@ export default function RestaurantInfoManager() {
                                     id="emp-hire-date"
                                     type="date"
                                     value={employeeFormData.hireDate ? employeeFormData.hireDate.toISOString().split('T')[0] : ""}
-                                    onChange={(e) => setEmployeeFormData(prev => ({ 
-                                      ...prev, 
-                                      hireDate: new Date(e.target.value) 
+                                    onChange={(e) => setEmployeeFormData(prev => ({
+                                      ...prev,
+                                      hireDate: new Date(e.target.value)
                                     }))}
                                   />
                                 </div>
@@ -1162,19 +1162,19 @@ export default function RestaurantInfoManager() {
                           </DialogContent>
                         </Dialog>
                       </div>
-                      
+
                       {restaurantEmployees.length > 0 ? (
                         <div className="grid gap-2">
                           {restaurantEmployees.map((employee) => {
                             const departmentLabel = departments.find(d => d.value === employee.department)?.label;
                             const roleLabel = rolesByDepartment[employee.department as keyof typeof rolesByDepartment]?.find(r => r.value === employee.role)?.label || employee.role;
-                            
+
                             // Handle shift display with custom timing
                             let shiftLabel = shifts.find(s => s.value === employee.shift)?.label;
                             if (employee.shift === "custom" && (employee as any).customShiftStart && (employee as any).customShiftEnd) {
                               shiftLabel = `Custom (${(employee as any).customShiftStart} - ${(employee as any).customShiftEnd})`;
                             }
-                            
+
                             return (
                               <div key={employee.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
                                 <div>
@@ -1204,8 +1204,8 @@ export default function RestaurantInfoManager() {
                     <div>
                       <div className="flex justify-between items-center mb-3">
                         <h4 className="text-lg font-semibold">Tables ({restaurantTables.length})</h4>
-                        <Dialog 
-                          open={isTableDialogOpen} 
+                        <Dialog
+                          open={isTableDialogOpen}
                           onOpenChange={(open) => {
                             // Prevent dialog from closing when time picker is open
                             if (!open && showTimePicker) {
@@ -1215,21 +1215,21 @@ export default function RestaurantInfoManager() {
                           }}
                         >
                           <DialogTrigger asChild>
-                            <Button 
+                            <Button
                               onClick={() => {
                                 setIsAddingTable(true);
                                 setEditingTable(null);
                                 resetTableForm();
                                 setIsTableDialogOpen(true);
-                              }} 
-                              size="sm" 
+                              }}
+                              size="sm"
                               className="flex items-center space-x-1"
                             >
                               <Plus className="h-3 w-3" />
                               <span>Add Table</span>
                             </Button>
                           </DialogTrigger>
-                          <DialogContent 
+                          <DialogContent
                             className="max-w-2xl max-h-[90vh] overflow-y-auto"
                             onWheel={(e) => e.stopPropagation()}
                             onTouchMove={(e) => e.stopPropagation()}
@@ -1352,7 +1352,7 @@ export default function RestaurantInfoManager() {
                                   <Users className="h-5 w-5 text-blue-600" />
                                   <Label className="text-lg font-semibold text-blue-800">Employee Assignment (Optional)</Label>
                                 </div>
-                                
+
                                 {/* Service Department */}
                                 <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                   <Label className="text-sm font-medium text-blue-800 flex items-center space-x-2">
@@ -1550,7 +1550,7 @@ export default function RestaurantInfoManager() {
                                   <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                   <Label className="text-lg font-semibold text-green-800">QR Code Generation</Label>
                                 </div>
-                                
+
                                 <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                                   <div className="space-y-3">
                                     <div className="flex items-center justify-between">
@@ -1570,11 +1570,11 @@ export default function RestaurantInfoManager() {
                                         Generate QR Code
                                       </Button>
                                     </div>
-                                    
+
                                     {tableFormData.qrCodeUrl && (
                                       <div className="mt-4 p-3 bg-white rounded border border-green-200">
                                         <Label className="text-sm font-medium text-green-800 mb-3 block">Generated QR Code:</Label>
-                                        <QRCodeDisplay 
+                                        <QRCodeDisplay
                                           url={tableFormData.qrCodeUrl}
                                           size={150}
                                           showActions={true}
@@ -1621,12 +1621,12 @@ export default function RestaurantInfoManager() {
                           </DialogContent>
                         </Dialog>
                       </div>
-                      
+
                       {restaurantTables.length > 0 ? (
                         <div className="grid gap-2">
                           {restaurantTables.map((table) => {
                             const tableTypeLabel = tableTypes.find(t => t.value === table.tableType)?.label;
-                            
+
                             return (
                               <div key={table.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
                                 <div>

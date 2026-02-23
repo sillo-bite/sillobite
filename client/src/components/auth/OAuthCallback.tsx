@@ -31,17 +31,19 @@ export default function OAuthCallback() {
           return;
         }
 
-        console.log('Fetching authenticated user from session...');
-        const response = await fetch('/api/auth/google/me', {
-          credentials: 'include'
-        });
+        // Read user data directly from URL params (set by server redirect)
+        // This avoids the race-prone session-based /me endpoint
+        const email = urlParams.get('email');
+        const name = urlParams.get('name');
+        const picture = urlParams.get('picture');
+        const id = urlParams.get('id');
 
-        if (!response.ok) {
-          throw new Error('Failed to get authenticated user');
+        if (!email || !id) {
+          throw new Error('Missing user data in OAuth callback URL');
         }
 
-        const googleUser = await response.json();
-        console.log('Google user authenticated:', googleUser.email);
+        const googleUser = { id, email, name: name || '', picture: picture || '' };
+        console.log('Google user authenticated from URL params:', googleUser.email);
 
         setIsSuccess(true);
         await handleUserAuthentication(googleUser);
