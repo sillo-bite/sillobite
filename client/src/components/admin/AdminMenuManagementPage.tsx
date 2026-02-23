@@ -12,11 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { VegIndicator } from "@/components/ui/VegIndicator";
 import type { MenuItem, Category } from "@shared/schema";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
   Loader2,
   X
 } from "lucide-react";
@@ -46,7 +46,7 @@ export default function AdminMenuManagementPage() {
 
   // Enhanced mutations with comprehensive synchronization
   const updateMenuItemMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<MenuItem> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<MenuItem> }) => {
       return apiRequest(`/api/menu/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -58,14 +58,14 @@ export default function AdminMenuManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/menu'] });
       queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/analytics'] });
-      },
+    },
     onError: () => {
-      }
+    }
   });
 
   // Delete menu item mutation with enhanced sync
   const deleteMenuItemMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       return apiRequest(`/api/menu/${id}`, { method: 'DELETE' });
     },
     onSuccess: () => {
@@ -74,27 +74,27 @@ export default function AdminMenuManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/categories'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/analytics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      },
+    },
     onError: () => {
-      }
+    }
   });
 
-  const toggleAvailability = (id: number, available: boolean) => {
+  const toggleAvailability = (id: string, available: boolean) => {
     updateMenuItemMutation.mutate({ id, data: { available } });
   };
 
-  const deleteItem = (id: number) => {
+  const deleteItem = (id: string) => {
     deleteMenuItemMutation.mutate(id);
   };
 
   const openEditDialog = (item: MenuItem) => {
     setEditingItem(item);
-    
+
     // Extract categoryId properly (handle both string and object formats)
-    const categoryIdToSet = typeof item.categoryId === 'string' 
-      ? item.categoryId 
+    const categoryIdToSet = typeof item.categoryId === 'string'
+      ? item.categoryId
       : (item.categoryId as any)?._id || (item.categoryId as any)?.id || String(item.categoryId);
-    
+
     setEditForm({
       name: item.name,
       price: item.price.toString(),
@@ -105,7 +105,7 @@ export default function AdminMenuManagementPage() {
       isVegetarian: item.isVegetarian,
       addOns: item.addOns || "[]"
     });
-    
+
     // Parse existing add-ons
     try {
       const existingAddOns = JSON.parse(item.addOns || "[]");
@@ -131,12 +131,12 @@ export default function AdminMenuManagementPage() {
 
   const saveEditedItem = () => {
     if (!editingItem) return;
-    
+
     // Extract categoryId properly (handle both string and object formats)
-    const categoryIdToUse = typeof editForm.categoryId === 'string' 
-      ? editForm.categoryId 
+    const categoryIdToUse = typeof editForm.categoryId === 'string'
+      ? editForm.categoryId
       : (editForm.categoryId as any)?._id || (editForm.categoryId as any)?.id || String(editForm.categoryId);
-    
+
     const updatedData = {
       name: editForm.name,
       price: parseInt(editForm.price),
@@ -147,7 +147,7 @@ export default function AdminMenuManagementPage() {
       isVegetarian: editForm.isVegetarian,
       addOns: JSON.stringify(addOns.filter(addon => addon.name && addon.price))
     };
-    
+
     // Extract the ID properly (handle both id and _id fields)
     const itemId = editingItem.id || (editingItem as any)._id;
     if (!itemId) {
@@ -161,7 +161,7 @@ export default function AdminMenuManagementPage() {
   // Filter menu items
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || 
+    const matchesCategory = selectedCategory === "all" ||
       categories.find(cat => cat.id === item.categoryId)?.name === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -231,10 +231,10 @@ export default function AdminMenuManagementPage() {
                       {(item as any).categoryName || categories.find(cat => {
                         const catId = cat.id || (cat as any)._id;
                         const itemCategoryId = item.categoryId;
-                        return catId === itemCategoryId || 
-                               catId === (itemCategoryId as any)?._id || 
-                               catId === (itemCategoryId as any)?.id ||
-                               String(catId) === String(itemCategoryId);
+                        return catId === itemCategoryId ||
+                          catId === (itemCategoryId as any)?._id ||
+                          catId === (itemCategoryId as any)?.id ||
+                          String(catId) === String(itemCategoryId);
                       })?.name || "Unknown Category"}
                     </p>
                   </div>
@@ -247,7 +247,7 @@ export default function AdminMenuManagementPage() {
                 <p className="text-sm text-muted-foreground truncate">
                   {item.description || "No description available"}
                 </p>
-                
+
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold">₹{item.price}</span>
                   <span className="text-sm text-muted-foreground">
@@ -265,17 +265,17 @@ export default function AdminMenuManagementPage() {
                       {item.available ? "Available" : "Unavailable"}
                     </Label>
                   </div>
-                  
+
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => openEditDialog(item)}
                     >
                       <Edit className="w-3 h-3" />
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={() => deleteItem(item.id)}
                     >
@@ -298,7 +298,7 @@ export default function AdminMenuManagementPage() {
               Update the menu item details including add-ons.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* Name */}
             <div className="space-y-2">
@@ -306,7 +306,7 @@ export default function AdminMenuManagementPage() {
               <Input
                 id="name"
                 value={editForm.name}
-                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 placeholder="Item name"
               />
             </div>
@@ -318,7 +318,7 @@ export default function AdminMenuManagementPage() {
                 id="price"
                 type="number"
                 value={editForm.price}
-                onChange={(e) => setEditForm({...editForm, price: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
                 placeholder="0"
               />
             </div>
@@ -326,7 +326,7 @@ export default function AdminMenuManagementPage() {
             {/* Category */}
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
-              <Select value={editForm.categoryId} onValueChange={(value) => setEditForm({...editForm, categoryId: value})}>
+              <Select value={editForm.categoryId} onValueChange={(value) => setEditForm({ ...editForm, categoryId: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -346,7 +346,7 @@ export default function AdminMenuManagementPage() {
               <Textarea
                 id="description"
                 value={editForm.description}
-                onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 placeholder="Item description"
                 rows={3}
               />
@@ -359,7 +359,7 @@ export default function AdminMenuManagementPage() {
                 id="stock"
                 type="number"
                 value={editForm.stock}
-                onChange={(e) => setEditForm({...editForm, stock: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })}
                 placeholder="0"
               />
             </div>
@@ -369,7 +369,7 @@ export default function AdminMenuManagementPage() {
               <Switch
                 id="available"
                 checked={editForm.available}
-                onCheckedChange={(checked) => setEditForm({...editForm, available: checked})}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, available: checked })}
               />
               <Label htmlFor="available">Available</Label>
             </div>
@@ -379,7 +379,7 @@ export default function AdminMenuManagementPage() {
               <Switch
                 id="vegetarian"
                 checked={editForm.isVegetarian}
-                onCheckedChange={(checked) => setEditForm({...editForm, isVegetarian: checked})}
+                onCheckedChange={(checked) => setEditForm({ ...editForm, isVegetarian: checked })}
               />
               <Label htmlFor="vegetarian" className="flex items-center space-x-2">
                 <span>Vegetarian</span>
@@ -401,7 +401,7 @@ export default function AdminMenuManagementPage() {
                   Add Add-on
                 </Button>
               </div>
-              
+
               <div className="space-y-2">
                 {addOns.map((addon, index) => (
                   <div key={index} className="flex items-center space-x-2 p-3 border rounded-lg">
@@ -429,7 +429,7 @@ export default function AdminMenuManagementPage() {
                   </div>
                 ))}
               </div>
-              
+
               {addOns.length === 0 && (
                 <p className="text-sm text-muted-foreground">No add-ons configured</p>
               )}

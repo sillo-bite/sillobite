@@ -10,8 +10,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { 
-  ArrowLeft, Download, FileText, TrendingUp, DollarSign, 
+import {
+  ArrowLeft, Download, FileText, TrendingUp, DollarSign,
   Users, Package, Calendar as CalendarIcon, Filter, BarChart3, RefreshCcw
 } from "lucide-react";
 
@@ -39,9 +39,9 @@ export default function AdminReportsPage() {
 
   // Mock data for reports page to avoid breaking existing functionality
   const analyticsData = dashboardStats || { totalRevenue: 0, totalUsers: 0, totalOrders: 0 };
-  const ordersData = [];
-  const usersData = [];
-  const menuData = [];
+  const ordersData: any[] = [];
+  const usersData: any[] = [];
+  const menuData: any[] = [];
 
   const isDataLoading = statsLoading;
 
@@ -57,7 +57,7 @@ export default function AdminReportsPage() {
     {
       id: 2,
       name: "Customer Analytics",
-      type: "Analytics", 
+      type: "Analytics",
       date: "2024-01-14",
       status: "Processing",
       size: "1.8 MB"
@@ -97,7 +97,7 @@ export default function AdminReportsPage() {
     try {
       await refetchStats();
     } catch (error) {
-      }
+    }
   };
 
   // Generate report function
@@ -110,23 +110,23 @@ export default function AdminReportsPage() {
     try {
       // Generate the report content based on selected type
       const reportContent = generateCustomReportContent(reportType, reportFormat);
-      
+
       // Simulate generation time
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       // Create and download the file
       const mimeTypes = {
         pdf: 'text/plain', // Would be 'application/pdf' for real PDF
         excel: 'text/csv',
         csv: 'text/csv'
       };
-      
+
       const fileExtensions = {
         pdf: 'txt', // Would be 'pdf' for real PDF  
         excel: 'csv',
         csv: 'csv'
       };
-      
+
       const blob = new Blob([reportContent], { type: mimeTypes[reportFormat as keyof typeof mimeTypes] });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -136,25 +136,25 @@ export default function AdminReportsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
-      } catch (error) {
-      } finally {
+
+    } catch (error) {
+    } finally {
       setIsGenerating(false);
     }
   };
 
   // Generate custom report content based on type
-  const generateCustomReportContent = (type: string, format: string) => {
+  const generateCustomReportContent = (type: string, fmt: string) => {
     const timestamp = new Date().toLocaleString();
-    const dateRangeStr = dateRange?.from ? 
+    const dateRangeStr = dateRange?.from ?
       `${format(dateRange.from, "yyyy-MM-dd")} to ${dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : 'present'}` :
       'All time';
-    
+
     let content = `
 ${type.toUpperCase()} REPORT
 Generated: ${timestamp}
 Date Range: ${dateRangeStr}
-Format: ${format.toUpperCase()}
+Format: ${fmt.toUpperCase()}
 
 === EXECUTIVE SUMMARY ===
 `;
@@ -168,12 +168,12 @@ Total Transactions: ${quickStats.totalOrders}
 Revenue Growth: +15.2% (estimated)
 
 === REVENUE BREAKDOWN ===
-${ordersData?.map((order: any) => 
-  `${order.orderNumber},${order.customerName},₹${order.amount},${order.status},${new Date(order.createdAt).toLocaleDateString()}`
-).join('\n') || 'No orders found'}
+${ordersData?.map((order: any) =>
+          `${order.orderNumber},${order.customerName},₹${order.amount},${order.status},${new Date(order.createdAt).toLocaleDateString()}`
+        ).join('\n') || 'No orders found'}
 `;
         break;
-        
+
       case 'customer':
         content += `
 Total Users: ${quickStats.totalUsers}
@@ -183,11 +183,11 @@ User Retention Rate: 87%
 
 === CUSTOMER LIST ===
 ${usersData?.map((user: any) =>
-  `${user.name},${user.email},${user.role},${user.department || 'N/A'},${new Date(user.createdAt).toLocaleDateString()}`
-).join('\n') || 'No users found'}
+          `${user.name},${user.email},${user.role},${user.department || 'N/A'},${new Date(user.createdAt).toLocaleDateString()}`
+        ).join('\n') || 'No users found'}
 `;
         break;
-        
+
       case 'inventory':
         content += `
 Active Menu Items: ${quickStats.activeMenuItems}
@@ -196,11 +196,11 @@ Average Item Price: ₹${menuData?.reduce((sum: number, item: any) => sum + item
 
 === INVENTORY LIST ===
 ${menuData?.map((item: any) =>
-  `${item.name},₹${item.price},${item.available ? 'Available' : 'Unavailable'},${item.isVegetarian ? 'Veg' : 'Non-Veg'}`
-).join('\n') || 'No menu items found'}
+          `${item.name},₹${item.price},${item.available ? 'Available' : 'Unavailable'},${item.isVegetarian ? 'Veg' : 'Non-Veg'}`
+        ).join('\n') || 'No menu items found'}
 `;
         break;
-        
+
       default:
         content += `
 This is a ${type} report containing comprehensive data analysis.
@@ -209,14 +209,14 @@ Data Quality Score: 98.5%
 Report Confidence: High
 `;
     }
-    
+
     content += `
 
 === GENERATED BY ===
 Canteen Management System
 Report ID: ${Math.random().toString(36).substr(2, 9)}
     `.trim();
-    
+
     return content;
   };
 
@@ -255,7 +255,7 @@ Report ID: ${Math.random().toString(36).substr(2, 9)}
     try {
       // Generate actual file content based on current data
       const reportContent = generateReportContent(reportName, reportId);
-      
+
       // Create and trigger file download
       const blob = new Blob([reportContent], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -266,9 +266,9 @@ Report ID: ${Math.random().toString(36).substr(2, 9)}
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
-      } catch (error) {
-      }
+
+    } catch (error) {
+    }
   };
 
   // Generate actual report content
@@ -287,14 +287,14 @@ Active Menu Items: ${quickStats.activeMenuItems}
 Pending Orders: ${quickStats.pendingReports}
 
 === RECENT ORDERS ===
-${ordersData?.slice(0, 5).map((order: any, index: number) => 
-  `${index + 1}. Order #${order.orderNumber} - ${order.customerName} - ₹${order.amount} (${order.status})`
-).join('\n') || 'No recent orders'}
+${ordersData?.slice(0, 5).map((order: any, index: number) =>
+      `${index + 1}. Order #${order.orderNumber} - ${order.customerName} - ₹${order.amount} (${order.status})`
+    ).join('\n') || 'No recent orders'}
 
 === USER BREAKDOWN ===
 ${usersData?.slice(0, 10).map((user: any, index: number) =>
-  `${index + 1}. ${user.name} (${user.email}) - ${user.role}`
-).join('\n') || 'No users found'}
+      `${index + 1}. ${user.name} (${user.email}) - ${user.role}`
+    ).join('\n') || 'No users found'}
 
 === ANALYTICS INSIGHTS ===
 Average Order Value: ₹${Math.round(quickStats.totalRevenue / quickStats.totalOrders) || 0}
@@ -303,7 +303,7 @@ Order Completion Rate: ${Math.round((ordersData?.filter((o: any) => o.status ===
 
 Generated by Canteen Management System
     `.trim();
-    
+
     return baseContent;
   };
 
@@ -318,8 +318,8 @@ Generated by Canteen Management System
       <div className="border-b bg-card">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setLocation("/admin")}
             >
@@ -330,8 +330,8 @@ Generated by Canteen Management System
               <p className="text-sm text-muted-foreground">Generate and manage system reports • Live data syncing</p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={refreshAllData}
             disabled={isDataLoading}
             className="flex items-center space-x-2"
@@ -453,8 +453,8 @@ Generated by Canteen Management System
                 </SelectContent>
               </Select>
 
-              <Button 
-                variant="food" 
+              <Button
+                variant="food"
                 className="w-full"
                 onClick={handleGenerateReport}
                 disabled={isGenerating}
@@ -473,32 +473,32 @@ Generated by Canteen Management System
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-muted/50"
                 onClick={() => handleQuickReport("revenue")}
               >
                 <DollarSign className="w-6 h-6" />
                 <span className="text-sm">Today's Revenue</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-muted/50"
                 onClick={() => handleQuickReport("activity")}
               >
                 <Users className="w-6 h-6" />
                 <span className="text-sm">User Activity</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-muted/50"
                 onClick={() => handleQuickReport("orders")}
               >
                 <Package className="w-6 h-6" />
                 <span className="text-sm">Order Summary</span>
               </Button>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-auto p-4 flex flex-col items-center space-y-2 hover:bg-muted/50"
                 onClick={() => handleQuickReport("performance")}
               >
@@ -515,8 +515,8 @@ Generated by Canteen Management System
             <div className="flex items-center justify-between">
               <CardTitle>Recent Reports</CardTitle>
               <div className="flex items-center space-x-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={handleFilterReports}
                 >
@@ -544,8 +544,8 @@ Generated by Canteen Management System
                       {report.status}
                     </Badge>
                     {report.status === "Generated" && (
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon"
                         onClick={() => handleDownloadReport(report.id, report.name)}
                         title={`Download ${report.name}`}

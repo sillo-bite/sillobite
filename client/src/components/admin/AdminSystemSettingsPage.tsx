@@ -10,12 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, Save, Shield, Globe, Database, Bell, 
+import {
+  ArrowLeft, Save, Shield, Globe, Database, Bell,
   Mail, Smartphone, CreditCard, FileText, AlertTriangle,
-  Server, Wifi, Lock, Key, Palette, Monitor, RefreshCw, 
-  Download, Zap, Info, HardDriveIcon, Settings, 
-  Clock, Phone, Target, Users, GraduationCap, Plus, Edit, Trash2, BookOpen, } from "lucide-react";
+  Server, Wifi, Lock, Key, Palette, Monitor, RefreshCw,
+  Download, Zap, Info, HardDriveIcon, Settings,
+  Clock, Phone, Target, Users, GraduationCap, Plus, Edit, Trash2, BookOpen,
+} from "lucide-react";
 import { useAuthSync } from "@/hooks/useDataSync";
 import { CacheManager } from "@/utils/cacheManager";
 import { UpdateManager } from "@/utils/updateManager";
@@ -93,10 +94,10 @@ export default function AdminSystemSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/maintenance-status'] });
-      },
+    },
     onError: (error) => {
       console.error('Error updating maintenance settings:', error);
-      }
+    }
   });
 
 
@@ -148,13 +149,13 @@ export default function AdminSystemSettingsPage() {
   React.useEffect(() => {
     // Check for version info
     UpdateManager.getVersionInfo().then(setVersionInfo);
-    
+
     // Check if update is available
     const checkUpdateStatus = () => {
       const manager = UpdateManager.getInstance();
       setUpdateAvailable(manager.isUpdateReady());
     };
-    
+
     checkUpdateStatus();
   }, []);
 
@@ -174,12 +175,12 @@ export default function AdminSystemSettingsPage() {
         targetYears: maintenanceSettings.targetYears,
         yearType: maintenanceSettings.yearType
       });
-      
+
       // Invalidate cache to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings'] });
-      
-      } catch (error) {
-      }
+
+    } catch (error) {
+    }
   };
 
   const toggleFeature = (feature: string) => {
@@ -199,10 +200,10 @@ export default function AdminSystemSettingsPage() {
   // Maintenance mode handlers
   const toggleMaintenanceMode = async () => {
     const newIsActive = !maintenanceSettings.isActive;
-    
+
     // Update local state immediately for responsiveness
     setMaintenanceSettings(prev => ({ ...prev, isActive: newIsActive }));
-    
+
     // Update via API
     await updateMaintenanceMutation.mutateAsync({
       isActive: newIsActive,
@@ -238,6 +239,36 @@ export default function AdminSystemSettingsPage() {
   const handleMaintenanceFieldChange = (field: string, value: string | string[] | number[]) => {
     setMaintenanceSettings(prev => ({ ...prev, [field]: value }));
   };
+
+  // College/department data and mutations (stubs for settings page)
+  const colleges: any[] = [];
+  const [newCollege, setNewCollege] = useState({ name: '', code: '' });
+  const [newDepartment, setNewDepartment] = useState({ name: '', code: '' });
+
+  const addCollegeMutation = useMutation({
+    mutationFn: async (data: any) => apiRequest('/api/system-settings/colleges', { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] }),
+  });
+  const updateCollegeMutation = useMutation({
+    mutationFn: async (data: any) => apiRequest(`/api/system-settings/colleges/${data.id}`, { method: 'PATCH', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] }),
+  });
+  const deleteCollegeMutation = useMutation({
+    mutationFn: async (id: string) => apiRequest(`/api/system-settings/colleges/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] }),
+  });
+  const addDepartmentToCollegeMutation = useMutation({
+    mutationFn: async (data: any) => apiRequest(`/api/system-settings/colleges/${data.collegeId}/departments`, { method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] }),
+  });
+  const updateDepartmentInCollegeMutation = useMutation({
+    mutationFn: async (data: any) => apiRequest(`/api/system-settings/colleges/${data.collegeId}/departments/${data.deptCode}`, { method: 'PATCH', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] }),
+  });
+  const deleteDepartmentFromCollegeMutation = useMutation({
+    mutationFn: async (data: any) => apiRequest(`/api/system-settings/colleges/${data.collegeId}/departments/${data.deptCode}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/system-settings/colleges'] }),
+  });
 
   // College management handlers
   const handleAddCollege = () => {
@@ -289,7 +320,7 @@ export default function AdminSystemSettingsPage() {
       await CacheManager.forceRefresh();
     } catch (error) {
       console.error('Force refresh failed:', error);
-      } finally {
+    } finally {
       setIsRefreshing(false);
     }
   };
@@ -297,9 +328,9 @@ export default function AdminSystemSettingsPage() {
   const handleCheckForUpdates = async () => {
     try {
       await passiveUpdateDetector.manualCheck();
-      } catch (error) {
+    } catch (error) {
       console.error('Update check failed:', error);
-      }
+    }
   };
 
   const handleUpdateApp = () => {
@@ -315,7 +346,7 @@ export default function AdminSystemSettingsPage() {
       }, 2000);
     } catch (error) {
       console.error('Cache clear failed:', error);
-      }
+    }
   };
 
   return (
@@ -324,8 +355,8 @@ export default function AdminSystemSettingsPage() {
       <div className="border-b bg-card">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setLocation("/admin")}
             >
@@ -411,7 +442,7 @@ export default function AdminSystemSettingsPage() {
             <CardTitle className="flex items-center space-x-2">
               <Settings className="w-5 h-5" />
               <span>Maintenance Mode</span>
-              <Badge 
+              <Badge
                 variant={maintenanceSettings.isActive ? "destructive" : "secondary"}
                 data-testid="maintenance-status"
               >
@@ -427,7 +458,7 @@ export default function AdminSystemSettingsPage() {
                 <div>
                   <h3 className="font-medium">System Maintenance Mode</h3>
                   <p className="text-sm text-muted-foreground">
-                    {maintenanceSettings.isActive 
+                    {maintenanceSettings.isActive
                       ? "⚠️ Application is currently in maintenance mode - users cannot access the app"
                       : "Toggle to enable maintenance mode and block user access"
                     }
@@ -454,7 +485,7 @@ export default function AdminSystemSettingsPage() {
                   data-testid="input-maintenance-title"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="maintenanceMessage">Maintenance Message</Label>
                 <Textarea
@@ -466,7 +497,7 @@ export default function AdminSystemSettingsPage() {
                   data-testid="textarea-maintenance-message"
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="estimatedTime" className="flex items-center space-x-1">
@@ -481,7 +512,7 @@ export default function AdminSystemSettingsPage() {
                     data-testid="input-estimated-time"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="contactInfo" className="flex items-center space-x-1">
                     <Phone className="w-4 h-4" />
@@ -511,9 +542,9 @@ export default function AdminSystemSettingsPage() {
               <div className="space-y-4 bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg">
                 <div className="space-y-2">
                   <Label htmlFor="targetingType">Who should see the maintenance notice?</Label>
-                  <Select 
-                    value={maintenanceSettings.targetingType} 
-                    onValueChange={(value: typeof maintenanceSettings.targetingType) => 
+                  <Select
+                    value={maintenanceSettings.targetingType}
+                    onValueChange={(value: typeof maintenanceSettings.targetingType) =>
                       handleMaintenanceFieldChange('targetingType', value)
                     }
                   >
@@ -541,7 +572,7 @@ export default function AdminSystemSettingsPage() {
                     </Label>
                     <Textarea
                       value={maintenanceSettings.specificUsers.join(', ')}
-                      onChange={(e) => handleMaintenanceFieldChange('specificUsers', 
+                      onChange={(e) => handleMaintenanceFieldChange('specificUsers',
                         e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0)
                       )}
                       placeholder="Example: 7115123ABC456, STF001, 7115124XYZ789, STF002"
@@ -559,7 +590,7 @@ export default function AdminSystemSettingsPage() {
                   <div className="space-y-2">
                     <Label>Select Colleges</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      {colleges.filter(college => college.isActive).map(college => (
+                      {colleges.filter((college: any) => college.isActive).map((college: any) => (
                         <div key={college.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                           <input
                             type="checkbox"
@@ -593,8 +624,8 @@ export default function AdminSystemSettingsPage() {
                   <div className="space-y-2">
                     <Label>Select Departments</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      {colleges.flatMap(college => 
-                        college.departments.filter(dept => dept.isActive).map(dept => (
+                      {colleges.flatMap((college: any) =>
+                        college.departments.filter((dept: any) => dept.isActive).map((dept: any) => (
                           <div key={`${college.code}-${dept.code}`} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                             <input
                               type="checkbox"
@@ -629,9 +660,9 @@ export default function AdminSystemSettingsPage() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Year Type</Label>
-                      <Select 
-                        value={maintenanceSettings.yearType} 
-                        onValueChange={(value: typeof maintenanceSettings.yearType) => 
+                      <Select
+                        value={maintenanceSettings.yearType}
+                        onValueChange={(value: typeof maintenanceSettings.yearType) =>
                           handleMaintenanceFieldChange('yearType', value)
                         }
                       >
@@ -661,7 +692,7 @@ export default function AdminSystemSettingsPage() {
                           } else if (maintenanceSettings.yearType === 'passing') {
                             availableYears = [2024, 2025, 2026, 2027, 2028, 2029];
                           }
-                          
+
                           return availableYears.map(year => (
                             <div key={year} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                               <input
@@ -705,22 +736,22 @@ export default function AdminSystemSettingsPage() {
                   <p className="text-sm font-medium mb-2">Targeting Summary:</p>
                   <p className="text-xs text-muted-foreground">
                     {maintenanceSettings.targetingType === 'all' && "Maintenance notice will be shown to ALL users (students and staff)"}
-                    {maintenanceSettings.targetingType === 'specific' && 
+                    {maintenanceSettings.targetingType === 'specific' &&
                       `Maintenance notice will be shown to ${maintenanceSettings.specificUsers.length} specific users`
                     }
-                    {maintenanceSettings.targetingType === 'college' && 
+                    {maintenanceSettings.targetingType === 'college' &&
                       `Maintenance notice will be shown to users in colleges: ${maintenanceSettings.targetColleges.join(', ') || 'None selected'}`
                     }
-                    {maintenanceSettings.targetingType === 'department' && 
+                    {maintenanceSettings.targetingType === 'department' &&
                       `Maintenance notice will be shown to users in departments: ${maintenanceSettings.targetDepartments.join(', ') || 'None selected'}`
                     }
-                    {maintenanceSettings.targetingType === 'year' && 
+                    {maintenanceSettings.targetingType === 'year' &&
                       `Maintenance notice will be shown to users with ${maintenanceSettings.yearType} year: ${maintenanceSettings.targetYears.join(', ') || 'None selected'}`
                     }
-                    {maintenanceSettings.targetingType === 'year_college' && 
+                    {maintenanceSettings.targetingType === 'year_college' &&
                       `Maintenance notice will be shown to users in colleges [${maintenanceSettings.targetColleges.join(', ') || 'None'}] with ${maintenanceSettings.yearType} year [${maintenanceSettings.targetYears.join(', ') || 'None'}]`
                     }
-                    {maintenanceSettings.targetingType === 'year_department' && 
+                    {maintenanceSettings.targetingType === 'year_department' &&
                       `Maintenance notice will be shown to users in departments [${maintenanceSettings.targetDepartments.join(', ') || 'None'}] with ${maintenanceSettings.yearType} year [${maintenanceSettings.targetYears.join(', ') || 'None'}]`
                     }
                   </p>
@@ -730,7 +761,7 @@ export default function AdminSystemSettingsPage() {
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
+              <Button
                 onClick={updateMaintenanceDetails}
                 disabled={updateMaintenanceMutation.isPending}
                 className="flex-1"
@@ -739,9 +770,9 @@ export default function AdminSystemSettingsPage() {
                 <Save className="w-4 h-4 mr-2" />
                 {updateMaintenanceMutation.isPending ? "Saving..." : "Save Maintenance Settings"}
               </Button>
-              
+
               {maintenanceSettings.isActive && (
-                <Button 
+                <Button
                   onClick={() => toggleMaintenanceMode()}
                   variant="outline"
                   disabled={updateMaintenanceMutation.isPending}
@@ -923,7 +954,7 @@ export default function AdminSystemSettingsPage() {
                   <Badge variant="default">Secure</Badge>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                 <Button variant="outline" className="w-full">
                   <Database className="w-4 h-4 mr-2" />
@@ -985,7 +1016,7 @@ export default function AdminSystemSettingsPage() {
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {updateAvailable 
+                    {updateAvailable
                       ? "A new version is available and ready to install."
                       : "You're running the latest version of the application."
                     }
@@ -1005,7 +1036,7 @@ export default function AdminSystemSettingsPage() {
                       </p>
                     </div>
                   </div>
-                  <Button 
+                  <Button
                     onClick={handleUpdateApp}
                     className="w-full bg-green-600 hover:bg-green-700"
                     size="sm"
@@ -1019,7 +1050,7 @@ export default function AdminSystemSettingsPage() {
 
               {/* Update Controls */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button 
+                <Button
                   onClick={handleCheckForUpdates}
                   variant="outline"
                   className="w-full"
@@ -1028,7 +1059,7 @@ export default function AdminSystemSettingsPage() {
                   <Download className="w-4 h-4 mr-2" />
                   Check for Updates
                 </Button>
-                <Button 
+                <Button
                   onClick={handleClearCache}
                   variant="outline"
                   className="w-full"
@@ -1037,7 +1068,7 @@ export default function AdminSystemSettingsPage() {
                   <HardDriveIcon className="w-4 h-4 mr-2" />
                   Clear Cache
                 </Button>
-                <Button 
+                <Button
                   onClick={handleForceRefresh}
                   disabled={isRefreshing}
                   variant="outline"

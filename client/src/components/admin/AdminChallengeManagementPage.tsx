@@ -149,7 +149,7 @@ export default function AdminChallengeManagementPage() {
 
   // Toggle active status mutation
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       apiRequest(`/api/admin/challenges/${id}/toggle-active`, {
         method: 'PATCH',
         body: JSON.stringify({ isActive })
@@ -224,8 +224,8 @@ export default function AdminChallengeManagementPage() {
   // Filter challenges
   const filteredChallenges = challenges.filter(challenge => {
     const matchesSearch = challenge.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         challenge.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         challenge.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+      challenge.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      challenge.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
   });
 
@@ -452,8 +452,8 @@ export default function AdminChallengeManagementPage() {
         <Card className="mb-4 bg-yellow-50 border-yellow-200">
           <CardContent className="pt-4">
             <p className="text-xs text-yellow-800">
-              <strong>Debug:</strong> Challenges count: {challenges.length}, 
-              Filtered: {filteredChallenges.length}, 
+              <strong>Debug:</strong> Challenges count: {challenges.length},
+              Filtered: {filteredChallenges.length},
               Loading: {isLoading ? 'Yes' : 'No'},
               Error: {error ? 'Yes' : 'No'}
             </p>
@@ -484,8 +484,8 @@ export default function AdminChallengeManagementPage() {
           <CardContent className="py-12 text-center">
             <Code className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              {searchTerm 
-                ? 'No challenges match your search.' 
+              {searchTerm
+                ? 'No challenges match your search.'
                 : 'No challenges found. Create your first challenge!'}
             </p>
             {challenges.length > 0 && (
@@ -520,7 +520,7 @@ export default function AdminChallengeManagementPage() {
                     </Badge>
                   ))}
                 </div>
-                
+
                 {/* Question Information */}
                 <div className="mb-4 p-3 rounded-lg bg-muted">
                   <div className="flex items-center justify-between mb-2">
@@ -533,7 +533,7 @@ export default function AdminChallengeManagementPage() {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className="h-2 rounded-full bg-blue-600 transition-all"
                       style={{ width: `${challenge.totalQuestions > 0 ? Math.round((challenge.questionCount / challenge.totalQuestions) * 100) : 0}%` }}
                     />
@@ -575,7 +575,7 @@ export default function AdminChallengeManagementPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete the challenge "{challenge.title}". This action cannot be undone.
+                            This will permanently delete the challenge "{challenge.name}". This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

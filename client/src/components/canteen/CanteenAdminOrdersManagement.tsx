@@ -17,13 +17,13 @@ import { useTriggerBasedUpdates } from "@/hooks/useTriggerBasedUpdates";
 import { useEffect } from "react";
 import type { Order } from "@shared/schema";
 import { formatOrderIdDisplay } from "@shared/utils";
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  Eye, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Search,
+  Filter,
+  Download,
+  Eye,
+  CheckCircle,
+  XCircle,
   Clock,
   AlertTriangle,
   RefreshCw,
@@ -53,7 +53,7 @@ interface CanteenAdminOrdersManagementProps {
 export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdminOrdersManagementProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -73,7 +73,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
     if (counterNames[counterId]) {
       return counterNames[counterId];
     }
-    
+
     try {
       const response = await apiRequest(`/api/counters/${counterId}/name`);
       const name = response.name || 'Unknown Counter';
@@ -88,11 +88,11 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
   // Component to display counter name
   const CounterNameDisplay = ({ counterId }: { counterId: string }) => {
     const [name, setName] = useState<string>('Loading...');
-    
+
     useEffect(() => {
       getCounterName(counterId).then(setName);
     }, [counterId]);
-    
+
     return <span className="font-medium text-green-600">{name}</span>;
   };
 
@@ -173,7 +173,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
 
   // Extract colleges array from the response
   const colleges = collegesData?.colleges || [];
-  
+
   // Debug colleges data
   console.log('🏫 Colleges data:', collegesData);
   console.log('🏫 Extracted colleges:', colleges);
@@ -256,7 +256,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
   const getOrderItemDetails = (orderItemsString: string) => {
     const items = parseOrderItems(orderItemsString);
     return items.map((item: any) => ({
-        ...item,
+      ...item,
       name: item.name || 'Unknown Item',
       price: item.price || 0,
       imageUrl: item.imageUrl,
@@ -303,8 +303,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
   };
 
   // Check if any filters are active
-  const hasActiveFilters = searchTerm || selectedStatus !== "all" || dateRange !== "all" || 
-                          amountRange !== "all" || paymentMethod !== "all" || collegeFilter !== "all";
+  const hasActiveFilters = searchTerm || selectedStatus !== "all" || dateRange !== "all" ||
+    amountRange !== "all" || paymentMethod !== "all" || collegeFilter !== "all";
 
   // Update order status mutation
   const updateOrderStatus = useMutation({
@@ -319,10 +319,10 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
       queryClient.invalidateQueries({ queryKey: ['/api/orders', canteenId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/paginated', currentPage, 15, canteenId] });
       triggerOrderRefresh(canteenId);
-      },
+    },
     onError: (error) => {
       console.error('Update order error:', error);
-      }
+    }
   });
 
   // Delete order mutation
@@ -336,10 +336,10 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
       queryClient.invalidateQueries({ queryKey: ['/api/orders', canteenId] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders/paginated', currentPage, 15, canteenId] });
       triggerOrderRefresh(canteenId);
-      },
+    },
     onError: (error) => {
       console.error('Delete order error:', error);
-      }
+    }
   });
 
   // Note: Advanced filtering is now handled by getFilteredAndSortedOrders function above
@@ -376,11 +376,11 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
   };
 
   const handleExport = () => {
-    };
+  };
 
   const handleRefresh = () => {
     refetchOrders();
-    };
+  };
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
@@ -446,61 +446,61 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
       {/* Order Stats */}
       <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4 min-w-max sm:min-w-0">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <ShoppingCart className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium">Total Orders</p>
-                <p className="text-2xl font-bold">{statusCounts.all}</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <ShoppingCart className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium">Total Orders</p>
+                  <p className="text-2xl font-bold">{statusCounts.all}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="text-sm font-medium">Pending</p>
-                <p className="text-2xl font-bold">{statusCounts.pending}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <p className="text-sm font-medium">Pending</p>
+                  <p className="text-2xl font-bold">{statusCounts.pending}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium">Preparing</p>
-                <p className="text-2xl font-bold">{statusCounts.preparing}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium">Preparing</p>
+                  <p className="text-2xl font-bold">{statusCounts.preparing}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">Completed</p>
-                <p className="text-2xl font-bold">{statusCounts.completed}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                <div>
+                  <p className="text-sm font-medium">Completed</p>
+                  <p className="text-2xl font-bold">{statusCounts.completed}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <XCircle className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-sm font-medium">Cancelled</p>
-                <p className="text-2xl font-bold">{statusCounts.cancelled}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <div>
+                  <p className="text-sm font-medium">Cancelled</p>
+                  <p className="text-2xl font-bold">{statusCounts.cancelled}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -515,22 +515,22 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
         <CardContent className="p-3 sm:p-6 pt-0">
           <div className="space-y-3 sm:space-y-4">
             {/* Search and Basic Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <div>
-              <Label htmlFor="search">Search Orders</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  id="search"
-                  placeholder="Search by order number, customer name, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div>
+                <Label htmlFor="search">Search Orders</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="search"
+                    placeholder="Search by order number, customer name, or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
-            </div>
-            <div>
-              <Label htmlFor="status">Status Filter</Label>
+              <div>
+                <Label htmlFor="status">Status Filter</Label>
                 <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Statuses" />
@@ -557,7 +557,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                 <span>Advanced Filters</span>
                 <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
               </Button>
-              
+
               {hasActiveFilters && (
                 <Button
                   variant="ghost"
@@ -689,8 +689,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     {searchTerm && (
                       <Badge variant="secondary" className="flex items-center space-x-1">
                         <span>Search: "{searchTerm}"</span>
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
                           onClick={() => setSearchTerm("")}
                         />
                       </Badge>
@@ -698,8 +698,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     {selectedStatus !== "all" && (
                       <Badge variant="secondary" className="flex items-center space-x-1">
                         <span>Status: {selectedStatus}</span>
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
                           onClick={() => setSelectedStatus("all")}
                         />
                       </Badge>
@@ -707,8 +707,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     {dateRange !== "all" && (
                       <Badge variant="secondary" className="flex items-center space-x-1">
                         <span>Date: {dateRange}</span>
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
                           onClick={() => setDateRange("all")}
                         />
                       </Badge>
@@ -716,8 +716,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     {amountRange !== "all" && (
                       <Badge variant="secondary" className="flex items-center space-x-1">
                         <span>Amount: {amountRange}</span>
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
                           onClick={() => setAmountRange("all")}
                         />
                       </Badge>
@@ -725,8 +725,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     {paymentMethod !== "all" && (
                       <Badge variant="secondary" className="flex items-center space-x-1">
                         <span>Payment: {paymentMethod}</span>
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
                           onClick={() => setPaymentMethod("all")}
                         />
                       </Badge>
@@ -734,8 +734,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     {collegeFilter !== "all" && (
                       <Badge variant="secondary" className="flex items-center space-x-1">
                         <span>College: {collegeFilter}</span>
-                        <X 
-                          className="h-3 w-3 cursor-pointer" 
+                        <X
+                          className="h-3 w-3 cursor-pointer"
                           onClick={() => setCollegeFilter("all")}
                         />
                       </Badge>
@@ -766,14 +766,14 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
               <Package className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-2">No orders found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || selectedStatus !== "all" 
-                  ? "Try adjusting your filters" 
+                {searchTerm || selectedStatus !== "all"
+                  ? "Try adjusting your filters"
                   : "No orders have been placed yet"}
               </p>
             </div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {filteredOrders.map((order) => {
+              {filteredOrders.map((order: any) => {
                 const orderItems = getOrderItemDetails(order.items);
                 return (
                   <div key={order.id} className="border rounded-lg p-3 sm:p-4 hover:bg-muted/50 transition-colors">
@@ -810,7 +810,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                             )}
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                           <div>
                             <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
@@ -825,8 +825,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                             <p className="text-xs text-muted-foreground line-clamp-2">
                               {orderItems.length > 0 ? (
                                 <>
-                              {orderItems.slice(0, 2).map(item => item.name).join(', ')}
-                              {orderItems.length > 2 && ` +${orderItems.length - 2} more`}
+                                  {orderItems.slice(0, 2).map((item: any) => item.name).join(', ')}
+                                  {orderItems.length > 2 && ` +${orderItems.length - 2} more`}
                                 </>
                               ) : (
                                 'No items found'
@@ -842,7 +842,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap sm:ml-4">
                         <Button
                           variant="outline"
@@ -853,8 +853,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                           <Eye className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                           <span className="sm:inline">View</span>
                         </Button>
-                        
-                        
+
+
                         {order.status === 'preparing' && (
                           <Button
                             variant="outline"
@@ -877,7 +877,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                             )}
                           </Button>
                         )}
-                        
+
                         {order.status === 'ready' && (
                           <Button
                             variant="outline"
@@ -890,19 +890,19 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                             <span className="sm:inline">Complete</span>
                           </Button>
                         )}
-                        
+
                         {/* Developer Mode - Delete Order Button */}
                         {process.env.NODE_ENV === 'development' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteOrder(order.id)}
-                          disabled={deleteOrder.isPending}
-                          className="text-red-600 hover:text-red-700 flex-1 sm:flex-initial"
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteOrder(order.id)}
+                            disabled={deleteOrder.isPending}
+                            className="text-red-600 hover:text-red-700 flex-1 sm:flex-initial"
                             title="Developer Mode: Delete Order (Only available in development)"
-                        >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
+                          >
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -920,8 +920,8 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
-              totalCount={totalCount}
-              pageSize={15}
+            totalCount={totalCount}
+            pageSize={15}
             onPageChange={goToPage}
             onNextPage={goToNextPage}
             onPreviousPage={goToPreviousPage}
@@ -947,7 +947,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
               </Badge>
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedOrder && (
             <div className="space-y-6">
               {/* Order Header */}
@@ -960,35 +960,35 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                <div>
+                    <div>
                       <h3 className="text-lg font-semibold mb-2">
-                    {(() => {
-                      const formatted = formatOrderIdDisplay(selectedOrder.orderNumber);
-                      return (
-                        <>
-                          {formatted.prefix}
-                          <span className="bg-primary/20 text-primary font-bold px-1 rounded ml-1">
-                            {formatted.highlighted}
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </h3>
+                        {(() => {
+                          const formatted = formatOrderIdDisplay(selectedOrder.orderNumber);
+                          return (
+                            <>
+                              {formatted.prefix}
+                              <span className="bg-primary/20 text-primary font-bold px-1 rounded ml-1">
+                                {formatted.highlighted}
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </h3>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Order ID:</span>
                           <span className="font-medium">{selectedOrder.id}</span>
-                </div>
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Customer ID:</span>
                           <span className="font-medium">{selectedOrder.customerId}</span>
-                  </div>
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Canteen ID:</span>
                           <span className="font-medium">{selectedOrder.canteenId}</span>
                         </div>
                       </div>
-              </div>
+                    </div>
 
                     <div>
                       <h4 className="font-medium mb-2">Order Timeline</h4>
@@ -1035,7 +1035,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                         )}
                       </div>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-medium mb-2">Order Summary</h4>
                       <div className="space-y-2 text-sm">
@@ -1078,36 +1078,36 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                     <div className="space-y-4">
                       <h4 className="font-medium">Basic Details</h4>
                       <div className="space-y-2 text-sm">
-                    <div>
+                        <div>
                           <span className="text-muted-foreground">Name:</span>
                           <p className="font-medium">{userDetails?.name || selectedOrder.customerName || 'Unknown'}</p>
-                    </div>
-                    <div>
+                        </div>
+                        <div>
                           <span className="text-muted-foreground">Email:</span>
                           <p className="font-medium">{userDetails?.email || selectedOrder.customerEmail || 'Not provided'}</p>
-                    </div>
-                    <div>
+                        </div>
+                        <div>
                           <span className="text-muted-foreground">Phone:</span>
                           <p className="font-medium">{userDetails?.phoneNumber || selectedOrder.customerPhone || 'Not provided'}</p>
-                    </div>
-                    <div>
+                        </div>
+                        <div>
                           <span className="text-muted-foreground">User ID:</span>
                           <p className="font-medium">{selectedOrder.customerId}</p>
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h4 className="font-medium">Advanced Details</h4>
                       <div className="space-y-2 text-sm">
                         <div>
                           <span className="text-muted-foreground">College:</span>
                           <p className="font-medium">
-                          {selectedOrder?.collegeName || userDetails?.collegeName || 'Not specified'}
-                          <span className="text-xs text-gray-500 ml-2">
-                            (ID: {userDetails?.college || selectedOrder.college || userDetails?.collegeId || selectedOrder.collegeId || 'None'})
-                          </span>
-                        </p>
+                            {selectedOrder?.collegeName || userDetails?.collegeName || 'Not specified'}
+                            <span className="text-xs text-gray-500 ml-2">
+                              (ID: {userDetails?.college || selectedOrder.college || userDetails?.collegeId || selectedOrder.collegeId || 'None'})
+                            </span>
+                          </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Department:</span>
@@ -1123,7 +1123,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-4">
                       <h4 className="font-medium">Account Status</h4>
                       <div className="space-y-2 text-sm">
@@ -1173,29 +1173,29 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Payment Status:</span>
                           <Badge variant={
-                            selectedOrder.amount === 0 ? 'secondary' : 
-                            (paymentDetails?.status === 'success' || selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid') ? 'default' : 
-                            'destructive'
+                            selectedOrder.amount === 0 ? 'secondary' :
+                              (paymentDetails?.status === 'success' || selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid') ? 'default' :
+                                'destructive'
                           }>
-                            {selectedOrder.amount === 0 ? 'Free Order' : 
-                             (paymentDetails?.status === 'success' || selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid') ? 'Paid' : 
-                             'Pending'}
+                            {selectedOrder.amount === 0 ? 'Free Order' :
+                              (paymentDetails?.status === 'success' || selectedOrder.paymentStatus === 'completed' || selectedOrder.paymentStatus === 'paid') ? 'Paid' :
+                                'Pending'}
                           </Badge>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Payment Method:</span>
                           <span className="font-medium">
-                            {selectedOrder.amount === 0 ? 'Free Order' : 
-                             selectedOrder.isOffline ? 'Cash/Card at Counter' :
-                             paymentDetails?.paymentMethod || selectedOrder.paymentMethod || 'Not specified'}
+                            {selectedOrder.amount === 0 ? 'Free Order' :
+                              selectedOrder.isOffline ? 'Cash/Card at Counter' :
+                                paymentDetails?.paymentMethod || selectedOrder.paymentMethod || 'Not specified'}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Transaction ID:</span>
                           <span className="font-medium">
-                            {selectedOrder.amount === 0 ? 'N/A (Free Order)' : 
-                             selectedOrder.isOffline ? 'N/A (Offline Payment)' :
-                             paymentDetails?.merchantTransactionId || paymentDetails?.razorpayTransactionId || paymentDetails?.phonePeTransactionId || selectedOrder.transactionId || 'N/A'}
+                            {selectedOrder.amount === 0 ? 'N/A (Free Order)' :
+                              selectedOrder.isOffline ? 'N/A (Offline Payment)' :
+                                paymentDetails?.merchantTransactionId || paymentDetails?.razorpayTransactionId || paymentDetails?.phonePeTransactionId || selectedOrder.transactionId || 'N/A'}
                           </span>
                         </div>
                         {selectedOrder.isOffline && selectedOrder.paymentConfirmedBy && (
@@ -1207,9 +1207,9 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Payment Gateway:</span>
                           <span className="font-medium">
-                            {selectedOrder.amount === 0 ? 'N/A (Free Order)' : 
-                             selectedOrder.isOffline ? 'N/A (Offline Payment)' :
-                             paymentDetails?.razorpayTransactionId ? 'Razorpay' : paymentDetails?.responseCode ? 'PhonePe (Legacy)' : selectedOrder.paymentGateway || 'N/A'}
+                            {selectedOrder.amount === 0 ? 'N/A (Free Order)' :
+                              selectedOrder.isOffline ? 'N/A (Offline Payment)' :
+                                paymentDetails?.razorpayTransactionId ? 'Razorpay' : paymentDetails?.responseCode ? 'PhonePe (Legacy)' : selectedOrder.paymentGateway || 'N/A'}
                           </span>
                         </div>
                         {(paymentDetails?.createdAt || selectedOrder.paidAt) && (
@@ -1234,7 +1234,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Offline Payment Confirmation Details */}
                     {selectedOrder.isOffline && selectedOrder.paymentConfirmedBy && (
                       <div className="space-y-4">
@@ -1263,7 +1263,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="space-y-4">
                       <h4 className="font-medium">Coupon & Discounts</h4>
                       <div className="space-y-2 text-sm">
@@ -1338,7 +1338,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {getOrderItemDetails(selectedOrder.items).map((item, index) => (
+                    {getOrderItemDetails(selectedOrder.items).map((item: any, index: number) => (
                       <div key={index} className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-muted/50">
                         {item.imageUrl && (
                           <img
@@ -1353,7 +1353,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                             <div>
                               <span className="text-muted-foreground">Quantity:</span>
                               <p className="font-medium">{item.quantity}</p>
-                        </div>
+                            </div>
                             <div>
                               <span className="text-muted-foreground">Unit Price:</span>
                               <p className="font-medium">₹{item.price}</p>
@@ -1364,7 +1364,7 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                             </div>
                             <div>
                               <span className="text-muted-foreground">Total:</span>
-                          <p className="font-bold">₹{item.quantity * item.price}</p>
+                              <p className="font-bold">₹{item.quantity * item.price}</p>
                             </div>
                           </div>
                           {item.specialInstructions && (
@@ -1389,40 +1389,40 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
               {/* Order Actions */}
               <div className="flex justify-between items-center">
                 <div className="flex space-x-2">
-                <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>
-                  Close
-                </Button>
+                  <Button variant="outline" onClick={() => setIsDetailModalOpen(false)}>
+                    Close
+                  </Button>
                   <Button variant="outline" onClick={handleRefresh}>
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Refresh
                   </Button>
                 </div>
-                
+
                 <div className="flex space-x-2">
-                {selectedOrder.status === 'pending' && (
-                  <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'preparing')}>
+                  {selectedOrder.status === 'pending' && (
+                    <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'preparing')}>
                       <AlertTriangle className="h-4 w-4 mr-2" />
-                    Start Preparing
-                  </Button>
-                )}
-                {selectedOrder.status === 'preparing' && (
-                  <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'ready')}>
+                      Start Preparing
+                    </Button>
+                  )}
+                  {selectedOrder.status === 'preparing' && (
+                    <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'ready')}>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark as Ready
-                  </Button>
-                )}
-                {selectedOrder.status === 'ready' && (
-                  <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')}>
+                      Mark as Ready
+                    </Button>
+                  )}
+                  {selectedOrder.status === 'ready' && (
+                    <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'completed')}>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                    Mark Complete
-                  </Button>
-                )}
+                      Mark Complete
+                    </Button>
+                  )}
                   {selectedOrder.status === 'completed' && (
                     <Button onClick={() => handleUpdateStatus(selectedOrder.id, 'delivered')}>
                       <Package className="h-4 w-4 mr-2" />
                       Mark Delivered
-                  </Button>
-                )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

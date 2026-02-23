@@ -62,7 +62,9 @@ export default function ViewAllQuickPicksPage() {
       available: item.available,
       description: item.description,
       imageUrl: item.imageUrl,
-      categoryId: item.categoryId
+      categoryId: item.categoryId,
+      storeCounterId: (item as any).storeCounterId,
+      paymentCounterId: (item as any).paymentCounterId
     }));
 
   const filteredItems = quickPickItems.filter(item => {
@@ -214,8 +216,8 @@ export default function ViewAllQuickPicksPage() {
         {/* Fixed Search Bar skeleton above Bottom Navigation */}
         <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-3">
           <div className={`px-4 py-3 shadow-lg backdrop-blur-sm rounded-2xl border ${resolvedTheme === 'dark'
-              ? 'bg-background/95 border-[#724491]/30'
-              : 'bg-white/95 border-[#C397E1]/30'
+            ? 'bg-background/95 border-[#724491]/30'
+            : 'bg-white/95 border-[#C397E1]/30'
             }`}>
             <Skeleton className={`h-12 w-full rounded-full ${resolvedTheme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'
               }`} />
@@ -235,16 +237,16 @@ export default function ViewAllQuickPicksPage() {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className={`pl-12 pr-12 rounded-full h-12 text-base shadow-sm border-2 transition-all ${resolvedTheme === 'dark'
-            ? 'bg-white/10 border-[#724491]/50 text-white placeholder:text-[#C397E1]/70 focus:border-[#B37ED7] focus:bg-white/15 focus:shadow-lg focus:shadow-[#724491]/20'
-            : 'bg-white border-[#C397E1]/50 text-gray-900 placeholder:text-gray-500 focus:border-[#724491] focus:bg-white focus:shadow-lg focus:shadow-[#724491]/20'
+          ? 'bg-white/10 border-[#724491]/50 text-white placeholder:text-[#C397E1]/70 focus:border-[#B37ED7] focus:bg-white/15 focus:shadow-lg focus:shadow-[#724491]/20'
+          : 'bg-white border-[#C397E1]/50 text-gray-900 placeholder:text-gray-500 focus:border-[#724491] focus:bg-white focus:shadow-lg focus:shadow-[#724491]/20'
           }`}
       />
       {searchQuery && (
         <button
           onClick={clearSearch}
           className={`absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full transition-colors ${resolvedTheme === 'dark'
-              ? 'text-[#C397E1] hover:text-[#B37ED7] hover:bg-[#724491]/30'
-              : 'text-[#724491] hover:text-[#562A6E] hover:bg-[#C397E1]/30'
+            ? 'text-[#C397E1] hover:text-[#B37ED7] hover:bg-[#724491]/30'
+            : 'text-[#724491] hover:text-[#562A6E] hover:bg-[#C397E1]/30'
             }`}
         >
           <X className="w-4 h-4" />
@@ -414,8 +416,8 @@ export default function ViewAllQuickPicksPage() {
       {/* Fixed Search Bar at the bottom */}
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-0 right-0 w-full z-[9998] mb-1">
         <div className={`px-4 py-3 shadow-lg backdrop-blur-sm rounded-2xl border ${resolvedTheme === 'dark'
-            ? 'bg-background/95 border-[#724491]/30'
-            : 'bg-white/95 border-[#C397E1]/30'
+          ? 'bg-background/95 border-[#724491]/30'
+          : 'bg-white/95 border-[#C397E1]/30'
           }`}>
           <SearchBar />
         </div>

@@ -13,9 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Pagination } from "@/components/ui/pagination";
-import { 
-  ArrowLeft, Search, Filter, Plus, Edit, Trash2, Mail, Phone, 
-  MapPin, Star, Ban, Shield, Users, UserCheck, UserX, 
+import {
+  ArrowLeft, Search, Filter, Plus, Edit, Trash2, Mail, Phone,
+  MapPin, Star, Ban, Shield, Users, UserCheck, UserX,
   MessageSquare, CreditCard, Gift, AlertTriangle, School, Briefcase, RefreshCcw, Download, BarChart3, User,
   Calendar, ShoppingBag, Receipt, Settings
 } from "lucide-react";
@@ -25,10 +25,10 @@ import { useActiveColleges, useDepartmentsByCollege } from "@/hooks/useColleges"
 export default function AdminUserManagementPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
+
   // Fetch active colleges and departments
   const { data: collegesData } = useActiveColleges();
-  
+
   // Fetch organizations
   const { data: organizationsData } = useQuery({
     queryKey: ['/api/system-settings/organizations'],
@@ -43,27 +43,27 @@ export default function AdminUserManagementPage() {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
-  
+
   const [activeTab, setActiveTab] = useState("all-users");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterCollege, setFilterCollege] = useState("all");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [filterYear, setFilterYear] = useState("all");
-  
+
   // Get departments for selected college
   const { data: departmentsByCollegeData } = useDepartmentsByCollege(
-    filterCollege !== "all" ? filterCollege : null
+    filterCollege !== "all" ? filterCollege : undefined
   );
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  
+
   // Dialog states
-  const [deleteDialog, setDeleteDialog] = useState<{open: boolean, user: any | null}>({open: false, user: null});
-  const [editDialog, setEditDialog] = useState<{open: boolean, user: any | null}>({open: false, user: null});
-  const [userDetailsDialog, setUserDetailsDialog] = useState<{open: boolean, user: any | null}>({open: false, user: null});
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, user: any | null }>({ open: false, user: null });
+  const [editDialog, setEditDialog] = useState<{ open: boolean, user: any | null }>({ open: false, user: null });
+  const [userDetailsDialog, setUserDetailsDialog] = useState<{ open: boolean, user: any | null }>({ open: false, user: null });
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
@@ -91,7 +91,7 @@ export default function AdminUserManagementPage() {
         ...(filterDepartment !== 'all' && { department: filterDepartment }),
         ...(filterYear !== 'all' && { year: filterYear })
       });
-      
+
       const response = await fetch(`/api/users/paginated?${params}`);
       if (!response.ok) {
         throw new Error('Failed to fetch users');
@@ -102,7 +102,7 @@ export default function AdminUserManagementPage() {
     staleTime: 30000, // Data is fresh for 30 seconds
   });
 
-  const users = usersData?.users || [];
+  const users: any[] = usersData?.users || [];
   const totalPages = usersData?.totalPages || 0;
   const totalCount = usersData?.totalCount || 0;
 
@@ -123,7 +123,7 @@ export default function AdminUserManagementPage() {
 
   // Mock data for user management page to avoid breaking existing functionality
   const analyticsData = dashboardStats || { totalRevenue: 0, totalUsers: 0, totalOrders: 0 };
-  const ordersData = [];
+  const ordersData: any[] = [];
   const analyticsLoading = statsLoading;
   const ordersLoading = statsLoading;
 
@@ -192,7 +192,7 @@ export default function AdminUserManagementPage() {
     const totalSpending = userOrders.reduce((sum, order) => sum + (order.amount || 0), 0);
     const orderCount = userOrders.length;
     const avgOrderValue = orderCount > 0 ? totalSpending / orderCount : 0;
-    
+
     return {
       ...user,
       totalSpending,
@@ -213,7 +213,7 @@ export default function AdminUserManagementPage() {
     const staffSpending = userSpendingData.filter(u => u.role === 'staff').reduce((sum, u) => sum + u.totalSpending, 0);
     const canteenOwnerSpending = userSpendingData.filter(u => u.role === 'canteen_owner' || u.role === 'canteen-owner').reduce((sum, u) => sum + u.totalSpending, 0);
     const adminSpending = userSpendingData.filter(u => u.role === 'admin').reduce((sum, u) => sum + u.totalSpending, 0);
-    
+
     return {
       studentRevenue: studentSpending,
       employeeRevenue: employeeSpending,
@@ -234,23 +234,23 @@ export default function AdminUserManagementPage() {
     try {
       await Promise.all([
         refetch(),
-        refetchAnalytics(),
-        refetchOrders()
+        refetchStats(),
+        refetchPayments()
       ]);
-      
+
       // Invalidate query cache to force fresh data
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/analytics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-      
-      } catch (error) {
-      }
+
+    } catch (error) {
+    }
   };
 
   const handleUserAction = async (userId: number, action: string) => {
     try {
       const statusToUpdate = action === 'suspend' ? 'Suspended' : 'Active';
-      
+
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -258,20 +258,20 @@ export default function AdminUserManagementPage() {
         },
         body: JSON.stringify({ status: statusToUpdate }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update user status');
       }
-      
+
       await refetch(); // Refresh data
     } catch (error) {
-      }
+    }
   };
 
   const handleUserUpdate = async (userId: number, userData: any, userName: string) => {
     try {
       console.log('🔄 Starting user update for:', { userId, userName, newRole: userData.role });
-      
+
       // Prepare the update data
       const updateData: any = {
         name: userData.name,
@@ -312,9 +312,9 @@ export default function AdminUserManagementPage() {
         updateData.currentStudyYear = null;
         updateData.staffId = null;
       }
-      
+
       console.log('📋 Sending update request:', updateData);
-      
+
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: {
@@ -322,31 +322,31 @@ export default function AdminUserManagementPage() {
         },
         body: JSON.stringify(updateData),
       });
-      
+
       console.log('📨 Response status:', response.status);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ Update failed with error:', errorData);
         throw new Error(errorData.message || 'Failed to update user');
       }
-      
+
       const updatedUser = await response.json();
       console.log('✅ User updated successfully:', updatedUser);
-      
-      setEditDialog({open: false, user: null});
-      
+
+      setEditDialog({ open: false, user: null });
+
       // Force cache invalidation and refetch
       await queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       await refetch(); // Also explicitly refetch
     } catch (error: any) {
-      }
+    }
   };
 
   const canChangeRole = (currentRole: string, newRole: string) => {
     // Staff cannot change to student and vice versa
-    if ((currentRole === 'staff' && newRole === 'student') || 
-        (currentRole === 'student' && newRole === 'staff')) {
+    if ((currentRole === 'staff' && newRole === 'student') ||
+      (currentRole === 'student' && newRole === 'staff')) {
       return false;
     }
     return true;
@@ -360,27 +360,27 @@ export default function AdminUserManagementPage() {
   const handleDeleteUser = async (userId: number, userName: string) => {
     try {
       console.log('🗑️ Starting user deletion for:', { userId, userName });
-      
+
       const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
-      
+
       console.log('📨 Delete response status:', response.status);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ Delete failed with error:', errorData);
         throw new Error('Failed to delete user');
       }
-      
+
       const result = await response.json();
       console.log('✅ User deleted successfully:', result);
-      
-      setDeleteDialog({open: false, user: null});
-      
+
+      setDeleteDialog({ open: false, user: null });
+
       // Force cache invalidation and refetch
       await queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       await refetch(); // Also explicitly refetch
     } catch (error) {
-      }
+    }
   };
 
   // Block/Unblock user functions
@@ -389,14 +389,14 @@ export default function AdminUserManagementPage() {
       const response = await fetch(`/api/users/${userId}/block`, {
         method: 'PUT',
       });
-      
+
       if (response.ok) {
         await queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-        } else {
+      } else {
         throw new Error('Failed to block user');
       }
     } catch (error) {
-      }
+    }
   };
 
   const handleUnblockUser = async (userId: number, userName: string) => {
@@ -404,14 +404,14 @@ export default function AdminUserManagementPage() {
       const response = await fetch(`/api/users/${userId}/unblock`, {
         method: 'PUT',
       });
-      
+
       if (response.ok) {
         await queryClient.invalidateQueries({ queryKey: ['/api/users'] });
-        } else {
+      } else {
         throw new Error('Failed to unblock user');
       }
     } catch (error) {
-      }
+    }
   };
 
   // Reset department filter when college changes
@@ -468,8 +468,8 @@ export default function AdminUserManagementPage() {
       <div className="border-b bg-card">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setLocation("/admin")}
             >
@@ -480,8 +480,8 @@ export default function AdminUserManagementPage() {
               <p className="text-sm text-muted-foreground">Manage customers, staff, and administrators • Live data syncing</p>
             </div>
           </div>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={refreshAllData}
             disabled={isDataLoading}
             className="flex items-center space-x-2"
@@ -599,7 +599,7 @@ export default function AdminUserManagementPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     {/* Student-specific filters and Add User button */}
                     {(filterRole === "student" || filterRole === "all") && (
                       <div className="flex flex-col md:flex-row gap-4 pt-2 border-t items-start md:items-center">
@@ -620,8 +620,8 @@ export default function AdminUserManagementPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Select 
-                          value={filterDepartment} 
+                        <Select
+                          value={filterDepartment}
                           onValueChange={setFilterDepartment}
                           disabled={filterCollege === "all"}
                         >
@@ -711,7 +711,7 @@ export default function AdminUserManagementPage() {
                                         ))}
                                       </optgroup>
                                       <optgroup label="Organizations">
-                                        {organizationsData?.organizations?.filter(org => org.isActive).map(org => (
+                                        {organizationsData?.organizations?.filter((org: any) => org.isActive).map((org: any) => (
                                           <SelectItem key={org.id} value={org.id}>
                                             {org.name} ({org.code})
                                           </SelectItem>
@@ -733,8 +733,8 @@ export default function AdminUserManagementPage() {
                                   //   headers: { 'Content-Type': 'application/json' },
                                   //   body: JSON.stringify(newUserData)
                                   // });
-                                  } catch (error) {
-                                  }
+                                } catch (error) {
+                                }
                               }}>
                                 Add User
                               </Button>
@@ -755,10 +755,10 @@ export default function AdminUserManagementPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {users.map((user) => (
-                      <div 
-                        key={user.id} 
+                      <div
+                        key={user.id}
                         className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => setUserDetailsDialog({open: true, user})}
+                        onClick={() => setUserDetailsDialog({ open: true, user })}
                         data-testid={`user-card-${user.id}`}
                       >
                         <div className="flex items-start justify-between">
@@ -792,7 +792,7 @@ export default function AdminUserManagementPage() {
                                   <Shield className="w-3 h-3" />
                                   <span>{user.role?.replace('_', ' ') || 'student'}</span>
                                 </div>
-                                
+
                                 {/* Student/Employee/Contractor/Visitor/Guest specific information */}
                                 {(user.role === 'student' || user.role === 'employee' || user.role === 'contractor' || user.role === 'visitor' || user.role === 'guest') && user.registerNumber && (
                                   <div className="flex items-center space-x-1">
@@ -806,7 +806,7 @@ export default function AdminUserManagementPage() {
                                     <span>{user.department} - {getDepartmentFullName(user.department)}</span>
                                   </div>
                                 )}
-                                
+
                                 {/* Staff specific information */}
                                 {user.role === 'staff' && user.staffId && (
                                   <div className="flex items-center space-x-1">
@@ -814,20 +814,20 @@ export default function AdminUserManagementPage() {
                                     <span className="font-mono">Staff ID: {user.staffId}</span>
                                   </div>
                                 )}
-                                
+
                                 {/* Organization/College information */}
                                 {user.college && (
                                   <div className="flex items-center space-x-1">
                                     <School className="w-3 h-3" />
                                     <span>
-                                      {(user.role === 'employee' || user.role === 'contractor' || user.role === 'visitor' || user.role === 'guest') ? 
-                                        `Org: ${organizationsData?.organizations?.find(org => org.id === user.college)?.name || user.college}` :
+                                      {(user.role === 'employee' || user.role === 'contractor' || user.role === 'visitor' || user.role === 'guest') ?
+                                        `Org: ${organizationsData?.organizations?.find((org: any) => org.id === user.college)?.name || user.college}` :
                                         `College: ${collegesData?.colleges?.find(college => college.id === user.college)?.name || user.college}`
                                       }
                                     </span>
                                   </div>
                                 )}
-                                
+
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2 text-sm">
                                 <div>
@@ -852,7 +852,7 @@ export default function AdminUserManagementPage() {
                           <div className="flex flex-col space-y-1">
                             <Button variant="ghost" size="sm" onClick={(e) => {
                               e.stopPropagation(); // Prevent card click
-                              setEditDialog({open: true, user});
+                              setEditDialog({ open: true, user });
                               setEditFormData({
                                 name: user.name || '',
                                 email: user.email || '',
@@ -881,7 +881,7 @@ export default function AdminUserManagementPage() {
                             {user.role !== 'super_admin' && (
                               <Button variant="ghost" size="sm" className="text-destructive" onClick={(e) => {
                                 e.stopPropagation(); // Prevent card click
-                                setDeleteDialog({open: true, user});
+                                setDeleteDialog({ open: true, user });
                               }}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -929,8 +929,8 @@ export default function AdminUserManagementPage() {
                   <p className="text-sm text-muted-foreground">Real-time insights and user behavior analytics</p>
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={refreshAllData}
                     disabled={isDataLoading}
                     className="flex items-center space-x-2"
@@ -938,10 +938,10 @@ export default function AdminUserManagementPage() {
                     <RefreshCcw className={`w-4 h-4 ${isDataLoading ? 'animate-spin' : ''}`} />
                     <span>Refresh</span>
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => {
-                      const csvContent = `Role,Count,Percentage\nStudents,${stats.students},${Math.round((stats.students/stats.totalUsers)*100)}%\nCanteen Owner,${stats.canteenOwner},${Math.round((stats.canteenOwner/stats.totalUsers)*100)}%\nStaff,${stats.staff},${Math.round((stats.staff/stats.totalUsers)*100)}%\nAdmins,${stats.admins},${Math.round((stats.admins/stats.totalUsers)*100)}%`;
+                      const csvContent = `Role,Count,Percentage\nStudents,${stats.students},${Math.round((stats.students / stats.totalUsers) * 100)}%\nCanteen Owner,${stats.canteenOwner},${Math.round((stats.canteenOwner / stats.totalUsers) * 100)}%\nStaff,${stats.staff},${Math.round((stats.staff / stats.totalUsers) * 100)}%\nAdmins,${stats.admins},${Math.round((stats.admins / stats.totalUsers) * 100)}%`;
                       const blob = new Blob([csvContent], { type: 'text/csv' });
                       const url = URL.createObjectURL(blob);
                       const link = document.createElement('a');
@@ -951,7 +951,7 @@ export default function AdminUserManagementPage() {
                       link.click();
                       document.body.removeChild(link);
                       URL.revokeObjectURL(url);
-                      }}
+                    }}
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export Data
@@ -964,7 +964,7 @@ export default function AdminUserManagementPage() {
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
                   setFilterRole("student");
                   setActiveTab("all-users");
-                  }}>
+                }}>
                   <CardContent className="p-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600">{stats.students}</div>
@@ -976,7 +976,7 @@ export default function AdminUserManagementPage() {
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
                   setFilterRole("canteen_owner");
                   setActiveTab("all-users");
-                  }}>
+                }}>
                   <CardContent className="p-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">{stats.canteenOwner}</div>
@@ -988,7 +988,7 @@ export default function AdminUserManagementPage() {
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
                   setFilterRole("staff");
                   setActiveTab("all-users");
-                  }}>
+                }}>
                   <CardContent className="p-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-purple-600">{stats.staff}</div>
@@ -1000,7 +1000,7 @@ export default function AdminUserManagementPage() {
                 <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
                   setFilterRole("admin");
                   setActiveTab("all-users");
-                  }}>
+                }}>
                   <CardContent className="p-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-red-600">{stats.admins}</div>
@@ -1016,8 +1016,8 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>Revenue Analytics</CardTitle>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setLocation("/admin/analytics");
@@ -1046,16 +1046,16 @@ export default function AdminUserManagementPage() {
                         <span className="font-bold text-orange-600">₹{Math.round(stats.totalRevenue / stats.totalUsers) || 0}</span>
                       </div>
                       <div className="pt-2 border-t">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="w-full"
                           onClick={() => {
                             const topSpenders = users
                               .slice(0, 3)
                               .map(user => user.name)
                               .join(', ');
-                            }}
+                          }}
                         >
                           View Top Contributors
                         </Button>
@@ -1068,8 +1068,8 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle>User Behavior</CardTitle>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           const behaviorData = `User Behavior Report - ${new Date().toLocaleDateString()}\n\nMost Active Role: ${stats.students >= stats.canteenOwner && stats.students >= stats.staff ? 'Students' : stats.canteenOwner >= stats.staff ? 'Canteen Owner' : 'Staff'}\nActive Users: ${stats.activeUsers}\nNew This Month: ${stats.newUsersThisMonth}\nUser Engagement: ${Math.round((stats.activeUsers / stats.totalUsers) * 100) || 0}%\nTotal Revenue: ₹${stats.totalRevenue.toLocaleString()}\nRevenue per User: ₹${Math.round(stats.totalRevenue / stats.totalUsers) || 0}`;
@@ -1082,7 +1082,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4" />
                       </Button>
@@ -1094,7 +1094,7 @@ export default function AdminUserManagementPage() {
                         <span>Most Active Role</span>
                         <Badge variant="default" className="font-bold">
                           {stats.students >= stats.canteenOwner && stats.students >= stats.staff ? 'Students' :
-                           stats.canteenOwner >= stats.staff ? 'Canteen Owner' : 'Staff'}
+                            stats.canteenOwner >= stats.staff ? 'Canteen Owner' : 'Staff'}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
@@ -1110,12 +1110,12 @@ export default function AdminUserManagementPage() {
                         <span className="font-bold text-purple-600">{Math.round((stats.activeUsers / stats.totalUsers) * 100) || 0}%</span>
                       </div>
                       <div className="pt-2 border-t">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="w-full"
                           onClick={() => {
-                            }}
+                          }}
                         >
                           View Detailed Insights
                         </Button>
@@ -1137,8 +1137,8 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-base">Revenue Analysis by User Type</CardTitle>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const revenueData = `Revenue Analysis by User Type - ${new Date().toLocaleDateString()}\n\nStudents: ₹${realRevenue.studentRevenue.toLocaleString()} (${Math.round((realRevenue.studentRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%)\nStaff: ₹${realRevenue.staffRevenue.toLocaleString()} (${Math.round((realRevenue.staffRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%)\nCanteen Owners: ₹${realRevenue.canteenOwnerRevenue.toLocaleString()} (${Math.round((realRevenue.canteenOwnerRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%)\nAdmins: ₹${realRevenue.adminRevenue.toLocaleString()} (${Math.round((realRevenue.adminRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%)\n\nTotal Revenue: ₹${realRevenue.totalCalculatedRevenue.toLocaleString()}\nAverage per Student: ₹${Math.round(realRevenue.studentRevenue / Math.max(stats.students, 1))}\nAverage per Staff: ₹${Math.round(realRevenue.staffRevenue / Math.max(stats.staff, 1))}\nAverage per Canteen Owner: ₹${Math.round(realRevenue.canteenOwnerRevenue / Math.max(stats.canteenOwner, 1))}`;
@@ -1151,7 +1151,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         Export Revenue
@@ -1183,7 +1183,7 @@ export default function AdminUserManagementPage() {
                             <span className="font-bold text-blue-600">{Math.round((realRevenue.studentRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%</span>
                           </div>
                           <div className="mt-2 bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-                            <div className="bg-blue-600 h-2 rounded-full" style={{width: `${Math.round((realRevenue.studentRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%`}}></div>
+                            <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${Math.round((realRevenue.studentRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%` }}></div>
                           </div>
                         </div>
                       </div>
@@ -1211,7 +1211,7 @@ export default function AdminUserManagementPage() {
                             <span className="font-bold text-green-600">{Math.round((realRevenue.staffRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%</span>
                           </div>
                           <div className="mt-2 bg-green-200 dark:bg-green-800 rounded-full h-2">
-                            <div className="bg-green-600 h-2 rounded-full" style={{width: `${Math.round((realRevenue.staffRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%`}}></div>
+                            <div className="bg-green-600 h-2 rounded-full" style={{ width: `${Math.round((realRevenue.staffRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%` }}></div>
                           </div>
                         </div>
                       </div>
@@ -1239,7 +1239,7 @@ export default function AdminUserManagementPage() {
                             <span className="font-bold text-purple-600">{Math.round((realRevenue.canteenOwnerRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%</span>
                           </div>
                           <div className="mt-2 bg-purple-200 dark:bg-purple-800 rounded-full h-2">
-                            <div className="bg-purple-600 h-2 rounded-full" style={{width: `${Math.round((realRevenue.canteenOwnerRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%`}}></div>
+                            <div className="bg-purple-600 h-2 rounded-full" style={{ width: `${Math.round((realRevenue.canteenOwnerRevenue / Math.max(realRevenue.totalCalculatedRevenue, 1)) * 100)}%` }}></div>
                           </div>
                         </div>
                       </div>
@@ -1252,14 +1252,14 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-base">Spending Patterns Analysis</CardTitle>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const topStudents = userSpendingData.filter(u => u.role === 'student').sort((a, b) => b.totalSpending - a.totalSpending).slice(0, 5);
                           const topEmployees = userSpendingData.filter(u => u.role === 'employee' || u.role === 'contractor' || u.role === 'visitor').sort((a, b) => b.totalSpending - a.totalSpending).slice(0, 5);
                           const topStaff = userSpendingData.filter(u => u.role === 'staff' || u.role === 'admin').sort((a, b) => b.totalSpending - a.totalSpending).slice(0, 5);
-                          const spendingData = `Spending Patterns Analysis - ${new Date().toLocaleDateString()}\n\n=== TOP STUDENT SPENDERS (Real Data) ===\n${topStudents.map((user, i) => `${i+1}. ${user.name} - ₹${user.totalSpending.toLocaleString()} (${user.orderCount} orders) - ${user.department || 'N/A'}`).join('\n')}\n\n=== TOP EMPLOYEE/CONTRACTOR/VISITOR SPENDERS (Real Data) ===\n${topEmployees.map((user, i) => `${i+1}. ${user.name} - ₹${user.totalSpending.toLocaleString()} (${user.orderCount} orders) - ${user.role} - ${user.department || 'N/A'}`).join('\n')}\n\n=== TOP STAFF/ADMIN SPENDERS (Real Data) ===\n${topStaff.map((user, i) => `${i+1}. ${user.name} - ₹${user.totalSpending.toLocaleString()} (${user.orderCount} orders) - ${user.role}`).join('\n')}\n\nNote: Spending amounts are calculated from actual order data and payments.`;
+                          const spendingData = `Spending Patterns Analysis - ${new Date().toLocaleDateString()}\n\n=== TOP STUDENT SPENDERS (Real Data) ===\n${topStudents.map((user, i) => `${i + 1}. ${user.name} - ₹${user.totalSpending.toLocaleString()} (${user.orderCount} orders) - ${user.department || 'N/A'}`).join('\n')}\n\n=== TOP EMPLOYEE/CONTRACTOR/VISITOR SPENDERS (Real Data) ===\n${topEmployees.map((user, i) => `${i + 1}. ${user.name} - ₹${user.totalSpending.toLocaleString()} (${user.orderCount} orders) - ${user.role} - ${user.department || 'N/A'}`).join('\n')}\n\n=== TOP STAFF/ADMIN SPENDERS (Real Data) ===\n${topStaff.map((user, i) => `${i + 1}. ${user.name} - ₹${user.totalSpending.toLocaleString()} (${user.orderCount} orders) - ${user.role}`).join('\n')}\n\nNote: Spending amounts are calculated from actual order data and payments.`;
                           const blob = new Blob([spendingData], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const link = document.createElement('a');
@@ -1269,7 +1269,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         Export Spending
@@ -1289,11 +1289,10 @@ export default function AdminUserManagementPage() {
                             return (
                               <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                                 <div className="flex items-center space-x-3">
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                    index === 0 ? 'bg-yellow-500 text-white' : 
-                                    index === 1 ? 'bg-gray-400 text-white' : 
-                                    index === 2 ? 'bg-amber-600 text-white' : 'bg-blue-100 text-blue-600'
-                                  }`}>
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${index === 0 ? 'bg-yellow-500 text-white' :
+                                    index === 1 ? 'bg-gray-400 text-white' :
+                                      index === 2 ? 'bg-amber-600 text-white' : 'bg-blue-100 text-blue-600'
+                                    }`}>
                                     {index + 1}
                                   </div>
                                   <div>
@@ -1322,10 +1321,9 @@ export default function AdminUserManagementPage() {
                             return (
                               <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                                 <div className="flex items-center space-x-3">
-                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                                    index === 0 ? 'bg-emerald-500 text-white' : 
+                                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${index === 0 ? 'bg-emerald-500 text-white' :
                                     index === 1 ? 'bg-teal-400 text-white' : 'bg-green-100 text-green-600'
-                                  }`}>
+                                    }`}>
                                     {index + 1}
                                   </div>
                                   <div>
@@ -1399,8 +1397,8 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-base">Department-wise Revenue & Business Analysis</CardTitle>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const students = users.filter(u => u.role === 'student');
@@ -1424,7 +1422,7 @@ export default function AdminUserManagementPage() {
                             const totalOrders = deptStudents.reduce((sum, student) => sum + student.orderCount, 0) + deptEmployees.reduce((sum, employee) => sum + employee.orderCount, 0);
                             return `${dept} (${getDepartmentFullName(dept)})\n- Users: ${count} (Students + Employees)\n- Revenue: ₹${deptRevenue.toLocaleString()}\n- Avg per User: ₹${avgPerUser.toLocaleString()}\n- Total Orders: ${totalOrders} (real data)\n`;
                           }).join('\n');
-                          
+
                           const blob = new Blob([`Department Business Analysis - ${new Date().toLocaleDateString()}\n\n${reportData}`], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const link = document.createElement('a');
@@ -1434,7 +1432,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         Export Business Data
@@ -1456,16 +1454,16 @@ export default function AdminUserManagementPage() {
                         const deptRevenue = deptStudents.reduce((sum, student) => sum + student.totalSpending, 0) + deptEmployees.reduce((sum, employee) => sum + employee.totalSpending, 0);
                         const avgPerUser = userCount > 0 ? Math.round(deptRevenue / userCount) : 0;
                         const actualOrders = deptStudents.reduce((sum, student) => sum + student.orderCount, 0) + deptEmployees.reduce((sum, employee) => sum + employee.orderCount, 0);
-                        
+
                         return (
-                          <div 
-                            key={dept} 
+                          <div
+                            key={dept}
                             className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                             onClick={() => {
                               setFilterDepartment(dept);
                               setFilterRole("student");
                               setActiveTab("all-users");
-                              }}
+                            }}
                             data-testid={`dept-card-${dept}`}
                           >
                             <div className="space-y-2">
@@ -1518,8 +1516,8 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-base">Year-wise Revenue & Business Analysis</CardTitle>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const students = users.filter(u => u.role === 'student');
@@ -1536,7 +1534,7 @@ export default function AdminUserManagementPage() {
                             const spendingPattern = year.includes('1st') ? 'Lower' : year.includes('2nd') ? 'Moderate' : year.includes('3rd') ? 'High' : 'Highest';
                             return `${year}\n- Students: ${count} (${Math.round((count / students.length) * 100)}%)\n- Revenue: ₹${yearRevenue.toLocaleString()}\n- Avg per Student: ₹${avgPerStudent.toLocaleString()}\n- Spending Pattern: ${spendingPattern}\n- Orders: ~${Math.round(count * (year.includes('4th') ? 3.5 : year.includes('3rd') ? 3 : year.includes('2nd') ? 2.5 : 2))} estimated\n`;
                           }).join('\n');
-                          
+
                           const blob = new Blob([`Year Business Analysis - ${new Date().toLocaleDateString()}\n\n${reportData}`], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const link = document.createElement('a');
@@ -1546,7 +1544,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         Export Business Data
@@ -1564,7 +1562,7 @@ export default function AdminUserManagementPage() {
                           '3rd': students.filter(s => s.passingOutYear === (currentYear + 2) || s.currentStudyYear === 3).length,
                           '4th': students.filter(s => s.passingOutYear === (currentYear + 1) || s.currentStudyYear === 4).length
                         };
-                        
+
                         return Object.entries(yearData).map(([year, count]) => {
                           const yearRevenue = Math.round((count / students.length) * stats.totalRevenue * 0.7);
                           const avgPerStudent = count > 0 ? Math.round(yearRevenue / count) : 0;
@@ -1572,16 +1570,16 @@ export default function AdminUserManagementPage() {
                           const estimatedOrders = Math.round(count * orderMultiplier);
                           const spendingTrend = year === '1st' ? 'Lower' : year === '2nd' ? 'Moderate' : year === '3rd' ? 'High' : 'Highest';
                           const trendColor = year === '1st' ? 'text-blue-600' : year === '2nd' ? 'text-green-600' : year === '3rd' ? 'text-orange-600' : 'text-red-600';
-                          
+
                           return (
-                            <div 
-                              key={year} 
+                            <div
+                              key={year}
                               className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
                               onClick={() => {
                                 setFilterYear(year);
                                 setFilterRole("student");
                                 setActiveTab("all-users");
-                                }}
+                              }}
                               data-testid={`year-card-${year}`}
                             >
                               <div className="space-y-3">
@@ -1592,7 +1590,7 @@ export default function AdminUserManagementPage() {
                                     {students.length > 0 ? Math.round((count / students.length) * 100) : 0}% of students
                                   </div>
                                 </div>
-                                
+
                                 <div className="space-y-2 text-xs">
                                   <div className="flex justify-between">
                                     <span className="text-muted-foreground">Revenue</span>
@@ -1611,7 +1609,7 @@ export default function AdminUserManagementPage() {
                                     <span className={`font-bold ${trendColor}`}>{spendingTrend}</span>
                                   </div>
                                 </div>
-                                
+
                                 <div className="text-xs text-center text-primary mt-2">Click to filter</div>
                               </div>
                             </div>
@@ -1648,14 +1646,14 @@ export default function AdminUserManagementPage() {
                   <CardHeader>
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-base">Department × Year Matrix</CardTitle>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           const students = users.filter(u => u.role === 'student');
                           const currentYear = new Date().getFullYear();
                           const matrix: Record<string, Record<string, number>> = {};
-                          
+
                           students.forEach(student => {
                             if (student.department) {
                               if (!matrix[student.department]) matrix[student.department] = { '1st': 0, '2nd': 0, '3rd': 0, '4th': 0 };
@@ -1665,11 +1663,11 @@ export default function AdminUserManagementPage() {
                               else if (student.passingOutYear === (currentYear + 1) || student.currentStudyYear === 4) matrix[student.department]['4th']++;
                             }
                           });
-                          
-                          const reportData = Object.entries(matrix).map(([dept, years]) => 
+
+                          const reportData = Object.entries(matrix).map(([dept, years]) =>
                             `${dept}: 1st(${years['1st']}) 2nd(${years['2nd']}) 3rd(${years['3rd']}) 4th(${years['4th']}) Total(${years['1st'] + years['2nd'] + years['3rd'] + years['4th']})`
                           ).join('\n');
-                          
+
                           const blob = new Blob([`Department × Year Matrix - ${new Date().toLocaleDateString()}\n\n${reportData}`], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const link = document.createElement('a');
@@ -1679,7 +1677,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4 mr-1" />
                         Export Matrix
@@ -1703,8 +1701,8 @@ export default function AdminUserManagementPage() {
                           {(() => {
                             const students = users.filter(u => u.role === 'student');
                             const currentYear = new Date().getFullYear();
-                            const departments = [...new Set(students.map(s => s.department).filter(Boolean))];
-                            
+                            const departments = Array.from(new Set(students.map((s: any) => s.department).filter(Boolean))) as string[];
+
                             return departments.map(dept => {
                               const deptStudents = students.filter(s => s.department === dept);
                               const year1 = deptStudents.filter(s => s.passingOutYear === (currentYear + 4) || s.currentStudyYear === 1).length;
@@ -1712,33 +1710,33 @@ export default function AdminUserManagementPage() {
                               const year3 = deptStudents.filter(s => s.passingOutYear === (currentYear + 2) || s.currentStudyYear === 3).length;
                               const year4 = deptStudents.filter(s => s.passingOutYear === (currentYear + 1) || s.currentStudyYear === 4).length;
                               const total = year1 + year2 + year3 + year4;
-                              
+
                               return (
                                 <tr key={dept} className="border-b hover:bg-muted/50">
                                   <td className="p-2 font-medium">{dept}</td>
                                   <td className="p-2 text-center">
-                                    <span 
+                                    <span
                                       className={`px-2 py-1 rounded text-xs ${year1 > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'text-muted-foreground'}`}
                                     >
                                       {year1}
                                     </span>
                                   </td>
                                   <td className="p-2 text-center">
-                                    <span 
+                                    <span
                                       className={`px-2 py-1 rounded text-xs ${year2 > 0 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'text-muted-foreground'}`}
                                     >
                                       {year2}
                                     </span>
                                   </td>
                                   <td className="p-2 text-center">
-                                    <span 
+                                    <span
                                       className={`px-2 py-1 rounded text-xs ${year3 > 0 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 'text-muted-foreground'}`}
                                     >
                                       {year3}
                                     </span>
                                   </td>
                                   <td className="p-2 text-center">
-                                    <span 
+                                    <span
                                       className={`px-2 py-1 rounded text-xs ${year4 > 0 ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'text-muted-foreground'}`}
                                     >
                                       {year4}
@@ -1779,8 +1777,8 @@ export default function AdminUserManagementPage() {
                       <Badge variant={isDataLoading ? "secondary" : "default"}>
                         {isDataLoading ? 'Updating...' : 'Live'}
                       </Badge>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           const students = users.filter(u => u.role === 'student');
@@ -1790,7 +1788,7 @@ export default function AdminUserManagementPage() {
                             }
                             return acc;
                           }, {});
-                          const insightsData = `Comprehensive User Analytics - ${new Date().toLocaleDateString()}\n\n=== USER BREAKDOWN ===\nTotal Users: ${stats.totalUsers}\nStudents: ${stats.students} (${Math.round((stats.students/stats.totalUsers)*100)}%)\nCanteen Owner: ${stats.canteenOwner} (${Math.round((stats.canteenOwner/stats.totalUsers)*100)}%)\nStaff: ${stats.staff} (${Math.round((stats.staff/stats.totalUsers)*100)}%)\nAdmins: ${stats.admins} (${Math.round((stats.admins/stats.totalUsers)*100)}%)\n\n=== DEPARTMENT ANALYSIS ===\n${Object.entries(deptData).map(([dept, count]) => `${dept}: ${count} students`).join('\n')}\n\n=== REVENUE BREAKDOWN ===\nStudent Revenue: ₹${Math.round(stats.totalRevenue * 0.7).toLocaleString()} (70%)\nStaff Revenue: ₹${Math.round(stats.totalRevenue * 0.2).toLocaleString()} (20%)\nCanteen Owner Revenue: ₹${Math.round(stats.totalRevenue * 0.1).toLocaleString()} (10%)\n\n=== ENGAGEMENT METRICS ===\nActive Users: ${stats.activeUsers}\nEngagement Rate: ${Math.round((stats.activeUsers / stats.totalUsers) * 100)}%\nNew Users This Month: ${stats.newUsersThisMonth}\n\n=== BUSINESS INSIGHTS ===\nTotal Revenue: ₹${stats.totalRevenue.toLocaleString()}\nRevenue per User: ₹${Math.round(stats.totalRevenue / stats.totalUsers) || 0}\nAverage Order Value: ₹${stats.avgOrderValue}\nTotal Orders: ${stats.totalOrders}\nHighest Spender Category: ${stats.staff > 0 ? 'Staff' : 'Students'}\n\nGenerated by Canteen Management System`;
+                          const insightsData = `Comprehensive User Analytics - ${new Date().toLocaleDateString()}\n\n=== USER BREAKDOWN ===\nTotal Users: ${stats.totalUsers}\nStudents: ${stats.students} (${Math.round((stats.students / stats.totalUsers) * 100)}%)\nCanteen Owner: ${stats.canteenOwner} (${Math.round((stats.canteenOwner / stats.totalUsers) * 100)}%)\nStaff: ${stats.staff} (${Math.round((stats.staff / stats.totalUsers) * 100)}%)\nAdmins: ${stats.admins} (${Math.round((stats.admins / stats.totalUsers) * 100)}%)\n\n=== DEPARTMENT ANALYSIS ===\n${Object.entries(deptData).map(([dept, count]) => `${dept}: ${count} students`).join('\n')}\n\n=== REVENUE BREAKDOWN ===\nStudent Revenue: ₹${Math.round(stats.totalRevenue * 0.7).toLocaleString()} (70%)\nStaff Revenue: ₹${Math.round(stats.totalRevenue * 0.2).toLocaleString()} (20%)\nCanteen Owner Revenue: ₹${Math.round(stats.totalRevenue * 0.1).toLocaleString()} (10%)\n\n=== ENGAGEMENT METRICS ===\nActive Users: ${stats.activeUsers}\nEngagement Rate: ${Math.round((stats.activeUsers / stats.totalUsers) * 100)}%\nNew Users This Month: ${stats.newUsersThisMonth}\n\n=== BUSINESS INSIGHTS ===\nTotal Revenue: ₹${stats.totalRevenue.toLocaleString()}\nRevenue per User: ₹${Math.round(stats.totalRevenue / stats.totalUsers) || 0}\nAverage Order Value: ₹${stats.avgOrderValue}\nTotal Orders: ${stats.totalOrders}\nHighest Spender Category: ${stats.staff > 0 ? 'Staff' : 'Students'}\n\nGenerated by Canteen Management System`;
                           const blob = new Blob([insightsData], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const link = document.createElement('a');
@@ -1800,7 +1798,7 @@ export default function AdminUserManagementPage() {
                           link.click();
                           document.body.removeChild(link);
                           URL.revokeObjectURL(url);
-                          }}
+                        }}
                       >
                         <Download className="w-4 h-4 mr-2" />
                         Download Complete Report
@@ -1818,14 +1816,14 @@ export default function AdminUserManagementPage() {
                           return acc;
                         }, new Set<string>())).length} departments • {stats.students} students • ₹{Math.round(stats.totalRevenue * 0.7).toLocaleString()} student revenue
                       </p>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="mt-2 text-blue-700 hover:text-blue-800"
                         onClick={() => {
                           setFilterRole("student");
                           setActiveTab("all-users");
-                          }}
+                        }}
                       >
                         View Full Analytics
                       </Button>
@@ -1835,13 +1833,13 @@ export default function AdminUserManagementPage() {
                       <p className="text-sm text-green-600 dark:text-green-300 mt-1">
                         ₹{Math.round(stats.totalRevenue / stats.totalUsers) || 0} per user average
                       </p>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="mt-2 text-green-700 hover:text-green-800"
                         onClick={() => {
                           setLocation("/admin/analytics");
-                          }}
+                        }}
                       >
                         View Analytics
                       </Button>
@@ -1851,12 +1849,12 @@ export default function AdminUserManagementPage() {
                       <p className="text-sm text-purple-600 dark:text-purple-300 mt-1">
                         {Math.round((stats.activeUsers / stats.totalUsers) * 100) || 0}% active users
                       </p>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="mt-2 text-purple-700 hover:text-purple-800"
                         onClick={() => {
-                          }}
+                        }}
                       >
                         Analyze Trends
                       </Button>
@@ -1877,29 +1875,29 @@ export default function AdminUserManagementPage() {
                   <p className="text-sm text-muted-foreground">Monitor and resolve user complaints efficiently</p>
                 </div>
                 <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={async () => {
                       try {
                         const response = await fetch('/api/complaints/generate-samples', {
                           method: 'POST',
                         });
                         const result = await response.json();
-                        
+
                         if (result.success) {
                           await refetchComplaints(); // Refresh complaints from database
-                          } else {
+                        } else {
                           throw new Error(result.message);
                         }
                       } catch (error) {
-                        }
+                      }
                     }}
                     disabled={isDataLoading || complaintsLoading}
                   >
                     <RefreshCcw className={`w-4 h-4 mr-2 ${isDataLoading ? 'animate-spin' : ''}`} />
                     Sync Complaints
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => {
                       const complaintsData = `Complaints Report - ${new Date().toLocaleDateString()}\n\n${complaints.map(c => `Subject: ${c.subject}\nUser: ${c.userName}\nPriority: ${c.priority}\nStatus: ${c.status}\nDescription: ${c.description}\nDate: ${c.date}\n\n`).join('')}Generated by Canteen Management System`;
@@ -1912,7 +1910,7 @@ export default function AdminUserManagementPage() {
                       link.click();
                       document.body.removeChild(link);
                       URL.revokeObjectURL(url);
-                      }}
+                    }}
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export Report
@@ -2021,92 +2019,92 @@ export default function AdminUserManagementPage() {
                           </div>
                           <p className="text-sm text-muted-foreground mb-3">{complaint.description}</p>
                           <div className="flex flex-wrap gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={async () => {
                                 try {
                                   await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-                                  } catch (error) {
-                                  }
+                                } catch (error) {
+                                }
                               }}
                               disabled={complaint.status === 'Resolved'}
                             >
                               <Mail className="w-3 h-3 mr-1" />
                               Reply
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={async () => {
                                 try {
                                   const response = await fetch(`/api/complaints/${complaint.id}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ 
+                                    body: JSON.stringify({
                                       status: 'Resolved',
                                       resolvedBy: 'Admin',
                                       resolvedAt: new Date().toISOString()
                                     })
                                   });
-                                  
+
                                   if (response.ok) {
                                     await refetchComplaints(); // Refresh data from API
-                                    } else {
+                                  } else {
                                     throw new Error('Failed to update complaint');
                                   }
                                 } catch (error) {
-                                  }
+                                }
                               }}
                               disabled={complaint.status === 'Resolved'}
                             >
                               <UserCheck className="w-3 h-3 mr-1" />
                               {complaint.status === 'Resolved' ? 'Resolved' : 'Resolve'}
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={async () => {
                                 try {
                                   const response = await fetch(`/api/complaints/${complaint.id}`, {
                                     method: 'PUT',
                                     headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ 
+                                    body: JSON.stringify({
                                       priority: 'High',
                                       adminNotes: 'Escalated by admin'
                                     })
                                   });
-                                  
+
                                   if (response.ok) {
                                     await refetchComplaints(); // Refresh data from API
-                                    } else {
+                                  } else {
                                     throw new Error('Failed to escalate complaint');
                                   }
                                 } catch (error) {
-                                  }
+                                }
                               }}
                               disabled={complaint.priority === 'High'}
                             >
                               <AlertTriangle className="w-3 h-3 mr-1" />
                               {complaint.priority === 'High' ? 'Escalated' : 'Escalate'}
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={async () => {
                                 if (window.confirm(`Remove complaint: ${complaint.subject}?`)) {
                                   try {
                                     const response = await fetch(`/api/complaints/${complaint.id}`, {
                                       method: 'DELETE'
                                     });
-                                    
+
                                     if (response.ok) {
                                       await refetchComplaints(); // Refresh data from API
-                                      } else {
+                                    } else {
                                       throw new Error('Failed to delete complaint');
                                     }
                                   } catch (error) {
-                                    }
+                                  }
                                 }
                               }}
                               className="text-destructive hover:text-destructive"
@@ -2133,8 +2131,8 @@ export default function AdminUserManagementPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="h-auto p-4 flex flex-col items-center space-y-2"
                       onClick={() => setLocation("/admin/user-management/send-email")}
                       data-testid="button-send-email"
@@ -2142,8 +2140,8 @@ export default function AdminUserManagementPage() {
                       <Mail className="w-6 h-6" />
                       <span className="text-sm">Send Email</span>
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="h-auto p-4 flex flex-col items-center space-y-2"
                       onClick={() => setLocation("/admin/user-management/add-loyalty-points")}
                       data-testid="button-add-loyalty-points"
@@ -2151,8 +2149,8 @@ export default function AdminUserManagementPage() {
                       <Gift className="w-6 h-6" />
                       <span className="text-sm">Add Loyalty Points</span>
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="h-auto p-4 flex flex-col items-center space-y-2"
                       onClick={() => setLocation("/admin/user-management/apply-discount")}
                       data-testid="button-apply-discount"
@@ -2160,11 +2158,11 @@ export default function AdminUserManagementPage() {
                       <CreditCard className="w-6 h-6" />
                       <span className="text-sm">Apply Discount</span>
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="h-auto p-4 flex flex-col items-center space-y-2"
                       onClick={() => {
-                        }}
+                      }}
                       data-testid="button-send-warning"
                     >
                       <AlertTriangle className="w-6 h-6" />
@@ -2180,48 +2178,48 @@ export default function AdminUserManagementPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setLocation("/admin/user-management/export-data")}
                       data-testid="button-export-data"
                     >
                       Export User Data
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setLocation("/admin/user-management/import-users")}
                       data-testid="button-import-users"
                     >
                       Import Users
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
-                        }}
+                      }}
                       data-testid="button-backup-database"
                     >
                       Backup Database
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
-                        }}
+                      }}
                       data-testid="button-generate-report"
                     >
                       Generate Report
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
-                        }}
+                      }}
                       data-testid="button-clean-inactive-users"
                     >
                       Clean Inactive Users
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
-                        }}
+                      }}
                       data-testid="button-update-permissions"
                     >
                       Update Permissions
@@ -2234,14 +2232,14 @@ export default function AdminUserManagementPage() {
         </Tabs>
 
         {/* Delete User Dialog */}
-        <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({open, user: null})}>
+        <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ open, user: null })}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete User</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                Are you sure you want to delete <strong>{deleteDialog.user?.name}</strong>? 
+                Are you sure you want to delete <strong>{deleteDialog.user?.name}</strong>?
                 This action cannot be undone and will permanently remove all user data.
               </p>
               <div className="bg-red-50 dark:bg-red-950 p-3 rounded-lg">
@@ -2256,14 +2254,14 @@ export default function AdminUserManagementPage() {
                 </div>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setDeleteDialog({open: false, user: null})}
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteDialog({ open: false, user: null })}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => handleDeleteUser(deleteDialog.user?.id, deleteDialog.user?.name)}
                 >
                   Delete User
@@ -2274,7 +2272,7 @@ export default function AdminUserManagementPage() {
         </Dialog>
 
         {/* Edit User Details Dialog */}
-        <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({open, user: null})}>
+        <Dialog open={editDialog.open} onOpenChange={(open) => setEditDialog({ open, user: null })}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit User Details</DialogTitle>
@@ -2284,20 +2282,20 @@ export default function AdminUserManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-name">Full Name</Label>
-                  <Input 
-                    id="edit-name" 
-                    value={editFormData.name} 
-                    onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                  <Input
+                    id="edit-name"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                     placeholder="Enter full name"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-email">Email Address</Label>
-                  <Input 
-                    id="edit-email" 
+                  <Input
+                    id="edit-email"
                     type="email"
-                    value={editFormData.email} 
-                    onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
+                    value={editFormData.email}
+                    onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                     placeholder="Enter email address"
                   />
                 </div>
@@ -2306,18 +2304,18 @@ export default function AdminUserManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-phone">Phone Number</Label>
-                  <Input 
-                    id="edit-phone" 
-                    value={editFormData.phoneNumber} 
-                    onChange={(e) => setEditFormData({...editFormData, phoneNumber: e.target.value})}
+                  <Input
+                    id="edit-phone"
+                    value={editFormData.phoneNumber}
+                    onChange={(e) => setEditFormData({ ...editFormData, phoneNumber: e.target.value })}
                     placeholder="Enter phone number"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-role">Role</Label>
-                  <Select 
-                    value={editFormData.role} 
-                    onValueChange={(value) => setEditFormData({...editFormData, role: value})}
+                  <Select
+                    value={editFormData.role}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, role: value })}
                     disabled={editDialog.user?.role === 'super_admin'}
                   >
                     <SelectTrigger>
@@ -2345,15 +2343,15 @@ export default function AdminUserManagementPage() {
                   {(editFormData.role === 'employee' || editFormData.role === 'contractor' || editFormData.role === 'visitor' || editFormData.role === 'guest') ? 'Organization' : 'College'}
                 </Label>
                 {(editFormData.role === 'employee' || editFormData.role === 'contractor' || editFormData.role === 'visitor' || editFormData.role === 'guest') ? (
-                  <Select 
-                    value={editFormData.college} 
-                    onValueChange={(value) => setEditFormData({...editFormData, college: value})}
+                  <Select
+                    value={editFormData.college}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, college: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select organization" />
                     </SelectTrigger>
                     <SelectContent>
-                      {organizationsData?.organizations?.filter(org => org.isActive).map(org => (
+                      {organizationsData?.organizations?.filter((org: any) => org.isActive).map((org: any) => (
                         <SelectItem key={org.id} value={org.id}>
                           {org.name} ({org.code})
                         </SelectItem>
@@ -2361,9 +2359,9 @@ export default function AdminUserManagementPage() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <Select 
-                    value={editFormData.college} 
-                    onValueChange={(value) => setEditFormData({...editFormData, college: value})}
+                  <Select
+                    value={editFormData.college}
+                    onValueChange={(value) => setEditFormData({ ...editFormData, college: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select college" />
@@ -2386,19 +2384,19 @@ export default function AdminUserManagementPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-register">Register Number</Label>
-                      <Input 
-                        id="edit-register" 
-                        value={editFormData.registerNumber} 
-                        onChange={(e) => setEditFormData({...editFormData, registerNumber: e.target.value})}
+                      <Input
+                        id="edit-register"
+                        value={editFormData.registerNumber}
+                        onChange={(e) => setEditFormData({ ...editFormData, registerNumber: e.target.value })}
                         placeholder="Enter register number"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edit-department">Department</Label>
-                      <Input 
-                        id="edit-department" 
-                        value={editFormData.department} 
-                        onChange={(e) => setEditFormData({...editFormData, department: e.target.value})}
+                      <Input
+                        id="edit-department"
+                        value={editFormData.department}
+                        onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
                         placeholder="Enter department"
                       />
                     </div>
@@ -2406,31 +2404,31 @@ export default function AdminUserManagementPage() {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="edit-joining-year">Joining Year</Label>
-                      <Input 
-                        id="edit-joining-year" 
+                      <Input
+                        id="edit-joining-year"
                         type="number"
-                        value={editFormData.joiningYear} 
-                        onChange={(e) => setEditFormData({...editFormData, joiningYear: e.target.value})}
+                        value={editFormData.joiningYear}
+                        onChange={(e) => setEditFormData({ ...editFormData, joiningYear: e.target.value })}
                         placeholder="2020"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edit-passing-year">Passing Year</Label>
-                      <Input 
-                        id="edit-passing-year" 
+                      <Input
+                        id="edit-passing-year"
                         type="number"
-                        value={editFormData.passingOutYear} 
-                        onChange={(e) => setEditFormData({...editFormData, passingOutYear: e.target.value})}
+                        value={editFormData.passingOutYear}
+                        onChange={(e) => setEditFormData({ ...editFormData, passingOutYear: e.target.value })}
                         placeholder="2024"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="edit-current-year">Current Study Year</Label>
-                      <Input 
-                        id="edit-current-year" 
+                      <Input
+                        id="edit-current-year"
                         type="number"
-                        value={editFormData.currentStudyYear} 
-                        onChange={(e) => setEditFormData({...editFormData, currentStudyYear: e.target.value})}
+                        value={editFormData.currentStudyYear}
+                        onChange={(e) => setEditFormData({ ...editFormData, currentStudyYear: e.target.value })}
                         placeholder="3"
                       />
                     </div>
@@ -2441,24 +2439,24 @@ export default function AdminUserManagementPage() {
               {(editFormData.role === 'staff' || editFormData.role === 'employee' || editFormData.role === 'guest' || editFormData.role === 'contractor' || editFormData.role === 'visitor') && (
                 <div className="space-y-4 p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                   <h4 className="font-medium text-green-800 dark:text-green-200">
-                    {editFormData.role === 'staff' ? 'Staff' : 
-                     editFormData.role === 'employee' ? 'Employee' :
-                     editFormData.role === 'guest' ? 'Guest' :
-                     editFormData.role === 'contractor' ? 'Contractor' :
-                     editFormData.role === 'visitor' ? 'Visitor' : 'Staff'} Information
+                    {editFormData.role === 'staff' ? 'Staff' :
+                      editFormData.role === 'employee' ? 'Employee' :
+                        editFormData.role === 'guest' ? 'Guest' :
+                          editFormData.role === 'contractor' ? 'Contractor' :
+                            editFormData.role === 'visitor' ? 'Visitor' : 'Staff'} Information
                   </h4>
                   <div className="space-y-2">
                     <Label htmlFor="edit-staff-id">
-                      {editFormData.role === 'staff' ? 'Staff ID' : 
-                       editFormData.role === 'employee' ? 'Employee ID' :
-                       editFormData.role === 'guest' ? 'Guest ID' :
-                       editFormData.role === 'contractor' ? 'Contractor ID' :
-                       editFormData.role === 'visitor' ? 'Visitor ID' : 'ID'}
+                      {editFormData.role === 'staff' ? 'Staff ID' :
+                        editFormData.role === 'employee' ? 'Employee ID' :
+                          editFormData.role === 'guest' ? 'Guest ID' :
+                            editFormData.role === 'contractor' ? 'Contractor ID' :
+                              editFormData.role === 'visitor' ? 'Visitor ID' : 'ID'}
                     </Label>
-                    <Input 
-                      id="edit-staff-id" 
-                      value={editFormData.staffId} 
-                      onChange={(e) => setEditFormData({...editFormData, staffId: e.target.value})}
+                    <Input
+                      id="edit-staff-id"
+                      value={editFormData.staffId}
+                      onChange={(e) => setEditFormData({ ...editFormData, staffId: e.target.value })}
                       placeholder={`Enter ${editFormData.role} ID`}
                     />
                   </div>
@@ -2473,7 +2471,7 @@ export default function AdminUserManagementPage() {
                     <div>
                       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Role Change Warning</p>
                       <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                        Changing role from <strong>{editDialog.user?.role}</strong> to <strong>{editFormData.role}</strong> will 
+                        Changing role from <strong>{editDialog.user?.role}</strong> to <strong>{editFormData.role}</strong> will
                         {editFormData.role === 'student' || editFormData.role === 'staff' ? ' require additional information' : ' clear role-specific data'}.
                       </p>
                     </div>
@@ -2483,10 +2481,10 @@ export default function AdminUserManagementPage() {
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-2 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
-                    setEditDialog({open: false, user: null});
+                    setEditDialog({ open: false, user: null });
                     setEditFormData({
                       name: '', email: '', phoneNumber: '', role: '',
                       registerNumber: '', college: '', department: '', joiningYear: '',
@@ -2496,7 +2494,7 @@ export default function AdminUserManagementPage() {
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={() => {
                     if (editFormData.name && editFormData.email && editFormData.role) {
                       handleUserUpdate(editDialog.user?.id, editFormData, editDialog.user?.name);
@@ -2512,9 +2510,9 @@ export default function AdminUserManagementPage() {
         </Dialog>
 
         {/* Comprehensive User Details Dialog */}
-        <Dialog 
-          open={userDetailsDialog.open} 
-          onOpenChange={(open) => setUserDetailsDialog({open, user: open ? userDetailsDialog.user : null})}
+        <Dialog
+          open={userDetailsDialog.open}
+          onOpenChange={(open) => setUserDetailsDialog({ open, user: open ? userDetailsDialog.user : null })}
         >
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
@@ -2530,11 +2528,11 @@ export default function AdminUserManagementPage() {
                   <div className="text-sm text-muted-foreground">{userDetailsDialog.user?.email}</div>
                 </div>
                 <div className="flex-1" />
-                <Badge 
+                <Badge
                   variant={userDetailsDialog.user?.role?.startsWith('blocked_') ? 'destructive' : 'default'}
                   className="ml-auto"
                 >
-                  {userDetailsDialog.user?.role?.startsWith('blocked_') 
+                  {userDetailsDialog.user?.role?.startsWith('blocked_')
                     ? `Blocked (${userDetailsDialog.user.role.replace('blocked_', '')})`
                     : userDetailsDialog.user?.role || 'student'
                   }
@@ -2654,7 +2652,7 @@ export default function AdminUserManagementPage() {
                                   </div>
                                 </div>
                                 <div className="text-sm text-muted-foreground">
-                                  {JSON.parse(order.items || '[]').map((item: any, i: number) => 
+                                  {JSON.parse(order.items || '[]').map((item: any, i: number) =>
                                     item.name
                                   ).join(', ')}
                                 </div>
@@ -2689,9 +2687,9 @@ export default function AdminUserManagementPage() {
                                       {new Date(payment.createdAt).toLocaleDateString()}
                                     </div>
                                   </div>
-                                  <Badge 
-                                    variant={payment.status === 'success' ? 'default' : 
-                                            payment.status === 'failed' ? 'destructive' : 'secondary'}
+                                  <Badge
+                                    variant={payment.status === 'success' ? 'default' :
+                                      payment.status === 'failed' ? 'destructive' : 'secondary'}
                                   >
                                     {payment.status}
                                   </Badge>
@@ -2736,9 +2734,9 @@ export default function AdminUserManagementPage() {
                                     </div>
                                   </div>
                                   <div className="flex flex-col items-end space-y-1">
-                                    <Badge 
-                                      variant={complaint.status === 'Resolved' ? 'default' : 
-                                              complaint.status === 'Open' ? 'destructive' : 'secondary'}
+                                    <Badge
+                                      variant={complaint.status === 'Resolved' ? 'default' :
+                                        complaint.status === 'Open' ? 'destructive' : 'secondary'}
                                     >
                                       {complaint.status}
                                     </Badge>
@@ -2774,10 +2772,10 @@ export default function AdminUserManagementPage() {
                         <div className="grid grid-cols-2 gap-4">
                           {/* Block/Unblock User */}
                           {userDetailsDialog.user.role?.startsWith('blocked_') ? (
-                            <Button 
+                            <Button
                               onClick={() => {
                                 handleUnblockUser(userDetailsDialog.user.id, userDetailsDialog.user.name);
-                                setUserDetailsDialog({open: false, user: null});
+                                setUserDetailsDialog({ open: false, user: null });
                               }}
                               className="w-full"
                               variant="default"
@@ -2786,10 +2784,10 @@ export default function AdminUserManagementPage() {
                               Unblock User
                             </Button>
                           ) : (
-                            <Button 
+                            <Button
                               onClick={() => {
                                 handleBlockUser(userDetailsDialog.user.id, userDetailsDialog.user.name);
-                                setUserDetailsDialog({open: false, user: null});
+                                setUserDetailsDialog({ open: false, user: null });
                               }}
                               className="w-full"
                               variant="destructive"
@@ -2798,9 +2796,9 @@ export default function AdminUserManagementPage() {
                               Block User
                             </Button>
                           )}
-                          
+
                           {/* Edit User */}
-                          <Button 
+                          <Button
                             onClick={() => {
                               setEditFormData({
                                 name: userDetailsDialog.user.name || '',
@@ -2815,8 +2813,8 @@ export default function AdminUserManagementPage() {
                                 currentStudyYear: userDetailsDialog.user.currentStudyYear || '',
                                 staffId: userDetailsDialog.user.role === 'staff' ? (userDetailsDialog.user.staffId || '') : (userDetailsDialog.user.registerNumber || '')
                               });
-                              setEditDialog({open: true, user: userDetailsDialog.user});
-                              setUserDetailsDialog({open: false, user: null});
+                              setEditDialog({ open: true, user: userDetailsDialog.user });
+                              setUserDetailsDialog({ open: false, user: null });
                             }}
                             className="w-full"
                             variant="outline"
@@ -2824,24 +2822,24 @@ export default function AdminUserManagementPage() {
                             <Edit className="w-4 h-4 mr-2" />
                             Edit User
                           </Button>
-                          
+
                           {/* Send Email */}
-                          <Button 
+                          <Button
                             onClick={() => {
                               // Future implementation for sending email
-                              }}
+                            }}
                             className="w-full"
                             variant="outline"
                           >
                             <Mail className="w-4 h-4 mr-2" />
                             Send Email
                           </Button>
-                          
+
                           {/* Reset Password */}
-                          <Button 
+                          <Button
                             onClick={() => {
                               // Future implementation for password reset
-                              }}
+                            }}
                             className="w-full"
                             variant="outline"
                           >
@@ -2849,7 +2847,7 @@ export default function AdminUserManagementPage() {
                             Reset Password
                           </Button>
                         </div>
-                        
+
                         {/* User Statistics */}
                         <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                           <div className="text-center">

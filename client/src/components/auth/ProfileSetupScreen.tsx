@@ -3067,7 +3067,6 @@ export function ProfileSetupScreen({ userEmail, userName, onComplete, onBackToLo
                                         const formatType = (() => {
                                           switch (watchedRole) {
                                             case UserRole.STUDENT: return "student";
-                                            case UserRole.STAFF: return "staff";
                                             case UserRole.EMPLOYEE: return "employee";
                                             case UserRole.CONTRACTOR: return "contractor";
                                             case UserRole.VISITOR: return "visitor";

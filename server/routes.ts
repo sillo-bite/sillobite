@@ -382,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📍 Auto-setting location to organization: ${(validatedData as any).organizationId}`);
       }
 
-      const user = await storage.createUser(validatedData);
+      const user = await storage.createUser(validatedData as any);
       console.log(`✅ User created successfully - ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Role: ${user.role}`);
       res.status(201).json(user);
     } catch (error) {
@@ -8558,7 +8558,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // User exists but doesn't have passwordHash - update it
             await storage.updateUser(existingUser.id, {
               passwordHash,
-              role: 'delivery_person',
+              role: 'DELIVERY_PERSON',
               isProfileComplete: true
             });
             createdUser = await storage.getUser(existingUser.id);
@@ -8570,13 +8570,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: email,
               name: validatedData.name,
               phoneNumber: validatedData.phoneNumber,
-              role: 'delivery_person',
+              role: 'DELIVERY_PERSON',
               passwordHash: passwordHash,
               isProfileComplete: true, // Delivery person profile is already complete
             };
 
             const validatedUserData = insertUserSchema.parse(userData);
-            createdUser = await storage.createUser(validatedUserData);
+            createdUser = await storage.createUser(validatedUserData as any);
 
             console.log(`✅ Created user account for delivery person: ${email} with role: delivery_person`);
             console.log(`   User ID: ${createdUser.id}, Email: ${createdUser.email}`);
