@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 
 interface MediaBanner {
   id: string;
@@ -20,7 +20,19 @@ interface HomeMediaBannerProps {
 
 export default function HomeMediaBanner({ banners, isLoading }: HomeMediaBannerProps) {
   const [imagesLoaded, setImagesLoaded] = useState<Record<string, boolean>>({});
+  const [api, setApi] = useState<CarouselApi>();
   const { resolvedTheme } = useTheme();
+
+  // Auto-slide every 3 seconds when there are multiple banners
+  useEffect(() => {
+    if (!api || banners.length <= 1) return;
+
+    const interval = setInterval(() => {
+      api.scrollNext();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [api, banners.length]);
 
   // Filter out banners with invalid data
   const validBanners = useMemo(() =>
@@ -67,6 +79,7 @@ export default function HomeMediaBanner({ banners, isLoading }: HomeMediaBannerP
           loop: true,
           dragFree: false,
         }}
+        setApi={setApi}
         className="w-full"
       >
         <CarouselContent className="-ml-4">
