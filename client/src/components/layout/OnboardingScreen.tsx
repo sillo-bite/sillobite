@@ -75,12 +75,15 @@ export default function OnboardingScreen() {
   const handleGetStarted = () => {
     localStorage.setItem("onboarding_completed", "true");
     sessionStorage.setItem("fromOnboarding", "true");
-    setLocation("/login");
+    const searchParams = window.location.search;
+    setLocation(`/login${searchParams}`);
   };
 
   const handleSkip = () => {
     localStorage.setItem("onboarding_completed", "true");
-    setLocation("/login");
+    sessionStorage.setItem("fromOnboarding", "true");
+    const searchParams = window.location.search;
+    setLocation(`/login${searchParams}`);
   };
 
   return (

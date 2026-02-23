@@ -109,7 +109,8 @@ export default function LoginScreen() {
       }
 
       // If user directly accessed login without onboarding and no QR data, redirect to onboarding
-      if (!fromQR && !skipOnboarding && !pendingQRData && !fromOnboarding) {
+      const onboardingDone = localStorage.getItem('onboarding_completed') === 'true';
+      if (!fromQR && !skipOnboarding && !pendingQRData && !fromOnboarding && !onboardingDone) {
         // This ensures users go through the proper flow: Splash → Onboarding → Login
         console.log('🔄 Redirecting to onboarding - user accessed login directly');
         const searchParams = window.location.search;
