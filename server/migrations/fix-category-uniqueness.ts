@@ -12,54 +12,54 @@ import { connectToMongoDB } from '../mongodb';
 export async function fixCategoryUniqueness() {
   try {
     console.log('🔄 Starting category uniqueness migration...');
-    
+
     // Connect to MongoDB
     await connectToMongoDB();
-    
+
     const db = mongoose.connection.db;
     if (!db) {
       throw new Error('Database connection not available');
     }
-    
+
     const collection = db.collection('categories');
-    
+
     // Get existing indexes
     const existingIndexes = await collection.indexes();
     console.log('📋 Existing indexes:', existingIndexes.map(idx => idx.name));
-    
+
     // Check if there's a unique index on just 'name'
-    const nameOnlyIndex = existingIndexes.find(idx => 
-      idx.key && 
-      Object.keys(idx.key).length === 1 && 
-      idx.key.name === 1 && 
+    const nameOnlyIndex = existingIndexes.find(idx =>
+      idx.key &&
+      Object.keys(idx.key).length === 1 &&
+      idx.key.name === 1 &&
       idx.unique === true
     );
-    
+
     if (nameOnlyIndex) {
       console.log('⚠️ Found unique index on name only, dropping it...');
-      await collection.dropIndex(nameOnlyIndex.name);
+      await collection.dropIndex(nameOnlyIndex.name!);
       console.log('✅ Dropped unique index on name only');
     }
-    
+
     // Check if compound index already exists
-    const compoundIndex = existingIndexes.find(idx => 
-      idx.key && 
-      idx.key.name === 1 && 
-      idx.key.canteenId === 1 && 
+    const compoundIndex = existingIndexes.find(idx =>
+      idx.key &&
+      idx.key.name === 1 &&
+      idx.key.canteenId === 1 &&
       idx.unique === true
     );
-    
+
     if (!compoundIndex) {
       console.log('🔧 Creating compound unique index on (name, canteenId)...');
       await collection.createIndex(
-        { name: 1, canteenId: 1 }, 
+        { name: 1, canteenId: 1 },
         { unique: true, name: 'name_canteenId_unique' }
       );
       console.log('✅ Created compound unique index on (name, canteenId)');
     } else {
       console.log('✅ Compound unique index on (name, canteenId) already exists');
     }
-    
+
     // Verify the final indexes
     const finalIndexes = await collection.indexes();
     console.log('📋 Final indexes:', finalIndexes.map(idx => ({
@@ -67,9 +67,9 @@ export async function fixCategoryUniqueness() {
       key: idx.key,
       unique: idx.unique
     })));
-    
+
     console.log('🎉 Category uniqueness migration completed successfully!');
-    
+
   } catch (error) {
     console.error('❌ Category uniqueness migration failed:', error);
     throw error;

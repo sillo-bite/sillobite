@@ -197,7 +197,9 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
       vegOnly
     ],
     placeholderData: (previousData) => previousData,
-    queryFn: async ({ pageParam, signal }: { pageParam: number; signal: AbortSignal }) => {
+    queryFn: async (context) => {
+      const pageParam = context.pageParam as number;
+      const signal = context.signal;
       const categoryIdOrName = getCategoryForAPI();
       const params = new URLSearchParams({
         page: pageParam.toString(),
@@ -228,7 +230,7 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
     },
   });
 
-  const menuItems = menuData?.pages.flatMap(page => page.items) || [];
+  const menuItems = menuData?.pages.flatMap((page: any) => page.items) || [];
   const isLoading = categoriesLoading || menuItemsLoading;
 
   useEffect(() => {

@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { 
+import {
   Plus, Trash2, Hash, Type, HelpCircle, Eye, Save, BarChart3, Settings, AlertCircle, ArrowUpDown, ChevronLeft, ChevronRight, X, Calendar, Lock
 } from "lucide-react";
 
@@ -76,13 +76,13 @@ export default function RegistrationFormatBuilder({
   // Determine if we're in edit mode (use explicit prop or detect from format data)
   // Use explicit isEditing prop if provided, otherwise detect from format data
   const isEditMode = isEditing || !!(initialFormat?.id && initialFormat?.name);
-  
+
   // Generate default name for create mode only
   const generateDefaultName = () => {
     const yearText = year === 1 ? '1st Year' : year === 2 ? '2nd Year' : year === 3 ? '3rd Year' : `${year}th Year`;
     return `${departmentCode} ${yearText} Standard Format`;
   };
-  
+
   // Initialize format name: use existing name for edit mode, generate default for create mode
   const [formatName, setFormatName] = useState(() => {
     if (isEditMode && initialFormat?.name) {
@@ -90,8 +90,8 @@ export default function RegistrationFormatBuilder({
     }
     return generateDefaultName();
   });
-  
-  
+
+
   // Migration function to handle existing formats with old yearFormat field
   const migrateFormatStructure = (formats: RegistrationFormat['formats']): RegistrationFormat['formats'] => {
     const migrateStructure = (structure: any[]) => {
@@ -136,27 +136,27 @@ export default function RegistrationFormatBuilder({
 
   const getNumbersRangeDisplay = (range: { min: number; max: number } | undefined, positionsLength?: number) => {
     if (!range) return '00-99';
-    
+
     // Use the number of merged positions to determine padding length
     const paddingLength = positionsLength || Math.max(String(range.min).length, String(range.max).length);
-    
+
     const paddedMin = String(range.min).padStart(paddingLength, '0');
     const paddedMax = String(range.max).padStart(paddingLength, '0');
-    
+
     return `${paddedMin}-${paddedMax}`;
   };
   const [activeTab, setActiveTab] = useState("student");
   const [selectedPositions, setSelectedPositions] = useState<number[]>([]);
   const [isMerging, setIsMerging] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
   const [isDragging, setIsDragging] = useState(false);
-  
+
   // Validate current tab when it changes
   React.useEffect(() => {
     validateFormat(activeTab as keyof RegistrationFormat['formats']);
   }, [activeTab]);
-  
-  
+
+
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragEnd, setDragEnd] = useState<number | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -170,132 +170,132 @@ export default function RegistrationFormatBuilder({
     userType: 'student',
     position: 1
   });
-  
+
   const [formats, setFormats] = useState<RegistrationFormat['formats']>(() => {
     if (initialFormat?.formats) {
       // Migrate existing format to remove old yearFormat fields
       return migrateFormatStructure(initialFormat.formats);
     }
     return {
-       student: {
-         totalLength: 10,
-         structure: [
-           { 
-             position: 1, 
-             type: 'fixed', 
-             value: 'INST', 
-             description: 'Institution prefix',
-             range: { min: 0, max: 0, positions: [1, 2, 3] }
-           },
-           { 
-             position: 4, 
-             type: 'digit', 
-             description: 'Year digits',
-             range: { min: 0, max: 0, positions: [4, 5] }
-           },
-           { 
-             position: 6, 
-             type: 'alphabet', 
-             description: 'Department code',
-             range: { min: 0, max: 0, positions: [6, 7, 8] }
-           },
-           { 
-             position: 9, 
-             type: 'numbers_range', 
-             description: 'Serial number range',
-             range: { min: 1, max: 99, positions: [9, 10] }
-           }
-         ],
-         specialCharacters: [],
-         example: 'INST24CSE01',
-         description: 'Student registration number format'
-       },
-       staff: {
-         totalLength: 12,
-         structure: [
-           { 
-             position: 1, 
-             type: 'fixed', 
-             value: 'INST', 
-             description: 'Institution prefix',
-             range: { min: 0, max: 0, positions: [1, 2, 3] }
-           },
-           { 
-             position: 4, 
-             type: 'alphabet', 
-             description: 'Department code',
-             range: { min: 0, max: 0, positions: [4, 5, 6] }
-           },
-           { 
-             position: 7, 
-             type: 'fixed', 
-             value: 'STA', 
-             description: 'Staff identifier',
-             range: { min: 0, max: 0, positions: [7, 8, 9] }
-           },
-           { 
-             position: 10, 
-             type: 'fixed', 
-             value: 'FF', 
-             description: 'Staff suffix',
-             range: { min: 0, max: 0, positions: [10, 11] }
-           },
-           { 
-             position: 12, 
-             type: 'numbers_range', 
-             description: 'Serial number range',
-             range: { min: 1, max: 999, positions: [12] }
-           }
-         ],
-         specialCharacters: [],
-         example: 'INSTCSESTAFF001',
-         description: 'Staff registration number format'
-       },
-       employee: {
-         totalLength: 12,
-         structure: [
-           { position: 1, type: 'fixed', value: 'I', description: 'Institution prefix - I' },
-           { position: 2, type: 'fixed', value: 'N', description: 'Institution prefix - N' },
-           { position: 3, type: 'fixed', value: 'S', description: 'Institution prefix - S' },
-           { position: 4, type: 'fixed', value: 'T', description: 'Institution prefix - T' },
-           { position: 4, type: 'alphabet', description: 'Department code - first letter' },
-           { position: 5, type: 'alphabet', description: 'Department code - second letter' },
-           { position: 6, type: 'alphabet', description: 'Department code - third letter' },
-           { position: 7, type: 'fixed', value: 'E', description: 'Employee identifier - E' },
-           { position: 8, type: 'fixed', value: 'M', description: 'Employee identifier - M' },
-           { position: 9, type: 'fixed', value: 'P', description: 'Employee identifier - P' },
-           { 
-             position: 10, 
-             type: 'numbers_range', 
-             description: 'Serial number range',
-             range: { min: 1, max: 999, positions: [10, 11, 12] }
-           }
-         ],
-         specialCharacters: [],
-         example: 'INSTCSEEMP001',
-         description: 'Employee registration number format'
-       },
-       guest: {
-         totalLength: 8,
-         structure: [
-           { position: 1, type: 'fixed', value: 'I', description: 'Institution prefix - I' },
-           { position: 2, type: 'fixed', value: 'N', description: 'Institution prefix - N' },
-           { position: 3, type: 'fixed', value: 'S', description: 'Institution prefix - S' },
-           { position: 4, type: 'fixed', value: 'T', description: 'Institution prefix - T' },
-           { position: 4, type: 'fixed', value: 'G', description: 'Guest identifier - G' },
-           { position: 5, type: 'fixed', value: 'S', description: 'Guest identifier - S' },
-           { position: 6, type: 'fixed', value: 'T', description: 'Guest identifier - T' },
-           { 
-             position: 7, 
-             type: 'numbers_range', 
-             description: 'Serial number range',
-             range: { min: 1, max: 99, positions: [7, 8] }
-           }
-         ],
-         specialCharacters: [],
-         example: 'INSTGST01',
-         description: 'Guest registration number format'
-       }
+      student: {
+        totalLength: 10,
+        structure: [
+          {
+            position: 1,
+            type: 'fixed',
+            value: 'INST',
+            description: 'Institution prefix',
+            range: { min: 0, max: 0, positions: [1, 2, 3] }
+          },
+          {
+            position: 4,
+            type: 'digit',
+            description: 'Year digits',
+            range: { min: 0, max: 0, positions: [4, 5] }
+          },
+          {
+            position: 6,
+            type: 'alphabet',
+            description: 'Department code',
+            range: { min: 0, max: 0, positions: [6, 7, 8] }
+          },
+          {
+            position: 9,
+            type: 'numbers_range',
+            description: 'Serial number range',
+            range: { min: 1, max: 99, positions: [9, 10] }
+          }
+        ],
+        specialCharacters: [],
+        example: 'INST24CSE01',
+        description: 'Student registration number format'
+      },
+      staff: {
+        totalLength: 12,
+        structure: [
+          {
+            position: 1,
+            type: 'fixed',
+            value: 'INST',
+            description: 'Institution prefix',
+            range: { min: 0, max: 0, positions: [1, 2, 3] }
+          },
+          {
+            position: 4,
+            type: 'alphabet',
+            description: 'Department code',
+            range: { min: 0, max: 0, positions: [4, 5, 6] }
+          },
+          {
+            position: 7,
+            type: 'fixed',
+            value: 'STA',
+            description: 'Staff identifier',
+            range: { min: 0, max: 0, positions: [7, 8, 9] }
+          },
+          {
+            position: 10,
+            type: 'fixed',
+            value: 'FF',
+            description: 'Staff suffix',
+            range: { min: 0, max: 0, positions: [10, 11] }
+          },
+          {
+            position: 12,
+            type: 'numbers_range',
+            description: 'Serial number range',
+            range: { min: 1, max: 999, positions: [12] }
+          }
+        ],
+        specialCharacters: [],
+        example: 'INSTCSESTAFF001',
+        description: 'Staff registration number format'
+      },
+      employee: {
+        totalLength: 12,
+        structure: [
+          { position: 1, type: 'fixed', value: 'I', description: 'Institution prefix - I' },
+          { position: 2, type: 'fixed', value: 'N', description: 'Institution prefix - N' },
+          { position: 3, type: 'fixed', value: 'S', description: 'Institution prefix - S' },
+          { position: 4, type: 'fixed', value: 'T', description: 'Institution prefix - T' },
+          { position: 4, type: 'alphabet', description: 'Department code - first letter' },
+          { position: 5, type: 'alphabet', description: 'Department code - second letter' },
+          { position: 6, type: 'alphabet', description: 'Department code - third letter' },
+          { position: 7, type: 'fixed', value: 'E', description: 'Employee identifier - E' },
+          { position: 8, type: 'fixed', value: 'M', description: 'Employee identifier - M' },
+          { position: 9, type: 'fixed', value: 'P', description: 'Employee identifier - P' },
+          {
+            position: 10,
+            type: 'numbers_range',
+            description: 'Serial number range',
+            range: { min: 1, max: 999, positions: [10, 11, 12] }
+          }
+        ],
+        specialCharacters: [],
+        example: 'INSTCSEEMP001',
+        description: 'Employee registration number format'
+      },
+      guest: {
+        totalLength: 8,
+        structure: [
+          { position: 1, type: 'fixed', value: 'I', description: 'Institution prefix - I' },
+          { position: 2, type: 'fixed', value: 'N', description: 'Institution prefix - N' },
+          { position: 3, type: 'fixed', value: 'S', description: 'Institution prefix - S' },
+          { position: 4, type: 'fixed', value: 'T', description: 'Institution prefix - T' },
+          { position: 4, type: 'fixed', value: 'G', description: 'Guest identifier - G' },
+          { position: 5, type: 'fixed', value: 'S', description: 'Guest identifier - S' },
+          { position: 6, type: 'fixed', value: 'T', description: 'Guest identifier - T' },
+          {
+            position: 7,
+            type: 'numbers_range',
+            description: 'Serial number range',
+            range: { min: 1, max: 99, positions: [7, 8] }
+          }
+        ],
+        specialCharacters: [],
+        example: 'INSTGST01',
+        description: 'Guest registration number format'
+      }
     };
   });
 
@@ -304,7 +304,7 @@ export default function RegistrationFormatBuilder({
       ...prev,
       [userType]: { ...prev[userType], ...updates }
     }));
-    
+
     // Clear validation errors when user makes changes
     setValidationErrors(prev => {
       const newErrors = { ...prev };
@@ -320,19 +320,19 @@ export default function RegistrationFormatBuilder({
 
   const validatePosition = (userType: keyof RegistrationFormat['formats'], position: PositionStructure, index: number): string | null => {
     const errorKey = `${userType}_position_${index}`;
-    
+
     // Check for duplicate positions
     const currentFormat = formats[userType];
     const duplicatePositions = currentFormat.structure.filter(p => p.position === position.position && p !== position);
     if (duplicatePositions.length > 0) {
       return `Position ${position.position} is already used`;
     }
-    
+
     // Check position bounds
     if (position.position < 1 || position.position > currentFormat.totalLength) {
       return `Position must be between 1 and ${currentFormat.totalLength}`;
     }
-    
+
     // Validate fixed value
     if (position.type === 'fixed') {
       if (!position.value || position.value.length === 0) {
@@ -344,7 +344,7 @@ export default function RegistrationFormatBuilder({
         return `Fixed value must be ${expectedLength} character${expectedLength > 1 ? 's' : ''} for merged cell`;
       }
     }
-    
+
     // Validate numbers range
     if (position.type === 'numbers_range') {
       if (!position.range) {
@@ -359,18 +359,18 @@ export default function RegistrationFormatBuilder({
       if (!position.range.positions || position.range.positions.length === 0) {
         return 'Range positions are required';
       }
-      
+
       // Check if range positions are valid
-      const invalidPositions = position.range.positions.filter(pos => 
+      const invalidPositions = position.range.positions.filter(pos =>
         pos < 1 || pos > currentFormat.totalLength
       );
       if (invalidPositions.length > 0) {
         return `Invalid range positions: ${invalidPositions.join(', ')}`;
       }
-      
+
       // Check for overlapping ranges
-      const overlappingRanges = currentFormat.structure.filter(p => 
-        p.type === 'numbers_range' && 
+      const overlappingRanges = currentFormat.structure.filter(p =>
+        p.type === 'numbers_range' &&
         p !== position &&
         p.range?.positions?.some(pos => position.range?.positions?.includes(pos))
       );
@@ -378,19 +378,19 @@ export default function RegistrationFormatBuilder({
         return 'Range positions overlap with existing range';
       }
     }
-    
+
     return null;
   };
 
   const validateFormat = (userType: keyof RegistrationFormat['formats']): boolean => {
     const currentFormat = formats[userType];
-    const errors: {[key: string]: string} = {};
-    
+    const errors: { [key: string]: string } = {};
+
     // Check total length
     if (currentFormat.totalLength < 1 || currentFormat.totalLength > 20) {
       errors[`${userType}_totalLength`] = 'Total length must be between 1 and 20';
     }
-    
+
     // Validate all positions
     currentFormat.structure.forEach((position, index) => {
       const error = validatePosition(userType, position, index);
@@ -398,10 +398,10 @@ export default function RegistrationFormatBuilder({
         errors[`${userType}_position_${index}`] = error;
       }
     });
-    
+
     // Check for gaps in positions (accounting for merged ranges)
     const usedPositions = new Set<number>();
-    
+
     currentFormat.structure.forEach(p => {
       if (p.range?.positions && p.range.positions.length > 0) {
         // For any merged position (all types), add all positions in the range
@@ -411,27 +411,27 @@ export default function RegistrationFormatBuilder({
         usedPositions.add(p.position);
       }
     });
-    
+
     const expectedPositions = Array.from({ length: currentFormat.totalLength }, (_, i) => i + 1);
     const missingPositions = expectedPositions.filter(pos => !usedPositions.has(pos));
-    
+
     if (missingPositions.length > 0) {
       errors[`${userType}_gaps`] = `Missing positions: ${missingPositions.join(', ')}`;
     }
-    
+
     // Update validation errors state
     setValidationErrors(prev => ({
       ...prev,
       ...errors
     }));
-    
+
     return Object.keys(errors).length === 0;
   };
 
   const addPosition = (userType: keyof RegistrationFormat['formats']) => {
     const currentFormat = formats[userType];
     const newPosition = currentFormat.structure.length + 1;
-    
+
     updateUserTypeFormat(userType, {
       structure: [
         ...currentFormat.structure,
@@ -443,13 +443,13 @@ export default function RegistrationFormatBuilder({
   const removePosition = (userType: keyof RegistrationFormat['formats'], positionIndex: number) => {
     const currentFormat = formats[userType];
     const newStructure = currentFormat.structure.filter((_, index) => index !== positionIndex);
-    
+
     // Reorder positions
     const reorderedStructure = newStructure.map((item, index) => ({
       ...item,
       position: index + 1
     }));
-    
+
     updateUserTypeFormat(userType, {
       structure: reorderedStructure
     });
@@ -459,7 +459,7 @@ export default function RegistrationFormatBuilder({
     const currentFormat = formats[userType];
     const newStructure = [...currentFormat.structure];
     const currentPosition = newStructure[positionIndex];
-    
+
     // If changing to numbers_range, auto-populate positions based on remaining positions
     if (updates.type === 'numbers_range' && !currentPosition.range) {
       const remainingPositions = [];
@@ -475,9 +475,9 @@ export default function RegistrationFormatBuilder({
         positions: remainingPositions // Auto-calculated positions
       };
     }
-    
+
     newStructure[positionIndex] = { ...currentPosition, ...updates };
-    
+
     updateUserTypeFormat(userType, {
       structure: newStructure
     });
@@ -513,17 +513,17 @@ export default function RegistrationFormatBuilder({
   const generateExample = (userType: keyof RegistrationFormat['formats']): string => {
     const format = formats[userType];
     let example = '';
-    
+
     for (let i = 1; i <= format.totalLength; i++) {
       // First check if this position is part of any range (merged positions)
-      const rangePosition = format.structure.find(p => 
+      const rangePosition = format.structure.find(p =>
         p.range?.positions?.includes(i)
       );
-      
+
       if (rangePosition?.range) {
         // Handle merged positions based on type
         const currentPosInRange = rangePosition.range.positions.indexOf(i);
-        
+
         if (rangePosition.type === 'numbers_range') {
           // For numbers range, show padded min value
           const paddingLength = rangePosition.range.positions.length;
@@ -552,7 +552,7 @@ export default function RegistrationFormatBuilder({
       } else {
         // Handle individual positions (not part of any range)
         const position = format.structure.find(p => p.position === i);
-        
+
         if (position) {
           switch (position.type) {
             case 'fixed':
@@ -579,22 +579,22 @@ export default function RegistrationFormatBuilder({
         }
       }
     }
-    
+
     return example;
   };
 
   const handlePositionClick = (position: number, userType: keyof RegistrationFormat['formats']) => {
     if (isMerging) {
       // Check if this position is part of any existing merged range
-      const rangePosition = formats[userType].structure.find(p => 
+      const rangePosition = formats[userType].structure.find(p =>
         p.range?.positions?.includes(position)
       );
-      
+
       if (rangePosition && rangePosition.range?.positions) {
         // If clicking on a range, select/deselect all positions in that range
         const rangePositions = rangePosition.range.positions;
         const hasAllRangePositions = rangePositions.every(pos => selectedPositions.includes(pos));
-        
+
         setSelectedPositions(prev => {
           if (hasAllRangePositions) {
             // Remove all range positions
@@ -617,12 +617,12 @@ export default function RegistrationFormatBuilder({
     } else {
       // Open position configuration popup
       const existingPosition = formats[userType].structure.find(p => p.position === position);
-      
+
       // Check if this position is part of any existing merged range
-      const rangePosition = formats[userType].structure.find(p => 
+      const rangePosition = formats[userType].structure.find(p =>
         p.range?.positions?.includes(position)
       );
-      
+
       setPositionPopup({
         isOpen: true,
         userType,
@@ -635,23 +635,23 @@ export default function RegistrationFormatBuilder({
   // Simple canvas-based drag selection
   const handleGridMouseDown = (event: React.MouseEvent, userType: keyof RegistrationFormat['formats']) => {
     if (!isMerging) return;
-    
+
     event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const cellWidth = rect.width / formats[userType].totalLength;
     const position = Math.min(Math.max(1, Math.ceil(x / cellWidth)), formats[userType].totalLength);
-    
+
     // Check if this position is part of an existing range
-    const rangePosition = formats[userType].structure.find(p => 
-      p.type === 'numbers_range' && 
+    const rangePosition = formats[userType].structure.find(p =>
+      p.type === 'numbers_range' &&
       p.range?.positions?.includes(position)
     );
-    
+
     setIsSelecting(true);
     setDragStart(position);
     setDragEnd(position);
-    
+
     if (rangePosition && rangePosition.range?.positions) {
       // If clicking on a range, start with all positions in that range
       setSelectedPositions(rangePosition.range.positions);
@@ -663,15 +663,15 @@ export default function RegistrationFormatBuilder({
 
   const handleGridMouseMove = (event: React.MouseEvent, userType: keyof RegistrationFormat['formats']) => {
     if (!isSelecting || !isMerging) return;
-    
+
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const cellWidth = rect.width / formats[userType].totalLength;
     const position = Math.min(Math.max(1, Math.ceil(x / cellWidth)), formats[userType].totalLength);
-    
+
     if (position !== dragEnd) {
       setDragEnd(position);
-      
+
       // Calculate range from start to current position
       const start = Math.min(dragStart!, position);
       const end = Math.max(dragStart!, position);
@@ -709,10 +709,10 @@ export default function RegistrationFormatBuilder({
 
   const handleMergePositions = (userType: keyof RegistrationFormat['formats'], mergeType: 'numbers_range' | 'fixed_text' | 'digit' | 'alphabet' | 'alphanumeric' | 'year') => {
     if (selectedPositions.length < 2) return;
-    
+
     const currentFormat = formats[userType];
     const newStructure = [...currentFormat.structure];
-    
+
     // Remove existing positions that are being merged (including any existing ranges)
     const filteredStructure = newStructure.filter(p => {
       // Remove individual positions that match selected positions
@@ -725,7 +725,7 @@ export default function RegistrationFormatBuilder({
       }
       return true;
     });
-    
+
     if (mergeType === 'numbers_range') {
       // Add new merged range with auto-calculated positions
       const mergedRange = {
@@ -738,7 +738,7 @@ export default function RegistrationFormatBuilder({
           positions: selectedPositions // Auto-calculated from selected positions
         }
       };
-      
+
       filteredStructure.push(mergedRange);
     } else if (mergeType === 'fixed_text') {
       // Create a single merged fixed text position
@@ -746,7 +746,7 @@ export default function RegistrationFormatBuilder({
         const existingPos = newStructure.find(p => p.position === pos);
         return existingPos?.value || 'X';
       }).join('');
-      
+
       filteredStructure.push({
         position: selectedPositions[0],
         type: 'fixed' as const,
@@ -764,7 +764,7 @@ export default function RegistrationFormatBuilder({
         alert('Year type can only be merged with 2 or 4 cells');
         return;
       }
-      
+
       filteredStructure.push({
         position: selectedPositions[0],
         type: 'year' as const,
@@ -789,13 +789,13 @@ export default function RegistrationFormatBuilder({
         }
       });
     }
-    
+
     filteredStructure.sort((a, b) => a.position - b.position);
-    
+
     updateUserTypeFormat(userType, {
       structure: filteredStructure
     });
-    
+
     setSelectedPositions([]);
     setIsMerging(false);
   };
@@ -803,10 +803,10 @@ export default function RegistrationFormatBuilder({
   // Helper function to check if selected positions contain merged cells
   const hasMergedPositions = (userType: keyof RegistrationFormat['formats']) => {
     const currentFormat = formats[userType];
-    
+
     // Check if any selected position is part of any merged range
     return selectedPositions.some(pos => {
-      return currentFormat.structure.some(p => 
+      return currentFormat.structure.some(p =>
         p.range?.positions?.includes(pos)
       );
     });
@@ -815,10 +815,10 @@ export default function RegistrationFormatBuilder({
   // Helper function to check if selected positions are all individual (not merged)
   const hasOnlyIndividualPositions = (userType: keyof RegistrationFormat['formats']) => {
     const currentFormat = formats[userType];
-    
+
     // Check if all selected positions are individual (not part of any range)
     return selectedPositions.every(pos => {
-      return !currentFormat.structure.some(p => 
+      return !currentFormat.structure.some(p =>
         p.range?.positions?.includes(pos)
       );
     });
@@ -826,10 +826,10 @@ export default function RegistrationFormatBuilder({
 
   const handleUnmergePositions = (userType: keyof RegistrationFormat['formats']) => {
     if (selectedPositions.length === 0) return;
-    
+
     const currentFormat = formats[userType];
     const newStructure = [...currentFormat.structure];
-    
+
     // Find and unmerge selected positions
     const filteredStructure = newStructure.filter(p => {
       // Check if this position is part of any merged range that includes selected positions
@@ -854,15 +854,15 @@ export default function RegistrationFormatBuilder({
           }
         }
       }
-      
+
       // Remove individual positions that are selected
       if (selectedPositions.includes(p.position)) {
         return false;
       }
-      
+
       return true;
     });
-    
+
     // Add individual positions for the selected positions
     selectedPositions.forEach(pos => {
       filteredStructure.push({
@@ -871,13 +871,13 @@ export default function RegistrationFormatBuilder({
         description: 'Unmerged position'
       });
     });
-    
+
     filteredStructure.sort((a, b) => a.position - b.position);
-    
+
     updateUserTypeFormat(userType, {
       structure: filteredStructure
     });
-    
+
     setSelectedPositions([]);
     setIsMerging(false);
   };
@@ -886,20 +886,20 @@ export default function RegistrationFormatBuilder({
     const { userType, position } = positionPopup;
     const currentFormat = formats[userType];
     const newStructure = [...currentFormat.structure];
-    
+
     // Remove existing position if it exists
     const existingIndex = newStructure.findIndex(p => p.position === position);
     if (existingIndex !== -1) {
       newStructure.splice(existingIndex, 1);
     }
-    
+
     // Add new position
     newStructure.push(positionData);
-    
+
     updateUserTypeFormat(userType, {
       structure: newStructure
     });
-    
+
     setPositionPopup({ isOpen: false, userType: 'student', position: 1 });
   };
 
@@ -907,63 +907,63 @@ export default function RegistrationFormatBuilder({
     const { userType, position } = positionPopup;
     const currentFormat = formats[userType];
     const newStructure = currentFormat.structure.filter(p => p.position !== position);
-    
+
     updateUserTypeFormat(userType, {
       structure: newStructure
     });
-    
+
     setPositionPopup({ isOpen: false, userType: 'student', position: 1 });
   };
 
   const handleSave = () => {
     // Clear previous validation errors
     setValidationErrors({});
-    
+
     // Validate format name (only for create mode)
     if (!isEditMode && (!formatName || !formatName.trim())) {
       alert('Please enter a name for the registration format. This field is required and cannot be empty.');
       return;
     }
-    
+
     // For edit mode, ensure we have a name (should already exist)
     if (isEditMode && (!formatName || !formatName.trim())) {
       alert('Error: This format appears to be missing a name. Please contact support.');
       return;
     }
-    
+
     // Check for duplicate names (only for create mode or when name is changed in edit mode)
     if (!isEditMode || (isEditMode && formatName.trim() !== initialFormat?.name)) {
       const trimmedName = formatName.trim();
-      const duplicateFormat = existingFormats.find(format => 
+      const duplicateFormat = existingFormats.find(format =>
         format.name && format.name.toLowerCase().trim() === trimmedName.toLowerCase() &&
         (!isEditMode || format.id !== initialFormat?.id) // Exclude current format when editing
       );
-      
+
       if (duplicateFormat) {
         alert(`A registration format with the name "${trimmedName}" already exists for year ${duplicateFormat.year} in this department. Please choose a different name.`);
         return;
       }
     }
-    
+
     // Validate all formats before saving
     const userTypes = ['student', 'staff', 'employee', 'guest'] as const;
     let hasErrors = false;
-    
+
     userTypes.forEach(userType => {
       if (!validateFormat(userType)) {
         hasErrors = true;
       }
     });
-    
+
     if (hasErrors) {
       // Don't save if there are validation errors
       alert('Please fix validation errors before saving. Check the format configuration for issues.');
       return;
     }
-    
+
     // Ensure any remaining old yearFormat fields are cleaned up before saving
     const cleanedFormats = migrateFormatStructure(formats);
-    
+
     const registrationFormat: RegistrationFormat = {
       id: initialFormat?.id,
       name: formatName.trim(),
@@ -989,7 +989,7 @@ export default function RegistrationFormatBuilder({
             {isEditMode && <span className="text-sm font-normal text-muted-foreground ml-2">(Edit Mode)</span>}
           </h2>
           <p className="text-muted-foreground">
-            {isEditMode 
+            {isEditMode
               ? `Editing registration format for ${departmentCode} - ${year === 1 ? '1st Year' : year === 2 ? '2nd Year' : year === 3 ? '3rd Year' : `${year}th Year`}`
               : `Configure detailed registration number formats for ${departmentCode} - ${year === 1 ? '1st Year' : year === 2 ? '2nd Year' : year === 3 ? '3rd Year' : `${year}th Year`}`
             }
@@ -1029,8 +1029,8 @@ export default function RegistrationFormatBuilder({
               onChange={(e) => setFormatName(e.target.value)}
               placeholder={isEditMode && initialFormat?.name ? "Format name cannot be changed" : "Enter a descriptive name for this format (e.g., 'Standard Format', 'Special Program Format')"}
               className={`w-full ${isEditMode && initialFormat?.name ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''}`}
-              disabled={isEditMode && initialFormat?.name}
-              readOnly={isEditMode && initialFormat?.name}
+              disabled={!!(isEditMode && initialFormat?.name)}
+              readOnly={!!(isEditMode && initialFormat?.name)}
             />
             <p className="text-xs text-muted-foreground">
               {isEditMode && initialFormat?.name
@@ -1044,7 +1044,7 @@ export default function RegistrationFormatBuilder({
 
       {/* Validation Errors Display - Only show errors for current tab */}
       {(() => {
-        const currentTabErrors = Object.entries(validationErrors).filter(([key]) => 
+        const currentTabErrors = Object.entries(validationErrors).filter(([key]) =>
           key.startsWith(`${activeTab}_`)
         );
         return currentTabErrors.length > 0 && (
@@ -1078,7 +1078,7 @@ export default function RegistrationFormatBuilder({
 
         {userTypes.map(({ key }) => {
           const format = formats[key];
-          
+
           return (
             <TabsContent key={key} value={key} className="space-y-6">
               <Card>
@@ -1128,7 +1128,7 @@ export default function RegistrationFormatBuilder({
                         Add Position
                       </Button>
                     </div>
-                    
+
                     {/* Visual Position Boxes */}
                     <div className="space-y-4">
                       {/* Example boxes showing what each type looks like */}
@@ -1158,279 +1158,279 @@ export default function RegistrationFormatBuilder({
                         </div>
                       </div>
 
-                       {/* Current format visualization */}
-                       <div className="space-y-2">
-                         <div className="flex items-center justify-between">
-                           <Label className="text-sm font-medium">Current Format:</Label>
-                           <Button
-                             variant={isMerging ? "default" : "outline"}
-                             size="sm"
-                             onClick={() => {
-                               setIsMerging(!isMerging);
-                               setSelectedPositions([]);
-                             }}
-                           >
-                             {isMerging ? 'Cancel Merge' : 'Merge Positions'}
-                           </Button>
-                         </div>
-                         <div className="w-full p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                           <div 
-                             className="grid gap-1 select-none pb-8" 
-                             style={{ gridTemplateColumns: `repeat(${format.totalLength}, 1fr)` }}
-                             onMouseDown={(e) => handleGridMouseDown(e, key)}
-                             onMouseMove={(e) => handleGridMouseMove(e, key)}
-                             onMouseUp={handleGridMouseUp}
-                             onMouseLeave={handleGridMouseUp}
-                           >
-                             {Array.from({ length: format.totalLength }, (_, i) => {
-                               const position = format.structure.find(p => p.position === i + 1);
-                               
-                               // Check if this position is part of any merged range (all types can be merged now)
-                               const rangePosition = format.structure.find(p => 
-                                 p.range?.positions?.includes(i + 1)
-                               );
-                               
-                               const isRangePosition = !!rangePosition;
-                               const rangeStart = rangePosition?.range?.positions?.[0] === i + 1;
-                               const isSelected = selectedPositions.includes(i + 1);
-                               
-                               // Always render collapsed ranges (don't render subsequent range positions)
-                               if (isRangePosition && !rangeStart) {
-                                 return null;
-                               }
-                               
-                               // Calculate grid span for range positions
-                               // Always show collapsed ranges with their full span
-                               const gridSpan = isRangePosition ? rangePosition.range.positions.length : 1;
-                               
-                               return (
-                                 <div key={i} className="relative" style={{ gridColumn: `span ${gridSpan}` }}>
-                                   <div 
-                                     className={`
+                      {/* Current format visualization */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Current Format:</Label>
+                          <Button
+                            variant={isMerging ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setIsMerging(!isMerging);
+                              setSelectedPositions([]);
+                            }}
+                          >
+                            {isMerging ? 'Cancel Merge' : 'Merge Positions'}
+                          </Button>
+                        </div>
+                        <div className="w-full p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <div
+                            className="grid gap-1 select-none pb-8"
+                            style={{ gridTemplateColumns: `repeat(${format.totalLength}, 1fr)` }}
+                            onMouseDown={(e) => handleGridMouseDown(e, key)}
+                            onMouseMove={(e) => handleGridMouseMove(e, key)}
+                            onMouseUp={handleGridMouseUp}
+                            onMouseLeave={handleGridMouseUp}
+                          >
+                            {Array.from({ length: format.totalLength }, (_, i) => {
+                              const position = format.structure.find(p => p.position === i + 1);
+
+                              // Check if this position is part of any merged range (all types can be merged now)
+                              const rangePosition = format.structure.find(p =>
+                                p.range?.positions?.includes(i + 1)
+                              );
+
+                              const isRangePosition = !!rangePosition;
+                              const rangeStart = rangePosition?.range?.positions?.[0] === i + 1;
+                              const isSelected = selectedPositions.includes(i + 1);
+
+                              // Always render collapsed ranges (don't render subsequent range positions)
+                              if (isRangePosition && !rangeStart) {
+                                return null;
+                              }
+
+                              // Calculate grid span for range positions
+                              // Always show collapsed ranges with their full span
+                              const gridSpan = isRangePosition ? rangePosition.range?.positions?.length ?? 1 : 1;
+
+                              return (
+                                <div key={i} className="relative" style={{ gridColumn: `span ${gridSpan}` }}>
+                                  <div
+                                    className={`
                                        h-16 w-full border-2 rounded flex flex-col items-center justify-center text-sm font-mono transition-all
                                        ${!position && !isRangePosition ? 'border-dashed border-gray-300 bg-gray-100 dark:bg-gray-700' : ''}
                                        ${position?.type === 'digit' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''}
                                        ${position?.type === 'alphabet' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}
                                        ${position?.type === 'alphanumeric' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' : ''}
                                        ${isRangePosition && rangeStart ? (
-                                         rangePosition.type === 'numbers_range' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' :
-                                         rangePosition.type === 'year' ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20' :
-                                         rangePosition.type === 'fixed' ? 'border-gray-500 bg-gray-50 dark:bg-gray-900/20' :
-                                         rangePosition.type === 'digit' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
-                                         rangePosition.type === 'alphabet' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
-                                         rangePosition.type === 'alphanumeric' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' :
-                                         'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                                       ) : ''}
+                                        rangePosition.type === 'numbers_range' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' :
+                                          rangePosition.type === 'year' ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20' :
+                                            rangePosition.type === 'fixed' ? 'border-gray-500 bg-gray-50 dark:bg-gray-900/20' :
+                                              rangePosition.type === 'digit' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' :
+                                                rangePosition.type === 'alphabet' ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                                                  rangePosition.type === 'alphanumeric' ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' :
+                                                    'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                                      ) : ''}
                                        ${position?.type === 'fixed' ? 'border-gray-500 bg-gray-50 dark:bg-gray-900/20' : ''}
                                        ${position?.type === 'year' ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20' : ''}
                                        ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2 bg-blue-100 dark:bg-blue-900/30' : ''}
                                        ${isMerging ? 'hover:ring-2 hover:ring-blue-300 cursor-crosshair' : 'cursor-pointer'}
                                        ${isSelecting && selectedPositions.includes(i + 1) ? 'bg-blue-200 dark:bg-blue-800/40' : ''}
                                      `}
-                                     onClick={() => handlePositionClick(i + 1, key)}
-                                   >
-                                     <div className="text-center">
-                                       <div className="text-lg font-bold">
-                                         {!position && !isRangePosition ? '?' : 
+                                    onClick={() => handlePositionClick(i + 1, key)}
+                                  >
+                                    <div className="text-center">
+                                      <div className="text-lg font-bold">
+                                        {!position && !isRangePosition ? '?' :
                                           isRangePosition && rangeStart ? (
                                             rangePosition.type === 'numbers_range' ? getNumbersRangeDisplay(rangePosition.range, rangePosition.range?.positions?.length) :
-                                            rangePosition.type === 'year' ? getYearPlaceholder(rangePosition.yearType, rangePosition.range?.positions?.length) :
-                                            rangePosition.type === 'fixed' ? (rangePosition.value || 'X'.repeat(rangePosition.range?.positions?.length || 1)) :
-                                            rangePosition.type === 'digit' ? '0'.repeat(rangePosition.range?.positions?.length || 1) :
-                                            rangePosition.type === 'alphabet' ? 'A'.repeat(rangePosition.range?.positions?.length || 1) :
-                                            rangePosition.type === 'alphanumeric' ? 'A0'.repeat(Math.ceil((rangePosition.range?.positions?.length || 1) / 2)) : 'XX'
+                                              rangePosition.type === 'year' ? getYearPlaceholder(rangePosition.yearType, rangePosition.range?.positions?.length) :
+                                                rangePosition.type === 'fixed' ? (rangePosition.value || 'X'.repeat(rangePosition.range?.positions?.length || 1)) :
+                                                  rangePosition.type === 'digit' ? '0'.repeat(rangePosition.range?.positions?.length || 1) :
+                                                    rangePosition.type === 'alphabet' ? 'A'.repeat(rangePosition.range?.positions?.length || 1) :
+                                                      rangePosition.type === 'alphanumeric' ? 'A0'.repeat(Math.ceil((rangePosition.range?.positions?.length || 1) / 2)) : 'XX'
                                           ) :
-                                          position?.type === 'fixed' ? (position.value?.charAt(0) || 'X') :
-                                          position?.type === 'digit' ? '0' :
-                                          position?.type === 'alphabet' ? 'A' :
-                                          position?.type === 'alphanumeric' ? 'A' :
-                                          position?.type === 'year' ? getYearPlaceholder(position.yearType, position.range?.positions?.length) : 'X'}
-                                       </div>
-                                       <div className="text-xs text-muted-foreground mt-1">
-                                         {isRangePosition && rangeStart
-                                           ? `${rangePosition.range.positions[0]}-${rangePosition.range.positions[rangePosition.range.positions.length - 1]}`
-                                           : i + 1
-                                         }
-                                       </div>
-                                     </div>
-                                   </div>
-                                   {isSelected && (
-                                     <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                       <span className="text-xs text-white font-bold">✓</span>
-                                     </div>
-                                   )}
-                                   {/* Direct unmerge button for merged cells - only in merge mode */}
-                                   {isMerging && isRangePosition && rangeStart && (
-                                     <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 z-10">
-                                       <Button
-                                         variant="destructive"
-                                         size="sm"
-                                         onClick={(e) => {
-                                           e.stopPropagation();
-                                           setSelectedPositions(rangePosition.range?.positions || []);
-                                           handleUnmergePositions(key);
-                                         }}
-                                         className="h-6 px-2 text-xs bg-red-600 hover:bg-red-700 shadow-lg"
-                                         title={`Unmerge positions ${rangePosition.range?.positions?.join(', ')}`}
-                                       >
-                                         <ArrowUpDown className="w-3 h-3 mr-1" />
-                                         Unmerge
-                                       </Button>
-                                     </div>
-                                   )}
-                                 </div>
-                               );
-                             })}
-                           </div>
-                         </div>
-                         
-                         {/* Merge buttons - appear when individual positions are selected */}
-                         {isMerging && selectedPositions.length >= 2 && hasOnlyIndividualPositions(key) && (
-                           <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                             <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                               Selected individual positions: {selectedPositions.join(', ')}
-                             </div>
-                             <div className="grid grid-cols-2 gap-2">
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'numbers_range')}
-                                 className="bg-orange-600 hover:bg-orange-700"
-                               >
-                                 <BarChart3 className="w-4 h-4 mr-1" />
-                                 Numbers Range
-                               </Button>
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'fixed_text')}
-                                 className="bg-gray-600 hover:bg-gray-700"
-                               >
-                                 <HelpCircle className="w-4 h-4 mr-1" />
-                                 Fixed Text
-                               </Button>
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'digit')}
-                                 className="bg-blue-600 hover:bg-blue-700"
-                               >
-                                 <Hash className="w-4 h-4 mr-1" />
-                                 Digits
-                               </Button>
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'alphabet')}
-                                 className="bg-green-600 hover:bg-green-700"
-                               >
-                                 <Type className="w-4 h-4 mr-1" />
-                                 Alphabets
-                               </Button>
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'alphanumeric')}
-                                 className="bg-purple-600 hover:bg-purple-700"
-                               >
-                                 <Hash className="w-4 h-4 mr-1" />
-                                 Alphanumeric
-                               </Button>
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'year')}
-                                 className="bg-orange-600 hover:bg-orange-700 col-span-2"
-                               >
-                                 <Calendar className="w-4 h-4 mr-1" />
-                                 Year (Auto: 2 or 4 digits)
-                               </Button>
-                             </div>
-                           </div>
-                         )}
-                         
-                         {/* Unmerge button - appears when merged positions are selected */}
-                         {isMerging && selectedPositions.length > 0 && hasMergedPositions(key) && (
-                           <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-red-50 dark:bg-red-900/20">
-                             <div className="text-sm font-medium text-red-600 dark:text-red-400">
-                               Selected merged positions: {selectedPositions.join(', ')}
-                             </div>
-                             <Button
-                               variant="destructive"
-                               size="sm"
-                               onClick={() => handleUnmergePositions(key)}
-                               className="bg-red-600 hover:bg-red-700"
-                             >
-                               <ArrowUpDown className="w-4 h-4 mr-1" />
-                               Unmerge Positions
-                             </Button>
-                             <div className="text-xs text-red-600 dark:text-red-400">
-                               This will convert merged positions back to individual digit positions
-                             </div>
-                           </div>
-                         )}
-                         
-                         {/* Mixed selection - show both options */}
-                         {isMerging && selectedPositions.length > 0 && !hasOnlyIndividualPositions(key) && !hasMergedPositions(key) && (
-                           <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
-                             <div className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
-                               Mixed selection: {selectedPositions.join(', ')}
-                             </div>
-                             <div className="grid grid-cols-2 gap-2">
-                               <Button
-                                 variant="default"
-                                 size="sm"
-                                 onClick={() => handleMergePositions(key, 'numbers_range')}
-                                 className="bg-orange-600 hover:bg-orange-700"
-                               >
-                                 <BarChart3 className="w-4 h-4 mr-1" />
-                                 Merge as Range
-                               </Button>
-                               <Button
-                                 variant="destructive"
-                                 size="sm"
-                                 onClick={() => handleUnmergePositions(key)}
-                                 className="bg-red-600 hover:bg-red-700"
-                               >
-                                 <ArrowUpDown className="w-4 h-4 mr-1" />
-                                 Unmerge Selected
-                               </Button>
-                             </div>
-                             <div className="text-xs text-yellow-600 dark:text-yellow-400">
-                               You can merge individual positions or unmerge merged positions
-                             </div>
-                           </div>
-                         )}
-                         
-                         {isMerging && selectedPositions.length === 1 && hasOnlyIndividualPositions(key) && (
-                           <div className="p-3 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
-                             <div className="text-sm text-yellow-600 dark:text-yellow-400">
-                               Select at least 2 individual positions to merge, or select merged positions to unmerge
-                             </div>
-                           </div>
-                         )}
-                         
-                         {isMerging && (
-                           <div className="text-xs text-muted-foreground space-y-1">
-                             <p><strong>Selection Methods:</strong></p>
-                             <p>• <strong>Click:</strong> Select individual positions or click merged cells to select them</p>
-                             <p>• <strong>Drag:</strong> Click and drag across the grid to select a range of positions</p>
-                             <p>• <strong>Smart Detection:</strong> The system automatically detects if you've selected merged or individual positions</p>
-                             <p><strong>Available Actions:</strong></p>
-                             <p>• <strong>Merge Individual:</strong> Select 2+ individual positions to see merge options</p>
-                             <p>• <strong>Unmerge Merged:</strong> Click the red "Unmerge" button below merged cells, or select merged positions</p>
-                             <p>• <strong>Mixed Selection:</strong> Select both types to see both merge and unmerge options</p>
-                             <p><strong>Merge Options:</strong></p>
-                             <p>• <strong>Numbers Range:</strong> Creates a numbers range (e.g., 00-99) spanning multiple positions</p>
-                             <p>• <strong>Fixed Text:</strong> Creates individual fixed character positions for multi-character text (e.g., K-I-T)</p>
-                             <p>• <strong>Digits:</strong> Creates individual digit positions (0-9) for each selected position</p>
-                             <p>• <strong>Alphabets:</strong> Creates individual alphabet positions (A-Z) for each selected position</p>
-                             <p>• <strong>Alphanumeric:</strong> Creates individual alphanumeric positions (A-Z, 0-9) for each selected position</p>
-                             {isSelecting && (
-                               <p className="text-blue-600 dark:text-blue-400 font-medium">🖱️ Dragging to select positions...</p>
-                             )}
-                           </div>
-                         )}
+                                            position?.type === 'fixed' ? (position.value?.charAt(0) || 'X') :
+                                              position?.type === 'digit' ? '0' :
+                                                position?.type === 'alphabet' ? 'A' :
+                                                  position?.type === 'alphanumeric' ? 'A' :
+                                                    position?.type === 'year' ? getYearPlaceholder(position.yearType, position.range?.positions?.length) : 'X'}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {isRangePosition && rangeStart
+                                          ? `${rangePosition.range?.positions?.[0]}-${rangePosition.range?.positions?.[rangePosition.range?.positions?.length - 1]}`
+                                          : i + 1
+                                        }
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {isSelected && (
+                                    <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                      <span className="text-xs text-white font-bold">✓</span>
+                                    </div>
+                                  )}
+                                  {/* Direct unmerge button for merged cells - only in merge mode */}
+                                  {isMerging && isRangePosition && rangeStart && (
+                                    <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 z-10">
+                                      <Button
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedPositions(rangePosition.range?.positions || []);
+                                          handleUnmergePositions(key);
+                                        }}
+                                        className="h-6 px-2 text-xs bg-red-600 hover:bg-red-700 shadow-lg"
+                                        title={`Unmerge positions ${rangePosition.range?.positions?.join(', ')}`}
+                                      >
+                                        <ArrowUpDown className="w-3 h-3 mr-1" />
+                                        Unmerge
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Merge buttons - appear when individual positions are selected */}
+                        {isMerging && selectedPositions.length >= 2 && hasOnlyIndividualPositions(key) && (
+                          <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                            <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                              Selected individual positions: {selectedPositions.join(', ')}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'numbers_range')}
+                                className="bg-orange-600 hover:bg-orange-700"
+                              >
+                                <BarChart3 className="w-4 h-4 mr-1" />
+                                Numbers Range
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'fixed_text')}
+                                className="bg-gray-600 hover:bg-gray-700"
+                              >
+                                <HelpCircle className="w-4 h-4 mr-1" />
+                                Fixed Text
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'digit')}
+                                className="bg-blue-600 hover:bg-blue-700"
+                              >
+                                <Hash className="w-4 h-4 mr-1" />
+                                Digits
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'alphabet')}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Type className="w-4 h-4 mr-1" />
+                                Alphabets
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'alphanumeric')}
+                                className="bg-purple-600 hover:bg-purple-700"
+                              >
+                                <Hash className="w-4 h-4 mr-1" />
+                                Alphanumeric
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'year')}
+                                className="bg-orange-600 hover:bg-orange-700 col-span-2"
+                              >
+                                <Calendar className="w-4 h-4 mr-1" />
+                                Year (Auto: 2 or 4 digits)
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Unmerge button - appears when merged positions are selected */}
+                        {isMerging && selectedPositions.length > 0 && hasMergedPositions(key) && (
+                          <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-red-50 dark:bg-red-900/20">
+                            <div className="text-sm font-medium text-red-600 dark:text-red-400">
+                              Selected merged positions: {selectedPositions.join(', ')}
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleUnmergePositions(key)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <ArrowUpDown className="w-4 h-4 mr-1" />
+                              Unmerge Positions
+                            </Button>
+                            <div className="text-xs text-red-600 dark:text-red-400">
+                              This will convert merged positions back to individual digit positions
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Mixed selection - show both options */}
+                        {isMerging && selectedPositions.length > 0 && !hasOnlyIndividualPositions(key) && !hasMergedPositions(key) && (
+                          <div className="flex flex-col space-y-3 p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
+                            <div className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                              Mixed selection: {selectedPositions.join(', ')}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleMergePositions(key, 'numbers_range')}
+                                className="bg-orange-600 hover:bg-orange-700"
+                              >
+                                <BarChart3 className="w-4 h-4 mr-1" />
+                                Merge as Range
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleUnmergePositions(key)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                <ArrowUpDown className="w-4 h-4 mr-1" />
+                                Unmerge Selected
+                              </Button>
+                            </div>
+                            <div className="text-xs text-yellow-600 dark:text-yellow-400">
+                              You can merge individual positions or unmerge merged positions
+                            </div>
+                          </div>
+                        )}
+
+                        {isMerging && selectedPositions.length === 1 && hasOnlyIndividualPositions(key) && (
+                          <div className="p-3 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
+                            <div className="text-sm text-yellow-600 dark:text-yellow-400">
+                              Select at least 2 individual positions to merge, or select merged positions to unmerge
+                            </div>
+                          </div>
+                        )}
+
+                        {isMerging && (
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            <p><strong>Selection Methods:</strong></p>
+                            <p>• <strong>Click:</strong> Select individual positions or click merged cells to select them</p>
+                            <p>• <strong>Drag:</strong> Click and drag across the grid to select a range of positions</p>
+                            <p>• <strong>Smart Detection:</strong> The system automatically detects if you've selected merged or individual positions</p>
+                            <p><strong>Available Actions:</strong></p>
+                            <p>• <strong>Merge Individual:</strong> Select 2+ individual positions to see merge options</p>
+                            <p>• <strong>Unmerge Merged:</strong> Click the red "Unmerge" button below merged cells, or select merged positions</p>
+                            <p>• <strong>Mixed Selection:</strong> Select both types to see both merge and unmerge options</p>
+                            <p><strong>Merge Options:</strong></p>
+                            <p>• <strong>Numbers Range:</strong> Creates a numbers range (e.g., 00-99) spanning multiple positions</p>
+                            <p>• <strong>Fixed Text:</strong> Creates individual fixed character positions for multi-character text (e.g., K-I-T)</p>
+                            <p>• <strong>Digits:</strong> Creates individual digit positions (0-9) for each selected position</p>
+                            <p>• <strong>Alphabets:</strong> Creates individual alphabet positions (A-Z) for each selected position</p>
+                            <p>• <strong>Alphanumeric:</strong> Creates individual alphanumeric positions (A-Z, 0-9) for each selected position</p>
+                            {isSelecting && (
+                              <p className="text-blue-600 dark:text-blue-400 font-medium">🖱️ Dragging to select positions...</p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Click Instructions */}
@@ -1459,7 +1459,7 @@ export default function RegistrationFormatBuilder({
                         Add Character
                       </Button>
                     </div>
-                    
+
                     {format.specialCharacters.length > 0 && (
                       <div className="space-y-2">
                         {format.specialCharacters.map((char, index) => (
@@ -1539,7 +1539,7 @@ export default function RegistrationFormatBuilder({
               Configure Position {positionPopup.position}
             </DialogTitle>
           </DialogHeader>
-          
+
           <PositionConfigForm
             position={positionPopup.position}
             existingPosition={positionPopup.existingPosition}
@@ -1641,12 +1641,12 @@ function PositionConfigForm({ position, existingPosition, onSave, onDelete, onCa
           <Label>Fixed Value</Label>
           <Input
             value={positionData.value || ''}
-            onChange={(e) => setPositionData(prev => ({ 
-              ...prev, 
+            onChange={(e) => setPositionData(prev => ({
+              ...prev,
               value: e.target.value
             }))}
-            placeholder={existingPosition?.range?.positions ? 
-              `Enter ${existingPosition.range.positions.length} characters for merged cell` : 
+            placeholder={existingPosition?.range?.positions ?
+              `Enter ${existingPosition.range.positions.length} characters for merged cell` :
               "Enter single character"
             }
             maxLength={existingPosition?.range?.positions?.length || 1}
@@ -1667,11 +1667,11 @@ function PositionConfigForm({ position, existingPosition, onSave, onDelete, onCa
               <Input
                 type="number"
                 value={positionData.range?.min || 1}
-                onChange={(e) => setPositionData(prev => ({ 
-                  ...prev, 
-                  range: { 
-                    ...prev.range, 
+                onChange={(e) => setPositionData(prev => ({
+                  ...prev,
+                  range: {
                     min: parseInt(e.target.value) || 1,
+                    max: prev.range?.max ?? 99,
                     positions: prev.range?.positions || [position]
                   }
                 }))}
@@ -1683,10 +1683,10 @@ function PositionConfigForm({ position, existingPosition, onSave, onDelete, onCa
               <Input
                 type="number"
                 value={positionData.range?.max || 99}
-                onChange={(e) => setPositionData(prev => ({ 
-                  ...prev, 
-                  range: { 
-                    ...prev.range, 
+                onChange={(e) => setPositionData(prev => ({
+                  ...prev,
+                  range: {
+                    min: prev.range?.min ?? 1,
                     max: parseInt(e.target.value) || 99,
                     positions: prev.range?.positions || [position]
                   }
@@ -1701,8 +1701,8 @@ function PositionConfigForm({ position, existingPosition, onSave, onDelete, onCa
               <span className="text-sm font-medium">Range Positions</span>
             </div>
             <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-              Position {position} will be automatically configured as a range. 
-              {positionData.range?.positions && positionData.range.positions.length > 1 && 
+              Position {position} will be automatically configured as a range.
+              {positionData.range?.positions && positionData.range.positions.length > 1 &&
                 ` This range spans positions: ${positionData.range.positions.join(', ')}`
               }
             </p>
@@ -1737,7 +1737,7 @@ function PositionConfigForm({ position, existingPosition, onSave, onDelete, onCa
               </SelectContent>
             </Select>
           </div>
-          
+
 
           <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
             <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
@@ -1748,13 +1748,13 @@ function PositionConfigForm({ position, existingPosition, onSave, onDelete, onCa
               Format automatically determined by number of cells: 2 cells = 2-digit year (24), 4 cells = 4-digit year (2024)
             </p>
             <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-              {positionData.yearType === 'starting' 
+              {positionData.yearType === 'starting'
                 ? 'This will represent the year students joined the program.'
                 : 'This will represent the year students will graduate from the program.'
               }
             </p>
             <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-              {position.range?.positions?.length === 2 
+              {(position as any).range?.positions?.length === 2
                 ? 'Format: 2 digits (e.g., 24 for 2024)'
                 : 'Format: 4 digits (e.g., 2024)'
               }

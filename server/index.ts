@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import MongoStore from "connect-mongo";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { performStartupCheck } from "./startup-check";
@@ -15,11 +16,18 @@ const app = express();
 // Trust proxy - required for HTTPS detection behind reverse proxies (Render, etc.)
 app.set('trust proxy', 1);
 
-// Session configuration for OAuth
+// Session configuration for OAuth — uses MongoDB store to prevent
+// session race conditions that occur with the default in-memory store
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI!,
+    collectionName: 'sessions',
+    ttl: 24 * 60 * 60, // 1 day in seconds (matches cookie maxAge)
+    autoRemove: 'native',
+  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
@@ -49,7 +57,7 @@ app.use((req, res, next) => {
     const hasAuth = !!req.headers.authorization;
     const userAgent = req.headers['user-agent'] || '';
     const isAndroid = userAgent.toLowerCase().includes('android');
-    
+
     // Extract user role if authenticated (from session or request)
     let userRole = 'unauthenticated';
     if ((req as any).session?.user) {
@@ -57,7 +65,7 @@ app.use((req, res, next) => {
     } else if ((req as any).user?.role) {
       userRole = (req as any).user.role;
     }
-    
+
     // Build log line
     const parts = [
       `[${isAndroid ? 'ANDROID' : 'WEB'}]`,
@@ -66,10 +74,10 @@ app.use((req, res, next) => {
       hasAuth ? '🔑' : '🔓',
       `role:${userRole}`
     ];
-    
+
     console.log(`🔍 ${parts.join(' ')}`);
   }
-  
+
   next();
 });
 
@@ -165,14 +173,14 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = 5000;
   const host = "0.0.0.0";
-  
+
   server.listen({
     port,
     host,
     reusePort: process.platform !== 'win32', // Windows doesn't support reusePort
   }, () => {
     log(`serving on port ${port} (${host})`);
-    
+
     // Start session cleanup service
     sessionCleanupService.start();
     log('🔄 Session cleanup service started');

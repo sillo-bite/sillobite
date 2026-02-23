@@ -78,13 +78,8 @@ router.get('/callback', async (req, res) => {
 
     console.log('User authenticated:', { email: userData.email });
 
-    // Set session (standardized)
-    if (req.session) {
-      (req.session as any).user = userData;
-      (req.session as any).googleUser = userData;
-      (req as any).session.save();
-    }
-
+    // Set session (standardized) — MUST await save before redirect
+    // to prevent race conditions when multiple users log in simultaneously
     const params = new URLSearchParams({
       email: userData.email || '',
       name: userData.name || '',
@@ -92,7 +87,18 @@ router.get('/callback', async (req, res) => {
       id: userData.id || ''
     });
 
-    res.redirect(`/auth/callback?${params.toString()}`);
+    if (req.session) {
+      (req.session as any).user = userData;
+      (req.session as any).googleUser = userData;
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+        }
+        res.redirect(`/auth/callback?${params.toString()}`);
+      });
+    } else {
+      res.redirect(`/auth/callback?${params.toString()}`);
+    }
   } catch (error: any) {
     console.error('OAuth callback error:', error);
     const errorMessage = error?.message || 'authentication_failed';

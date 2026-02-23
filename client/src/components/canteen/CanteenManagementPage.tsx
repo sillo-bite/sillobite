@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
+import {
   ArrowLeft, Plus, Edit, Trash2, Utensils, Save, X, ChevronDown
 } from "lucide-react";
 import { useAuthSync } from "@/hooks/useDataSync";
@@ -142,14 +142,14 @@ export default function CanteenManagementPage() {
       setEnableOrganization(false);
       setEnableRestaurant(false);
       setShowAddCanteen(false);
-      },
+    },
     onError: (error: any) => {
       console.error('Error adding canteen:', error);
-      }
+    }
   });
 
   const updateCanteenMutation = useMutation({
-    mutationFn: async ({ id, ...updateData }: { id: string; [key: string]: any }) => {
+    mutationFn: async ({ id, ...updateData }: { id: string;[key: string]: any }) => {
       console.log('Updating canteen:', { id, updateData }); // Debug log
       return apiRequest(`/api/system-settings/canteens/${id}`, {
         method: 'PUT',
@@ -163,10 +163,10 @@ export default function CanteenManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/canteens'] });
       setIsEditingCanteen(null);
-      },
+    },
     onError: (error: any) => {
       console.error('Error updating canteen:', error);
-      }
+    }
   });
 
   const deleteCanteenMutation = useMutation({
@@ -181,10 +181,10 @@ export default function CanteenManagementPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/system-settings/canteens'] });
-      },
+    },
     onError: (error: any) => {
       console.error('Error deleting canteen:', error);
-      }
+    }
   });
 
   // Canteen management handlers
@@ -249,30 +249,30 @@ export default function CanteenManagementPage() {
   const handleCancelEdit = () => {
     setIsEditingCanteen(null);
     setShowAddCanteen(false);
-      setNewCanteen({
-        name: '',
-        code: '',
-        description: '',
-        location: '',
-        contactNumber: '',
-        email: '',
-        canteenOwnerEmail: '',
-        collegeId: '',
-        collegeIds: [],
-        organizationId: '',
-        organizationIds: [],
-        restaurantId: '',
-        type: 'college',
-        operatingHours: {
-          open: '07:00',
-          close: '20:00',
-          days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        },
-        isActive: true
-      });
-      setEnableCollege(true);
-      setEnableOrganization(false);
-      setEnableRestaurant(false);
+    setNewCanteen({
+      name: '',
+      code: '',
+      description: '',
+      location: '',
+      contactNumber: '',
+      email: '',
+      canteenOwnerEmail: '',
+      collegeId: '',
+      collegeIds: [],
+      organizationId: '',
+      organizationIds: [],
+      restaurantId: '',
+      type: 'college',
+      operatingHours: {
+        open: '07:00',
+        close: '20:00',
+        days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      },
+      isActive: true
+    });
+    setEnableCollege(true);
+    setEnableOrganization(false);
+    setEnableRestaurant(false);
   };
 
   const handleSaveEdit = () => {
@@ -430,7 +430,7 @@ export default function CanteenManagementPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="canteen-description">Description</Label>
                   <Textarea
@@ -441,7 +441,7 @@ export default function CanteenManagementPage() {
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="canteen-location">Location</Label>
@@ -462,7 +462,7 @@ export default function CanteenManagementPage() {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="canteen-email">Email</Label>
                   <Input
@@ -473,7 +473,7 @@ export default function CanteenManagementPage() {
                     placeholder="e.g., canteen@institution.edu"
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="canteen-owner-email">Canteen Owner Email</Label>
                   <Input
@@ -484,7 +484,7 @@ export default function CanteenManagementPage() {
                     placeholder="e.g., canteenowner@institution.edu"
                   />
                 </div>
-                
+
                 <div className="space-y-3">
                   <Label>Canteen Associations (choose any combination)</Label>
                   <div className="flex items-center space-x-4">
@@ -620,10 +620,10 @@ export default function CanteenManagementPage() {
                         </button>
                         {isDropdownOpen && (
                           <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                            {organizationsData?.organizations?.filter(org => org.isActive).length === 0 ? (
+                            {organizationsData?.organizations?.filter((org: any) => org.isActive).length === 0 ? (
                               <div className="px-3 py-2 text-sm text-gray-500">No organizations available</div>
                             ) : (
-                              organizationsData?.organizations?.filter(org => org.isActive).map((org: any) => {
+                              organizationsData?.organizations?.filter((org: any) => org.isActive).map((org: any) => {
                                 const isSelected = newCanteen.organizationIds?.includes(org.id) || false;
                                 return (
                                   <label
@@ -706,7 +706,7 @@ export default function CanteenManagementPage() {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="canteen-open">Opening Time</Label>
@@ -714,8 +714,8 @@ export default function CanteenManagementPage() {
                       id="canteen-open"
                       type="time"
                       value={newCanteen.operatingHours.open}
-                      onChange={(e) => setNewCanteen({ 
-                        ...newCanteen, 
+                      onChange={(e) => setNewCanteen({
+                        ...newCanteen,
                         operatingHours: { ...newCanteen.operatingHours, open: e.target.value }
                       })}
                     />
@@ -726,14 +726,14 @@ export default function CanteenManagementPage() {
                       id="canteen-close"
                       type="time"
                       value={newCanteen.operatingHours.close}
-                      onChange={(e) => setNewCanteen({ 
-                        ...newCanteen, 
+                      onChange={(e) => setNewCanteen({
+                        ...newCanteen,
                         operatingHours: { ...newCanteen.operatingHours, close: e.target.value }
                       })}
                     />
                   </div>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={newCanteen.isActive}
@@ -741,7 +741,7 @@ export default function CanteenManagementPage() {
                   />
                   <Label>Active</Label>
                 </div>
-                
+
                 <div className="flex justify-end space-x-3">
                   <Button
                     variant="outline"
@@ -806,8 +806,8 @@ export default function CanteenManagementPage() {
             ) : (
               <div className="space-y-4">
                 {canteens.map((canteen) => (
-                  <div 
-                    key={canteen.id} 
+                  <div
+                    key={canteen.id}
                     className="border rounded-lg p-6 hover:shadow-md transition-shadow bg-white dark:bg-gray-800 cursor-pointer"
                     onClick={() => setLocation(`/admin/canteen/${canteen.id}`)}
                   >
@@ -820,43 +820,43 @@ export default function CanteenManagementPage() {
                           </Badge>
                           <span className="text-sm text-gray-500 font-mono">({canteen.code})</span>
                           <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                            {canteen.type === 'restaurant' ? 'Restaurant' : 
-                             canteen.type === 'organization' ? 'Organization' : 
-                             'College'}
+                            {canteen.type === 'restaurant' ? 'Restaurant' :
+                              canteen.type === 'organization' ? 'Organization' :
+                                'College'}
                           </Badge>
                           <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
                             {canteen.type === 'restaurant' ? (
                               <>🍽️ {canteen.restaurantId ? (restaurants.find(restaurant => (restaurant._id || restaurant.id) === canteen.restaurantId)?.name || 'Unknown Restaurant') : 'No Restaurant Selected'}</>
                             ) : canteen.type === 'organization' ? (
                               <>🏢 {
-                                (canteen.organizationIds && canteen.organizationIds.length > 0) 
+                                (canteen.organizationIds && canteen.organizationIds.length > 0)
                                   ? canteen.organizationIds.map(orgId => {
-                                      const org = organizationsData?.organizations?.find(org => org.id === orgId);
-                                      return org?.name || 'Unknown';
-                                    }).join(', ')
-                                  : (canteen.organizationId 
-                                      ? (organizationsData?.organizations?.find(org => org.id === canteen.organizationId)?.name || 'Unknown Organization')
-                                      : 'No Organization Selected')
+                                    const org = organizationsData?.organizations?.find((org: any) => org.id === orgId);
+                                    return org?.name || 'Unknown';
+                                  }).join(', ')
+                                  : (canteen.organizationId
+                                    ? (organizationsData?.organizations?.find((org: any) => org.id === canteen.organizationId)?.name || 'Unknown Organization')
+                                    : 'No Organization Selected')
                               }</>
                             ) : (
                               <>🏫 {
                                 (canteen.collegeIds && canteen.collegeIds.length > 0)
                                   ? canteen.collegeIds.map(collegeId => {
-                                      const college = collegesData?.colleges?.find(college => college.id === collegeId);
-                                      return college?.name || 'Unknown';
-                                    }).join(', ')
-                                  : (canteen.collegeId 
-                                      ? (collegesData?.colleges?.find(college => college.id === canteen.collegeId)?.name || 'Unknown College')
-                                      : 'No College Selected')
+                                    const college = collegesData?.colleges?.find(college => college.id === collegeId);
+                                    return college?.name || 'Unknown';
+                                  }).join(', ')
+                                  : (canteen.collegeId
+                                    ? (collegesData?.colleges?.find(college => college.id === canteen.collegeId)?.name || 'Unknown College')
+                                    : 'No College Selected')
                               }</>
                             )}
                           </Badge>
                         </div>
-                        
+
                         {canteen.description && (
                           <p className="text-gray-600 dark:text-gray-300 mb-3">{canteen.description}</p>
                         )}
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                           <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
                             <span className="text-lg">🏫</span>
@@ -893,7 +893,7 @@ export default function CanteenManagementPage() {
                             </div>
                           )}
                         </div>
-                        
+
                         {canteen.operatingHours?.days && (
                           <div className="mt-3">
                             <span className="text-sm text-gray-500">Operating Days: </span>
@@ -903,7 +903,7 @@ export default function CanteenManagementPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center space-x-2 ml-4">
                         <Switch
                           checked={canteen.isActive}
