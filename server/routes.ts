@@ -597,6 +597,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users/:id/apply-canteen-qr-context", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        console.log(`❌ User ${userId} not found for applying canteen QR context`);
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { qrId } = req.body;
 
       console.log(`📱 POST /api/users/${userId}/apply-canteen-qr-context - QR ID: ${qrId}`);
@@ -653,6 +660,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users/:id/apply-qr-context", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
+
+      const userContext = await storage.getUser(userId);
+      if (!userContext) {
+        console.log(`❌ User ${userId} not found for applying QR context`);
+        return res.status(404).json({ message: "User not found" });
+      }
+
       const { qrId } = req.body;
 
       console.log(`📱 POST /api/users/${userId}/apply-qr-context - QR ID: ${qrId}`);
