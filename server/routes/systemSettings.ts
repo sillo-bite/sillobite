@@ -5205,6 +5205,101 @@ router.get('/canteens/:canteenId', async (req, res) => {
 });
 
 /**
+ * Get location-specific QRs for a canteen
+ */
+router.get('/canteens/:canteenId/qr/location', async (req, res) => {
+  try {
+    const { canteenId } = req.params;
+
+    // Check if models exist (we might need to import them dynamically or assume they are in models/mongodb-models.ts)
+    // Actually, CanteenQRCode was just added there
+    const { CanteenQRCode } = await import('../models/mongodb-models');
+
+    const qrCodes = await CanteenQRCode.find({ canteenId, isActive: true }).sort({ createdAt: -1 });
+    res.json(qrCodes);
+  } catch (error) {
+    console.error('Error fetching canteen location QRs:', error);
+    res.status(500).json({ error: 'Failed to fetch location QRs' });
+  }
+});
+
+/**
+ * Create a location-specific QR for a canteen
+ */
+router.post('/canteens/:canteenId/qr/location', async (req, res) => {
+  try {
+    const { canteenId } = req.params;
+    const { locationType, locationId } = req.body;
+
+    if (!locationType || !['college', 'organization'].includes(locationType)) {
+      return res.status(400).json({ error: 'Valid locationType is required (college or organization)' });
+    }
+
+    if (!locationId) {
+      return res.status(400).json({ error: 'locationId is required' });
+    }
+
+    const { CanteenQRCode } = await import('../models/mongodb-models');
+
+    // Check if a QR for this exact location already exists
+    const existingQr = await CanteenQRCode.findOne({ canteenId, locationType, locationId, isActive: true });
+    if (existingQr) {
+      return res.json(existingQr); // Return the existing one instead of creating duplicate
+    }
+
+    // Need a unique ID for the QR
+    const qrId = 'CQR' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+
+    // Generate secure hash using crypto
+    const crypto = await import('crypto');
+    const secret = process.env.QR_CODE_SECRET || 'fallback_secret_for_dev_only';
+
+    const hashData = `${canteenId}-${locationType}-${locationId}-${qrId}-${Date.now()}`;
+    const hash = crypto.createHmac('sha256', secret).update(hashData).digest('base64url');
+
+    // Create the QR URL (points to our QR handler page)
+    const baseUrl = process.env.APP_URL || process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const qrCodeUrl = `${baseUrl}/qr/canteen/${qrId}`;
+
+    const newQr = new CanteenQRCode({
+      qrId,
+      canteenId,
+      locationType,
+      locationId,
+      qrCodeUrl,
+      hash,
+      isActive: true
+    });
+
+    await newQr.save();
+    res.status(201).json(newQr);
+  } catch (error) {
+    console.error('Error creating canteen location QR:', error);
+    res.status(500).json({ error: 'Failed to create location QR' });
+  }
+});
+
+/**
+ * Delete a location-specific QR for a canteen
+ */
+router.delete('/canteens/:canteenId/qr/location/:qrId', async (req, res) => {
+  try {
+    const { canteenId, qrId } = req.params;
+    const { CanteenQRCode } = await import('../models/mongodb-models');
+
+    const result = await CanteenQRCode.deleteOne({ canteenId, qrId });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'QR code not found' });
+    }
+
+    res.json({ success: true, message: 'QR code deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting canteen location QR:', error);
+    res.status(500).json({ error: 'Failed to delete location QR' });
+  }
+});
+
+/**
  * Upload canteen profile picture
  * Expects 'image' file in request
  */

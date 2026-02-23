@@ -1399,3 +1399,40 @@ CanteenEntitySchema.pre('save', function (next) {
 
 export const CanteenEntity = mongoose.model<ICanteenEntity>('CanteenEntity', CanteenEntitySchema);
 
+// Canteen Location-Specific QR Code Model
+export interface ICanteenQRCode extends Document {
+  qrId: string; // Unique QR code identifier
+  canteenId: string; // Canteen ID this QR belongs to
+  locationType: 'college' | 'organization'; // Type of location it sets context for
+  locationId: string; // The specific collegeId or organizationId
+  qrCodeUrl: string; // Full QR code URL linking to /qr/canteen/:qrId
+  hash: string; // Security hash for validation
+  isActive: boolean; // Whether QR code is active
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const CanteenQRCodeSchema = new Schema<ICanteenQRCode>({
+  qrId: { type: String, required: true, unique: true },
+  canteenId: { type: String, required: true },
+  locationType: { type: String, enum: ['college', 'organization'], required: true },
+  locationId: { type: String, required: true },
+  qrCodeUrl: { type: String, required: true },
+  hash: { type: String, required: true },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Indexes for efficient queries
+CanteenQRCodeSchema.index({ canteenId: 1, isActive: 1 });
+CanteenQRCodeSchema.index({ qrId: 1 });
+CanteenQRCodeSchema.index({ hash: 1 });
+
+// Update updatedAt before saving
+CanteenQRCodeSchema.pre('save', function (next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+export const CanteenQRCode = mongoose.model<ICanteenQRCode>('CanteenQRCode', CanteenQRCodeSchema);

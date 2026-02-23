@@ -1,0 +1,369 @@
+﻿client/src/components/admin/AdminAnalyticsPage.tsx(41,9): error TS7034: Variable 'ordersData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminAnalyticsPage.tsx(42,9): error TS7034: Variable 'usersData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminAnalyticsPage.tsx(43,9): error TS7034: Variable 'menuData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminAnalyticsPage.tsx(53,28): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(58,28): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(74,29): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(83,29): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(84,28): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(94,18): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(98,17): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(99,18): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(100,20): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(101,17): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(102,15): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(103,16): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(104,14): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(109,24): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(121,22): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(123,58): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(135,3): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(152,24): error TS7005: Variable 'menuData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminAnalyticsPage.tsx(182,23): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminChallengeManagementPage.tsx(578,84): error TS2339: Property 'title' does not exist on type 'CodingChallenge'.
+client/src/components/admin/AdminLayout.tsx(167,16): error TS2741: Property 'onClearAll' is missing in type '{ isOpen: boolean; onClose: () => void; notifications: Notification[]; onMarkAsRead: (id: string) => void; onMarkAllAsRead: () => void; }' but required in type 'NotificationPanelProps'.
+client/src/components/admin/AdminMenuManagementPage.tsx(262,72): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+client/src/components/admin/AdminMenuManagementPage.tsx(280,49): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+client/src/components/admin/AdminReportsPage.tsx(42,9): error TS7034: Variable 'ordersData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminReportsPage.tsx(43,9): error TS7034: Variable 'usersData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminReportsPage.tsx(44,9): error TS7034: Variable 'menuData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminReportsPage.tsx(86,21): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(150,10): error TS2349: This expression is not callable.
+  Type 'String' has no call signatures.
+client/src/components/admin/AdminReportsPage.tsx(150,68): error TS2349: This expression is not callable.
+  Type 'String' has no call signatures.
+client/src/components/admin/AdminReportsPage.tsx(171,3): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(180,17): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(185,3): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(195,24): error TS7005: Variable 'menuData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(198,3): error TS7005: Variable 'menuData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(233,22): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(239,20): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(290,3): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(295,3): error TS7005: Variable 'usersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminReportsPage.tsx(302,38): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminSystemSettingsPage.tsx(244,10): error TS2304: Cannot find name 'newCollege'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(244,37): error TS2304: Cannot find name 'newCollege'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(247,5): error TS2304: Cannot find name 'addCollegeMutation'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(247,31): error TS2304: Cannot find name 'newCollege'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(251,5): error TS2304: Cannot find name 'updateCollegeMutation'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(256,7): error TS2304: Cannot find name 'deleteCollegeMutation'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(265,10): error TS2304: Cannot find name 'newDepartment'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(265,40): error TS2304: Cannot find name 'newDepartment'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(268,5): error TS2304: Cannot find name 'addDepartmentToCollegeMutation'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(268,59): error TS2304: Cannot find name 'newDepartment'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(272,5): error TS2304: Cannot find name 'updateDepartmentInCollegeMutation'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(277,7): error TS2304: Cannot find name 'deleteDepartmentFromCollegeMutation'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(562,24): error TS2304: Cannot find name 'colleges'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(562,40): error TS7006: Parameter 'college' implicitly has an 'any' type.
+client/src/components/admin/AdminSystemSettingsPage.tsx(562,73): error TS7006: Parameter 'college' implicitly has an 'any' type.
+client/src/components/admin/AdminSystemSettingsPage.tsx(596,24): error TS2304: Cannot find name 'colleges'.
+client/src/components/admin/AdminSystemSettingsPage.tsx(596,41): error TS7006: Parameter 'college' implicitly has an 'any' type.
+client/src/components/admin/AdminSystemSettingsPage.tsx(597,52): error TS7006: Parameter 'dept' implicitly has an 'any' type.
+client/src/components/admin/AdminSystemSettingsPage.tsx(597,79): error TS7006: Parameter 'dept' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(56,5): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+  Type 'null' is not assignable to type 'string | undefined'.
+client/src/components/admin/AdminUserManagementPage.tsx(126,9): error TS7034: Variable 'ordersData' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/admin/AdminUserManagementPage.tsx(189,38): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(190,24): error TS7005: Variable 'ordersData' implicitly has an 'any[]' type.
+client/src/components/admin/AdminUserManagementPage.tsx(208,53): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(208,88): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(208,93): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(209,54): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(209,90): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(209,95): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(210,56): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(210,94): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(210,99): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(211,53): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(211,88): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(211,93): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(212,51): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(212,84): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(212,89): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(213,51): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(213,84): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(213,89): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(214,58): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(214,129): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(214,134): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(215,51): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(215,84): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(215,89): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(237,9): error TS2304: Cannot find name 'refetchAnalytics'.
+client/src/components/admin/AdminUserManagementPage.tsx(238,9): error TS2304: Cannot find name 'refetchOrders'.
+client/src/components/admin/AdminUserManagementPage.tsx(441,31): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(442,34): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(443,37): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(452,28): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(453,29): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(454,31): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(455,28): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(456,26): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(457,32): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(458,25): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(459,26): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(693,52): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(714,83): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(714,108): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(757,33): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(824,88): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1056,36): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1259,71): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1259,104): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1259,107): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1260,72): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1260,157): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1260,160): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1261,68): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1261,121): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1261,124): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1262,177): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1262,183): error TS7006: Parameter 'i' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1262,410): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1262,416): error TS7006: Parameter 'i' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1262,638): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1262,644): error TS7006: Parameter 'i' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1288,52): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1288,85): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1288,88): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1288,146): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1288,152): error TS7006: Parameter 'index' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1321,52): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1321,105): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1321,108): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1321,166): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1321,172): error TS7006: Parameter 'index' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1353,71): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1353,74): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1357,71): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1357,74): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1367,76): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1367,81): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1376,75): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1376,78): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1377,71): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1381,75): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1381,78): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1382,71): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1406,57): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1407,58): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1409,44): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1414,45): error TS7006: Parameter 'employee' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1420,74): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1421,75): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1422,70): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1422,75): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1422,143): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1422,148): error TS7006: Parameter 'employee' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1424,70): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1424,75): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1424,140): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1424,145): error TS7006: Parameter 'employee' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1446,52): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1446,192): error TS7006: Parameter 'user' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1453,57): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1454,70): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1455,71): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1456,66): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1456,71): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1456,139): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1456,144): error TS7006: Parameter 'employee' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1458,67): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1458,72): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1458,137): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1458,142): error TS7006: Parameter 'employee' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1503,35): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1508,43): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1525,57): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1528,57): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1529,57): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1530,57): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1531,57): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1559,55): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1562,50): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1563,50): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1564,50): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1565,50): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1655,57): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1659,44): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1704,59): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1706,53): error TS2802: Type 'Set<unknown>' can only be iterated through when using the '--downlevelIteration' flag or with a '--target' of 'es2015' or higher.
+client/src/components/admin/AdminUserManagementPage.tsx(1706,74): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1709,68): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1710,65): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1711,65): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1712,65): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1713,65): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1758,37): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1758,69): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1786,57): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1787,85): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1787,90): error TS7006: Parameter 'student' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1816,50): error TS7006: Parameter 'u' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1816,85): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(1816,90): error TS7006: Parameter 's' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(2356,65): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/admin/AdminUserManagementPage.tsx(2356,90): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/admin/OrganizationAdminPanel.tsx(441,20): error TS7006: Parameter 'c' implicitly has an 'any' type.
+client/src/components/admin/PayoutRequestManagementPage.tsx(243,17): error TS2322: Type '(options?: RefetchOptions | undefined) => Promise<QueryObserverResult<any, Error>>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
+  Types of parameters 'options' and 'event' are incompatible.
+    Type 'MouseEvent<HTMLButtonElement, MouseEvent>' has no properties in common with type 'RefetchOptions'.
+client/src/components/admin/QuickPicksManager.tsx(70,7): error TS2322: Type 'string' is not assignable to type 'number'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1032,15): error TS2322: Type 'string | false | undefined' is not assignable to type 'boolean | undefined'.
+  Type 'string' is not assignable to type 'boolean | undefined'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1033,15): error TS2322: Type 'string | false | undefined' is not assignable to type 'boolean | undefined'.
+  Type 'string' is not assignable to type 'boolean | undefined'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1204,67): error TS18048: 'rangePosition.range' is possibly 'undefined'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1251,49): error TS18048: 'rangePosition.range' is possibly 'undefined'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1251,85): error TS18048: 'rangePosition.range' is possibly 'undefined'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1251,115): error TS18048: 'rangePosition.range' is possibly 'undefined'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1670,50): error TS2345: Argument of type '(prev: PositionStructure) => { range: { min: number; positions: number[]; max?: number | undefined; }; position: number; type: "fixed" | "year" | "digit" | "alphabet" | "numbers_range" | "alphanumeric"; value?: string | undefined; description?: string | undefined; yearType?: "starting" | ... 1 more ... | undefined; }' is not assignable to parameter of type 'SetStateAction<PositionStructure>'.
+  Type '(prev: PositionStructure) => { range: { min: number; positions: number[]; max?: number | undefined; }; position: number; type: "fixed" | "year" | "digit" | "alphabet" | "numbers_range" | "alphanumeric"; value?: string | undefined; description?: string | undefined; yearType?: "starting" | ... 1 more ... | undefined; }' is not assignable to type '(prevState: PositionStructure) => PositionStructure'.
+    Call signature return types '{ range: { min: number; positions: number[]; max?: number | undefined; }; position: number; type: "fixed" | "year" | "digit" | "alphabet" | "numbers_range" | "alphanumeric"; value?: string | undefined; description?: string | undefined; yearType?: "starting" | ... 1 more ... | undefined; }' and 'PositionStructure' are incompatible.
+      The types of 'range.max' are incompatible between these types.
+        Type 'number | undefined' is not assignable to type 'number'.
+          Type 'undefined' is not assignable to type 'number'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1686,50): error TS2345: Argument of type '(prev: PositionStructure) => { range: { max: number; positions: number[]; min?: number | undefined; }; position: number; type: "fixed" | "year" | "digit" | "alphabet" | "numbers_range" | "alphanumeric"; value?: string | undefined; description?: string | undefined; yearType?: "starting" | ... 1 more ... | undefined; }' is not assignable to parameter of type 'SetStateAction<PositionStructure>'.
+  Type '(prev: PositionStructure) => { range: { max: number; positions: number[]; min?: number | undefined; }; position: number; type: "fixed" | "year" | "digit" | "alphabet" | "numbers_range" | "alphanumeric"; value?: string | undefined; description?: string | undefined; yearType?: "starting" | ... 1 more ... | undefined; }' is not assignable to type '(prevState: PositionStructure) => PositionStructure'.
+    Call signature return types '{ range: { max: number; positions: number[]; min?: number | undefined; }; position: number; type: "fixed" | "year" | "digit" | "alphabet" | "numbers_range" | "alphanumeric"; value?: string | undefined; description?: string | undefined; yearType?: "starting" | ... 1 more ... | undefined; }' and 'PositionStructure' are incompatible.
+      The types of 'range.min' are incompatible between these types.
+        Type 'number | undefined' is not assignable to type 'number'.
+          Type 'undefined' is not assignable to type 'number'.
+client/src/components/admin/RegistrationFormatBuilder.tsx(1757,25): error TS2339: Property 'range' does not exist on type 'number'.
+client/src/components/admin/RestaurantInfoManager.tsx(926,62): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ kitchen: { value: string; label: string; }[]; service: { value: string; label: string; }[]; management: { value: string; label: string; }[]; cleaning: { value: string; label: string; }[]; security: { value: string; label: string; }[]; other: { ...; }[]; }'.
+client/src/components/admin/TrendingItemsManager.tsx(69,7): error TS2322: Type 'string' is not assignable to type 'number'.
+client/src/components/auth/ProfileSetupScreen.tsx(3070,50): error TS2678: Type 'UserRole.STAFF' is not comparable to type 'UserRole.STUDENT | UserRole.EMPLOYEE | UserRole.GUEST | UserRole.CONTRACTOR | UserRole.VISITOR'.
+client/src/components/canteen/CanteenAdminCouponManagement.tsx(624,22): error TS18048: 'coupon.minimumOrderAmount' is possibly 'undefined'.
+client/src/components/canteen/CanteenAdminLayout.tsx(145,16): error TS2741: Property 'onClearAll' is missing in type '{ isOpen: boolean; onClose: () => void; notifications: Notification[]; onMarkAsRead: (id: string) => void; onMarkAllAsRead: () => void; }' but required in type 'NotificationPanelProps'.
+client/src/components/canteen/CanteenAdminMenuManagement.tsx(702,17): error TS2345: Argument of type '{ name: string; price: string; categoryId: string; description: string; stock: string; available: true; isVegetarian: true; isMarkable: true; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; }' is not assignable to parameter of type 'SetStateAction<{ name: string; price: string; categoryId: string; description: string; stock: string; available: boolean; isVegetarian: boolean; isMarkable: boolean; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; kotCounterId: string; }>'.
+  Property 'kotCounterId' is missing in type '{ name: string; price: string; categoryId: string; description: string; stock: string; available: true; isVegetarian: true; isMarkable: true; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; }' but required in type '{ name: string; price: string; categoryId: string; description: string; stock: string; available: boolean; isVegetarian: boolean; isMarkable: boolean; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; kotCounterId: string; }'.
+client/src/components/canteen/CanteenAdminMenuManagement.tsx(1105,17): error TS2345: Argument of type '{ name: string; price: string; categoryId: any; description: string; stock: string; available: boolean; isVegetarian: boolean; isMarkable: boolean; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; }' is not assignable to parameter of type 'SetStateAction<{ name: string; price: string; categoryId: string; description: string; stock: string; available: boolean; isVegetarian: boolean; isMarkable: boolean; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; kotCounterId: string; }>'.
+  Property 'kotCounterId' is missing in type '{ name: string; price: string; categoryId: any; description: string; stock: string; available: boolean; isVegetarian: boolean; isMarkable: boolean; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; }' but required in type '{ name: string; price: string; categoryId: string; description: string; stock: string; available: boolean; isVegetarian: boolean; isMarkable: boolean; addOns: string; imageUrl: string; imagePublicId: string; storeCounterId: string; paymentCounterId: string; kotCounterId: string; }'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(828,59): error TS7006: Parameter 'item' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1000,40): error TS2339: Property 'updatedAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1000,67): error TS2339: Property 'updatedAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1003,83): error TS2339: Property 'updatedAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1006,40): error TS2339: Property 'readyAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1009,83): error TS2339: Property 'readyAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1087,91): error TS2551: Property 'customerEmail' does not exist on type 'Order'. Did you mean 'customerId'?
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1091,97): error TS2551: Property 'customerPhone' does not exist on type 'Order'. Did you mean 'customerName'?
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1108,73): error TS2339: Property 'college' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1108,124): error TS2339: Property 'collegeId' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1114,96): error TS2339: Property 'department' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1118,102): error TS2339: Property 'year' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1122,100): error TS2339: Property 'registerNumber' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1132,90): error TS2339: Property 'role' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1140,97): error TS2339: Property 'totalOrders' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1144,99): error TS2339: Property 'loyaltyPoints' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1167,57): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1168,43): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1170,44): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1177,84): error TS2339: Property 'paymentStatus' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1177,131): error TS2339: Property 'paymentStatus' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1181,85): error TS2339: Property 'paymentStatus' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1181,132): error TS2339: Property 'paymentStatus' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1189,44): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1190,77): error TS2339: Property 'paymentMethod' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1197,44): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1198,166): error TS2339: Property 'transactionId' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1201,40): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1211,44): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1212,149): error TS2339: Property 'paymentGateway' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1215,70): error TS2339: Property 'paidAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1219,84): error TS2339: Property 'paidAt' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1239,36): error TS2339: Property 'isOffline' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1319,40): error TS2339: Property 'loyaltyDiscount' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1319,73): error TS2339: Property 'loyaltyDiscount' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1322,91): error TS2339: Property 'loyaltyDiscount' does not exist on type 'Order'.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1341,68): error TS7006: Parameter 'item' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminOrdersManagement.tsx(1341,74): error TS7006: Parameter 'index' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(78,41): error TS7006: Parameter 'payment' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(81,46): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(81,51): error TS7006: Parameter 'payment' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(83,43): error TS7006: Parameter 'payment' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(84,49): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(84,54): error TS7006: Parameter 'payment' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(86,46): error TS7006: Parameter 'payment' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(87,51): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/canteen/CanteenAdminPaymentManagement.tsx(87,56): error TS7006: Parameter 'payment' implicitly has an 'any' type.
+client/src/components/canteen/CanteenManagementPage.tsx(623,71): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/canteen/CanteenManagementPage.tsx(626,72): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/canteen/CanteenManagementPage.tsx(834,90): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/canteen/CanteenManagementPage.tsx(838,81): error TS7006: Parameter 'org' implicitly has an 'any' type.
+client/src/components/canteen/CanteenOrderDetailPage.tsx(5,26): error TS2307: Cannot find module '@/hooks/useOrder' or its corresponding type declarations.
+client/src/components/canteen/CanteenOrderDetailPage.tsx(323,18): error TS2367: This comparison appears to be unintentional because the types 'UserRole' and 'UserRole.STUDENT' have no overlap.
+client/src/components/canteen/CanteenOrderDetailPage.tsx(372,18): error TS2367: This comparison appears to be unintentional because the types 'UserRole' and 'UserRole.STAFF' have no overlap.
+client/src/components/canteen/CanteenOwnerQRManager.tsx(124,11): error TS7034: Variable 'availableLocations' implicitly has type 'any[]' in some locations where its type cannot be determined.
+client/src/components/canteen/CanteenOwnerQRManager.tsx(176,38): error TS7005: Variable 'availableLocations' implicitly has an 'any[]' type.
+client/src/components/canteen/CanteenOwnerQRManager.tsx(217,79): error TS7005: Variable 'availableLocations' implicitly has an 'any[]' type.
+client/src/components/canteen/CanteenOwnerQRManager.tsx(218,50): error TS7005: Variable 'availableLocations' implicitly has an 'any[]' type.
+client/src/components/canteen/QuickPickConfigPanel.tsx(57,7): error TS2322: Type 'string' is not assignable to type 'number'.
+client/src/components/college-admin/CollegeAdminLayout.tsx(194,30): error TS2741: Property 'onClearAll' is missing in type '{ isOpen: boolean; onClose: () => void; notifications: Notification[]; onMarkAsRead: (id: string) => void; onMarkAllAsRead: () => void; }' but required in type 'NotificationPanelProps'.
+client/src/components/menu/MenuListingPage.tsx(200,5): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataInfiniteOptions<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, Error, InfiniteData<...>, readonly unknown[], unknown>, queryClient?: QueryClient | undefined): DefinedUseInfiniteQueryResult<...>', gave the following error.
+    Type '({ pageParam, signal }: { pageParam: number; signal: AbortSignal; }) => Promise<any>' is not assignable to type 'unique symbol | QueryFunction<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, readonly unknown[], unknown> | undefined'.
+      Type '({ pageParam, signal }: { pageParam: number; signal: AbortSignal; }) => Promise<any>' is not assignable to type 'QueryFunction<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, readonly unknown[], unknown>'.
+        Types of parameters '__0' and 'context' are incompatible.
+          Type '{ client: QueryClient; queryKey: readonly unknown[]; signal: AbortSignal; pageParam: unknown; direction: FetchDirection; meta: Record<string, unknown> | undefined; }' is not assignable to type '{ pageParam: number; signal: AbortSignal; }'.
+            Types of property 'pageParam' are incompatible.
+              Type 'unknown' is not assignable to type 'number'.
+  Overload 2 of 3, '(options: UndefinedInitialDataInfiniteOptions<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, Error, InfiniteData<...>, readonly unknown[], unknown>, queryClient?: QueryClient | undefined): UseInfiniteQueryResult<...>', gave the following error.
+    Type '({ pageParam, signal }: { pageParam: number; signal: AbortSignal; }) => Promise<any>' is not assignable to type 'unique symbol | QueryFunction<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, readonly unknown[], unknown> | undefined'.
+      Type '({ pageParam, signal }: { pageParam: number; signal: AbortSignal; }) => Promise<any>' is not assignable to type 'QueryFunction<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, readonly unknown[], unknown>'.
+        Types of parameters '__0' and 'context' are incompatible.
+          Type '{ client: QueryClient; queryKey: readonly unknown[]; signal: AbortSignal; pageParam: unknown; direction: FetchDirection; meta: Record<string, unknown> | undefined; }' is not assignable to type '{ pageParam: number; signal: AbortSignal; }'.
+            Types of property 'pageParam' are incompatible.
+              Type 'unknown' is not assignable to type 'number'.
+  Overload 3 of 3, '(options: UseInfiniteQueryOptions<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, Error, InfiniteData<...>, readonly unknown[], unknown>, queryClient?: QueryClient | undefined): UseInfiniteQueryResult<...>', gave the following error.
+    Type '({ pageParam, signal }: { pageParam: number; signal: AbortSignal; }) => Promise<any>' is not assignable to type 'unique symbol | QueryFunction<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, readonly unknown[], unknown> | undefined'.
+      Type '({ pageParam, signal }: { pageParam: number; signal: AbortSignal; }) => Promise<any>' is not assignable to type 'QueryFunction<{ items: MenuItem[]; pagination: { currentPage: number; totalPages: number; totalItems: number; itemsPerPage: number; hasNextPage: boolean; hasPrevPage: boolean; }; }, readonly unknown[], unknown>'.
+        Types of parameters '__0' and 'context' are incompatible.
+          Type '{ client: QueryClient; queryKey: readonly unknown[]; signal: AbortSignal; pageParam: unknown; direction: FetchDirection; meta: Record<string, unknown> | undefined; }' is not assignable to type '{ pageParam: number; signal: AbortSignal; }'.
+            Types of property 'pageParam' are incompatible.
+              Type 'unknown' is not assignable to type 'number'.
+client/src/components/menu/MenuListingPage.tsx(231,58): error TS2339: Property 'items' does not exist on type 'TQueryFnData'.
+client/src/components/menu/ViewAllQuickPicksPage.tsx(100,15): error TS2339: Property 'storeCounterId' does not exist on type '{ id: string; name: string; price: number; category: string; isVegetarian: boolean; stock: number; available: boolean; description: string | undefined; imageUrl: string | undefined; categoryId: string | undefined; }'.
+client/src/components/menu/ViewAllQuickPicksPage.tsx(100,39): error TS2339: Property 'paymentCounterId' does not exist on type '{ id: string; name: string; price: number; category: string; isVegetarian: boolean; stock: number; available: boolean; description: string | undefined; imageUrl: string | undefined; categoryId: string | undefined; }'.
+client/src/components/menu/ViewAllQuickPicksPage.tsx(104,30): error TS2339: Property 'storeCounterId' does not exist on type '{ id: string; name: string; price: number; category: string; isVegetarian: boolean; stock: number; available: boolean; description: string | undefined; imageUrl: string | undefined; categoryId: string | undefined; }'.
+client/src/components/menu/ViewAllQuickPicksPage.tsx(105,32): error TS2339: Property 'paymentCounterId' does not exist on type '{ id: string; name: string; price: number; category: string; isVegetarian: boolean; stock: number; available: boolean; description: string | undefined; imageUrl: string | undefined; categoryId: string | undefined; }'.
+client/src/components/menu/ViewAllQuickPicksPage.tsx(120,28): error TS2339: Property 'storeCounterId' does not exist on type '{ id: string; name: string; price: number; category: string; isVegetarian: boolean; stock: number; available: boolean; description: string | undefined; imageUrl: string | undefined; categoryId: string | undefined; }'.
+client/src/components/menu/ViewAllQuickPicksPage.tsx(121,30): error TS2339: Property 'paymentCounterId' does not exist on type '{ id: string; name: string; price: number; category: string; isVegetarian: boolean; stock: number; available: boolean; description: string | undefined; imageUrl: string | undefined; categoryId: string | undefined; }'.
+client/src/components/pos/TransactionHistory.tsx(142,7): error TS2322: Type 'Element' is not assignable to type 'string'.
+client/src/components/profile/UserReviewsPage.tsx(31,47): error TS2339: Property 'email' does not exist on type 'never'.
+client/src/components/profile/UserReviewsPage.tsx(32,26): error TS2339: Property 'email' does not exist on type 'never'.
+client/src/components/profile/UserReviewsPage.tsx(35,71): error TS18047: 'userInfo' is possibly 'null'.
+client/src/components/profile/UserReviewsPage.tsx(70,5): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataOptions<unknown, Error, unknown, any[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<unknown, Error>', gave the following error.
+    Object literal may only specify known properties, and 'onError' does not exist in type 'DefinedInitialDataOptions<unknown, Error, unknown, any[]>'.
+  Overload 2 of 3, '(options: UndefinedInitialDataOptions<any[], Error, any[], any[]>, queryClient?: QueryClient | undefined): UseQueryResult<any[], Error>', gave the following error.
+    Object literal may only specify known properties, and 'onError' does not exist in type 'UndefinedInitialDataOptions<any[], Error, any[], any[]>'.
+  Overload 3 of 3, '(options: UseQueryOptions<any[], Error, any[], any[]>, queryClient?: QueryClient | undefined): UseQueryResult<any[], Error>', gave the following error.
+    Object literal may only specify known properties, and 'onError' does not exist in type 'UseQueryOptions<any[], Error, any[], any[]>'.
+client/src/components/profile/UserReviewsPage.tsx(70,15): error TS7006: Parameter 'err' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(93,36): error TS18046: 'reviews' is of type 'unknown'.
+client/src/components/profile/UserReviewsPage.tsx(94,13): error TS7006: Parameter 'review' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(108,12): error TS7006: Parameter 'a' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(108,15): error TS7006: Parameter 'b' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(147,19): error TS18046: 'reviews' is of type 'unknown'.
+client/src/components/profile/UserReviewsPage.tsx(148,20): error TS18046: 'reviews' is of type 'unknown'.
+client/src/components/profile/UserReviewsPage.tsx(149,9): error TS18046: 'reviews' is of type 'unknown'.
+client/src/components/profile/UserReviewsPage.tsx(149,25): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(149,30): error TS7006: Parameter 'review' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(149,74): error TS18046: 'reviews' is of type 'unknown'.
+client/src/components/profile/UserReviewsPage.tsx(151,24): error TS18046: 'reviews' is of type 'unknown'.
+client/src/components/profile/UserReviewsPage.tsx(151,40): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(151,45): error TS7006: Parameter 'review' implicitly has an 'any' type.
+client/src/components/profile/UserReviewsPage.tsx(304,43): error TS7006: Parameter 'review' implicitly has an 'any' type.
+server/migrations/fix-category-uniqueness.ts(40,34): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+server/routes.ts(385,45): error TS2345: Argument of type '{ role: UserRole; name: string; email: string; college?: string | undefined; phoneNumber?: string | undefined; registerNumber?: string | undefined; staffId?: string | undefined; ... 9 more ...; passwordHash?: string | undefined; }' is not assignable to parameter of type 'UserCreateInput'.
+  Types of property 'role' are incompatible.
+    Type 'import("D:/steepanProjects/sillobite/shared/schema").UserRole' is not assignable to type 'import("D:/steepanProjects/sillobite/node_modules/.prisma/client/index").$Enums.UserRole'.
+      Type 'UserRole.STUDENT' is not assignable to type 'UserRole'. Did you mean '"STUDENT"'?
+server/routes.ts(8547,15): error TS2820: Type '"delivery_person"' is not assignable to type 'UserRole | undefined'. Did you mean '"DELIVERY_PERSON"'?
+server/routes.ts(8565,52): error TS2345: Argument of type '{ role: UserRole; name: string; email: string; college?: string | undefined; phoneNumber?: string | undefined; registerNumber?: string | undefined; staffId?: string | undefined; ... 9 more ...; passwordHash?: string | undefined; }' is not assignable to parameter of type 'UserCreateInput'.
+  Types of property 'role' are incompatible.
+    Type 'import("D:/steepanProjects/sillobite/shared/schema").UserRole' is not assignable to type 'import("D:/steepanProjects/sillobite/node_modules/.prisma/client/index").$Enums.UserRole'.
+      Type 'UserRole.STUDENT' is not assignable to type 'UserRole'. Did you mean '"STUDENT"'?
+server/routes/auth.ts(99,9): error TS2322: Type 'import("D:/steepanProjects/sillobite/shared/schema").UserRole' is not assignable to type 'import("D:/steepanProjects/sillobite/node_modules/.prisma/client/index").$Enums.UserRole'.

@@ -593,6 +593,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply Canteen QR Context to User (Location)
+  app.post("/api/users/:id/apply-canteen-qr-context", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { qrId } = req.body;
+
+      console.log(`📱 POST /api/users/${userId}/apply-canteen-qr-context - QR ID: ${qrId}`);
+
+      if (!qrId) {
+        return res.status(400).json({ message: "qrId is required" });
+      }
+
+      // 1. Find the QR Code in CanteenQRCode model
+      const { CanteenQRCode, CanteenEntity } = await import('./models/mongodb-models');
+      const targetQrCode = await CanteenQRCode.findOne({ qrId, isActive: true });
+
+      if (!targetQrCode) {
+        console.log(`❌ Canteen QR Code ${qrId} not found or inactive`);
+        return res.status(404).json({ message: "Invalid or inactive QR Code" });
+      }
+
+      const canteenId = targetQrCode.canteenId;
+      const locationType = targetQrCode.locationType;
+      const locationId = targetQrCode.locationId;
+
+      console.log(`✅ Found QR belonging to Canteen: ${canteenId}, Location: ${locationType} (${locationId})`);
+
+      // Verify canteen exists
+      const canteen = await CanteenEntity.findOne({ id: canteenId, isActive: true });
+      if (!canteen) {
+        return res.status(404).json({ message: "Associated canteen not found or inactive" });
+      }
+
+      // 2. Update User Location
+      await storage.updateUser(userId, {
+        selectedLocationType: locationType,
+        selectedLocationId: locationId
+      });
+      console.log(`📍 User ${userId} location updated to ${locationType}: ${locationId}`);
+
+      // We don't add full addresses automatically here since location QRs are just for global context,
+      // but we could if we wanted to store address data on the QR model.
+
+      res.json({
+        message: "Canteen QR Context applied successfully",
+        canteenId: canteenId,
+        locationType: locationType,
+        locationId: locationId
+      });
+
+    } catch (error) {
+      console.error(`❌ Error applying canteen QR context:`, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Apply QR Context to User (Location + Address)
   app.post("/api/users/:id/apply-qr-context", async (req, res) => {
     try {

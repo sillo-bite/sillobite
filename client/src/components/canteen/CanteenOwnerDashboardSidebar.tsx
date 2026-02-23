@@ -3090,10 +3090,9 @@ export default function CanteenOwnerDashboardSidebar() {
               </div>
             )}
 
-            {/* QR Manager Content */}
             {activeTab === "qr-manager" && (
               <div className="h-full flex flex-col min-h-0">
-                <CanteenOwnerQRManager />
+                <CanteenOwnerQRManager canteenId={canteenId} />
               </div>
             )}
 
