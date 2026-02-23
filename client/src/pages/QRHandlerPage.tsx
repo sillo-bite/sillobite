@@ -10,7 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 export default function QRHandlerPage() {
     const [, params] = useRoute("/qr/:type/:qrId");
     const [, setLocation] = useLocation();
-    const { user, isLoading: authLoading } = useAuth();
+    const { user, isLoading: authLoading, logout } = useAuth();
     const [error, setError] = useState<string | null>(null);
 
     const qrId = params?.qrId;
@@ -32,7 +32,10 @@ export default function QRHandlerPage() {
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.message || 'Failed to apply context');
+                const err = new Error(data.message || 'Failed to apply context');
+                // Attach status code to error object for special handling in onError
+                (err as any).status = res.status;
+                throw err;
             }
             return res.json();
         },
@@ -44,7 +47,14 @@ export default function QRHandlerPage() {
                 window.location.href = '/app';
             }
         },
-        onError: (err: Error) => {
+        onError: async (err: Error) => {
+            if ((err as any).status === 404 && err.message === 'User not found') {
+                console.log('👤 Backend reported user not found. Stale session detected, logging out.');
+                await logout();
+                const returnUrl = encodeURIComponent(window.location.pathname);
+                setLocation(`/login?redirect=${returnUrl}&fromQR=true&sessionExpired=true`);
+                return;
+            }
             setError(err.message);
         }
     });
