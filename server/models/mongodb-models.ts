@@ -560,6 +560,7 @@ export const Complaint = mongoose.model<IComplaint>('Complaint', ComplaintSchema
 
 // Payment Model
 export interface IPayment extends Document {
+  customerId?: number; // PostgreSQL user ID for querying payments by user
   orderId?: mongoose.Types.ObjectId;
   canteenId?: string; // Added canteenId field for direct canteen mapping
   merchantTransactionId: string;
@@ -577,6 +578,7 @@ export interface IPayment extends Document {
 }
 
 const PaymentSchema = new Schema<IPayment>({
+  customerId: { type: Number }, // PostgreSQL user ID for user-specific payment queries
   orderId: { type: Schema.Types.ObjectId, ref: 'Order' },
   canteenId: { type: String }, // Added canteenId field for direct canteen mapping
   merchantTransactionId: { type: String, required: true, unique: true },
@@ -598,6 +600,7 @@ PaymentSchema.index({ canteenId: 1, createdAt: -1 }); // For getPaymentsByCantee
 PaymentSchema.index({ orderId: 1 }); // For order-based payment lookups
 PaymentSchema.index({ status: 1, createdAt: -1 }); // For status-based queries
 PaymentSchema.index({ merchantTransactionId: 1 }); // Already unique, but explicit index for lookups
+PaymentSchema.index({ customerId: 1, createdAt: -1 }); // For user-specific payment queries (My Payments)
 
 export const Payment = mongoose.model<IPayment>('Payment', PaymentSchema);
 
