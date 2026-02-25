@@ -40,6 +40,7 @@ import { orderService } from "./services/order-service";
 import { cloudinaryService } from "./services/cloudinaryService";
 import { webPushService } from "./services/webPushService.js";
 import { CheckoutSessionService, checkDuplicatePaymentMiddleware } from "./checkout-session-service";
+import { calculateOrderTotal } from "../shared/pricing";
 import webPushRoutes from "./routes/webPush.js";
 import systemSettingsRoutes from "./routes/systemSettings.js";
 import databaseManagementRoutes from "./routes/database-management.js";
@@ -3959,9 +3960,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // SECURITY ALGORITHM: Recalculate and verify correct amount on backend
+      const canteenId = orderData.canteenId || '';
+
+      try {
+        console.log(`🔐 Verifying payment amount for canteen ${canteenId}`);
+        // 1. Fetch exact menu items from DB to prevent price tamparing
+        const itemIds = (orderData.items || []).map((item: any) => item.id);
+        const menuItemsFromDb = await MenuItem.find({ _id: { $in: itemIds } });
+
+        // 2. Re-create the cart with DB-verified prices
+        const verifiedCart = (orderData.items || []).map((cartItem: any) => {
+          const dbItem = menuItemsFromDb.find(item => item._id?.toString() === cartItem.id);
+          if (!dbItem) throw new Error(`Menu item not found: ${cartItem.id}`);
+          return {
+            id: cartItem.id,
+            price: dbItem.price,
+            quantity: cartItem.quantity
+          };
+        });
+
+        // 3. Fetch active charges for the canteen
+        const activeCharges = await CanteenCharge.find({ canteenId, active: true });
+
+        // 4. Map DB charges to expected shared format
+        const formattedCharges = activeCharges.map(c => ({
+          name: c.name,
+          type: c.type as 'percent' | 'fixed',
+          value: c.value,
+          active: c.active
+        }));
+
+        // 5. Build mapped coupon (if one was applied)
+        const mappedCoupon = orderData.appliedCoupon ? {
+          type: 'fixed' as const, // For safety, only use the fixed discountAmount that was applied, or fetch full coupon to rebuild logic
+          value: orderData.appliedCoupon.discountAmount,
+          maxDiscountAmount: undefined
+        } : undefined;
+
+        // 6. Run shared pricing calculation
+        const pricingResult = calculateOrderTotal(verifiedCart, formattedCharges, mappedCoupon);
+
+        // 7. Verify match within 1 Rupee tolerance (to handle potential floating point drift between client/server JS)
+        if (Math.abs(pricingResult.finalTotal - amount) > 1) {
+          console.error(`🚨 Payment Mismatch Detected: Frontend sent ₹${amount} but backend calculated ₹${pricingResult.finalTotal}`);
+          return res.status(400).json({
+            success: false,
+            message: "Payment amount verification failed. Please refresh your cart and try again."
+          });
+        }
+        console.log(`✅ Payment amount verified successfully (₹${pricingResult.finalTotal})`);
+      } catch (calcError) {
+        console.error("❌ Error calculating secure amount:", calcError);
+        return res.status(500).json({
+          success: false,
+          message: "Error verifying payment amount. Please try again."
+        });
+      }
+
       // Check for duplicate payment using checkout session
       const customerId = orderData.customerId || 0;
-      const canteenId = orderData.canteenId || '';
       const checkoutSessionId = req.body.checkoutSessionId;
 
       console.log(`🔍 Checking for duplicate payment: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}, CheckoutSessionId: ${checkoutSessionId || 'none'}`);
@@ -4663,6 +4721,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({
           success: false,
           message: "Invalid amount: amount must be greater than 0"
+        });
+      }
+
+      // SECURITY ALGORITHM: Recalculate and verify correct amount on backend for QR payments
+      try {
+        console.log(`🔐 Verifying QR payment amount for canteen ${canteenId}`);
+        const itemIds = cart.map((item: any) => item.id);
+        const menuItemsFromDb = await MenuItem.find({ _id: { $in: itemIds } });
+
+        const verifiedCart = cart.map((cartItem: any) => {
+          const dbItem = menuItemsFromDb.find(item => item._id?.toString() === cartItem.id);
+          if (!dbItem) throw new Error(`Menu item not found: ${cartItem.id}`);
+          return {
+            id: cartItem.id,
+            price: dbItem.price,
+            quantity: cartItem.quantity
+          };
+        });
+
+        const activeCharges = await CanteenCharge.find({ canteenId, active: true });
+
+        const formattedCharges = activeCharges.map(c => ({
+          name: c.name,
+          type: c.type as 'percent' | 'fixed',
+          value: c.value,
+          active: c.active
+        }));
+
+        const mappedCoupon = totals?.appliedCoupon ? {
+          type: 'fixed' as const,
+          value: totals.appliedCoupon.discountAmount,
+          maxDiscountAmount: undefined
+        } : undefined;
+
+        const pricingResult = calculateOrderTotal(verifiedCart, formattedCharges, mappedCoupon);
+
+        if (Math.abs(pricingResult.finalTotal - amount) > 1) {
+          console.error(`🚨 QR Payment Mismatch Detected: Frontend sent ₹${amount} but backend calculated ₹${pricingResult.finalTotal}`);
+          return res.status(400).json({
+            success: false,
+            message: "Payment amount verification failed. Please refresh your cart and try again."
+          });
+        }
+        console.log(`✅ QR Payment amount verified successfully (₹${pricingResult.finalTotal})`);
+      } catch (calcError) {
+        console.error("❌ Error calculating secure amount for QR:", calcError);
+        return res.status(500).json({
+          success: false,
+          message: "Error verifying payment amount. Please try again."
         });
       }
 
