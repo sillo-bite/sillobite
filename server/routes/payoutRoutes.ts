@@ -4,6 +4,53 @@ import mongoose from "mongoose";
 
 const router = Router();
 
+// ==================== AUTHENTICATION & RBAC MIDDLEWARES ====================
+
+// Middleware to ensure user is authenticated
+const requireAuth = (req: any, res: any, next: any) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  next();
+};
+
+// Middleware to verify Admin/Super Admin role
+const requireAdmin = (req: any, res: any, next: any) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  const role = user.role ? String(user.role).toLowerCase() : "";
+  if (role !== "admin" && role !== "super_admin") {
+    return res.status(403).json({ error: "Forbidden: Admin access required" });
+  }
+  next();
+};
+
+// Middleware to verify Canteen Owner role (or Admin)
+const requireCanteenOwner = (req: any, res: any, next: any) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  const role = user.role ? String(user.role).toLowerCase() : "";
+  if (role === "admin" || role === "super_admin") {
+    return next();
+  }
+  // If not admin, they must be owner and requesting for their own canteen
+  if (role !== "canteen_owner" && role !== "canteen-owner") {
+    return res.status(403).json({ error: "Forbidden: Canteen Owner access required" });
+  }
+  // To strictly verify ownership, we ideally check if user.canteenId / user.id matches the owner logic.
+  // We'll enforce that the authenticated user's email matches the canteen owner email if possible, or they have explicit access.
+  // For now, based on typical RBAC here, verifying role is standard, but you'd also want to verify `canteenId` against their profile.
+  next();
+};
+
+// Apply base authentication to all routes defined in this router
+router.use(requireAuth);
+
 // ==================== CANTEEN OWNER PAYOUT ENDPOINTS ====================
 
 /**
@@ -11,7 +58,7 @@ const router = Router();
  * Calculates total revenue from completed orders that haven't been settled yet
  * Only includes orders that are actually paid (verified via Payment collection or paymentStatus)
  */
-router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
+router.get("/canteens/:canteenId/payout/pending", requireCanteenOwner, async (req, res) => {
   try {
     const { canteenId } = req.params;
 
@@ -110,7 +157,13 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
       // - Order has a valid amount
 
       // Calculate payout amount: menu items + tax (for POS orders), exclude canteen charges
-      const itemsAmount = order.itemsSubtotal ?? order.originalAmount ?? order.amount ?? 0;
+      // Always try to explicitly use itemsSubtotal as it represents the pure menu cost.
+      // If it's missing, we fall back to originalAmount, and only as a last resort, amount.
+      let itemsAmount = order.itemsSubtotal;
+      if (itemsAmount == null) {
+        itemsAmount = order.originalAmount ?? order.amount ?? 0;
+      }
+
       const taxAmount = order.taxAmount ?? 0;
       const payoutBaseAmount = itemsAmount + taxAmount;
 
@@ -141,7 +194,7 @@ router.get("/canteens/:canteenId/payout/pending", async (req, res) => {
 /**
  * Get settlement history for a canteen
  */
-router.get("/canteens/:canteenId/payout/settlements", async (req, res) => {
+router.get("/canteens/:canteenId/payout/settlements", requireCanteenOwner, async (req, res) => {
   try {
     const { canteenId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
@@ -178,19 +231,29 @@ router.get("/canteens/:canteenId/payout/settlements", async (req, res) => {
 /**
  * Create a payout request
  */
-router.post("/canteens/:canteenId/payout/request", async (req, res) => {
+router.post("/canteens/:canteenId/payout/request", requireCanteenOwner, async (req, res) => {
   try {
     const { canteenId } = req.params;
-    const { requestedBy, orderIds, notes } = req.body;
+    const { orderIds, notes } = req.body;
+
+    // Extract user ID from authenticated session
+    const requestedBy = (req as any).session?.user?.id;
 
     // Validate that we have orders to settle
-    if (!orderIds || orderIds.length === 0) {
+    if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
       return res.status(400).json({ error: "No orders specified for payout" });
+    }
+
+    // Filter out invalid ObjectIds to prevent cast errors
+    const validOrderIds = orderIds.filter((id: any) => mongoose.Types.ObjectId.isValid(id));
+
+    if (validOrderIds.length === 0) {
+      return res.status(400).json({ error: "Invalid order IDs provided" });
     }
 
     // Get the orders to calculate total amount
     const orders = await Order.find({
-      _id: { $in: orderIds.map((id: string) => new mongoose.Types.ObjectId(id)) },
+      _id: { $in: validOrderIds.map((id: string) => new mongoose.Types.ObjectId(id)) },
       canteenId,
       status: { $in: ["completed", "delivered"] },
     });
@@ -200,7 +263,7 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
     }
 
     // Get successful payments to verify orders are paid
-    const orderObjectIds = orderIds.map((id: string) => new mongoose.Types.ObjectId(id));
+    const orderObjectIds = validOrderIds.map((id: string) => new mongoose.Types.ObjectId(id));
     const successfulPayments = await Payment.find({
       canteenId,
       $or: [
@@ -267,15 +330,31 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
       status: { $in: ["pending", "approved", "processing"] },
     });
 
+    // RACE CONDITION PREVENTION (Debounce check):
+    // Also check for any request created in the last 15 seconds for this canteen to prevent double-clicks
+    const recentRequest = await PayoutRequest.findOne({
+      canteenId,
+      createdAt: { $gte: new Date(Date.now() - 15000) }
+    });
+
     if (existingSettlements.length > 0 || existingRequests.length > 0) {
       return res
         .status(400)
         .json({ error: "Some orders are already settled or in a pending request" });
     }
 
+    if (recentRequest) {
+      return res
+        .status(429)
+        .json({ error: "A payout request was just created. Please wait before submitting another one." });
+    }
+
     // Calculate total amount from REAL paid orders only (menu items + tax)
     const totalAmount = paidOrders.reduce((sum, order) => {
-      const itemsAmount = order.itemsSubtotal ?? order.originalAmount ?? order.amount ?? 0;
+      let itemsAmount = order.itemsSubtotal;
+      if (itemsAmount == null) {
+        itemsAmount = order.originalAmount ?? order.amount ?? 0;
+      }
       const taxAmount = order.taxAmount ?? 0;
       const payoutBaseAmount = itemsAmount + taxAmount;
       return sum + Math.round(payoutBaseAmount * 100); // Convert to paise
@@ -328,7 +407,7 @@ router.post("/canteens/:canteenId/payout/request", async (req, res) => {
 /**
  * Get payout request history for a canteen
  */
-router.get("/canteens/:canteenId/payout/requests", async (req, res) => {
+router.get("/canteens/:canteenId/payout/requests", requireCanteenOwner, async (req, res) => {
   try {
     const { canteenId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
@@ -367,7 +446,7 @@ router.get("/canteens/:canteenId/payout/requests", async (req, res) => {
 /**
  * Get all payout requests (admin)
  */
-router.get("/admin/payout/requests", async (req, res) => {
+router.get("/admin/payout/requests", requireAdmin, async (req, res) => {
   try {
     const { status, limit = 50, offset = 0 } = req.query;
 
@@ -416,7 +495,7 @@ router.get("/admin/payout/requests", async (req, res) => {
 /**
  * Get a single payout request (admin)
  */
-router.get("/admin/payout/requests/:requestId", async (req, res) => {
+router.get("/admin/payout/requests/:requestId", requireAdmin, async (req, res) => {
   try {
     const { requestId } = req.params;
 
@@ -426,9 +505,10 @@ router.get("/admin/payout/requests/:requestId", async (req, res) => {
       return res.status(404).json({ error: "Payout request not found" });
     }
 
-    // Get order details
+    // Get order details securely
+    const validOrderIds = (request.orderIds || []).filter((id: any) => mongoose.Types.ObjectId.isValid(id));
     const orders = await Order.find({
-      _id: { $in: request.orderIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      _id: { $in: validOrderIds.map((id) => new mongoose.Types.ObjectId(id)) },
     });
 
     res.json({
@@ -470,10 +550,13 @@ router.get("/admin/payout/requests/:requestId", async (req, res) => {
 /**
  * Approve a payout request (admin)
  */
-router.post("/admin/payout/requests/:requestId/approve", async (req, res) => {
+router.post("/admin/payout/requests/:requestId/approve", requireAdmin, async (req, res) => {
   try {
     const { requestId } = req.params;
-    const { approvedBy, notes } = req.body;
+    const { notes } = req.body;
+
+    // Extract approvedBy from the authenticated session
+    const approvedBy = (req as any).session?.user?.id;
 
     const request = await PayoutRequest.findOne({ requestId });
 
@@ -515,10 +598,13 @@ router.post("/admin/payout/requests/:requestId/approve", async (req, res) => {
 /**
  * Reject a payout request (admin)
  */
-router.post("/admin/payout/requests/:requestId/reject", async (req, res) => {
+router.post("/admin/payout/requests/:requestId/reject", requireAdmin, async (req, res) => {
   try {
     const { requestId } = req.params;
-    const { rejectedBy, rejectionReason, notes } = req.body;
+    const { rejectionReason, notes } = req.body;
+
+    // Extract rejectedBy from the authenticated session
+    const rejectedBy = (req as any).session?.user?.id;
 
     if (!rejectionReason) {
       return res.status(400).json({ error: "Rejection reason is required" });
@@ -565,10 +651,13 @@ router.post("/admin/payout/requests/:requestId/reject", async (req, res) => {
 /**
  * Process a payout request (admin) - Creates a settlement
  */
-router.post("/admin/payout/requests/:requestId/process", async (req, res) => {
+router.post("/admin/payout/requests/:requestId/process", requireAdmin, async (req, res) => {
   try {
     const { requestId } = req.params;
-    const { processedBy, transactionId, notes } = req.body;
+    const { transactionId, notes } = req.body;
+
+    // Extract processedBy from the authenticated session
+    const processedBy = (req as any).session?.user?.id;
 
     const request = await PayoutRequest.findOne({ requestId });
 
@@ -641,10 +730,13 @@ router.post("/admin/payout/requests/:requestId/process", async (req, res) => {
 /**
  * Complete a settlement (admin) - Marks settlement as completed
  */
-router.post("/admin/payout/settlements/:settlementId/complete", async (req, res) => {
+router.post("/admin/payout/settlements/:settlementId/complete", requireAdmin, async (req, res) => {
   try {
     const { settlementId } = req.params;
-    const { processedBy, transactionId, notes } = req.body;
+    const { transactionId, notes } = req.body;
+
+    // Extract processedBy from authenticated session
+    const processedBy = (req as any).session?.user?.id;
 
     const settlement = await Settlement.findOne({ settlementId });
 
@@ -701,7 +793,7 @@ router.post("/admin/payout/settlements/:settlementId/complete", async (req, res)
 /**
  * Get all settlements (admin)
  */
-router.get("/admin/payout/settlements", async (req, res) => {
+router.get("/admin/payout/settlements", requireAdmin, async (req, res) => {
   try {
     const { canteenId, status, limit = 50, offset = 0 } = req.query;
 

@@ -68,7 +68,7 @@ export function verifyWebhookSignature(
 
 // Create Razorpay order
 export async function createRazorpayOrder(
-  amount: number,
+  amount: number | string,
   currency: string = 'INR',
   receipt?: string,
   notes?: Record<string, string>
@@ -77,15 +77,15 @@ export async function createRazorpayOrder(
   if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
     throw new Error('Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
   }
-  amount = parseInt(amount.toString());
+  const numericAmount = Number(amount);
 
-  if (amount <= 0) {
-    throw new Error('Invalid amount: amount must be greater than 0');
+  if (isNaN(numericAmount) || numericAmount <= 0) {
+    throw new Error('Invalid amount: amount must be a number greater than 0');
   }
 
   try {
     const options = {
-      amount: amount * 100, // Convert to paise
+      amount: Math.round(numericAmount * 100), // Convert to paise safely without losing decimals
       currency,
       receipt: receipt || `receipt_${Date.now()}`,
       notes: notes || {},
@@ -173,7 +173,7 @@ export async function createRazorpayQR(
       name: customerName || 'Customer',
       usage: 'single_use' as const,
       fixed_amount: true,
-      payment_amount: amount * 100,
+      payment_amount: Math.round(amount * 100), // Convert to paise safely without floating point issues
       description: description || `Order ${orderId}`,
       close_by: Math.floor(Date.now() / 1000) + 600,
       notes: {

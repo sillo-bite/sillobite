@@ -16,6 +16,7 @@ import StockValidationWarning from "@/components/canteen/StockValidationWarning"
 import { useCanteenContext } from "@/contexts/CanteenContext";
 import { getUserFromStorage } from "@/utils/userStorage";
 import { formatCurrency } from "@/utils/formatting";
+import { calculateOrderTotal } from "../../../../shared/pricing";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import {
   AlertDialog,
@@ -168,33 +169,26 @@ export default function CheckoutPage() {
   // Menu API call completely removed - counter IDs are REQUIRED and stored in cart items when items are added
   // All cart items MUST have storeCounterId and paymentCounterId - validation will fail if missing
 
-  const subtotal = cart.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-  const totalBeforeDiscount = subtotal;
-  const activeCharges = (chargesData?.items || []).filter((c) => c.active);
+  const mappedCoupon = appliedCoupon ? {
+    type: 'fixed' as const, // The frontend appliedCoupon only stores discountAmount and finalAmount, so it acts like a fixed discount at this stage
+    value: appliedCoupon.discountAmount,
+    maxDiscountAmount: undefined
+  } : undefined;
+
+  const {
+    subtotal,
+    discountAmount,
+    totalBeforeCharges: totalBeforeDiscount, // Using totalBeforeCharges as totalBeforeDiscount for UI
+    chargesTotal,
+    finalTotal: total,
+    chargesApplied
+  } = calculateOrderTotal(
+    cart,
+    chargesData?.items || [],
+    mappedCoupon
+  );
+
   const baseAmount = appliedCoupon ? appliedCoupon.finalAmount : totalBeforeDiscount;
-  const chargesComputation = (() => {
-    let chargesTotal = 0;
-    const chargesApplied: Array<{ name: string; type: 'percent' | 'fixed'; value: number; amount: number }> = [];
-    activeCharges.forEach((charge) => {
-      const amount = charge.type === 'percent' ? (baseAmount * charge.value) / 100 : charge.value;
-      if (amount > 0) {
-        chargesApplied.push({
-          name: charge.name,
-          type: charge.type,
-          value: charge.value,
-          amount: Number(amount.toFixed(2))
-        });
-        chargesTotal += amount;
-      }
-    });
-    return {
-      chargesApplied,
-      chargesTotal: Number(chargesTotal.toFixed(2))
-    };
-  })();
-  const chargesTotal = chargesComputation.chargesTotal;
-  const chargesApplied = chargesComputation.chargesApplied;
-  const total = baseAmount + chargesTotal;
 
   // Get total item count
   const getTotalItems = () => {
@@ -1126,7 +1120,7 @@ export default function CheckoutPage() {
 
                 {chargesApplied.length > 0 && (
                   <div className="space-y-1 pt-2 border-t border-border">
-                    {chargesApplied.map((charge) => (
+                    {chargesApplied.map((charge: { name: string; type: 'percent' | 'fixed'; value: number; amount: number }) => (
                       <div key={charge.name} className="flex justify-between items-center">
                         <span className="text-foreground text-sm">
                           {charge.name} ({charge.type === 'percent' ? `${charge.value}%` : `₹${charge.value}`})

@@ -5,6 +5,7 @@
 
 import { Router } from 'express';
 import { OAuth2Client } from 'google-auth-library';
+import { storage } from '../storage-hybrid';
 
 const router = Router();
 
@@ -78,6 +79,29 @@ router.get('/callback', async (req, res) => {
 
     console.log('User authenticated:', { email: userData.email });
 
+    // Fetch user from database to get complete user data including role
+    let dbUser = null;
+    try {
+      dbUser = await storage.getUserByEmail(userData.email || '');
+    } catch (dbError) {
+      console.error('Error fetching user from database:', dbError);
+    }
+
+    // Merge Google user data with database user data
+    const completeUserData = {
+      ...userData,
+      ...(dbUser && {
+        id: dbUser.id,
+        role: dbUser.role ? String(dbUser.role).toLowerCase() : undefined,
+        phoneNumber: dbUser.phoneNumber,
+        registerNumber: dbUser.registerNumber,
+        department: dbUser.department,
+        college: dbUser.college,
+        staffId: dbUser.staffId,
+        isProfileComplete: dbUser.isProfileComplete
+      })
+    };
+
     // Set session (standardized) — MUST await save before redirect
     // to prevent race conditions when multiple users log in simultaneously
     const params = new URLSearchParams({
@@ -88,7 +112,7 @@ router.get('/callback', async (req, res) => {
     });
 
     if (req.session) {
-      (req.session as any).user = userData;
+      (req.session as any).user = completeUserData;
       (req.session as any).googleUser = userData;
       req.session.save((err) => {
         if (err) {

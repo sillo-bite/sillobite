@@ -1,7 +1,7 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, UserRole } from '@prisma/client';
 import { connectToMongoDB } from './mongodb';
 import {
-  User, InsertUser as SharedInsertUser, UserRole
+  User, InsertUser as SharedInsertUser
 } from "@shared/schema";
 import {
   Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter, UserAddress,
@@ -71,6 +71,7 @@ export type InsertLoginIssue = {
   status?: string
 };
 export type InsertPayment = {
+  customerId?: number; // PostgreSQL user ID for user-specific payment queries
   orderId?: string | null;
   canteenId?: string; // Added canteenId field
   merchantTransactionId: string;
@@ -234,6 +235,7 @@ export interface IStorage {
   getPayments(): Promise<any[]>;
   getPaymentsPaginated(page: number, limit: number, searchQuery?: string, statusFilter?: string): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getPaymentsByCanteen(canteenId: string, page?: number, limit?: number): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
+  getPaymentsByCustomerId(customerId: number, page?: number, limit?: number): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getPayment(id: string): Promise<any | undefined>;
   getPaymentByMerchantTxnId(merchantTransactionId: string): Promise<any | undefined>;
   getPaymentByMetadataField(field: string, value: string): Promise<any | undefined>;
@@ -1162,6 +1164,28 @@ export class HybridStorage implements IStorage {
         .skip(skip)
         .limit(limit),
       Payment.countDocuments({ canteenId })
+    ]);
+
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      payments: mongoToPlain(payments),
+      totalCount,
+      totalPages,
+      currentPage: page
+    };
+  }
+
+  async getPaymentsByCustomerId(customerId: number, page: number = 1, limit: number = 20): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }> {
+    const skip = (page - 1) * limit;
+
+    const [payments, totalCount] = await Promise.all([
+      Payment.find({ customerId })
+        .populate('orderId', 'orderNumber customerName amount status createdAt')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Payment.countDocuments({ customerId })
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);

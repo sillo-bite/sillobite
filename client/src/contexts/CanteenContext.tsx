@@ -39,6 +39,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const [selectedCanteen, setSelectedCanteen] = useState<Canteen | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const hasManuallySelected = React.useRef(false); // Track if user manually selected a canteen
+  const hasAttemptedOrgRepair = React.useRef(false); // Track if org repair has been attempted
   const { user, isAuthenticated } = useAuthSync();
   const { initializeCartForCanteen } = useCart();
   const { selectedLocationType, selectedLocationId, isLoading: locationLoading } = useLocationContext();
@@ -47,33 +48,48 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
   const { data: cachedUser, isLoading: userLoading } = useUserFromCache();
 
   // Repair mechanism: If user is missing organization field, try to restore it from database
+  // Uses a ref to ensure it only fires ONCE per session (not on every re-render)
+  const userToCheck = cachedUser || user;
+  const repairUserId = userToCheck?.id;
+  const repairUserRole = userToCheck?.role;
+  const repairUserOrg = userToCheck?.organization;
+  const repairUserIsTemp = userToCheck?.isTemporary;
+
   useEffect(() => {
-    const userToCheck = cachedUser || user;
+    // Only attempt repair once per session
+    if (hasAttemptedOrgRepair.current) return;
+
     // Only attempt to repair regular users who are missing organization data
     // Do NOT attempt to repair temporary users as they draw organization data from their session
-    if (userToCheck && userToCheck.role === UserRole.GUEST && !userToCheck.organization && userToCheck.id && !userToCheck.isTemporary) {
+    if (repairUserId && repairUserRole === UserRole.GUEST && !repairUserOrg && !repairUserIsTemp) {
+      hasAttemptedOrgRepair.current = true; // Mark as attempted before fetching
+
       // Fetch user from database to get organizationId
       (async () => {
         try {
-          console.log('🔍 Fetching user from database to get organizationId:', userToCheck.id);
-          const userResponse = await fetch(`/api/users/${userToCheck.id}`);
+          console.log('🔍 Fetching user from database to get organizationId:', repairUserId);
+          const userResponse = await fetch(`/api/users/${repairUserId}`);
           if (userResponse.ok) {
             const dbUser = await userResponse.json();
             if (dbUser.organizationId) {
               console.log('✅ Found organizationId in database:', dbUser.organizationId);
 
               // Update user data in localStorage with organization field
-              const updatedUser = {
-                ...userToCheck,
-                organization: dbUser.organizationId,
-                organizationId: dbUser.organizationId,
-              };
+              const currentUserData = localStorage.getItem('user');
+              if (currentUserData) {
+                const currentUser = JSON.parse(currentUserData);
+                const updatedUser = {
+                  ...currentUser,
+                  organization: dbUser.organizationId,
+                  organizationId: dbUser.organizationId,
+                };
 
-              localStorage.setItem('user', JSON.stringify(updatedUser));
-              window.dispatchEvent(new CustomEvent('userAuthChange'));
-              console.log('✅ Organization field restored from database:', updatedUser);
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                window.dispatchEvent(new CustomEvent('userAuthChange'));
+                console.log('✅ Organization field restored from database:', updatedUser);
+              }
             } else {
-              console.log('⚠️ No organizationId found in database for user:', userToCheck.id);
+              console.log('⚠️ No organizationId found in database for user:', repairUserId);
             }
           }
         } catch (e) {
@@ -81,7 +97,7 @@ export const CanteenProvider = React.memo(function CanteenProvider({ children }:
         }
       })();
     }
-  }, [cachedUser, user]);
+  }, [repairUserId, repairUserRole, repairUserOrg, repairUserIsTemp]);
 
   // Use cached user if available, otherwise fall back to auth user
   const effectiveUser = cachedUser || user;

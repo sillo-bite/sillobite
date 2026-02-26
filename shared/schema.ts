@@ -159,6 +159,7 @@ export type Complaint = {
 
 export type Payment = {
   id: string;
+  customerId?: number; // PostgreSQL user ID for user-specific payment queries
   orderId?: string;
   merchantTransactionId: string;
   phonePeTransactionId?: string; // Legacy field for backward compatibility
@@ -852,6 +853,7 @@ export const insertLoginIssueSchema = z.object({
 
 
 export const insertPaymentSchema = z.object({
+  customerId: z.number().optional(),
   orderId: z.number().optional(),
   merchantTransactionId: z.string(),
   phonePeTransactionId: z.string().optional(), // Legacy field for backward compatibility

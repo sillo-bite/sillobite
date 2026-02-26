@@ -40,6 +40,7 @@ import { orderService } from "./services/order-service";
 import { cloudinaryService } from "./services/cloudinaryService";
 import { webPushService } from "./services/webPushService.js";
 import { CheckoutSessionService, checkDuplicatePaymentMiddleware } from "./checkout-session-service";
+import { calculateOrderTotal } from "../shared/pricing";
 import webPushRoutes from "./routes/webPush.js";
 import systemSettingsRoutes from "./routes/systemSettings.js";
 import databaseManagementRoutes from "./routes/database-management.js";
@@ -895,6 +896,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userExists: true,
         user: userData
       });
+
+      // Update session with complete user data including role
+      if (req.session) {
+        (req.session as any).user = userData;
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session update error during validation:', err);
+          }
+        });
+      }
     } catch (error) {
       console.error("Error validating user session:", error);
       res.status(500).json({ message: "Internal server error", userExists: false });
@@ -3959,9 +3970,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // SECURITY ALGORITHM: Recalculate and verify correct amount on backend
+      const canteenId = orderData.canteenId || '';
+
+      try {
+        console.log(`🔐 Verifying payment amount for canteen ${canteenId}`);
+        // 0. Parse order items carefully (handles JSON strings and urlencoded objects)
+        let cartItems: any[] = [];
+        try {
+          if (typeof orderData.items === 'string') {
+            cartItems = JSON.parse(orderData.items);
+          } else if (orderData.items && typeof orderData.items === 'object' && !Array.isArray(orderData.items)) {
+            // Body-parser urlencoded sometimes parses arrays as { '0': {...}, '1': {...} }
+            cartItems = Object.values(orderData.items);
+          } else {
+            cartItems = orderData.items || [];
+          }
+        } catch (e) {
+          console.warn('Failed to parse orderData.items, using empty array', e);
+        }
+
+        // 1. Fetch exact menu items from DB to prevent price tamparing
+        const itemIds = cartItems.map((item: any) => item.id);
+        const menuItemsFromDb = await MenuItem.find({ _id: { $in: itemIds } });
+
+        // 2. Re-create the cart with DB-verified prices
+        const verifiedCart = cartItems.map((cartItem: any) => {
+          const dbItem = menuItemsFromDb.find(item => item._id?.toString() === cartItem.id);
+          if (!dbItem) throw new Error(`Menu item not found: ${cartItem.id}`);
+          return {
+            id: cartItem.id,
+            price: dbItem.price,
+            quantity: cartItem.quantity
+          };
+        });
+
+        // 3. Fetch active charges for the canteen
+        const activeCharges = await CanteenCharge.find({ canteenId, active: true });
+
+        // 4. Map DB charges to expected shared format
+        const formattedCharges = activeCharges.map(c => ({
+          name: c.name,
+          type: c.type as 'percent' | 'fixed',
+          value: c.value,
+          active: c.active
+        }));
+
+        // 5. Build mapped coupon (if one was applied)
+        const mappedCoupon = orderData.appliedCoupon ? {
+          type: 'fixed' as const, // For safety, only use the fixed discountAmount that was applied, or fetch full coupon to rebuild logic
+          value: orderData.appliedCoupon.discountAmount,
+          maxDiscountAmount: undefined
+        } : undefined;
+
+        // 6. Run shared pricing calculation
+        const pricingResult = calculateOrderTotal(verifiedCart, formattedCharges, mappedCoupon);
+
+        // 7. Verify match within 1 Rupee tolerance (to handle potential floating point drift between client/server JS)
+        if (Math.abs(pricingResult.finalTotal - amount) > 1) {
+          console.error(`🚨 Payment Mismatch Detected: Frontend sent ₹${amount} but backend calculated ₹${pricingResult.finalTotal}`);
+          return res.status(400).json({
+            success: false,
+            message: "Payment amount verification failed. Please refresh your cart and try again."
+          });
+        }
+        console.log(`✅ Payment amount verified successfully (₹${pricingResult.finalTotal})`);
+      } catch (calcError) {
+        console.error("❌ Error calculating secure amount:", calcError);
+        return res.status(500).json({
+          success: false,
+          message: "Error verifying payment amount. Please try again."
+        });
+      }
+
       // Check for duplicate payment using checkout session
       const customerId = orderData.customerId || 0;
-      const canteenId = orderData.canteenId || '';
       const checkoutSessionId = req.body.checkoutSessionId;
 
       console.log(`🔍 Checking for duplicate payment: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}, CheckoutSessionId: ${checkoutSessionId || 'none'}`);
@@ -4163,6 +4246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Store payment record
       await storage.createPayment({
+        customerId: orderData.customerId || undefined,
         merchantTransactionId: merchantOrderId,
         amount: amount * 100, // Store in paise
         status: PAYMENT_STATUS.PENDING,
@@ -4662,6 +4746,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({
           success: false,
           message: "Invalid amount: amount must be greater than 0"
+        });
+      }
+
+      // SECURITY ALGORITHM: Recalculate and verify correct amount on backend for QR payments
+      try {
+        console.log(`🔐 Verifying QR payment amount for canteen ${canteenId}`);
+        const itemIds = cart.map((item: any) => item.id);
+        const menuItemsFromDb = await MenuItem.find({ _id: { $in: itemIds } });
+
+        const verifiedCart = cart.map((cartItem: any) => {
+          const dbItem = menuItemsFromDb.find(item => item._id?.toString() === cartItem.id);
+          if (!dbItem) throw new Error(`Menu item not found: ${cartItem.id}`);
+          return {
+            id: cartItem.id,
+            price: dbItem.price,
+            quantity: cartItem.quantity
+          };
+        });
+
+        const activeCharges = await CanteenCharge.find({ canteenId, active: true });
+
+        const formattedCharges = activeCharges.map(c => ({
+          name: c.name,
+          type: c.type as 'percent' | 'fixed',
+          value: c.value,
+          active: c.active
+        }));
+
+        const mappedCoupon = totals?.appliedCoupon ? {
+          type: 'fixed' as const,
+          value: totals.appliedCoupon.discountAmount,
+          maxDiscountAmount: undefined
+        } : undefined;
+
+        const pricingResult = calculateOrderTotal(verifiedCart, formattedCharges, mappedCoupon);
+
+        if (Math.abs(pricingResult.finalTotal - amount) > 1) {
+          console.error(`🚨 QR Payment Mismatch Detected: Frontend sent ₹${amount} but backend calculated ₹${pricingResult.finalTotal}`);
+          return res.status(400).json({
+            success: false,
+            message: "Payment amount verification failed. Please refresh your cart and try again."
+          });
+        }
+        console.log(`✅ QR Payment amount verified successfully (₹${pricingResult.finalTotal})`);
+      } catch (calcError) {
+        console.error("❌ Error calculating secure amount for QR:", calcError);
+        return res.status(500).json({
+          success: false,
+          message: "Error verifying payment amount. Please try again."
         });
       }
 
@@ -5956,6 +6089,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: "Internal server error during status check"
+      });
+    }
+  });
+
+  // ==========================================
+  // MY PAYMENTS - User-facing payment history & verification
+  // ==========================================
+
+  // Get payments for a specific user (My Payments page)
+  app.get("/api/users/:userId/my-payments", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, message: "Invalid user ID" });
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      console.log(`📋 Fetching payments for user ${userId}, page ${page}, limit ${limit}`);
+
+      const result = await storage.getPaymentsByCustomerId(userId, page, limit);
+
+      // Enrich payments with canteen name from metadata
+      const enrichedPayments = result.payments.map((payment: any) => {
+        let canteenName = '';
+        let customerName = '';
+        let items: any[] = [];
+        try {
+          if (payment.metadata) {
+            const metadata = typeof payment.metadata === 'string' ? JSON.parse(payment.metadata) : payment.metadata;
+            canteenName = metadata.canteenName || '';
+            customerName = metadata.customerName || '';
+            if (metadata.items) {
+              items = typeof metadata.items === 'string' ? JSON.parse(metadata.items) : metadata.items;
+            }
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+
+        return {
+          ...payment,
+          canteenName,
+          customerName,
+          itemsSummary: items.slice(0, 3).map((item: any) => item.name || item.itemName).filter(Boolean),
+          itemCount: items.length,
+          // Convert amount from paise to rupees for display
+          displayAmount: payment.amount / 100,
+          hasOrder: !!payment.orderId,
+        };
+      });
+
+      res.json({
+        success: true,
+        payments: enrichedPayments,
+        totalCount: result.totalCount,
+        totalPages: result.totalPages,
+        currentPage: result.currentPage,
+      });
+    } catch (error) {
+      console.error('❌ Error fetching user payments:', error);
+      res.status(500).json({ success: false, message: "Failed to fetch payments" });
+    }
+  });
+
+  // Verify a specific payment and create order if missed (My Payments - Verify button)
+  app.post("/api/users/:userId/verify-payment/:merchantTransactionId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const { merchantTransactionId } = req.params;
+
+      if (isNaN(userId)) {
+        return res.status(400).json({ success: false, message: "Invalid user ID" });
+      }
+
+      if (!merchantTransactionId) {
+        return res.status(400).json({ success: false, message: "Missing transaction ID" });
+      }
+
+      console.log(`🔍 User ${userId} verifying payment: ${merchantTransactionId}`);
+
+      // 1. Fetch the payment record
+      const payment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
+      if (!payment) {
+        return res.status(404).json({ success: false, message: "Payment not found" });
+      }
+
+      // 2. SECURITY: Verify payment belongs to this user
+      let paymentCustomerId: number | null = null;
+
+      // Check top-level customerId first
+      if (payment.customerId) {
+        paymentCustomerId = payment.customerId;
+      } else if (payment.metadata) {
+        // Fallback to metadata for older payments
+        try {
+          const metadata = typeof payment.metadata === 'string' ? JSON.parse(payment.metadata) : payment.metadata;
+          paymentCustomerId = metadata.customerId || null;
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      if (paymentCustomerId !== userId) {
+        console.warn(`⚠️ User ${userId} attempted to verify payment ${merchantTransactionId} belonging to user ${paymentCustomerId}`);
+        return res.status(403).json({ success: false, message: "You are not authorized to verify this payment" });
+      }
+
+      // 3. If payment already has an order, just return it
+      if (payment.orderId) {
+        const existingOrder = await storage.getOrder(payment.orderId);
+        if (existingOrder) {
+          return res.json({
+            success: true,
+            status: 'already_completed',
+            message: 'Order already exists for this payment',
+            data: {
+              orderNumber: existingOrder.orderNumber,
+              orderId: existingOrder.id,
+              paymentStatus: payment.status,
+            }
+          });
+        }
+      }
+
+      // 4. If payment is already marked as failed, return that info
+      if (payment.status === PAYMENT_STATUS.FAILED) {
+        return res.json({
+          success: true,
+          status: 'failed',
+          message: 'This payment was not successful. No amount was deducted.',
+          data: { paymentStatus: payment.status }
+        });
+      }
+
+      // 5. Check with Razorpay for the real status
+      let razorpayOrderId: string | null = null;
+      try {
+        if (payment.metadata) {
+          const metadata = typeof payment.metadata === 'string' ? JSON.parse(payment.metadata) : payment.metadata;
+          razorpayOrderId = metadata.razorpayOrderId || null;
+        }
+      } catch (e) { /* ignore */ }
+
+      if (!razorpayOrderId) {
+        return res.json({
+          success: true,
+          status: 'pending',
+          message: 'Cannot verify: No gateway reference found for this payment.',
+          data: { paymentStatus: payment.status }
+        });
+      }
+
+      // Query Razorpay API for order status
+      const razorpay = new (await import('razorpay')).default({
+        key_id: RAZORPAY_CONFIG.KEY_ID,
+        key_secret: RAZORPAY_CONFIG.KEY_SECRET,
+      });
+
+      const razorpayOrder = await razorpay.orders.fetch(razorpayOrderId);
+      console.log(`📋 Razorpay order ${razorpayOrderId} status: ${razorpayOrder.status}`);
+
+      if (razorpayOrder.status === 'paid') {
+        // Payment was successful! Create the order if it doesn't exist
+        console.log(`✅ Payment ${merchantTransactionId} confirmed as PAID by Razorpay`);
+
+        // Update payment status
+        await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
+          status: PAYMENT_STATUS.SUCCESS,
+        });
+
+        // Try to create the order
+        let orderData: any = null;
+        try {
+          if (payment.metadata) {
+            orderData = typeof payment.metadata === 'string' ? JSON.parse(payment.metadata) : payment.metadata;
+          }
+        } catch (e) { /* ignore */ }
+
+        if (orderData) {
+          try {
+            const newOrder = await orderService.createOrderForFailedPayment(orderData, merchantTransactionId);
+
+            if (newOrder && newOrder.id) {
+              // Link payment to order
+              await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
+                orderId: newOrder.id,
+                status: PAYMENT_STATUS.SUCCESS,
+              });
+
+              console.log(`✅ Order ${newOrder.orderNumber} created from verified payment`);
+
+              return res.json({
+                success: true,
+                status: 'verified_and_created',
+                message: 'Payment verified! Your order has been created and sent to the canteen.',
+                data: {
+                  orderNumber: newOrder.orderNumber,
+                  orderId: newOrder.id,
+                  paymentStatus: PAYMENT_STATUS.SUCCESS,
+                }
+              });
+            }
+          } catch (orderError: any) {
+            console.error('❌ Error creating order from verified payment:', orderError);
+            return res.json({
+              success: true,
+              status: 'verified_order_failed',
+              message: `Payment verified as successful, but order creation failed: ${orderError.message}. Please contact support.`,
+              data: { paymentStatus: PAYMENT_STATUS.SUCCESS }
+            });
+          }
+        }
+
+        return res.json({
+          success: true,
+          status: 'verified_no_data',
+          message: 'Payment verified as successful, but order data is missing. Please contact support.',
+          data: { paymentStatus: PAYMENT_STATUS.SUCCESS }
+        });
+
+      } else if (razorpayOrder.status === 'attempted' || razorpayOrder.status === 'created') {
+        // Payment not completed yet
+        return res.json({
+          success: true,
+          status: 'pending',
+          message: 'Payment has not been completed on the payment gateway yet.',
+          data: { paymentStatus: 'PENDING', razorpayStatus: razorpayOrder.status }
+        });
+      } else {
+        // Update local status
+        await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
+          status: PAYMENT_STATUS.FAILED,
+        });
+
+        return res.json({
+          success: true,
+          status: 'failed',
+          message: 'This payment was not successful on the payment gateway.',
+          data: { paymentStatus: PAYMENT_STATUS.FAILED, razorpayStatus: razorpayOrder.status }
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Error verifying payment:', error);
+      res.status(500).json({
+        success: false,
+        message: `Payment verification failed: ${error.message || 'Internal error'}`
       });
     }
   });
