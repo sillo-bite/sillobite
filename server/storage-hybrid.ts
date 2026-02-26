@@ -454,13 +454,13 @@ export class HybridStorage implements IStorage {
 
     // Ensure role is correctly cast to UserRole enum if it's a string
     if (typeof normalizedUser.role === "string") {
-      const roleStr = normalizedUser.role;
+      const roleStr = normalizedUser.role.toLowerCase();
 
       if (!Object.values(UserRole).includes(roleStr as UserRole)) {
         throw new Error(`Invalid role: ${normalizedUser.role}`);
       }
 
-      normalizedUser.role = roleStr.toUpperCase() as UserRole;
+      normalizedUser.role = roleStr as UserRole;
     }
 
     console.log(normalizedUser, typeof normalizedUser.role);
@@ -487,13 +487,11 @@ export class HybridStorage implements IStorage {
     const db = getPostgresDb();
 
     // Ensure role is correctly cast to UserRole enum if it's a string
-    // Prisma Client expects the Enum Value (e.g. "ADMIN"), not the mapped DB string (e.g. "admin")
     if (updateData.role && typeof updateData.role === 'string') {
-      const roleStr = (updateData.role as string).toUpperCase();
-      // Check if the uppercase string is a valid key in UserRole
-      if (Object.prototype.hasOwnProperty.call(UserRole, roleStr)) {
-        // Cast to any to assign, then valid usage
-        (updateData as any).role = UserRole[roleStr as keyof typeof UserRole];
+      const roleStr = (updateData.role as string).toLowerCase();
+      // Check if the lowercase string is a valid UserRole value
+      if (Object.values(UserRole).includes(roleStr as UserRole)) {
+        (updateData as any).role = roleStr as UserRole;
       }
     }
 
