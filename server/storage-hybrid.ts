@@ -454,13 +454,19 @@ export class HybridStorage implements IStorage {
 
     // Ensure role is correctly cast to UserRole enum if it's a string
     if (typeof normalizedUser.role === "string") {
-      const roleStr = normalizedUser.role.toLowerCase();
+      // Normalize to uppercase to match Prisma enum keys
+      const roleStr = normalizedUser.role.toUpperCase();
+      console.log(`🔍 Role validation - Original: "${normalizedUser.role}", Uppercase: "${roleStr}"`);
+      console.log(`🔍 Valid UserRole keys:`, Object.keys(UserRole));
 
-      if (!Object.values(UserRole).includes(roleStr as UserRole)) {
-        throw new Error(`Invalid role: ${normalizedUser.role}`);
+      // Check if the uppercase string is a valid key in UserRole enum
+      if (!(roleStr in UserRole)) {
+        throw new Error(`Invalid role: ${normalizedUser.role} (normalized: ${roleStr})`);
       }
 
-      normalizedUser.role = roleStr as UserRole;
+      // Assign the enum value using the key
+      normalizedUser.role = UserRole[roleStr as keyof typeof UserRole];
+      console.log(`✅ Role validated and set to: "${normalizedUser.role}"`);
     }
 
     console.log(normalizedUser, typeof normalizedUser.role);
@@ -488,10 +494,10 @@ export class HybridStorage implements IStorage {
 
     // Ensure role is correctly cast to UserRole enum if it's a string
     if (updateData.role && typeof updateData.role === 'string') {
-      const roleStr = (updateData.role as string).toLowerCase();
-      // Check if the lowercase string is a valid UserRole value
-      if (Object.values(UserRole).includes(roleStr as UserRole)) {
-        (updateData as any).role = roleStr as UserRole;
+      const roleStr = (updateData.role as string).toUpperCase();
+      // Check if the uppercase string is a valid key in UserRole enum
+      if (roleStr in UserRole) {
+        (updateData as any).role = UserRole[roleStr as keyof typeof UserRole];
       }
     }
 
