@@ -553,6 +553,12 @@ export default function PayoutRequestManagementPage() {
                     <p className="text-destructive">{selectedRequest.rejectionReason}</p>
                   </div>
                 )}
+                {selectedRequest.notes && (
+                  <div className="col-span-2">
+                    <Label>Notes from Canteen Owner</Label>
+                    <p className="text-sm bg-muted p-3 rounded-md whitespace-pre-wrap">{selectedRequest.notes}</p>
+                  </div>
+                )}
                 {selectedRequest.transactionId && isValidTransactionId(selectedRequest.transactionId) && (
                   <div>
                     <Label>Transaction ID</Label>

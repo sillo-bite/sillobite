@@ -273,6 +273,9 @@ export default function CanteenOwnerDashboardSidebar() {
   const [isBannerUploading, setIsBannerUploading] = useState(false);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
+  // Order filter state - default to 'active' to show pending/preparing/ready orders
+  const [orderFilter, setOrderFilter] = useState<'all' | 'active' | 'completed'>('active');
+
   // Use the updated hook with canteenId
   const {
     requestPermission: requestPushPermission,
@@ -2693,38 +2696,92 @@ export default function CanteenOwnerDashboardSidebar() {
                         {!showAllOrders ? (
                           <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex-shrink-0 mb-1.5">
-                              <div className="flex items-center justify-end">
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline">{totalActiveOrdersCount} active</Badge>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowAllOrders(true)}
-                                    className="h-7 text-xs px-2"
-                                  >
-                                    Show All Orders
-                                  </Button>
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Filter className="w-4 h-4 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Filter:</span>
+                                    <div className="flex gap-1">
+                                      <Button
+                                        variant={orderFilter === 'active' ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setOrderFilter('active')}
+                                        className="h-7 text-xs px-3"
+                                      >
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        Active
+                                      </Button>
+                                      <Button
+                                        variant={orderFilter === 'completed' ? 'default' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setOrderFilter('completed')}
+                                        className="h-7 text-xs px-3"
+                                      >
+                                        <CheckCircle className="w-3 h-3 mr-1" />
+                                        Completed
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge variant="outline">
+                                      {orderFilter === 'active' ? `${totalActiveOrdersCount} active` : 
+                                       orderFilter === 'completed' ? `${(() => {
+                                         const completedCount = paginatedOrders?.filter((order: any) => 
+                                           ['completed', 'delivered', 'cancelled'].includes(order.status?.toLowerCase())
+                                         ).length || 0;
+                                         return completedCount;
+                                       })()} completed` : 
+                                       `${totalActiveOrdersCount} orders`}
+                                    </Badge>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowAllOrders(true)}
+                                      className="h-7 text-xs px-2"
+                                    >
+                                      Show All Orders
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
 
                             <div className="flex-1 min-h-0 flex flex-col">
-                              {paginatedActiveLoading ? (
+                              {(orderFilter === 'active' ? paginatedActiveLoading : paginatedLoading) ? (
                                 <div className="text-center py-8">
                                   <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin" />
-                                  <p className="text-muted-foreground">Loading active orders...</p>
+                                  <p className="text-muted-foreground">Loading orders...</p>
                                 </div>
-                              ) : paginatedActiveOrders.length === 0 ? (
+                              ) : (() => {
+                                // Use appropriate data source based on filter
+                                const sourceOrders = orderFilter === 'active' ? paginatedActiveOrders : paginatedOrders;
+                                
+                                // Filter orders based on selected filter
+                                const filteredActiveOrders = sourceOrders?.filter((order: any) => {
+                                  if (orderFilter === 'active') {
+                                    return ['pending', 'preparing', 'ready', 'out_for_delivery'].includes(order.status?.toLowerCase());
+                                  }
+                                  if (orderFilter === 'completed') {
+                                    return ['completed', 'delivered', 'cancelled'].includes(order.status?.toLowerCase());
+                                  }
+                                  return true;
+                                }) || [];
+
+                                return filteredActiveOrders.length === 0 ? (
                                 <div className="text-center py-8">
                                   <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                  <p className="text-muted-foreground">No active orders</p>
-                                  <p className="text-sm text-muted-foreground mt-2">Active orders will appear here when customers place orders</p>
+                                  <p className="text-muted-foreground">
+                                    {orderFilter === 'completed' ? 'No completed orders found' : 'No active orders'}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-2">
+                                    {orderFilter === 'completed' ? 'Completed orders include delivered, completed, and cancelled orders' : 'Active orders will appear here when customers place orders'}
+                                  </p>
                                 </div>
                               ) : (
                                 <>
                                   <div className="flex-1 min-h-0 overflow-y-auto app-scrollbar">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[140px] gap-1.5 sm:gap-2">
-                                      {paginatedActiveOrders.map((order: any) => (
+                                      {filteredActiveOrders.map((order: any) => (
                                         <Card key={order.id} className={`h-auto sm:h-[140px] border-l-4 cursor-pointer transition-all duration-200 shadow-md hover:shadow-xl border border-border bg-card flex flex-col ${order.status === 'preparing' ? 'border-l-primary hover:border-l-primary/80' :
                                           order.status === 'ready' ? 'border-l-success hover:border-l-success/80' :
                                             'border-l-warning hover:border-l-warning/80'
@@ -2909,39 +2966,90 @@ export default function CanteenOwnerDashboardSidebar() {
 
                                   {/* Active Orders Pagination - Bottom */}
                                   <div className="flex-shrink-0 mt-1 pt-1 border-t">
-                                    <Pagination
-                                      currentPage={currentActivePage}
-                                      totalPages={totalActivePages || 1}
-                                      onPageChange={goToActivePage}
-                                      onNextPage={goToActiveNextPage}
-                                      onPreviousPage={goToActivePreviousPage}
-                                      onFirstPage={goToActiveFirstPage}
-                                      onLastPage={goToActiveLastPage}
-                                      hasNextPage={hasActiveNextPage}
-                                      hasPreviousPage={hasActivePreviousPage}
-                                      totalCount={totalActiveOrdersCount || 0}
-                                      pageSize={12}
-                                    />
+                                    {orderFilter === 'active' ? (
+                                      <Pagination
+                                        currentPage={currentActivePage}
+                                        totalPages={totalActivePages || 1}
+                                        onPageChange={goToActivePage}
+                                        onNextPage={goToActiveNextPage}
+                                        onPreviousPage={goToActivePreviousPage}
+                                        onFirstPage={goToActiveFirstPage}
+                                        onLastPage={goToActiveLastPage}
+                                        hasNextPage={hasActiveNextPage}
+                                        hasPreviousPage={hasActivePreviousPage}
+                                        totalCount={totalActiveOrdersCount || 0}
+                                        pageSize={12}
+                                      />
+                                    ) : (
+                                      <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages || 1}
+                                        onPageChange={goToPage}
+                                        onNextPage={goToNextPage}
+                                        onPreviousPage={goToPreviousPage}
+                                        onFirstPage={goToFirstPage}
+                                        onLastPage={goToLastPage}
+                                        hasNextPage={hasNextPage}
+                                        hasPreviousPage={hasPreviousPage}
+                                        totalCount={totalOrdersCount || 0}
+                                        pageSize={12}
+                                      />
+                                    )}
                                   </div>
                                 </>
-                              )}
+                              );
+                              })()}
                             </div>
                           </div>
                         ) : (
                           <div className="flex-1 flex flex-col min-h-0">
                             <div className="flex-shrink-0 mb-1.5">
-                              <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-medium">All Orders</h3>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline">Page {currentPage} / {totalPages || 1}</Badge>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowAllOrders(false)}
-                                    className="h-7 text-xs px-2"
-                                  >
-                                    Back to Active Orders
-                                  </Button>
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="text-sm font-medium">All Orders</h3>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge variant="outline">Page {currentPage} / {totalPages || 1}</Badge>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setShowAllOrders(false)}
+                                      className="h-7 text-xs px-2"
+                                    >
+                                      Back to Active Orders
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Filter className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">Filter:</span>
+                                  <div className="flex gap-1">
+                                    <Button
+                                      variant={orderFilter === 'all' ? 'default' : 'outline'}
+                                      size="sm"
+                                      onClick={() => setOrderFilter('all')}
+                                      className="h-7 text-xs px-3"
+                                    >
+                                      All Orders
+                                    </Button>
+                                    <Button
+                                      variant={orderFilter === 'active' ? 'default' : 'outline'}
+                                      size="sm"
+                                      onClick={() => setOrderFilter('active')}
+                                      className="h-7 text-xs px-3"
+                                    >
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      Active
+                                    </Button>
+                                    <Button
+                                      variant={orderFilter === 'completed' ? 'default' : 'outline'}
+                                      size="sm"
+                                      onClick={() => setOrderFilter('completed')}
+                                      className="h-7 text-xs px-3"
+                                    >
+                                      <CheckCircle className="w-3 h-3 mr-1" />
+                                      Completed
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -2952,11 +3060,24 @@ export default function CanteenOwnerDashboardSidebar() {
                                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                                   <p className="text-muted-foreground mt-2">Loading orders...</p>
                                 </div>
-                              ) : paginatedOrders && paginatedOrders.length > 0 ? (
+                              ) : (() => {
+                                // Filter orders based on selected filter
+                                const filteredOrders = paginatedOrders?.filter((order) => {
+                                  if (orderFilter === 'all') return true;
+                                  if (orderFilter === 'active') {
+                                    return ['pending', 'preparing', 'ready', 'out_for_delivery'].includes(order.status?.toLowerCase());
+                                  }
+                                  if (orderFilter === 'completed') {
+                                    return ['completed', 'delivered', 'cancelled'].includes(order.status?.toLowerCase());
+                                  }
+                                  return true;
+                                }) || [];
+
+                                return filteredOrders.length > 0 ? (
                                 <>
                                   <div className="flex-1 min-h-0 overflow-y-auto app-scrollbar">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
-                                      {paginatedOrders.map((order) => (
+                                      {filteredOrders.map((order) => (
                                         <Card key={order.id} className="h-auto sm:h-[180px] cursor-pointer transition-all duration-200 shadow-md hover:shadow-xl border border-border bg-card flex flex-col" onClick={() => handleOrderCardClick(order)}>
                                           <CardContent className="p-2.5 sm:p-3 flex flex-col h-full min-h-0">
                                             <div className="flex flex-col h-full justify-between min-h-0">
@@ -3038,9 +3159,20 @@ export default function CanteenOwnerDashboardSidebar() {
                                 </>
                               ) : (
                                 <div className="text-center py-8">
-                                  <p className="text-muted-foreground">No orders found</p>
+                                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                                  <p className="text-muted-foreground">
+                                    {orderFilter === 'active' ? 'No active orders found' : 
+                                     orderFilter === 'completed' ? 'No completed orders found' : 
+                                     'No orders found'}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground mt-2">
+                                    {orderFilter === 'active' ? 'Active orders include pending, preparing, ready, and out for delivery orders' : 
+                                     orderFilter === 'completed' ? 'Completed orders include delivered, completed, and cancelled orders' : 
+                                     'Orders will appear here when customers place orders'}
+                                  </p>
                                 </div>
-                              )}
+                              );
+                              })()}
                             </div>
                           </div>
                         )}

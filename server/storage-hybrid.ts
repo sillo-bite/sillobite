@@ -1,7 +1,7 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, UserRole } from '@prisma/client';
 import { connectToMongoDB } from './mongodb';
 import {
-  User, InsertUser as SharedInsertUser, UserRole
+  User, InsertUser as SharedInsertUser
 } from "@shared/schema";
 import {
   Order, OrderItem, Notification, LoginIssue, Payment, Complaint, Coupon, Counter, UserAddress,

@@ -896,6 +896,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userExists: true,
         user: userData
       });
+
+      // Update session with complete user data including role
+      if (req.session) {
+        (req.session as any).user = userData;
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session update error during validation:', err);
+          }
+        });
+      }
     } catch (error) {
       console.error("Error validating user session:", error);
       res.status(500).json({ message: "Internal server error", userExists: false });
