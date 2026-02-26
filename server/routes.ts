@@ -9140,7 +9140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // User exists but doesn't have passwordHash - update it
             await storage.updateUser(existingUser.id, {
               passwordHash,
-              role: 'DELIVERY_PERSON',
+              role: 'delivery_person' as any,
               isProfileComplete: true
             });
             createdUser = await storage.getUser(existingUser.id);
@@ -9152,7 +9152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               email: email,
               name: validatedData.name,
               phoneNumber: validatedData.phoneNumber,
-              role: 'DELIVERY_PERSON',
+              role: 'delivery_person' as any,
               passwordHash: passwordHash,
               isProfileComplete: true, // Delivery person profile is already complete
             };
