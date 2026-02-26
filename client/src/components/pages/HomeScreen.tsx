@@ -678,8 +678,8 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                 </Button>
 
 
-                {/* Cart Icon - Only visible when cart has items for the current canteen */}
-                {getTotalItems() > 0 && getCartCanteenId() === selectedCanteen?.id && (
+                {/* Cart Icon - Only visible when cart has items for the current canteen and floating cart is hidden */}
+                {getTotalItems() > 0 && getCartCanteenId() === selectedCanteen?.id && !showCartCard && (
                   <Button
                     variant="ghost"
                     size="icon"

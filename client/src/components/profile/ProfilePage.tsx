@@ -38,7 +38,8 @@ import {
   UtensilsCrossed,
   ShoppingCart,
   Trophy,
-  Flame
+  Flame,
+  CreditCard
 } from "lucide-react";
 import UserProfileDisplay from "./UserProfileDisplay";
 import AppUpdateButton from "@/components/common/AppUpdateButton";
@@ -370,6 +371,21 @@ export default function ProfilePage() {
                     <Receipt className="w-5 h-5 text-muted-foreground mr-3" />
                     <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
                       }`}>My Orders</span>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </button>
+
+                <button
+                  className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('appNavigateToMyPayments', {}));
+                    setLocation("/app");
+                  }}
+                >
+                  <div className="flex items-center">
+                    <CreditCard className="w-5 h-5 text-muted-foreground mr-3" />
+                    <span className={`${resolvedTheme === 'dark' ? 'text-card-foreground' : 'text-gray-800'
+                      }`}>My Payments</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>

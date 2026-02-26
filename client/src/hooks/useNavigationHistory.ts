@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export type NavigationView = 'home' | 'cart' | 'favorites' | 'menu' | 'profile' | 'orders' | 'challenges' | 'selector';
+export type NavigationView = 'home' | 'cart' | 'favorites' | 'menu' | 'profile' | 'orders' | 'challenges' | 'selector' | 'my_payments';
 
 interface NavigationHistoryItem {
   view: NavigationView;

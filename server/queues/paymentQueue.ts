@@ -229,6 +229,7 @@ async function initializeWorkers() {
 
         // Store payment record
         await storage.createPayment({
+          customerId: orderData.customerId || undefined,
           merchantTransactionId: merchantOrderId,
           amount: amount * 100, // Store in paise
           status: 'pending',

@@ -6,6 +6,7 @@ import FavoritesPage from "./FavoritesPage";
 import MenuListingPage from "@/components/menu/MenuListingPage";
 import ProfilePage from "@/components/profile/ProfilePage";
 import OrdersPage from "@/components/orders/OrdersPage";
+import MyPaymentsPage from "@/components/payments/MyPaymentsPage";
 import CodingChallengesPage from "./CodingChallengesPage";
 import FloatingCart from "@/components/cart/FloatingCart";
 import CanteenConflictDialog from "@/components/cart/CanteenConflictDialog";
@@ -15,7 +16,7 @@ import { UserRole } from "@shared/schema";
 import CanteenSelectorPage from "./CanteenSelectorPage";
 import { useCanteenContext } from "@/contexts/CanteenContext";
 
-type ViewType = "home" | "cart" | "favorites" | "menu" | "profile" | "orders" | "challenges" | "selector";
+type ViewType = "home" | "cart" | "favorites" | "menu" | "profile" | "orders" | "challenges" | "selector" | "my_payments";
 
 /**
  * App Page - Single Page Application entry point
@@ -75,7 +76,7 @@ export default function AppPage() {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view');
     // Validate view param to ensure it matches ViewType
-    const validViews: ViewType[] = ["home", "cart", "favorites", "menu", "profile", "orders", "challenges", "selector"];
+    const validViews: ViewType[] = ["home", "cart", "favorites", "menu", "profile", "orders", "challenges", "selector", "my_payments"];
     const view = (validViews.includes(viewParam as ViewType) ? viewParam as ViewType : 'selector');
 
     return {
@@ -327,6 +328,12 @@ export default function AppPage() {
       updateUrl("selector");
     };
 
+    const handleNavigateToMyPayments = () => {
+      navigateToWithCurrent("my_payments", currentView as NavigationView);
+      updateUrl("my_payments");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     const handleNavigateHomeWithSearch = () => {
       navigateTo("home");
       updateUrl("home", { activateSearch: 'true' });
@@ -344,6 +351,7 @@ export default function AppPage() {
     window.addEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
     window.addEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
     window.addEventListener('appNavigateToSelector' as any, handleNavigateToSelector);
+    window.addEventListener('appNavigateToMyPayments' as any, handleNavigateToMyPayments);
 
     return () => {
       window.removeEventListener('appMenuCategoryChange' as any, handleCategoryChange);
@@ -358,6 +366,7 @@ export default function AppPage() {
       window.removeEventListener('appEnsureProfileInHistory' as any, handleEnsureProfileInHistory);
       window.removeEventListener('appNavigateHomeWithSearch' as any, handleNavigateHomeWithSearch);
       window.removeEventListener('appNavigateToSelector' as any, handleNavigateToSelector);
+      window.removeEventListener('appNavigateToMyPayments' as any, handleNavigateToMyPayments);
     };
   }, [navigateTo, navigateBack, history, currentView]);
 
@@ -530,6 +539,12 @@ export default function AppPage() {
       {currentView === "challenges" && (
         <div style={{ display: "block" }}>
           <CodingChallengesPage />
+        </div>
+      )}
+
+      {currentView === "my_payments" && (
+        <div style={{ display: "block" }}>
+          <MyPaymentsPage />
         </div>
       )}
 
