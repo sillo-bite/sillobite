@@ -27,26 +27,30 @@ class WebSocketManager {
   private io: SocketIOServer;
   private connectedUsers: Map<string, SocketUser> = new Map();
   private canteenRooms: Map<string, Set<string>> = new Map(); // canteenId -> Set of socketIds
-  private counterRooms: Map<string, Set<string>> = new Map(); // counterId -> Set of socketIds
-  private deliveryPersonRooms: Map<string, Set<string>> = new Map(); // deliveryPersonEmail -> Set of socketIds
+    private counterRooms: Map<string, Set<string>> = new Map(); // counterId -> Set of socketIds
+    private deliveryPersonRooms: Map<string, Set<string>> = new Map(); // deliveryPersonEmail -> Set of socketIds
 
-  constructor(httpServer: HTTPServer, app: Express) {
-    this.io = new SocketIOServer(httpServer, {
-      cors: {
-        origin: process.env.NODE_ENV === 'production'
-          ? process.env.CLIENT_URL || 'https://your-domain.com'
-          : ['http://localhost:3000', 'http://localhost:5173'],
-        methods: ['GET', 'POST'],
-        credentials: true
-      },
-      transports: ['websocket', 'polling'],
-      pingTimeout: 60000,
-      pingInterval: 25000
-    });
+    constructor(httpServer: HTTPServer, app: Express) {
+      this.io = new SocketIOServer(httpServer, {
+        cors: {
+          origin: process.env.NODE_ENV === 'production'
+            ? [
+                process.env.CLIENT_URL || 'https://sillobite.in',
+                'https://sillobite.in',
+                'https://ws.sillobite.in'
+              ]
+            : ['http://localhost:3000', 'http://localhost:5173'],
+          methods: ['GET', 'POST'],
+          credentials: true
+        },
+        transports: ['websocket', 'polling'],
+        pingTimeout: 60000,
+        pingInterval: 25000
+      });
 
-    this.setupEventHandlers();
-    console.log('🔌 WebSocket server initialized with room-based architecture');
-  }
+      this.setupEventHandlers();
+      console.log('🔌 WebSocket server initialized with room-based architecture');
+    }
 
   private setupEventHandlers(): void {
     this.io.on('connection', (socket) => {
