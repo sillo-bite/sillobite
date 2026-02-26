@@ -188,6 +188,10 @@ export default function CheckoutPage() {
     mappedCoupon
   );
 
+  // For coupon validation, use subtotal (menu items only, before charges and discount)
+  // This ensures minimum order amount is checked against items only
+  const amountForCouponValidation = subtotal;
+
   const baseAmount = appliedCoupon ? appliedCoupon.finalAmount : totalBeforeDiscount;
 
   // Get total item count
@@ -1143,7 +1147,8 @@ export default function CheckoutPage() {
 
           {/* Coupon Applicator - Medium Priority */}
           <CouponApplicator
-            totalAmount={totalBeforeDiscount}
+            totalAmount={amountForCouponValidation}
+            canteenId={canteenId || undefined}
             onCouponApplied={(couponData) => setAppliedCoupon(couponData)}
             onCouponRemoved={() => setAppliedCoupon(null)}
             appliedCoupon={appliedCoupon}

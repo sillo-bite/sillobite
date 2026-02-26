@@ -196,6 +196,14 @@ export class OrderService {
         orderData: any,
         merchantTransactionId: string
     ) {
+        console.log(`🎟️ [ORDER-SERVICE] createOrderFromPayment called:`, {
+            merchantTransactionId,
+            customerId: orderData.customerId,
+            hasAppliedCoupon: !!orderData.appliedCoupon,
+            appliedCouponValue: orderData.appliedCoupon,
+            appliedCouponType: typeof orderData.appliedCoupon
+        });
+
         // 1. Duplicate Check
         const customerId = orderData.customerId || 0;
         const canteenId = orderData.canteenId || '';
@@ -330,7 +338,74 @@ export class OrderService {
         const orderId = order.id;
         const orderNumber = order.orderNumber;
 
-        // 3. Link Payment
+        // 3. Apply Coupon (if provided)
+        // Handle both string (coupon code) and object ({ code, discountAmount }) formats
+        let couponCode: string | null = null;
+        if (orderData.appliedCoupon) {
+            if (typeof orderData.appliedCoupon === 'string') {
+                couponCode = orderData.appliedCoupon;
+            } else if (typeof orderData.appliedCoupon === 'object' && orderData.appliedCoupon.code) {
+                couponCode = orderData.appliedCoupon.code;
+            }
+        }
+
+        if (couponCode && orderData.customerId) {
+            console.log(`🎟️ [ORDER-SERVICE] About to apply coupon:`, {
+                couponCode: couponCode,
+                orderId: orderId,
+                orderNumber: orderNumber,
+                customerId: orderData.customerId,
+                customerIdType: typeof orderData.customerId,
+                originalAmount: orderData.originalAmount || orderData.amount,
+                itemsSubtotal: orderData.itemsSubtotal,
+                appliedCouponType: typeof orderData.appliedCoupon
+            });
+
+            // CRITICAL: Ensure customerId is a number
+            const customerIdAsNumber = Number(orderData.customerId);
+            
+            // Use itemsSubtotal (menu items cost only, before charges) for coupon validation
+            // This ensures minimum order amount is checked against items only, not including charges
+            const amountForCouponValidation = orderData.itemsSubtotal || orderData.originalAmount || orderData.amount;
+            
+            try {
+                const couponApplication = await storage.applyCoupon(
+                    couponCode,
+                    customerIdAsNumber,
+                    amountForCouponValidation, // Use items subtotal, not final amount
+                    orderId,
+                    orderNumber
+                );
+
+                console.log(`🎟️ [ORDER-SERVICE] Coupon application result:`, {
+                    success: couponApplication.success,
+                    message: couponApplication.message,
+                    discountAmount: couponApplication.discountAmount,
+                    amountUsedForValidation: amountForCouponValidation
+                });
+
+                if (!couponApplication.success) {
+                    console.error(`❌ Failed to apply coupon after order creation: ${couponApplication.message}`);
+                    // Order is already created, so we log the error but don't fail the request
+                } else {
+                    console.log(`✅ Coupon ${couponCode} applied successfully to order ${orderNumber}`);
+                }
+            } catch (error) {
+                console.error(`❌ Error applying coupon ${couponCode}:`, error);
+                // Don't fail the order creation if coupon application fails
+            }
+        } else {
+            console.log(`🎟️ [ORDER-SERVICE] Skipping coupon application:`, {
+                hasAppliedCoupon: !!orderData.appliedCoupon,
+                appliedCouponValue: orderData.appliedCoupon,
+                appliedCouponType: typeof orderData.appliedCoupon,
+                hasCouponCode: !!couponCode,
+                hasCustomerId: !!orderData.customerId,
+                customerId: orderData.customerId
+            });
+        }
+
+        // 4. Link Payment
         if (merchantTransactionId) {
             try {
                 const orderIdString = typeof orderId === 'string' ? orderId : String(orderId);
@@ -343,7 +418,7 @@ export class OrderService {
             }
         }
 
-        // 4. Clear Checkout Session
+        // 5. Clear Checkout Session
         if (checkoutSessionId) {
             try {
                 await CheckoutSessionService.updateStatus(checkoutSessionId, 'completed', {
@@ -361,7 +436,7 @@ export class OrderService {
             }
         }
 
-        // 5. Broadcast WebSockets (Fire-and-forget)
+        // 6. Broadcast WebSockets (Fire-and-forget)
         const wsManager = getWebSocketManager();
         if (wsManager) {
             new Promise<void>(async (resolve) => {
