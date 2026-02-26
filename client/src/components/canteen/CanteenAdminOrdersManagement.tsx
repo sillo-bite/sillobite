@@ -1105,13 +1105,23 @@ export default function CanteenAdminOrdersManagement({ canteenId }: CanteenAdmin
                           <p className="font-medium">
                             {selectedOrder?.collegeName || userDetails?.collegeName || 'Not specified'}
                             <span className="text-xs text-gray-500 ml-2">
-                              (ID: {userDetails?.college || selectedOrder.college || userDetails?.collegeId || selectedOrder.collegeId || 'None'})
+                              (ID: {
+                                (typeof userDetails?.college === 'object' ? (userDetails.college?._id || userDetails.college?.name) : userDetails?.college) ||
+                                (typeof selectedOrder?.college === 'object' ? (selectedOrder.college?._id || selectedOrder.college?.name) : selectedOrder?.college) ||
+                                userDetails?.collegeId || 
+                                selectedOrder?.collegeId || 
+                                'None'
+                              })
                             </span>
                           </p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Department:</span>
-                          <p className="font-medium">{userDetails?.department || selectedOrder.department || 'Not specified'}</p>
+                          <p className="font-medium">{
+                            (typeof userDetails?.department === 'object' ? userDetails.department?.name : userDetails?.department) ||
+                            (typeof selectedOrder?.department === 'object' ? selectedOrder.department?.name : selectedOrder?.department) ||
+                            'Not specified'
+                          }</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Year:</span>

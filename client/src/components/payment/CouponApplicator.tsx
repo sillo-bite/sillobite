@@ -12,6 +12,7 @@ import { getUserIdFromStorage } from "@/utils/userStorage";
 
 interface CouponApplicatorProps {
   totalAmount: number;
+  canteenId?: string;
   onCouponApplied?: (couponData: {
     code: string;
     discountAmount: number;
@@ -29,6 +30,7 @@ interface CouponApplicatorProps {
 
 export default function CouponApplicator({
   totalAmount,
+  canteenId,
   onCouponApplied,
   onCouponRemoved,
   appliedCoupon
@@ -50,7 +52,8 @@ export default function CouponApplicator({
         body: JSON.stringify({
           code: code.trim().toUpperCase(),
           userId: getUserIdFromStorage(),
-          orderAmount: totalAmount
+          orderAmount: totalAmount,
+          canteenId: canteenId
         })
       }),
     onSuccess: (result) => {

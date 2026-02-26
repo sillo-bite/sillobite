@@ -712,9 +712,18 @@ const CouponSchema = new Schema<ICoupon>({
   validFrom: { type: Date, required: true },
   validUntil: { type: Date, required: true },
   createdBy: { type: Number, required: true },
-  canteenId: { type: String, required: true },
+  canteenId: { type: String, required: true, default: 'GLOBAL' }, // GLOBAL for all canteens
   createdAt: { type: Date, default: Date.now }
 });
+
+// CRITICAL INDEXES for coupon atomicity and performance
+// 1. Index on code for fast lookups (already unique)
+// 2. Compound index for atomic updates
+CouponSchema.index({ code: 1, isActive: 1, validFrom: 1, validUntil: 1 });
+// 3. Index on usedBy array for fast user lookup
+CouponSchema.index({ usedBy: 1 });
+// 4. Index on canteenId for canteen-specific queries
+CouponSchema.index({ canteenId: 1, isActive: 1 });
 
 export const Coupon = mongoose.model<ICoupon>('Coupon', CouponSchema);
 

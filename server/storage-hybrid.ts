@@ -254,13 +254,15 @@ export interface IStorage {
 
   // Coupons (MongoDB)
   getCoupons(): Promise<any[]>;
+  getCouponsByCanteen(canteenId: string): Promise<any[]>;
   getActiveCoupons(): Promise<any[]>;
+  getActiveCouponsByCanteen(canteenId: string): Promise<any[]>;
   getCoupon(id: string): Promise<any | undefined>;
   createCoupon(coupon: InsertCoupon): Promise<any>;
   updateCoupon(id: string, coupon: Partial<any>): Promise<any>;
   deleteCoupon(id: string): Promise<boolean>;
   toggleCouponStatus(id: string): Promise<any>;
-  validateCoupon(code: string, userId?: number, orderAmount?: number): Promise<{
+  validateCoupon(code: string, userId?: number, orderAmount?: number, canteenId?: string): Promise<{
     valid: boolean;
     message: string;
     coupon?: any;
@@ -1361,6 +1363,11 @@ export class HybridStorage implements IStorage {
     return mongoToPlain(coupons);
   }
 
+  async getCouponsByCanteen(canteenId: string): Promise<any[]> {
+    const coupons = await Coupon.find({ canteenId }).sort({ createdAt: -1 });
+    return mongoToPlain(coupons);
+  }
+
   async getActiveCoupons(): Promise<any[]> {
     const now = new Date();
     const coupons = await Coupon.find({
@@ -1368,6 +1375,21 @@ export class HybridStorage implements IStorage {
       validFrom: { $lte: now },
       validUntil: { $gte: now },
       $expr: { $lt: ['$usedCount', '$usageLimit'] }
+    }).sort({ createdAt: -1 });
+    return mongoToPlain(coupons);
+  }
+
+  async getActiveCouponsByCanteen(canteenId: string): Promise<any[]> {
+    const now = new Date();
+    const coupons = await Coupon.find({
+      isActive: true,
+      validFrom: { $lte: now },
+      validUntil: { $gte: now },
+      $expr: { $lt: ['$usedCount', '$usageLimit'] },
+      $or: [
+        { canteenId: canteenId },
+        { canteenId: 'GLOBAL' }
+      ]
     }).sort({ createdAt: -1 });
     return mongoToPlain(coupons);
   }
@@ -1414,37 +1436,47 @@ export class HybridStorage implements IStorage {
     return mongoToPlain(saved);
   }
 
-  async validateCoupon(code: string, userId?: number, orderAmount?: number): Promise<{
+  async validateCoupon(code: string, userId?: number, orderAmount?: number, canteenId?: string): Promise<{
     valid: boolean;
     message: string;
     coupon?: any;
     discountAmount?: number;
   }> {
     try {
-      const coupon = await Coupon.findOne({ code });
+      // Build query with canteen isolation if provided
+      // Global coupons (canteenId: 'GLOBAL') work for all canteens
+      const query: any = { code };
+      if (canteenId) {
+        query.$or = [
+          { canteenId: canteenId },
+          { canteenId: 'GLOBAL' }
+        ];
+      }
+
+      const coupon = await Coupon.findOne(query);
 
       if (!coupon) {
-        return { valid: false, message: 'Coupon not found' };
+        return { valid: false, message: 'Invalid or expired coupon' };
       }
 
       if (!coupon.isActive) {
-        return { valid: false, message: 'Coupon is not active' };
+        return { valid: false, message: 'Invalid or expired coupon' };
       }
 
       // Check if coupon is assigned to specific users and user is authorized
       if (coupon.assignmentType === 'specific' && userId) {
         if (!coupon.assignedUsers.includes(userId)) {
-          return { valid: false, message: 'This coupon is not assigned to you' };
+          return { valid: false, message: 'Invalid or expired coupon' };
         }
       }
 
       const now = new Date();
       if (now < coupon.validFrom) {
-        return { valid: false, message: 'Coupon is not yet valid' };
+        return { valid: false, message: 'Invalid or expired coupon' };
       }
 
       if (now > coupon.validUntil) {
-        return { valid: false, message: 'Coupon has expired' };
+        return { valid: false, message: 'Invalid or expired coupon' };
       }
 
       if (coupon.usedCount >= coupon.usageLimit) {
@@ -1483,7 +1515,7 @@ export class HybridStorage implements IStorage {
       };
     } catch (error) {
       console.error('Error validating coupon:', error);
-      return { valid: false, message: 'Error validating coupon' };
+      return { valid: false, message: 'Invalid or expired coupon' };
     }
   }
 
@@ -1494,21 +1526,70 @@ export class HybridStorage implements IStorage {
     finalAmount?: number;
   }> {
     try {
-      const validation = await this.validateCoupon(code, userId, orderAmount);
+      console.log(`🎟️ [COUPON] Applying coupon ${code} for user ${userId}, order ${orderNumber || orderId}`);
+      console.log(`🎟️ [COUPON] Input parameters:`, {
+        code,
+        userId,
+        userIdType: typeof userId,
+        orderAmount,
+        orderId,
+        orderNumber
+      });
+      
+      // First, find the coupon to get its details
+      const coupon = await Coupon.findOne({ code });
+      if (!coupon) {
+        console.log(`🎟️ [COUPON] Coupon ${code} not found`);
+        return { success: false, message: 'Invalid or expired coupon' };
+      }
 
-      if (!validation.valid) {
+      console.log(`🎟️ [COUPON] Found coupon ${code}:`, {
+        usedCount: coupon.usedCount,
+        usageLimit: coupon.usageLimit,
+        usedBy: coupon.usedBy,
+        usedByTypes: coupon.usedBy.map(id => typeof id),
+        isActive: coupon.isActive
+      });
+
+      // Check basic validity
+      if (!coupon.isActive) {
+        console.log(`🎟️ [COUPON] Coupon ${code} is not active`);
+        return { success: false, message: 'Invalid or expired coupon' };
+      }
+
+      const now = new Date();
+      if (now < coupon.validFrom || now > coupon.validUntil) {
+        console.log(`🎟️ [COUPON] Coupon ${code} is expired or not yet valid`);
+        return { success: false, message: 'Invalid or expired coupon' };
+      }
+
+      // Check assignment type
+      if (coupon.assignmentType === 'specific' && !coupon.assignedUsers.includes(userId)) {
+        console.log(`🎟️ [COUPON] User ${userId} not in assigned users for coupon ${code}`);
+        return { success: false, message: 'Invalid or expired coupon' };
+      }
+
+      // Check minimum order amount
+      if (coupon.minimumOrderAmount && orderAmount < coupon.minimumOrderAmount) {
+        console.log(`🎟️ [COUPON] Order amount ${orderAmount} below minimum ${coupon.minimumOrderAmount}`);
         return {
           success: false,
-          message: validation.message
+          message: `Minimum order amount of ₹${coupon.minimumOrderAmount} required`
         };
       }
 
-      const coupon = await Coupon.findOne({ code });
-      if (!coupon) {
-        return { success: false, message: 'Coupon not found' };
+      // Calculate discount amount
+      let discountAmount = 0;
+      if (coupon.discountType === 'percentage') {
+        discountAmount = (orderAmount * coupon.discountValue) / 100;
+        if (coupon.maxDiscountAmount) {
+          discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
+        }
+      } else {
+        discountAmount = coupon.discountValue;
       }
+      discountAmount = Math.min(discountAmount, orderAmount);
 
-      const discountAmount = validation.discountAmount || 0;
       const finalAmount = orderAmount - discountAmount;
 
       // Prepare usage history entry
@@ -1520,11 +1601,88 @@ export class HybridStorage implements IStorage {
         usedAt: new Date()
       };
 
-      // Update coupon usage with detailed history
-      await Coupon.findByIdAndUpdate(coupon._id, {
-        $inc: { usedCount: 1 },
-        $addToSet: { usedBy: userId },
-        $push: { usageHistory: usageHistoryEntry }
+      console.log(`🎟️ [COUPON] Attempting atomic update for coupon ${code}`);
+      console.log(`🎟️ [COUPON] Atomic update conditions:`, {
+        _id: coupon._id,
+        code: code,
+        isActive: true,
+        validFrom: { $lte: now },
+        validUntil: { $gte: now },
+        usedCount: { $lt: coupon.usageLimit },
+        'usedBy': { $nin: [userId] },
+        userIdToCheck: userId,
+        userIdType: typeof userId
+      });
+
+      // CRITICAL FIX: Use MongoDB's atomic findOneAndUpdate with proper conditions
+      // This prevents race conditions and ensures:
+      // 1. Usage limit is not exceeded
+      // 2. User hasn't already used the coupon (check in usedBy array)
+      // 3. Coupon is still active and valid
+      const result = await Coupon.findOneAndUpdate(
+        {
+          _id: coupon._id, // Use _id for better performance
+          code: code, // Double-check code matches
+          isActive: true,
+          validFrom: { $lte: now },
+          validUntil: { $gte: now },
+          usedCount: { $lt: coupon.usageLimit }, // Ensure we don't exceed limit
+          'usedBy': { $nin: [userId] } // CRITICAL: Use $nin to check user NOT in array
+        },
+        {
+          $inc: { usedCount: 1 },
+          $addToSet: { usedBy: userId }, // $addToSet prevents duplicates
+          $push: { usageHistory: usageHistoryEntry }
+        },
+        { 
+          new: true,
+          // Use write concern for stronger consistency
+          writeConcern: { w: 'majority', j: true }
+        }
+      );
+
+      console.log(`🎟️ [COUPON] Atomic update result:`, {
+        success: !!result,
+        resultExists: !!result,
+        newUsedCount: result?.usedCount,
+        newUsedBy: result?.usedBy
+      });
+
+      // If result is null, it means the conditions weren't met
+      if (!result) {
+        console.log(`🎟️ [COUPON] Atomic update failed for coupon ${code}, re-checking conditions`);
+        
+        // Re-check to provide specific error message
+        const recheckCoupon = await Coupon.findOne({ code });
+        if (!recheckCoupon) {
+          console.log(`🎟️ [COUPON] Coupon ${code} not found on recheck`);
+          return { success: false, message: 'Invalid or expired coupon' };
+        }
+        
+        console.log(`🎟️ [COUPON] Recheck results:`, {
+          usedCount: recheckCoupon.usedCount,
+          usageLimit: recheckCoupon.usageLimit,
+          usedBy: recheckCoupon.usedBy,
+          userInUsedBy: recheckCoupon.usedBy.includes(userId)
+        });
+        
+        if (recheckCoupon.usedCount >= recheckCoupon.usageLimit) {
+          console.log(`🎟️ [COUPON] Usage limit reached for coupon ${code}`);
+          return { success: false, message: 'Coupon usage limit reached' };
+        }
+        if (recheckCoupon.usedBy.includes(userId)) {
+          console.log(`🎟️ [COUPON] User ${userId} already used coupon ${code}`);
+          return { success: false, message: 'You have already used this coupon' };
+        }
+        console.log(`🎟️ [COUPON] Unknown reason for atomic update failure`);
+        return { success: false, message: 'Coupon could not be applied. Please try again.' };
+      }
+
+      console.log(`🎟️ [COUPON] Successfully applied coupon ${code}:`, {
+        newUsedCount: result.usedCount,
+        usageLimit: result.usageLimit,
+        usedByCount: result.usedBy.length,
+        discountAmount
       });
 
       return {
@@ -1534,7 +1692,7 @@ export class HybridStorage implements IStorage {
         finalAmount
       };
     } catch (error) {
-      console.error('Error applying coupon:', error);
+      console.error(`🎟️ [COUPON] Error applying coupon ${code}:`, error);
       return { success: false, message: 'Error applying coupon' };
     }
   }

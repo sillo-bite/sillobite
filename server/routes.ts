@@ -2974,6 +2974,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "canteenId is required" });
       }
 
+      // ============================================
+      // COUPON VALIDATION AND APPLICATION (Server-side)
+      // ============================================
+      let serverValidatedDiscountAmount = 0;
+      let serverValidatedCouponCode: string | null = null;
+
+      if (req.body.appliedCoupon) {
+        console.log(`🎟️ Validating coupon: ${req.body.appliedCoupon}`);
+        console.log(`🎟️ Customer ID from request:`, {
+          customerId: req.body.customerId,
+          customerIdType: typeof req.body.customerId,
+          customerIdParsed: Number(req.body.customerId),
+          customerIdParsedType: typeof Number(req.body.customerId)
+        });
+        
+        // CRITICAL: Ensure customerId is a number, not a string
+        const customerIdAsNumber = Number(req.body.customerId);
+        if (isNaN(customerIdAsNumber)) {
+          console.error(`❌ Invalid customerId: ${req.body.customerId}`);
+          return res.status(400).json({ 
+            message: 'Invalid customer ID',
+            errorCode: 'INVALID_CUSTOMER_ID'
+          });
+        }
+        
+        // Re-validate coupon server-side (NEVER trust client-provided discount)
+        // Use itemsSubtotal (menu items cost only, before charges) for validation
+        const amountForCouponValidation = req.body.itemsSubtotal || req.body.originalAmount || req.body.amount;
+        
+        const couponValidation = await storage.validateCoupon(
+          req.body.appliedCoupon,
+          customerIdAsNumber, // Use number, not string
+          amountForCouponValidation, // Use items subtotal, not final amount
+          req.body.canteenId // Add canteen isolation
+        );
+
+        if (!couponValidation.valid) {
+          console.log(`❌ Coupon validation failed: ${couponValidation.message}`);
+          return res.status(400).json({ 
+            message: couponValidation.message,
+            errorCode: 'INVALID_COUPON'
+          });
+        }
+
+        // Use server-calculated discount, NOT client-provided
+        serverValidatedDiscountAmount = couponValidation.discountAmount || 0;
+        serverValidatedCouponCode = req.body.appliedCoupon;
+
+        console.log(`✅ Coupon validated: ${serverValidatedCouponCode}, discount: ₹${serverValidatedDiscountAmount}`);
+
+        // Update order data with server-validated values
+        finalOrderData.appliedCoupon = serverValidatedCouponCode;
+        finalOrderData.discountAmount = serverValidatedDiscountAmount;
+        finalOrderData.amount = (req.body.originalAmount || req.body.amount) - serverValidatedDiscountAmount;
+      }
+
       console.log(`🔄 Order ${orderNumber}: Creating order for canteen ID: ${finalOrderData.canteenId}`);
       console.log(`🔄 Order ${orderNumber}: ${hasMarkableItem ? 'Has markable items - status: pending' : 'All non-markable items - status: ready'}`);
 
@@ -2987,6 +3043,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process order with atomic stock management
       const order = await stockService.processOrderWithStockManagement(finalOrderData, orderItems, skipStockReduction);
+
+      // ============================================
+      // APPLY COUPON AFTER SUCCESSFUL ORDER CREATION
+      // ============================================
+      if (serverValidatedCouponCode && order) {
+        // CRITICAL: Ensure customerId is a number, not a string
+        const customerIdAsNumber = Number(req.body.customerId);
+        
+        // Use itemsSubtotal (menu items cost only, before charges) for coupon validation
+        const amountForCouponValidation = req.body.itemsSubtotal || req.body.originalAmount || req.body.amount;
+        
+        console.log(`🎟️ [ORDER-CREATION] About to apply coupon:`, {
+          couponCode: serverValidatedCouponCode,
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerId: customerIdAsNumber,
+          customerIdType: typeof customerIdAsNumber,
+          originalAmount: req.body.originalAmount || req.body.amount,
+          itemsSubtotal: req.body.itemsSubtotal,
+          amountForCouponValidation: amountForCouponValidation
+        });
+        
+        const couponApplication = await storage.applyCoupon(
+          serverValidatedCouponCode,
+          customerIdAsNumber, // Use number, not string
+          amountForCouponValidation, // Use items subtotal, not final amount
+          order.id,
+          order.orderNumber
+        );
+
+        console.log(`🎟️ [ORDER-CREATION] Coupon application result:`, {
+          success: couponApplication.success,
+          message: couponApplication.message,
+          discountAmount: couponApplication.discountAmount
+        });
+
+        if (!couponApplication.success) {
+          console.error(`❌ Failed to apply coupon after order creation: ${couponApplication.message}`);
+          // Order is already created, so we log the error but don't fail the request
+          // Admin should be notified to manually review this order
+        } else {
+          console.log(`✅ Coupon ${serverValidatedCouponCode} applied successfully to order ${order.orderNumber}`);
+        }
+      } else {
+        console.log(`🎟️ [ORDER-CREATION] Skipping coupon application:`, {
+          hasValidatedCoupon: !!serverValidatedCouponCode,
+          hasOrder: !!order,
+          couponCode: serverValidatedCouponCode
+        });
+      }
 
       // Clear reserved stock from checkout session if order was successfully created
       if (checkoutSessionId && order) {
@@ -5238,6 +5344,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Razorpay QR webhook handler for payment notifications
   app.post("/api/webhooks/razorpay", async (req, res) => {
+    console.log(`📡 [QR-WEBHOOK] Razorpay QR webhook received at ${new Date().toISOString()}`);
+    console.log(`📡 [QR-WEBHOOK] Event:`, req.body.event);
+    console.log(`📡 [QR-WEBHOOK] Payment ID:`, req.body.payload?.payment?.entity?.id);
+    
     const startTime = Date.now();
     try {
       const receivedSignature = req.headers['x-razorpay-signature'] as string;
@@ -5528,6 +5638,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Razorpay webhook handler with production optimizations
   app.post("/api/payments/webhook", async (req, res) => {
+    console.log(`📡 [WEBHOOK] Razorpay webhook received at ${new Date().toISOString()}`);
+    console.log(`📡 [WEBHOOK] Event:`, req.body.event);
+    console.log(`📡 [WEBHOOK] Payment ID:`, req.body.payload?.payment?.entity?.id);
+    
     const startTime = Date.now();
     try {
       const receivedSignature = req.headers['x-razorpay-signature'] as string;
@@ -5751,12 +5865,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If already successful, ensure order is created and return cached status
       if (payment.status === PAYMENT_STATUS.SUCCESS) {
+        console.log(`📊 [PAYMENT-STATUS] Payment ${merchantTransactionId} is SUCCESS, checking for order`);
         let orderNumber = null;
 
         // Create order if not already created (FIXED: Use helper function with stock service)
         if (payment.metadata && !payment.orderId) {
+          console.log(`📊 [PAYMENT-STATUS] No orderId found, creating order from metadata`);
           try {
             const orderData = JSON.parse(payment.metadata);
+            console.log(`📊 [PAYMENT-STATUS] Order data:`, {
+              customerId: orderData.customerId,
+              hasAppliedCoupon: !!orderData.appliedCoupon,
+              appliedCouponValue: orderData.appliedCoupon,
+              appliedCouponType: typeof orderData.appliedCoupon
+            });
+            
             const newOrder = await orderService.createOrderFromPayment(orderData, merchantTransactionId);
             orderNumber = newOrder.orderNumber;
             console.log(`📦 Order ${newOrder.orderNumber} created via cached status check with stock management`);
@@ -5766,6 +5889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Order creation will be retried on next status check
           }
         } else if (payment.orderId) {
+          console.log(`📊 [PAYMENT-STATUS] Order already exists: ${payment.orderId}`);
           // Get existing order number
           const order = await storage.getOrder(payment.orderId);
           orderNumber = order?.orderNumber;
@@ -7441,8 +7565,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // COUPON MANAGEMENT ROUTES
   // ===========================================
 
+  // Authentication Middleware
+  const requireAuth = (req: any, res: any, next: any) => {
+    const user = req.session?.user;
+    if (!user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    next();
+  };
+
+  const requireAdmin = (req: any, res: any, next: any) => {
+    const user = req.session?.user;
+    if (!user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    const role = user.role ? String(user.role).toLowerCase() : "";
+    if (role !== "admin" && role !== "super_admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    next();
+  };
+
+  const requireCanteenOwnerOrAdmin = (req: any, res: any, next: any) => {
+    const user = req.session?.user;
+    if (!user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    const role = user.role ? String(user.role).toLowerCase() : "";
+    if (role === "admin" || role === "super_admin" || role === "canteen_owner" || role === "canteen-owner") {
+      return next();
+    }
+    return res.status(403).json({ message: "Canteen owner or admin access required" });
+  };
+
+  // Rate Limiting for Coupon Validation (prevent brute force)
+  const couponValidationAttempts = new Map<string, { count: number; resetTime: number }>();
+  const COUPON_RATE_LIMIT = 10; // Max 10 attempts
+  const COUPON_RATE_WINDOW = 60 * 1000; // Per 1 minute
+
+  const couponRateLimiter = (req: any, res: any, next: any) => {
+    const userId = req.session?.user?.id || req.ip;
+    const key = `coupon_validation_${userId}`;
+    const now = Date.now();
+
+    const attempt = couponValidationAttempts.get(key);
+
+    if (attempt) {
+      if (now > attempt.resetTime) {
+        // Reset window
+        couponValidationAttempts.set(key, { count: 1, resetTime: now + COUPON_RATE_WINDOW });
+        return next();
+      } else if (attempt.count >= COUPON_RATE_LIMIT) {
+        const remainingTime = Math.ceil((attempt.resetTime - now) / 1000);
+        return res.status(429).json({
+          valid: false,
+          message: `Too many attempts. Please try again in ${remainingTime} seconds.`
+        });
+      } else {
+        attempt.count++;
+        return next();
+      }
+    } else {
+      couponValidationAttempts.set(key, { count: 1, resetTime: now + COUPON_RATE_WINDOW });
+      return next();
+    }
+  };
+
+  // Cleanup rate limit map every 5 minutes
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of Array.from(couponValidationAttempts.entries())) {
+      if (now > value.resetTime) {
+        couponValidationAttempts.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000);
+
   // Get all coupons (admin only)
-  app.get("/api/coupons", async (req, res) => {
+  app.get("/api/coupons", requireAdmin, async (req, res) => {
     try {
       const coupons = await storage.getCoupons();
       res.json(coupons);
@@ -7452,8 +7652,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get active coupons for users
-  app.get("/api/coupons/active", async (req, res) => {
+  // Get active coupons for users (authenticated users only)
+  app.get("/api/coupons/active", requireAuth, async (req, res) => {
     try {
       const activeCoupons = await storage.getActiveCoupons();
       res.json(activeCoupons);
@@ -7463,8 +7663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new coupon (admin only)
-  app.post("/api/coupons", async (req, res) => {
+  // Create new coupon (admin or canteen owner only)
+  app.post("/api/coupons", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const couponData: InsertCoupon = req.body;
 
@@ -7510,10 +7710,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Validate coupon for user
-  app.post("/api/coupons/validate", async (req, res) => {
+  // Validate coupon for user (authenticated users only, rate limited)
+  app.post("/api/coupons/validate", requireAuth, couponRateLimiter, async (req, res) => {
     try {
-      const { code, userId, orderAmount } = req.body;
+      const { code, userId, orderAmount, canteenId } = req.body;
 
       if (!code || !orderAmount) {
         return res.status(400).json({
@@ -7522,7 +7722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const validation = await storage.validateCoupon(code, userId, orderAmount);
+      const validation = await storage.validateCoupon(code, userId, orderAmount, canteenId);
       res.json(validation);
     } catch (error) {
       console.error("Error validating coupon:", error);
@@ -7533,8 +7733,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Apply coupon to order
-  app.post("/api/coupons/apply", async (req, res) => {
+  // Apply coupon to order (DEPRECATED - should be done server-side during order creation)
+  // Keeping for backward compatibility but will be removed
+  app.post("/api/coupons/apply", requireAuth, async (req, res) => {
     try {
       const { code, userId, orderAmount } = req.body;
 
@@ -7556,8 +7757,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get coupon by ID
-  app.get("/api/coupons/:id", async (req, res) => {
+  // Get coupon by ID (admin or canteen owner only)
+  app.get("/api/coupons/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const coupon = await storage.getCoupon(req.params.id);
       if (!coupon) {
@@ -7570,8 +7771,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update coupon (admin only)
-  app.put("/api/coupons/:id", async (req, res) => {
+  // Update coupon (admin or canteen owner only)
+  app.put("/api/coupons/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const updateData = req.body;
       const coupon = await storage.updateCoupon(req.params.id, updateData);
@@ -7585,8 +7786,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete coupon (admin only)
-  app.delete("/api/coupons/:id", async (req, res) => {
+  // Delete coupon (admin or canteen owner only)
+  app.delete("/api/coupons/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const success = await storage.deleteCoupon(req.params.id);
       if (!success) {
@@ -7599,8 +7800,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Toggle coupon status (admin only)
-  app.patch("/api/coupons/:id/toggle", async (req, res) => {
+  // Toggle coupon status (admin or canteen owner only)
+  app.patch("/api/coupons/:id/toggle", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const coupon = await storage.toggleCouponStatus(req.params.id);
       if (!coupon) {
@@ -7613,8 +7814,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get detailed usage information for a coupon (admin only)
-  app.get("/api/coupons/:id/usage", async (req, res) => {
+  // Get detailed usage information for a coupon (admin or canteen owner only)
+  app.get("/api/coupons/:id/usage", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const result = await storage.getCouponUsageDetails(req.params.id);
       if (!result.success) {
@@ -7627,8 +7828,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Assign coupon to specific users (admin only)
-  app.post("/api/coupons/:id/assign", async (req, res) => {
+  // Assign coupon to specific users (admin or canteen owner only)
+  app.post("/api/coupons/:id/assign", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const { userIds } = req.body;
 
@@ -7648,8 +7849,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get available coupons for a specific user
-  app.get("/api/users/:userId/coupons", async (req, res) => {
+  // Get available coupons for a specific user (authenticated users only)
+  app.get("/api/users/:userId/coupons", requireAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -7665,7 +7866,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all users for coupon assignment (admin only)
-  app.get("/api/admin/users", async (req, res) => {
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       const { search, role } = req.query;
       let users = [];
