@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight, Calendar, Users, Percent, IndianRupee, Clock, Eye, UserPlus, History, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
+import { getUserIdFromStorage } from "@/utils/userStorage";
 
 interface CouponUsageHistory {
   userId: number;
@@ -76,6 +77,7 @@ interface CouponForm {
   validUntil: string;
   assignmentType: 'all' | 'specific';
   assignedUsers: number[];
+  canteenId: string;
 }
 
 export default function AdminCouponManagement() {
@@ -97,13 +99,14 @@ export default function AdminCouponManagement() {
     validFrom: new Date().toISOString().slice(0, 16),
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16), // 30 days from now
     assignmentType: 'all',
-    assignedUsers: []
+    assignedUsers: [],
+    canteenId: ''
   });
 
   const queryClient = useQueryClient();
+  
   // Get user ID from localStorage (assuming the user is logged in as admin)
   const getCurrentUserId = () => {
-    const { getUserIdFromStorage } = require("@/utils/userStorage");
     return getUserIdFromStorage() || 1; // fallback admin ID
   };
 
@@ -112,6 +115,14 @@ export default function AdminCouponManagement() {
     queryKey: ['/api/coupons'],
     queryFn: () => fetch('/api/coupons').then(res => res.json())
   });
+
+  // Fetch canteens for selection
+  const { data: canteensData } = useQuery({
+    queryKey: ['/api/system-settings/canteens'],
+    queryFn: () => fetch('/api/system-settings/canteens').then(res => res.json())
+  });
+
+  const canteens = canteensData?.canteens || [];
 
   // Fetch users for assignment
   const { data: users = [], isLoading: isLoadingUsers } = useQuery({
@@ -144,16 +155,20 @@ export default function AdminCouponManagement() {
         minimumOrderAmount: data.minimumOrderAmount || undefined,
         maxDiscountAmount: data.maxDiscountAmount || undefined,
         assignmentType: data.assignmentType || 'all',
-        assignedUsers: data.assignedUsers || []
+        assignedUsers: data.assignedUsers || [],
+        canteenId: data.canteenId
       })
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/coupons'] });
       setShowCreateDialog(false);
       resetForm();
-      },
+      alert('Coupon created successfully!');
+    },
     onError: (error: any) => {
-      }
+      console.error('Error creating coupon:', error);
+      alert(error.message || 'Failed to create coupon. Please try again.');
+    }
   });
 
   // Update coupon mutation
@@ -168,16 +183,20 @@ export default function AdminCouponManagement() {
           minimumOrderAmount: data.minimumOrderAmount || undefined,
           maxDiscountAmount: data.maxDiscountAmount || undefined,
           assignmentType: data.assignmentType || 'all',
-          assignedUsers: data.assignedUsers || []
+          assignedUsers: data.assignedUsers || [],
+          canteenId: data.canteenId
         })
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/coupons'] });
       setEditingCoupon(null);
       resetForm();
-      },
+      alert('Coupon updated successfully!');
+    },
     onError: (error: any) => {
-      }
+      console.error('Error updating coupon:', error);
+      alert(error.message || 'Failed to update coupon. Please try again.');
+    }
   });
 
   // Delete coupon mutation
@@ -212,7 +231,8 @@ export default function AdminCouponManagement() {
       validFrom: new Date().toISOString().slice(0, 16),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
       assignmentType: 'all',
-      assignedUsers: []
+      assignedUsers: [],
+      canteenId: ''
     });
   };
 
@@ -222,10 +242,17 @@ export default function AdminCouponManagement() {
 
   const handleSubmit = () => {
     if (!formData.code.trim() || !formData.description.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    if (!formData.canteenId) {
+      alert('Please select a canteen');
       return;
     }
 
     if (new Date(formData.validFrom) >= new Date(formData.validUntil)) {
+      alert('Valid from date must be before valid until date');
       return;
     }
 
@@ -249,7 +276,8 @@ export default function AdminCouponManagement() {
       validFrom: new Date(coupon.validFrom).toISOString().slice(0, 16),
       validUntil: new Date(coupon.validUntil).toISOString().slice(0, 16),
       assignmentType: coupon.assignmentType || 'all',
-      assignedUsers: coupon.assignedUsers || []
+      assignedUsers: coupon.assignedUsers || [],
+      canteenId: (coupon as any).canteenId || ''
     });
   };
 
@@ -351,6 +379,34 @@ export default function AdminCouponManagement() {
             
             <ScrollArea className="max-h-[70vh] pr-4">
               <div className="space-y-4">
+                {/* Canteen Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="canteenId">Canteen *</Label>
+                  <Select value={formData.canteenId} onValueChange={(value) => handleInputChange('canteenId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a canteen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GLOBAL">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-primary">🌍 Global (All Canteens)</span>
+                        </div>
+                      </SelectItem>
+                      <Separator className="my-2" />
+                      {canteens.map((canteen: any) => (
+                        <SelectItem key={canteen.id} value={canteen.id}>
+                          {canteen.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.canteenId === 'GLOBAL' && (
+                    <p className="text-sm text-blue-600 dark:text-blue-400">
+                      ℹ️ This coupon will be valid across all canteens
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="code">Coupon Code *</Label>
@@ -588,6 +644,13 @@ export default function AdminCouponManagement() {
                 {coupon.assignmentType === 'specific' && (
                   <div className="text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
                     Assigned to {coupon.assignedUsers?.length || 0} specific user(s)
+                  </div>
+                )}
+
+                {/* Global coupon indicator */}
+                {(coupon as any).canteenId === 'GLOBAL' && (
+                  <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded font-medium">
+                    🌍 Global - Valid in all canteens
                   </div>
                 )}
 
