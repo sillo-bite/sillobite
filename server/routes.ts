@@ -3965,12 +3965,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         console.log(`🔐 Verifying payment amount for canteen ${canteenId}`);
+        // 0. Parse order items carefully (handles JSON strings and urlencoded objects)
+        let cartItems: any[] = [];
+        try {
+          if (typeof orderData.items === 'string') {
+            cartItems = JSON.parse(orderData.items);
+          } else if (orderData.items && typeof orderData.items === 'object' && !Array.isArray(orderData.items)) {
+            // Body-parser urlencoded sometimes parses arrays as { '0': {...}, '1': {...} }
+            cartItems = Object.values(orderData.items);
+          } else {
+            cartItems = orderData.items || [];
+          }
+        } catch (e) {
+          console.warn('Failed to parse orderData.items, using empty array', e);
+        }
+
         // 1. Fetch exact menu items from DB to prevent price tamparing
-        const itemIds = (orderData.items || []).map((item: any) => item.id);
+        const itemIds = cartItems.map((item: any) => item.id);
         const menuItemsFromDb = await MenuItem.find({ _id: { $in: itemIds } });
 
         // 2. Re-create the cart with DB-verified prices
-        const verifiedCart = (orderData.items || []).map((cartItem: any) => {
+        const verifiedCart = cartItems.map((cartItem: any) => {
           const dbItem = menuItemsFromDb.find(item => item._id?.toString() === cartItem.id);
           if (!dbItem) throw new Error(`Menu item not found: ${cartItem.id}`);
           return {
