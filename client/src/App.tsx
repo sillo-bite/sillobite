@@ -104,6 +104,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import QRHandlerPage from "./pages/QRHandlerPage";
 import { PWAProvider } from "@/contexts/PWAContext";
+import { ScrollToTop } from "@/hooks/useScrollToTop";
 
 
 
@@ -196,6 +197,7 @@ const App = () => {
                     <PWAProvider>
                       <InstallPWA />
                       <Router>
+                        <ScrollToTop />
                         <Switch>
                           <Route path="/" component={PartnerLandingPage} />
                           <Route path="/splashscreen" component={SplashScreen} />
