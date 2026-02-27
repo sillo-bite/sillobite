@@ -4354,6 +4354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createPayment({
         customerId: orderData.customerId || undefined,
         merchantTransactionId: merchantOrderId,
+        razorpayOrderId: razorpayOrder.id, // Store as indexed field
+        checkoutSessionId: checkoutSessionId, // Store as indexed field
         amount: amount * 100, // Store in paise
         status: PAYMENT_STATUS.PENDING,
         canteenId: orderData.canteenId,
@@ -5407,26 +5409,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         if (!orderId && !qrCodeId) {
-          console.log('📡 Standard payment webhook detected (no QR notes) - checking metadata');
+          console.log('📡 Standard payment webhook detected (no QR notes) - checking indexed fields');
 
-          // Try to handle standard payment using metadata (same logic as main webhook)
-          // 1. Get payment record to access metadata (since payload entity notes might be limited)
-          console.log(`📡 Fetching local payment record for ${razorpayPaymentId} to get metadata`);
+          // Try to handle standard payment using indexed fields (FAST)
+          console.log(`📡 Looking up payment for Razorpay Payment ID: ${razorpayPaymentId}`);
 
           try {
             // Find the payment record using the Razorpay Order ID (order_...)
-            // The webhook payload has `entity.order_id` which matches what we stored in metadata.razorpayOrderId
+            // The webhook payload has `entity.order_id` which matches what we stored in razorpayOrderId
             const razorpayOrderId = entity.order_id;
             let paymentRecord = null;
 
             if (razorpayOrderId) {
               console.log(`📡 Searching for payment with Razorpay Order ID: ${razorpayOrderId}`);
-              paymentRecord = await storage.getPaymentByMetadataField('razorpayOrderId', razorpayOrderId);
+              // Use new indexed field lookup (FAST)
+              paymentRecord = await storage.getPaymentByRazorpayOrderId(razorpayOrderId);
             } else {
-              // Determine logic if no order_id (e.g. direct QR scan?)
-              // In that case, we might need to rely on `notes` if present, or we can't link it.
-              // But for standard checkout, order_id is crucial.
-              console.log('⚠️ Webhook payload missing order_id - attempting fallback by payment ID (unlikely to work for new ops)');
+              // Fallback: Try to find by payment ID
+              console.log('⚠️ Webhook payload missing order_id - attempting fallback by payment ID');
               paymentRecord = await storage.getPaymentByRazorpayId(razorpayPaymentId);
             }
 
@@ -5461,6 +5461,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             } else {
               console.log(`⚠️ No local payment record found for ${razorpayPaymentId}`);
+              
+              // Log failed webhook for retry
+              try {
+                const { WebhookLog } = await import('./models/mongodb-models');
+                await WebhookLog.create({
+                  event: event,
+                  paymentId: razorpayPaymentId,
+                  razorpayOrderId: razorpayOrderId || undefined,
+                  payload: JSON.stringify(payload),
+                  status: 'failed',
+                  retryCount: 0,
+                  error: 'Payment record not found in database'
+                });
+                console.log('📝 Logged failed webhook for retry');
+              } catch (logError) {
+                console.error('❌ Failed to log webhook:', logError);
+              }
             }
 
           } catch (error: any) {
@@ -5487,6 +5504,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (!order) {
           console.error('📡 Order not found for payment:', { orderId, qrCodeId });
+          
+          // Log failed webhook for retry
+          try {
+            const { WebhookLog } = await import('./models/mongodb-models');
+            await WebhookLog.create({
+              event: event,
+              paymentId: razorpayPaymentId,
+              razorpayOrderId: entity.order_id || undefined,
+              payload: JSON.stringify(payload),
+              status: 'failed',
+              retryCount: 0,
+              error: `Order not found for payment - orderId: ${orderId}, qrCodeId: ${qrCodeId}`
+            });
+            console.log('📝 Logged failed webhook for retry');
+          } catch (logError) {
+            console.error('❌ Failed to log webhook:', logError);
+          }
+          
           return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
@@ -5516,6 +5551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.updatePaymentStatus(order.orderNumber, PAYMENT_STATUS.SUCCESS);
             await storage.updatePaymentByMerchantTxnId(order.orderNumber, {
               razorpayTransactionId: razorpayPaymentId,
+              razorpayPaymentId: razorpayPaymentId, // Store payment ID
               paymentMethod: paymentMethod || 'qr'
             });
           }
@@ -5523,6 +5559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updatePaymentStatus(paymentRecord.merchantTransactionId, PAYMENT_STATUS.SUCCESS);
           await storage.updatePaymentByMerchantTxnId(paymentRecord.merchantTransactionId, {
             razorpayTransactionId: razorpayPaymentId,
+            razorpayPaymentId: razorpayPaymentId, // Store payment ID
             paymentMethod: paymentMethod || 'qr'
           });
         }
@@ -5690,19 +5727,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentStatus = entity.status;
       const paymentMethod = entity.method;
 
-      // Find payment by razorpayOrderId in metadata
+      // Find payment by razorpayOrderId using indexed field (FAST)
       let payment = null;
-      const payments = await storage.getPayments();
-      for (const p of payments) {
-        if (p.metadata) {
-          try {
-            const metadata = JSON.parse(p.metadata);
-            if (metadata.razorpayOrderId === razorpayOrderId) {
-              payment = p;
-              break;
+      
+      if (razorpayOrderId) {
+        console.log(`📡 Looking up payment by Razorpay Order ID: ${razorpayOrderId}`);
+        payment = await storage.getPaymentByRazorpayOrderId(razorpayOrderId);
+      }
+      
+      // Fallback: Search through all payments (SLOW - for backward compatibility)
+      if (!payment) {
+        console.log('📡 Indexed lookup failed, falling back to metadata search');
+        const payments = await storage.getPayments();
+        for (const p of payments) {
+          if (p.metadata) {
+            try {
+              const metadata = JSON.parse(p.metadata);
+              if (metadata.razorpayOrderId === razorpayOrderId) {
+                payment = p;
+                break;
+              }
+            } catch (e) {
+              // Skip invalid metadata
             }
-          } catch (e) {
-            // Skip invalid metadata
           }
         }
       }
@@ -5727,6 +5774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update payment record
       await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
         razorpayTransactionId: razorpayPaymentId,
+        razorpayPaymentId: razorpayPaymentId, // Store payment ID as indexed field
         status: mappedPaymentStatus,
         paymentMethod: paymentMethod || 'unknown',
         responseCode: paymentStatus,

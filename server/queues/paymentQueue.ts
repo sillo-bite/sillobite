@@ -231,6 +231,8 @@ async function initializeWorkers() {
         await storage.createPayment({
           customerId: orderData.customerId || undefined,
           merchantTransactionId: merchantOrderId,
+          razorpayOrderId: razorpayOrder.id, // Store as indexed field
+          checkoutSessionId: checkoutSessionId, // Store as indexed field
           amount: amount * 100, // Store in paise
           status: 'pending',
           canteenId: orderData.canteenId,
