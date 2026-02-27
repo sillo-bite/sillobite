@@ -566,6 +566,9 @@ export interface IPayment extends Document {
   merchantTransactionId: string;
   phonePeTransactionId?: string; // Legacy field for backward compatibility
   razorpayTransactionId?: string;
+  razorpayOrderId?: string; // Razorpay Order ID for webhook lookups
+  razorpayPaymentId?: string; // Razorpay Payment ID for webhook lookups
+  checkoutSessionId?: string; // Checkout session ID for session-based lookups
   amount: number;
   status: string;
   paymentMethod?: string;
@@ -583,7 +586,10 @@ const PaymentSchema = new Schema<IPayment>({
   canteenId: { type: String }, // Added canteenId field for direct canteen mapping
   merchantTransactionId: { type: String, required: true, unique: true },
   phonePeTransactionId: { type: String }, // Legacy field for backward compatibility
-  razorpayTransactionId: { type: String },
+  razorpayTransactionId: { type: String, index: true }, // Indexed for webhook lookups
+  razorpayOrderId: { type: String, index: true }, // Indexed for webhook lookups by order ID
+  razorpayPaymentId: { type: String, index: true }, // Indexed for webhook lookups by payment ID
+  checkoutSessionId: { type: String, index: true }, // Indexed for session-based lookups
   amount: { type: Number, required: true },
   status: { type: String, default: 'pending' },
   paymentMethod: { type: String },
@@ -601,6 +607,9 @@ PaymentSchema.index({ orderId: 1 }); // For order-based payment lookups
 PaymentSchema.index({ status: 1, createdAt: -1 }); // For status-based queries
 PaymentSchema.index({ merchantTransactionId: 1 }); // Already unique, but explicit index for lookups
 PaymentSchema.index({ customerId: 1, createdAt: -1 }); // For user-specific payment queries (My Payments)
+PaymentSchema.index({ razorpayOrderId: 1 }); // For webhook lookups by Razorpay Order ID
+PaymentSchema.index({ razorpayPaymentId: 1 }); // For webhook lookups by Razorpay Payment ID
+PaymentSchema.index({ checkoutSessionId: 1 }); // For session-based lookups
 
 export const Payment = mongoose.model<IPayment>('Payment', PaymentSchema);
 
@@ -832,6 +841,45 @@ PaymentSessionSchema.index({ status: 1, createdAt: -1 });
 PaymentSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 3600 });
 
 export const PaymentSession = mongoose.model<IPaymentSession>('PaymentSession', PaymentSessionSchema);
+
+// Webhook Log Model - Tracks webhook events for retry and debugging
+export interface IWebhookLog extends Document {
+  event: string; // Webhook event type (e.g., payment.captured)
+  paymentId?: string; // Razorpay payment ID
+  razorpayOrderId?: string; // Razorpay order ID
+  payload: string; // Full webhook payload as JSON string
+  status: 'success' | 'failed' | 'pending'; // Processing status
+  retryCount: number; // Number of retry attempts
+  error?: string; // Error message if failed
+  processedAt?: Date; // When successfully processed
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const WebhookLogSchema = new Schema<IWebhookLog>({
+  event: { type: String, required: true },
+  paymentId: { type: String, index: true },
+  razorpayOrderId: { type: String, index: true },
+  payload: { type: String, required: true },
+  status: {
+    type: String,
+    enum: ['success', 'failed', 'pending'],
+    default: 'pending',
+    index: true
+  },
+  retryCount: { type: Number, default: 0 },
+  error: { type: String },
+  processedAt: { type: Date },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Indexes for efficient queries
+WebhookLogSchema.index({ status: 1, retryCount: 1, createdAt: -1 }); // For retry queries
+WebhookLogSchema.index({ razorpayOrderId: 1, event: 1 }); // For duplicate detection
+WebhookLogSchema.index({ createdAt: -1 }); // For recent logs
+
+export const WebhookLog = mongoose.model<IWebhookLog>('WebhookLog', WebhookLogSchema);
 
 // Checkout Session Model - Tracks entire checkout flow
 export interface ICheckoutSession extends Document {

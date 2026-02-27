@@ -77,6 +77,9 @@ export type InsertPayment = {
   merchantTransactionId: string;
   phonePeTransactionId?: string; // Legacy field for backward compatibility
   razorpayTransactionId?: string;
+  razorpayOrderId?: string; // Razorpay Order ID for webhook lookups
+  razorpayPaymentId?: string; // Razorpay Payment ID for webhook lookups
+  checkoutSessionId?: string; // Checkout session ID for session-based lookups
   amount: number;
   status?: string;
   paymentMethod?: string;
@@ -239,6 +242,7 @@ export interface IStorage {
   getPayment(id: string): Promise<any | undefined>;
   getPaymentByMerchantTxnId(merchantTransactionId: string): Promise<any | undefined>;
   getPaymentByMetadataField(field: string, value: string): Promise<any | undefined>;
+  getPaymentByRazorpayOrderId(razorpayOrderId: string): Promise<any | undefined>;
   updatePaymentStatus(merchantTransactionId: string, status: string): Promise<any | undefined>;
   createPayment(payment: InsertPayment): Promise<any>;
   updatePayment(id: string, payment: Partial<InsertPayment>): Promise<any>;
@@ -1244,12 +1248,42 @@ export class HybridStorage implements IStorage {
 
   async getPaymentByMetadataField(field: string, value: string): Promise<any | undefined> {
     try {
-      const regex = new RegExp(`"${field}"\\s*:\\s*"${value}"`, 'i');
-      const payment = await Payment.findOne({ metadata: { $regex: regex } });
-      return payment ? mongoToPlain(payment) : undefined;
-    } catch (error) {
-      console.error('Error fetching payment by metadata field:', error);
+      // First try direct field lookup if it's a top-level indexed field
+      if (field === 'razorpayOrderId' || field === 'razorpayPaymentId' || field === 'checkoutSessionId') {
+        const payment = await Payment.findOne({ [field]: value });
+        if (payment) {
+          console.log(`✅ Found payment by indexed field ${field}: ${value}`);
+          return mongoToPlain(payment);
+        }
+      }
+
+      // Fallback: Parse metadata JSON properly (for backward compatibility)
+      console.log(`🔍 Searching metadata for ${field}: ${value}`);
+      const payments = await Payment.find({}).limit(1000); // Limit for performance
+      
+      for (const payment of payments) {
+        if (!payment.metadata) continue;
+        
+        try {
+          const metadata = typeof payment.metadata === 'string' 
+            ? JSON.parse(payment.metadata) 
+            : payment.metadata;
+          
+          if (metadata && metadata[field] === value) {
+            console.log(`✅ Found payment in metadata for ${field}: ${value}`);
+            return mongoToPlain(payment);
+          }
+        } catch (e) {
+          // Skip invalid JSON
+          continue;
+        }
+      }
+      
+      console.log(`⚠️ No payment found for ${field}: ${value}`);
       return undefined;
+    } catch (error) {
+      console.error(`❌ Error fetching payment by ${field}:`, error);
+      throw new Error(`Database error while fetching payment by ${field}: ${error}`);
     }
   }
 
@@ -2958,21 +2992,47 @@ export class HybridStorage implements IStorage {
 
 
   async getPaymentByRazorpayId(razorpayPaymentId: string): Promise<any | undefined> {
-    // Try to find payment by razorpayTransactionId
-    // Note: The field in our schema is `razorpayTransactionId`
-    // We should search for that.
+    try {
+      // Try to find payment by razorpayPaymentId (indexed field)
+      let payment = await Payment.findOne({ razorpayPaymentId: razorpayPaymentId });
 
-    // First try MongoDB
-    let payment = await Payment.findOne({ razorpayTransactionId: razorpayPaymentId });
+      if (payment) {
+        console.log(`✅ Found payment by razorpayPaymentId: ${razorpayPaymentId}`);
+        return payment.toObject ? payment.toObject() : payment;
+      }
 
-    if (payment) {
-      return payment.toObject ? payment.toObject() : payment;
+      // Fallback: Try razorpayTransactionId (for completed payments)
+      payment = await Payment.findOne({ razorpayTransactionId: razorpayPaymentId });
+
+      if (payment) {
+        console.log(`✅ Found payment by razorpayTransactionId: ${razorpayPaymentId}`);
+        return payment.toObject ? payment.toObject() : payment;
+      }
+
+      console.log(`⚠️ No payment found for Razorpay Payment ID: ${razorpayPaymentId}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error fetching payment by Razorpay ID:`, error);
+      throw new Error(`Database error while fetching payment by Razorpay ID: ${error}`);
     }
+  }
 
-    // Fallback: Check if it's stored in metadata (unlikely for main ID but possible)
-    // Or maybe check by _id if the razorpayPaymentId was used as our ID? (Not how we do it)
+  async getPaymentByRazorpayOrderId(razorpayOrderId: string): Promise<any | undefined> {
+    try {
+      // Direct lookup using indexed field
+      const payment = await Payment.findOne({ razorpayOrderId: razorpayOrderId });
 
-    return null;
+      if (payment) {
+        console.log(`✅ Found payment by razorpayOrderId: ${razorpayOrderId}`);
+        return payment.toObject ? payment.toObject() : payment;
+      }
+
+      console.log(`⚠️ No payment found for Razorpay Order ID: ${razorpayOrderId}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error fetching payment by Razorpay Order ID:`, error);
+      throw new Error(`Database error while fetching payment by Razorpay Order ID: ${error}`);
+    }
   }
 
 
