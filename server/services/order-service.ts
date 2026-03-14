@@ -191,6 +191,8 @@ export class OrderService {
     /**
      * Create an order from payment callback (metadata + txnId)
      * This REPLACES `createOrderFromPaymentCallback` in routes.ts
+     * 
+     * RACE CONDITION FIX: Uses atomic findOneAndUpdate to claim order creation
      */
     async createOrderFromPayment(
         orderData: any,
@@ -204,60 +206,128 @@ export class OrderService {
             appliedCouponType: typeof orderData.appliedCoupon
         });
 
-        // 1. Duplicate Check
-        const customerId = orderData.customerId || 0;
-        const canteenId = orderData.canteenId || '';
-        const amount = orderData.amount || 0;
-
-        if (amount > 0) {
-            const duplicateCheck = await checkDuplicatePaymentMiddleware(customerId, amount, canteenId);
-            if (!duplicateCheck.allowed) {
-                throw new Error(duplicateCheck.message || 'Duplicate order session detected');
+        // ATOMIC DUPLICATE PREVENTION: Claim order creation with findOneAndUpdate
+        // This prevents race condition between webhook and client callback
+        const { Payment } = await import('../models/mongodb-models');
+        
+        // Try to atomically set a temporary orderId marker to claim this payment
+        const CLAIMING_MARKER = 'CLAIMING_ORDER_CREATION';
+        const claimResult = await Payment.findOneAndUpdate(
+            {
+                merchantTransactionId: merchantTransactionId,
+                orderId: { $exists: false } // Only if no orderId exists
+            },
+            {
+                $set: { 
+                    orderId: CLAIMING_MARKER as any, // Temporary marker
+                    updatedAt: new Date()
+                }
+            },
+            {
+                new: false, // Return the document BEFORE update
+                upsert: false
             }
+        );
+
+        // If claimResult is null, another process already claimed or created the order
+        if (!claimResult) {
+            console.log(`⚠️ [ORDER-SERVICE] Order creation already claimed/completed for ${merchantTransactionId}`);
+            
+            // Check if order already exists
+            const existingPayment = await Payment.findOne({ merchantTransactionId });
+            if (existingPayment?.orderId && existingPayment.orderId !== CLAIMING_MARKER) {
+                const existingOrder = await storage.getOrder(String(existingPayment.orderId));
+                if (existingOrder) {
+                    console.log(`✅ [ORDER-SERVICE] Returning existing order: ${existingOrder.orderNumber}`);
+                    return existingOrder;
+                }
+            }
+            
+            throw new Error('Order creation already in progress or completed by another process');
         }
 
-        // 2. Parse Items
-        let rawItems = [];
+        console.log(`🔒 [ORDER-SERVICE] Successfully claimed order creation for ${merchantTransactionId}`);
+
         try {
-            rawItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items;
-        } catch (e) { throw new Error("Invalid order items format"); }
+            // 1. Duplicate Check (secondary check for safety)
+            const customerId = orderData.customerId || 0;
+            const canteenId = orderData.canteenId || '';
+            const amount = orderData.amount || 0;
 
-        // 3. Enrich Items
-        const enriched = await this.enrichOrderItems(rawItems);
+            if (amount > 0) {
+                const duplicateCheck = await checkDuplicatePaymentMiddleware(customerId, amount, canteenId);
+                if (!duplicateCheck.allowed) {
+                    // Release the claim
+                    await Payment.findOneAndUpdate(
+                        { merchantTransactionId },
+                        { $unset: { orderId: "" } }
+                    );
+                    throw new Error(duplicateCheck.message || 'Duplicate order session detected');
+                }
+            }
 
-        // 4. Prepare Order Data
-        const orderNumber = generateOrderNumber();
-        const barcode = generateOrderNumber();
-        const status = this.determineInitialStatus(orderData, enriched.hasMarkableItem);
+            // 2. Parse Items
+            let rawItems = [];
+            try {
+                rawItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items;
+            } catch (e) { 
+                // Release the claim on error
+                await Payment.findOneAndUpdate(
+                    { merchantTransactionId },
+                    { $unset: { orderId: "" } }
+                );
+                throw new Error("Invalid order items format"); 
+            }
 
-        const completeOrderData = {
-            ...orderData,
-            orderNumber,
-            barcode,
-            status,
-            paymentStatus: 'paid', // Assumed success for callback
-            orderType: orderData.orderType || 'takeaway',
-            items: JSON.stringify(enriched.enrichedItems),
-            storeCounterId: enriched.allStoreCounterIds[0] || undefined,
-            paymentCounterId: enriched.allPaymentCounterIds[0] || undefined,
-            kotCounterId: enriched.allKotCounterIds[0] || undefined,
-            allStoreCounterIds: enriched.allStoreCounterIds,
-            allPaymentCounterIds: enriched.allPaymentCounterIds,
-            allKotCounterIds: enriched.allKotCounterIds,
-            allCounterIds: enriched.allCounterIds,
-            itemStatusByCounter: enriched.itemStatusByCounter
-        };
+            // 3. Enrich Items
+            const enriched = await this.enrichOrderItems(rawItems);
 
-        // 5. Create Order
-        // Note: We use `createOrder` which calls stock logic.
-        // Online orders usually skip stock reduction if `checkoutSessionId` exists.
-        return this.createOrder({
-            orderData: insertOrderSchema.parse(completeOrderData),
-            orderItems: enriched.enrichedItems, // Passed for stock validation
-            checkoutSessionId: orderData.checkoutSessionId,
-            merchantTransactionId: merchantTransactionId,
-            isPos: false
-        });
+            // 4. Prepare Order Data
+            const orderNumber = generateOrderNumber();
+            const barcode = generateOrderNumber();
+            const status = this.determineInitialStatus(orderData, enriched.hasMarkableItem);
+
+            const completeOrderData = {
+                ...orderData,
+                orderNumber,
+                barcode,
+                status,
+                paymentStatus: 'paid', // Assumed success for callback
+                orderType: orderData.orderType || 'takeaway',
+                items: JSON.stringify(enriched.enrichedItems),
+                storeCounterId: enriched.allStoreCounterIds[0] || undefined,
+                paymentCounterId: enriched.allPaymentCounterIds[0] || undefined,
+                kotCounterId: enriched.allKotCounterIds[0] || undefined,
+                allStoreCounterIds: enriched.allStoreCounterIds,
+                allPaymentCounterIds: enriched.allPaymentCounterIds,
+                allKotCounterIds: enriched.allKotCounterIds,
+                allCounterIds: enriched.allCounterIds,
+                itemStatusByCounter: enriched.itemStatusByCounter
+            };
+
+            // 5. Create Order
+            // Note: We use `createOrder` which calls stock logic.
+            // Online orders usually skip stock reduction if `checkoutSessionId` exists.
+            const order = await this.createOrder({
+                orderData: insertOrderSchema.parse(completeOrderData),
+                orderItems: enriched.enrichedItems, // Passed for stock validation
+                checkoutSessionId: orderData.checkoutSessionId,
+                merchantTransactionId: merchantTransactionId,
+                isPos: false
+            });
+
+            console.log(`✅ [ORDER-SERVICE] Order created successfully: ${order.orderNumber} (${order.id})`);
+            return order;
+
+        } catch (error) {
+            // Release the claim on any error
+            console.error(`❌ [ORDER-SERVICE] Error creating order for ${merchantTransactionId}, releasing claim:`, error);
+            await Payment.findOneAndUpdate(
+                { merchantTransactionId },
+                { $unset: { orderId: "" } }
+            );
+            throw error;
+        }
     }
 
     /**
@@ -405,16 +475,32 @@ export class OrderService {
             });
         }
 
-        // 4. Link Payment
+        // 4. Link Payment (Replace CLAIMING_MARKER with actual orderId)
         if (merchantTransactionId) {
             try {
                 const orderIdString = typeof orderId === 'string' ? orderId : String(orderId);
-                await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-                    orderId: orderIdString
-                });
-                console.log(`🔗 Linked payment ${merchantTransactionId} to order ${orderNumber}`);
+                
+                // Use findOneAndUpdate to ensure we're replacing the CLAIMING_MARKER
+                const { Payment } = await import('../models/mongodb-models');
+                const updateResult = await Payment.findOneAndUpdate(
+                    { merchantTransactionId },
+                    { 
+                        $set: { 
+                            orderId: orderIdString,
+                            updatedAt: new Date()
+                        }
+                    },
+                    { new: true }
+                );
+                
+                if (updateResult) {
+                    console.log(`🔗 Linked payment ${merchantTransactionId} to order ${orderNumber} (replaced claim marker)`);
+                } else {
+                    console.warn(`⚠️ Payment ${merchantTransactionId} not found when linking to order ${orderNumber}`);
+                }
             } catch (err) {
                 console.error(`❌ Failed to link payment ${merchantTransactionId} to order ${orderNumber}:`, err);
+                // Don't throw - order is already created
             }
         }
 

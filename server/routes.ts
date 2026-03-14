@@ -5800,7 +5800,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             console.log(`✅ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from Razorpay webhook`);
           } catch (error) {
-            console.error('❌ Error creating order from webhook:', error);
+            // Check if error is due to race condition (order already being created)
+            if (error instanceof Error && error.message.includes('already in progress or completed')) {
+              console.log(`ℹ️ Order creation already handled by another process (webhook race condition handled)`);
+              // This is expected - don't log as error
+            } else {
+              console.error('❌ Error creating order from webhook:', error);
+            }
             // Don't fail the webhook
           }
         }
@@ -5932,7 +5938,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orderNumber = newOrder.orderNumber;
             console.log(`📦 Order ${newOrder.orderNumber} created via cached status check with stock management`);
           } catch (error) {
-            console.error('❌ Error creating order from payment callback:', error);
+            // Check if error is due to race condition (order already being created)
+            if (error instanceof Error && error.message.includes('already in progress or completed')) {
+              console.log(`ℹ️ Order creation already handled by another process (status check race condition handled)`);
+              // Try to get the existing order
+              const updatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
+              if (updatedPayment?.orderId) {
+                const existingOrder = await storage.getOrder(updatedPayment.orderId);
+                if (existingOrder) {
+                  orderNumber = existingOrder.orderNumber;
+                  console.log(`✅ Retrieved existing order: ${orderNumber}`);
+                }
+              }
+            } else {
+              console.error('❌ Error creating order from payment callback:', error);
+            }
             // Don't fail the request, just log the error
             // Order creation will be retried on next status check
           }
@@ -6100,14 +6120,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Get updated payment with order ID
               finalUpdatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
             } catch (error) {
-              console.error('❌ Error creating order from payment status check:', error);
-              console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-              if (updatedPayment?.metadata) {
-                try {
-                  const errorOrderData = JSON.parse(updatedPayment.metadata);
-                  console.error('❌ Order data:', JSON.stringify(errorOrderData, null, 2));
-                } catch (e) {
-                  console.error('❌ Could not parse order data from metadata');
+              // Check if error is due to race condition (order already being created)
+              if (error instanceof Error && error.message.includes('already in progress or completed')) {
+                console.log(`ℹ️ Order creation already handled by another process (payment status race condition handled)`);
+                // Try to get the existing order
+                const latestPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
+                if (latestPayment?.orderId) {
+                  const existingOrder = await storage.getOrder(latestPayment.orderId);
+                  if (existingOrder) {
+                    finalUpdatedPayment = { ...latestPayment, orderNumber: existingOrder.orderNumber };
+                    console.log(`✅ Retrieved existing order: ${existingOrder.orderNumber}`);
+                  }
+                }
+              } else {
+                console.error('❌ Error creating order from payment status check:', error);
+                console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+                if (updatedPayment?.metadata) {
+                  try {
+                    const errorOrderData = JSON.parse(updatedPayment.metadata);
+                    console.error('❌ Order data:', JSON.stringify(errorOrderData, null, 2));
+                  } catch (e) {
+                    console.error('❌ Could not parse order data from metadata');
+                  }
                 }
               }
               // Don't fail the request, order creation can be retried
