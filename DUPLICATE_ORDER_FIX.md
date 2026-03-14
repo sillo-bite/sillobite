@@ -25,6 +25,9 @@ We use MongoDB's `findOneAndUpdate` with a conditional query to atomically "clai
 ```typescript
 // In order-service.ts createOrderFromPayment()
 
+// Use a special ObjectId as claiming marker (all zeros)
+const CLAIMING_MARKER = new mongoose.Types.ObjectId('000000000000000000000000');
+
 // Step 1: Atomically claim order creation
 const claimResult = await Payment.findOneAndUpdate(
     {
@@ -33,7 +36,7 @@ const claimResult = await Payment.findOneAndUpdate(
     },
     {
         $set: { 
-            orderId: 'CLAIMING_ORDER_CREATION', // Temporary marker
+            orderId: CLAIMING_MARKER, // Temporary ObjectId marker
             updatedAt: new Date()
         }
     },
@@ -60,10 +63,11 @@ await Payment.findOneAndUpdate(
 ```
 
 ### Key Benefits
-1. **Atomic Operation**: MongoDB ensures only ONE process can successfully update the payment with the claim marker
+1. **Atomic Operation**: MongoDB ensures only ONE process can successfully update the payment with the claim marker (ObjectId `000000000000000000000000`)
 2. **Race Condition Proof**: If webhook and client callback run simultaneously, only one will succeed in claiming
-3. **Graceful Handling**: The losing process detects the claim and either returns the existing order or exits gracefully
-4. **Error Recovery**: If order creation fails after claiming, the marker is removed so it can be retried
+3. **Type Safe**: Uses a valid ObjectId instead of a string, avoiding Mongoose casting errors
+4. **Graceful Handling**: The losing process detects the claim and either returns the existing order or exits gracefully
+5. **Error Recovery**: If order creation fails after claiming, the marker is removed so it can be retried
 
 ## Files Modified
 1. `server/services/order-service.ts` - Added atomic claim logic in `createOrderFromPayment()`

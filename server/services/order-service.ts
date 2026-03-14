@@ -209,9 +209,11 @@ export class OrderService {
         // ATOMIC DUPLICATE PREVENTION: Claim order creation with findOneAndUpdate
         // This prevents race condition between webhook and client callback
         const { Payment } = await import('../models/mongodb-models');
+        const mongoose = await import('mongoose');
         
-        // Try to atomically set a temporary orderId marker to claim this payment
-        const CLAIMING_MARKER = 'CLAIMING_ORDER_CREATION';
+        // Use a special ObjectId as a claiming marker (all zeros is a valid ObjectId)
+        const CLAIMING_MARKER = new mongoose.Types.ObjectId('000000000000000000000000');
+        
         const claimResult = await Payment.findOneAndUpdate(
             {
                 merchantTransactionId: merchantTransactionId,
@@ -219,7 +221,7 @@ export class OrderService {
             },
             {
                 $set: { 
-                    orderId: CLAIMING_MARKER as any, // Temporary marker
+                    orderId: CLAIMING_MARKER, // Temporary ObjectId marker
                     updatedAt: new Date()
                 }
             },
@@ -235,11 +237,15 @@ export class OrderService {
             
             // Check if order already exists
             const existingPayment = await Payment.findOne({ merchantTransactionId });
-            if (existingPayment?.orderId && existingPayment.orderId !== CLAIMING_MARKER) {
-                const existingOrder = await storage.getOrder(String(existingPayment.orderId));
-                if (existingOrder) {
-                    console.log(`✅ [ORDER-SERVICE] Returning existing order: ${existingOrder.orderNumber}`);
-                    return existingOrder;
+            if (existingPayment?.orderId) {
+                const orderIdStr = String(existingPayment.orderId);
+                // Check if it's not the claiming marker
+                if (orderIdStr !== '000000000000000000000000') {
+                    const existingOrder = await storage.getOrder(orderIdStr);
+                    if (existingOrder) {
+                        console.log(`✅ [ORDER-SERVICE] Returning existing order: ${existingOrder.orderNumber}`);
+                        return existingOrder;
+                    }
                 }
             }
             
