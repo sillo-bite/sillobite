@@ -179,57 +179,102 @@ export const carebiteController = {
 
       console.log(`💰 Total amount: ₹${totalAmount}`);
 
-      // 4. Validate stock availability
-      console.log('📊 Validating stock...');
+      // 4. Validate and reserve stock FIRST (before checking payment)
+      console.log('📊 Validating real-time stock...');
       const stockUpdates = orderItems.map(item => ({
-        menuItemId: item.menuItemId,
-        quantity: item.quantity
+        id: item.menuItemId,
+        quantity: item.quantity,
+        name: item.name
       }));
 
+      let stockValidation;
       try {
-        await stockService.validateAndPrepareStockUpdates(stockUpdates);
+        stockValidation = await stockService.validateAndPrepareStockUpdates(stockUpdates);
+        
+        if (!stockValidation.isValid) {
+          console.log('❌ Stock validation failed:', stockValidation.errors);
+          
+          // Parse errors to extract item details
+          const failedItems = stockValidation.errors.map(error => {
+            const itemMatch = error.match(/for (.+?)\./);
+            const availableMatch = error.match(/Available: (\d+)/);
+            const requestedMatch = error.match(/Requested: (\d+)/);
+            
+            const itemName = itemMatch ? itemMatch[1] : 'Unknown item';
+            const item = orderItems.find(i => i.name === itemName || error.includes(i.menuItemId));
+            
+            return {
+              menuItemId: item?.menuItemId || 'unknown',
+              name: itemName,
+              requestedQuantity: requestedMatch ? parseInt(requestedMatch[1]) : 0,
+              availableQuantity: availableMatch ? parseInt(availableMatch[1]) : 0
+            };
+          });
+          
+          return res.status(400).json({ 
+            success: false,
+            error: 'Order creation failed',
+            reason: 'insufficient_stock',
+            message: 'Some items are out of stock or have insufficient quantity',
+            details: {
+              errors: stockValidation.errors,
+              failedItems
+            },
+            suggestion: 'Please reduce the quantity or remove out-of-stock items'
+          });
+        }
+        
         console.log('✅ Stock validation passed');
       } catch (stockError: any) {
-        console.log('❌ Stock validation failed:', stockError.message);
-        
-        // Parse stock error to get specific item details
-        const stockErrorDetails = {
-          reason: 'insufficient_stock',
-          message: 'Some items are out of stock or have insufficient quantity',
-          details: stockError.message,
-          failedItems: []
-        };
-
-        // Try to extract which items failed
-        const errorMatch = stockError.message.match(/item[:\s]+([^\s,]+)/i);
-        if (errorMatch) {
-          const failedItemId = errorMatch[1];
-          const failedItem = orderItems.find(item => 
-            item.menuItemId === failedItemId || item.name.includes(failedItemId)
-          );
-          if (failedItem) {
-            stockErrorDetails.failedItems.push({
-              menuItemId: failedItem.menuItemId,
-              name: failedItem.name,
-              requestedQuantity: failedItem.quantity
-            });
-          }
-        }
-
-        return res.status(400).json({ 
+        console.log('❌ Stock validation error:', stockError.message);
+        return res.status(500).json({ 
           success: false,
           error: 'Order creation failed',
-          ...stockErrorDetails
+          reason: 'stock_validation_error',
+          message: 'Failed to validate stock availability',
+          details: stockError.message
         });
       }
 
-      // 5. Check wallet balance
+      // 5. Reserve stock immediately after validation
+      console.log('🔒 Reserving stock...');
+      let stockReserved = false;
+      try {
+        await stockService.processStockUpdates(stockValidation.updates);
+        stockReserved = true;
+        console.log('✅ Stock reserved successfully');
+      } catch (reserveError: any) {
+        console.log('❌ Stock reservation failed:', reserveError.message);
+        return res.status(500).json({ 
+          success: false,
+          error: 'Order creation failed',
+          reason: 'stock_reservation_failed',
+          message: 'Failed to reserve stock for your order',
+          details: reserveError.message
+        });
+      }
+
+      // 6. Check wallet balance (after stock is reserved)
       console.log('💳 Checking wallet balance...');
       const currentBalance = await walletService.getBalance(user.id);
       const hasSufficientBalance = currentBalance.greaterThanOrEqualTo(totalAmount);
 
       if (!hasSufficientBalance) {
         console.log(`❌ Insufficient balance: ₹${currentBalance} < ₹${totalAmount}`);
+        
+        // ROLLBACK: Restore reserved stock
+        console.log('🔄 Rolling back reserved stock...');
+        try {
+          const rollbackUpdates = stockValidation.updates.map(update => ({
+            ...update,
+            operation: 'restore' as const
+          }));
+          await stockService.processStockUpdates(rollbackUpdates);
+          console.log('✅ Stock rollback completed');
+        } catch (rollbackError) {
+          console.error('❌ Stock rollback failed:', rollbackError);
+          // Log but don't fail the response - user still needs to know about insufficient balance
+        }
         
         const shortfall = totalAmount - parseFloat(currentBalance.toString());
         
@@ -250,31 +295,54 @@ export const carebiteController = {
 
       console.log('✅ Sufficient wallet balance');
 
-      // 6. Reserve stock
-      console.log('🔒 Reserving stock...');
-      await stockService.reduceStock(stockUpdates);
-      console.log('✅ Stock reserved');
-
       // 7. Debit wallet
       console.log('💸 Debiting wallet...');
-      const walletResult = await walletService.debitWallet({
-        userId: user.id,
-        amount: totalAmount,
-        description: `Order payment for ${orderItems.length} items`,
-        referenceType: 'order',
-        metadata: {
-          canteenId,
-          itemCount: orderItems.length,
-          source: 'carebite'
+      let walletResult;
+      try {
+        walletResult = await walletService.debitWallet({
+          userId: user.id,
+          amount: totalAmount,
+          description: `Order payment for ${orderItems.length} items`,
+          referenceType: 'order',
+          metadata: {
+            canteenId,
+            itemCount: orderItems.length,
+            source: 'carebite'
+          }
+        });
+        console.log(`✅ Wallet debited. New balance: ₹${walletResult.newBalance}`);
+      } catch (walletError: any) {
+        console.error('❌ Wallet debit failed:', walletError.message);
+        
+        // ROLLBACK: Restore reserved stock
+        console.log('🔄 Rolling back reserved stock...');
+        try {
+          const rollbackUpdates = stockValidation.updates.map(update => ({
+            ...update,
+            operation: 'restore' as const
+          }));
+          await stockService.processStockUpdates(rollbackUpdates);
+          console.log('✅ Stock rollback completed');
+        } catch (rollbackError) {
+          console.error('❌ Stock rollback failed:', rollbackError);
         }
-      });
-
-      console.log(`✅ Wallet debited. New balance: ₹${walletResult.newBalance}`);
+        
+        return res.status(500).json({ 
+          success: false,
+          error: 'Order creation failed',
+          reason: 'wallet_debit_failed',
+          message: 'Failed to process payment from wallet',
+          details: walletError.message
+        });
+      }
 
       // 8. Create order
       console.log('📝 Creating order...');
       const { generateOrderNumber } = await import('../../shared/utils');
       const orderNumber = generateOrderNumber();
+
+      // Generate barcode for the order
+      const barcode = `CB${Date.now()}${user.id}`;
 
       const orderData = {
         orderNumber,
@@ -283,7 +351,7 @@ export const carebiteController = {
         customerEmail: user.email,
         customerPhone: user.phoneNumber || '',
         canteenId,
-        items: orderItems,
+        items: JSON.stringify(orderItems), // Must be JSON string
         amount: totalAmount,
         paymentMethod: 'wallet',
         paymentStatus: 'completed',
@@ -291,6 +359,7 @@ export const carebiteController = {
         orderType: 'takeaway',
         deliveryAddress: null,
         specialInstructions: 'Order from CareBite app',
+        barcode: barcode, // Required field
         createdAt: new Date(),
         metadata: {
           source: 'carebite',
@@ -298,13 +367,59 @@ export const carebiteController = {
         }
       };
 
-      const order = await orderService.createOrder({
-        orderData: orderData as any,
-        orderItems: orderItems as any,
-        skipStockReduction: true // Already reduced above
-      });
-
-      console.log(`✅ Order created: ${order.orderNumber}`);
+      let order;
+      try {
+        // Create a fake checkoutSessionId to signal that stock is already reserved
+        // This prevents orderService from trying to reduce stock again
+        order = await orderService.createOrder({
+          orderData: orderData as any,
+          orderItems: orderItems as any,
+          checkoutSessionId: 'carebite-stock-reserved' // Signal that stock is already handled
+        });
+        console.log(`✅ Order created: ${order.orderNumber}`);
+      } catch (orderError: any) {
+        console.error('❌ Order creation failed:', orderError.message);
+        
+        // ROLLBACK: Restore stock and refund wallet
+        console.log('🔄 Rolling back stock and wallet...');
+        
+        // Rollback stock
+        try {
+          const rollbackUpdates = stockValidation.updates.map(update => ({
+            ...update,
+            operation: 'restore' as const
+          }));
+          await stockService.processStockUpdates(rollbackUpdates);
+          console.log('✅ Stock rollback completed');
+        } catch (rollbackError) {
+          console.error('❌ Stock rollback failed:', rollbackError);
+        }
+        
+        // Rollback wallet (credit back)
+        try {
+          await walletService.creditWallet({
+            userId: user.id,
+            amount: totalAmount,
+            description: `Refund for failed order`,
+            referenceType: 'refund',
+            metadata: {
+              reason: 'order_creation_failed',
+              originalTransactionId: walletResult.transaction.id
+            }
+          });
+          console.log('✅ Wallet refund completed');
+        } catch (refundError) {
+          console.error('❌ Wallet refund failed:', refundError);
+        }
+        
+        return res.status(500).json({ 
+          success: false,
+          error: 'Order creation failed',
+          reason: 'order_creation_error',
+          message: 'Failed to create order. Your payment has been refunded.',
+          details: orderError.message
+        });
+      }
 
       // 9. Send notifications to canteen owner
       console.log('📢 Sending notifications...');
@@ -312,31 +427,25 @@ export const carebiteController = {
       // WebSocket notification
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        wsManager.notifyCanteenOwner(canteenId, {
-          type: 'new_order',
-          order: {
-            id: order.id,
-            orderNumber: order.orderNumber,
-            customerName: order.customerName,
-            amount: order.amount,
-            items: order.items,
-            status: order.status
-          }
+        wsManager.broadcastNewOrder(canteenId, {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          amount: order.amount,
+          items: order.items,
+          status: order.status
         });
         console.log('✅ WebSocket notification sent');
       }
 
       // Push notification
       try {
-        await webPushService.sendOrderNotification(canteenId, {
-          title: '🔔 New Order!',
-          body: `Order #${order.orderNumber} - ₹${totalAmount} from ${user.name}`,
-          data: {
-            orderId: order.id,
-            orderNumber: order.orderNumber,
-            type: 'new_order'
-          }
-        });
+        await webPushService.sendNewOrderNotification(
+          order.orderNumber,
+          user.name,
+          totalAmount,
+          canteenId
+        );
         console.log('✅ Push notification sent');
       } catch (pushError) {
         console.warn('⚠️ Push notification failed:', pushError);
@@ -361,11 +470,12 @@ export const carebiteController = {
     } catch (err: any) {
       console.error('❌ CareBite order creation error:', err);
       
-      // Try to rollback if possible
-      // Note: Stock rollback would need to be implemented in stockService
-      
+      // Generic error response (specific errors are handled above)
       res.status(500).json({ 
+        success: false,
         error: 'Failed to create order',
+        reason: 'internal_error',
+        message: 'An unexpected error occurred while creating your order',
         details: err.message 
       });
     }

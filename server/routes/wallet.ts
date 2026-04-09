@@ -1,9 +1,31 @@
 import { Router } from 'express';
 import { walletService } from '../services/walletService';
 import { razorpayInstance, createRazorpayOrder, verifyPaymentSignature } from '@shared/razorpay';
+import { db } from '../db';
 import crypto from 'crypto';
 
 const router = Router();
+
+// Type for wallet transaction from Prisma
+type WalletTransaction = {
+  id: string;
+  walletId: number;
+  userId: number;
+  type: string;
+  amount: any;
+  balanceBefore: any;
+  balanceAfter: any;
+  description: string;
+  referenceType: string | null;
+  referenceId: string | null;
+  paymentMethod: string | null;
+  paymentId: string | null;
+  orderId: string | null;
+  status: string;
+  metadata: any;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 /**
  * Get wallet details for a user
@@ -59,7 +81,7 @@ router.get('/:userId/transactions', async (req, res) => {
     const result = await walletService.getTransactionHistory(userId, limit, offset);
 
     res.json({
-      transactions: result.transactions.map(t => ({
+      transactions: result.transactions.map((t: WalletTransaction) => ({
         id: t.id,
         type: t.type,
         amount: t.amount.toString(),
@@ -266,10 +288,9 @@ router.post('/webhook', async (req, res) => {
       const paymentId = payment.id;
 
       // Find pending transaction
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient();
+      const prisma = db();
       
-      const transaction = await prisma.walletTransaction.findFirst({
+      const transaction = await (prisma as any).walletTransaction.findFirst({
         where: {
           orderId,
           status: 'PENDING'
@@ -287,10 +308,9 @@ router.post('/webhook', async (req, res) => {
       const payment = payload.payment.entity;
       const orderId = payment.order_id;
 
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient();
+      const prisma = db();
       
-      const transaction = await prisma.walletTransaction.findFirst({
+      const transaction = await (prisma as any).walletTransaction.findFirst({
         where: {
           orderId,
           status: 'PENDING'

@@ -18,6 +18,30 @@ interface WalletCardProps {
   userId: number;
 }
 
+interface WalletData {
+  wallet: {
+    balance: string;
+  };
+  stats: {
+    totalCredits: string;
+    totalDebits: string;
+  };
+}
+
+interface Transaction {
+  id: number;
+  type: 'CREDIT' | 'DEBIT';
+  amount: string;
+  description: string;
+  status: 'COMPLETED' | 'PENDING' | 'FAILED' | 'CANCELLED';
+  referenceType?: string;
+  createdAt: string;
+}
+
+interface TransactionsData {
+  transactions: Transaction[];
+}
+
 export default function WalletCard({ userId }: WalletCardProps) {
   const { resolvedTheme } = useTheme();
   const queryClient = useQueryClient();
@@ -28,13 +52,13 @@ export default function WalletCard({ userId }: WalletCardProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Fetch wallet data
-  const { data: walletData, isLoading } = useQuery({
+  const { data: walletData, isLoading } = useQuery<WalletData>({
     queryKey: [`/api/wallet/${userId}`],
     refetchInterval: 30000 // Refresh every 30 seconds
   });
 
   // Fetch transaction history
-  const { data: transactionsData } = useQuery({
+  const { data: transactionsData } = useQuery<TransactionsData>({
     queryKey: [`/api/wallet/${userId}/transactions`],
     enabled: showTransactionsDialog
   });

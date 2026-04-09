@@ -77,21 +77,23 @@ export const connectionCodeService = {
     const ccd = cc[0];
     if (new Date() > new Date(ccd.expiresAt)) return null;
 
-    await db.$executeRawUnsafe(`
+    await db.$executeRaw`
       UPDATE connection_codes 
       SET is_used = true 
       WHERE id = ${ccd.id}
-    `);
+    `;
 
     const tk = genToken();
 
     // UPSERT: Update existing token or insert new one
-    await db.$executeRawUnsafe(`
+    await db.$executeRaw`
       INSERT INTO api_tokens (user_id, token, created_at)
-      VALUES (${usr.id}, '${tk}', NOW())
+      VALUES (${usr.id}, ${tk}, NOW())
       ON CONFLICT (user_id) 
-      DO UPDATE SET token = '${tk}', created_at = NOW()
-    `);
+      DO UPDATE SET token = ${tk}, created_at = NOW()
+    `;
+
+    console.log(`✅ Token created for user ${usr.id}: ${tk.substring(0, 10)}...`);
 
     return { token: tk, userId: usr.id };
   },
@@ -104,9 +106,23 @@ export const connectionCodeService = {
   },
 
   async validateToken(tk: string): Promise<number | null> {
+    console.log(`🔍 Validating token: ${tk.substring(0, 10)}...`);
+    
     const res = await db.$queryRaw<Array<ApiToken>>`
-      SELECT * FROM api_tokens WHERE token = ${tk} LIMIT 1
+      SELECT id, user_id as "userId", token, created_at as "createdAt" 
+      FROM api_tokens 
+      WHERE token = ${tk} 
+      LIMIT 1
     `;
-    return res.length > 0 ? res[0].userId : null;
+    
+    console.log(`📊 Query result: ${res.length} rows found`);
+    
+    if (res.length > 0) {
+      console.log(`✅ Token valid for user ID: ${res[0].userId}`);
+      return res[0].userId;
+    } else {
+      console.log(`❌ Token not found in database`);
+      return null;
+    }
   }
 };
