@@ -4,7 +4,7 @@ import crypto from 'crypto';
 const db = getDb();
 
 interface ConnectionCode {
-  id: string;
+  id: number;
   userId: number;
   code: string;
   expiresAt: Date;
@@ -66,7 +66,7 @@ export const connectionCodeService = {
     if (!usr) return null;
 
     const cc = await db.$queryRaw<Array<ConnectionCode>>`
-      SELECT id::text as id, user_id as "userId", code, expires_at as "expiresAt", is_used as "isUsed", created_at as "createdAt"
+      SELECT id, user_id as "userId", code, expires_at as "expiresAt", is_used as "isUsed", created_at as "createdAt"
       FROM connection_codes 
       WHERE user_id = ${usr.id} AND code = ${cd} AND is_used = false
       LIMIT 1
@@ -80,7 +80,7 @@ export const connectionCodeService = {
     await db.$executeRawUnsafe(`
       UPDATE connection_codes 
       SET is_used = true 
-      WHERE id = '${ccd.id}'::uuid
+      WHERE id = ${ccd.id}
     `);
 
     const tk = genToken();
