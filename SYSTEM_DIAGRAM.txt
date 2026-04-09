@@ -1,0 +1,274 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    SILLOBITE CONNECTION CODE SYSTEM                          ║
+║                         Architecture Overview                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              SILLOBITE APP                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                        FRONTEND (React)                          │
+    │                                                                   │
+    │  Profile Page                                                     │
+    │  └─ External Apps Section                                        │
+    │     └─ ConnectionCodeCard Component                              │
+    │        ├─ [Generate Code] Button                                 │
+    │        ├─ Code Display: ABC123                                   │
+    │        ├─ Timer: 1:45 remaining                                  │
+    │        └─ [Copy] Button                                          │
+    │                                                                   │
+    │  File: client/src/components/profile/ConnectionCodeCard.tsx     │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ HTTP POST
+                                    │ /api/auth/generate-code
+                                    │ Cookie: session
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                      BACKEND (Express.js)                        │
+    │                                                                   │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ ROUTES (server/routes/connectionCode.ts)                   │ │
+    │  │                                                             │ │
+    │  │  POST /api/auth/generate-code                              │ │
+    │  │    └─► mockAuthMiddleware                                  │ │
+    │  │        └─► connectionCodeController.generateCode()         │ │
+    │  │                                                             │ │
+    │  │  POST /api/auth/verify-code                                │ │
+    │  │    └─► connectionCodeController.verifyCode()               │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    │                                    │                              │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ CONTROLLERS (server/controllers/connectionCodeController)  │ │
+    │  │                                                             │ │
+    │  │  generateCode(req, res)                                    │ │
+    │  │    ├─ Extract user from req.user                           │ │
+    │  │    ├─ Call service.createCode(userId)                      │ │
+    │  │    └─ Return {code, expires_at}                            │ │
+    │  │                                                             │ │
+    │  │  verifyCode(req, res)                                      │ │
+    │  │    ├─ Extract {email, code} from body                      │ │
+    │  │    ├─ Call service.verifyCode(email, code)                 │ │
+    │  │    └─ Return {access_token, user_id}                       │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    │                                    │                              │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ SERVICES (server/services/connectionCodeService.ts)        │ │
+    │  │                                                             │ │
+    │  │  createCode(userId)                                        │ │
+    │  │    ├─ Invalidate old unused codes                          │ │
+    │  │    ├─ Generate unique 6-char code                          │ │
+    │  │    ├─ Set expiry = now + 2 minutes                         │ │
+    │  │    ├─ Insert into connection_codes                         │ │
+    │  │    └─ Return {code, expiresAt}                             │ │
+    │  │                                                             │ │
+    │  │  verifyCode(email, code)                                   │ │
+    │  │    ├─ Find user by email                                   │ │
+    │  │    ├─ Find matching unused code                            │ │
+    │  │    ├─ Check not expired                                    │ │
+    │  │    ├─ Mark code as used                                    │ │
+    │  │    ├─ Generate secure token (64-char hex)                  │ │
+    │  │    ├─ Insert into api_tokens                               │ │
+    │  │    └─ Return {token, userId}                               │ │
+    │  │                                                             │ │
+    │  │  cleanExpired()                                            │ │
+    │  │    └─ Delete expired unused codes                          │ │
+    │  │                                                             │ │
+    │  │  validateToken(token)                                      │ │
+    │  │    └─ Find token in api_tokens                             │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    │                                    │                              │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ MIDDLEWARE (server/middleware/authMiddleware.ts)           │ │
+    │  │                                                             │ │
+    │  │  mockAuthMiddleware                                        │ │
+    │  │    └─ Check req.session.user exists                        │ │
+    │  │                                                             │ │
+    │  │  tokenAuthMiddleware                                       │ │
+    │  │    ├─ Extract token from Authorization header              │ │
+    │  │    ├─ Validate token                                       │ │
+    │  │    └─ Attach user to req.user                              │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    └─────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ SQL Queries
+                                    ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    DATABASE (PostgreSQL)                         │
+    │                                                                   │
+    │  ┌──────────────────────────────────────────────────────────┐  │
+    │  │ connection_codes                                          │  │
+    │  ├──────────────────────────────────────────────────────────┤  │
+    │  │ id              UUID PRIMARY KEY                          │  │
+    │  │ user_id         INTEGER FK → users(id)                    │  │
+    │  │ code            VARCHAR(8) UNIQUE                         │  │
+    │  │ expires_at      TIMESTAMP                                 │  │
+    │  │ is_used         BOOLEAN DEFAULT FALSE                     │  │
+    │  │ created_at      TIMESTAMP DEFAULT NOW()                   │  │
+    │  └──────────────────────────────────────────────────────────┘  │
+    │                                                                   │
+    │  ┌──────────────────────────────────────────────────────────┐  │
+    │  │ api_tokens                                                │  │
+    │  ├──────────────────────────────────────────────────────────┤  │
+    │  │ id              UUID PRIMARY KEY                          │  │
+    │  │ user_id         INTEGER FK → users(id)                    │  │
+    │  │ token           VARCHAR(255) UNIQUE                       │  │
+    │  │ created_at      TIMESTAMP DEFAULT NOW()                   │  │
+    │  └──────────────────────────────────────────────────────────┘  │
+    │                                                                   │
+    │  Indexes:                                                         │
+    │  • idx_connection_codes_user_id                                  │
+    │  • idx_connection_codes_code                                     │
+    │  • idx_connection_codes_expires_at                               │
+    │  • idx_api_tokens_user_id                                        │
+    │  • idx_api_tokens_token                                          │
+    └─────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CAREBITE APP                                     │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    CAREBITE INTEGRATION                          │
+    │                                                                   │
+    │  Step 1: User enters email + code                                │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ Email: user@example.com                                     │ │
+    │  │ Code:  ABC123                                               │ │
+    │  │ [Connect]                                                   │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    │                                    │                              │
+    │                                    │ HTTP POST                    │
+    │                                    │ /api/auth/verify-code        │
+    │                                    │ {email, code}                │
+    │                                    ▼                              │
+    │  Step 2: Receive access token                                    │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ Response:                                                   │ │
+    │  │ {                                                           │ │
+    │  │   "access_token": "a1b2c3d4...",                            │ │
+    │  │   "user_id": 123                                            │ │
+    │  │ }                                                           │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    │                                    │                              │
+    │  Step 3: Store token securely                                    │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ localStorage.setItem('sillobite_token', access_token)       │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    │                                    │                              │
+    │  Step 4: Make authenticated requests                             │
+    │  ┌────────────────────────────────────────────────────────────┐ │
+    │  │ GET /api/users/123                                          │ │
+    │  │ Authorization: Bearer a1b2c3d4...                           │ │
+    │  └────────────────────────────────────────────────────────────┘ │
+    └─────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            SECURITY FEATURES                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. Code Generation                                                            │
+│    • 6-character uppercase alphanumeric                                       │
+│    • Collision detection ensures uniqueness                                   │
+│    • Old unused codes invalidated automatically                               │
+│                                                                                │
+│ 2. Code Expiration                                                            │
+│    • 2-minute validity window                                                 │
+│    • Expired codes rejected automatically                                     │
+│    • Auto-cleanup every 5 minutes                                             │
+│                                                                                │
+│ 3. Single Use                                                                 │
+│    • Codes marked as used after verification                                  │
+│    • Used codes cannot be reused                                              │
+│                                                                                │
+│ 4. Secure Tokens                                                              │
+│    • 64-character hex tokens                                                  │
+│    • Generated using crypto.randomBytes(32)                                   │
+│    • Cryptographically secure                                                 │
+│                                                                                │
+│ 5. Database Indexes                                                           │
+│    • Fast code lookup                                                         │
+│    • Efficient token validation                                               │
+│    • Optimized queries                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              FLOW TIMELINE                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+T=0:00    User clicks "Generate Code" in SilloBite
+          │
+T=0:01    Backend generates code "ABC123", expires at T=2:00
+          │
+T=0:02    UI displays code with countdown timer
+          │
+T=0:30    User shares code with CareBite
+          │
+T=0:45    CareBite calls verify endpoint with email + code
+          │
+T=0:46    Backend validates code, marks as used, generates token
+          │
+T=0:47    CareBite receives token, stores securely
+          │
+T=0:48    CareBite makes API calls with token
+          │
+T=2:00    Code expires (but already used, so no impact)
+          │
+T=5:00    Cleanup cron deletes expired codes
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           FILE ORGANIZATION                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+sillobite/
+├── server/
+│   ├── routes/
+│   │   └── connectionCode.ts              ← Route definitions
+│   ├── controllers/
+│   │   └── connectionCodeController.ts    ← Request handlers
+│   ├── services/
+│   │   └── connectionCodeService.ts       ← Business logic
+│   ├── middleware/
+│   │   └── authMiddleware.ts              ← Auth middleware
+│   ├── routes.ts                          ← Route mounting (modified)
+│   └── index.ts                           ← Cleanup cron (modified)
+│
+├── client/src/components/profile/
+│   ├── ConnectionCodeCard.tsx             ← UI component
+│   └── ProfilePage.tsx                    ← Integration (modified)
+│
+├── prisma/migrations/
+│   └── add_connection_code_tables.sql     ← Database schema
+│
+├── CONNECTION_CODE_README.md              ← Complete documentation
+├── IMPLEMENTATION_SUMMARY.md              ← Architecture & flows
+├── QUICK_REFERENCE.md                     ← Quick help
+├── DELIVERABLES.md                        ← This checklist
+├── SYSTEM_DIAGRAM.txt                     ← This file
+│
+├── postman_examples.json                  ← Postman collection
+├── test-connection-code.http              ← REST Client tests
+│
+├── setup-connection-code.ps1              ← Windows setup
+└── setup-connection-code.sh               ← Unix/Linux setup
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              QUICK START                                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Windows:
+  .\setup-connection-code.ps1
+  npm run dev
+
+Unix/Linux:
+  chmod +x setup-connection-code.sh
+  ./setup-connection-code.sh
+  npm run dev
+
+Then navigate to: Profile Page → External Apps → Generate Connection Code
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                  END                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
