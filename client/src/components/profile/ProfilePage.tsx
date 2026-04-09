@@ -49,6 +49,7 @@ import { useLocation as useLocationContext } from '@/contexts/LocationContext';
 import AddressManagement from "./AddressManagement";
 import LocationSelector from "./LocationSelector";
 import ConnectionCodeCard from "./ConnectionCodeCard";
+import WalletCard from "./WalletCard";
 
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
@@ -480,6 +481,14 @@ export default function ProfilePage() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-foreground">External Apps</h3>
               <ConnectionCodeCard />
+            </div>
+          )}
+
+          {/* Wallet - only for authenticated users */}
+          {!isTemporary && userInfo?.id && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">Wallet</h3>
+              <WalletCard userId={userInfo.id} />
             </div>
           )}
 
