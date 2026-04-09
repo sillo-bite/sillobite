@@ -1,0 +1,58 @@
+### CareBite API Tests
+
+@baseUrl = http://localhost:5000
+@email = test@example.com
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Fetch Menu (Success)
+POST {{baseUrl}}/api/carebite/menu
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "accessToken": "{{accessToken}}"
+}
+
+###
+
+### 2. Missing Email
+POST {{baseUrl}}/api/carebite/menu
+Content-Type: application/json
+
+{
+  "accessToken": "{{accessToken}}"
+}
+
+###
+
+### 3. Missing Access Token
+POST {{baseUrl}}/api/carebite/menu
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+###
+
+### 4. Invalid Access Token
+POST {{baseUrl}}/api/carebite/menu
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "accessToken": "invalid_token_123"
+}
+
+###
+
+### 5. Invalid Email
+POST {{baseUrl}}/api/carebite/menu
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com",
+  "accessToken": "{{accessToken}}"
+}
+
+###

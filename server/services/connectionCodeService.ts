@@ -85,10 +85,13 @@ export const connectionCodeService = {
 
     const tk = genToken();
 
-    await db.$executeRaw`
-      INSERT INTO api_tokens (user_id, token)
-      VALUES (${usr.id}, ${tk})
-    `;
+    // UPSERT: Update existing token or insert new one
+    await db.$executeRawUnsafe(`
+      INSERT INTO api_tokens (user_id, token, created_at)
+      VALUES (${usr.id}, '${tk}', NOW())
+      ON CONFLICT (user_id) 
+      DO UPDATE SET token = '${tk}', created_at = NOW()
+    `);
 
     return { token: tk, userId: usr.id };
   },
