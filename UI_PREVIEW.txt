@@ -1,0 +1,241 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    CONNECTION CODE UI - VISUAL PREVIEW                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              PROFILE PAGE                                     │
+│                                                                                │
+│  ┌─ Back                    My Profile                         Edit ─┐       │
+│  │                                                                     │       │
+│  │  ┌────────────────────────────────────────────────────────────┐  │       │
+│  │  │  👤  John Doe                                               │  │       │
+│  │  │      john.doe@example.com                                   │  │       │
+│  │  │      📦 12 orders                                           │  │       │
+│  │  └────────────────────────────────────────────────────────────┘  │       │
+│  └─────────────────────────────────────────────────────────────────┘       │
+│                                                                                │
+│  Account & Orders                                                             │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  📍 Current Location                                              >     │ │
+│  │  🧾 My Orders                                                     >     │ │
+│  │  💳 My Payments                                                   >     │ │
+│  │  ❤️  My Favorites                                                 >     │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                │
+│  External Apps                                                                │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  🔗 Connect to CareBite                                                 │ │
+│  │     Generate a code to link your account                                │ │
+│  │                                                                          │ │
+│  │  ┌────────────────────────────────────────────────────────────────┐   │ │
+│  │  │  [BEFORE GENERATION]                                            │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  ℹ️  How it works: Generate a code here, then enter it in      │   │ │
+│  │  │     the CareBite app to securely link your SilloBite account.  │   │ │
+│  │  │     Code expires in 2 minutes.                                  │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  ┌──────────────────────────────────────────────────────────┐ │   │ │
+│  │  │  │  🔗 Generate Connection Code                              │ │   │ │
+│  │  │  └──────────────────────────────────────────────────────────┘ │   │ │
+│  │  └────────────────────────────────────────────────────────────────┘   │ │
+│  │                                                                          │ │
+│  │  ┌────────────────────────────────────────────────────────────────┐   │ │
+│  │  │  [AFTER GENERATION]                                             │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  ┌────────────────────────────────────────────────────────┐   │   │ │
+│  │  │  │  CONNECTION CODE                          ⏱️  1:45       │   │   │ │
+│  │  │  │                                                          │   │   │ │
+│  │  │  │         ABC123                                  📋       │   │   │ │
+│  │  │  │                                                          │   │   │ │
+│  │  │  └────────────────────────────────────────────────────────┘   │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  Enter this code in CareBite app to connect your account       │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  ┌──────────────────────────────────────────────────────────┐ │   │ │
+│  │  │  │  🔄 Generate New Code                                     │ │   │ │
+│  │  │  └──────────────────────────────────────────────────────────┘ │   │ │
+│  │  └────────────────────────────────────────────────────────────────┘   │ │
+│  │                                                                          │ │
+│  │  ┌────────────────────────────────────────────────────────────────┐   │ │
+│  │  │  [EXPIRED STATE]                                                │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  ⚠️  Code expired. Generate a new one.                          │   │ │
+│  │  │                                                                  │   │ │
+│  │  │  ┌──────────────────────────────────────────────────────────┐ │   │ │
+│  │  │  │  🔗 Generate Connection Code                              │ │   │ │
+│  │  │  └──────────────────────────────────────────────────────────┘ │   │ │
+│  │  └────────────────────────────────────────────────────────────────┘   │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                │
+│  Preferences                                                                  │
+│  ┌────────────────────────────────────────────────────────────────────────┐ │
+│  │  🌿 Veg Mode                                                    [ON]    │ │
+│  │  🎨 Theme                                                       Light > │ │
+│  └────────────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              UI STATES                                        ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STATE 1: INITIAL (No Code Generated)                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ • Shows info box explaining how it works                                      │
+│ • Purple "Generate Connection Code" button                                    │
+│ • Button has link icon                                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STATE 2: LOADING (Generating Code)                                            │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ • Button shows "Generating..." with spinning icon                             │
+│ • Button is disabled                                                          │
+│ • Loading animation                                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STATE 3: CODE DISPLAYED (Active Code)                                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ • Purple box with code in large font (ABC123)                                 │
+│ • Copy button on the right (clipboard icon)                                   │
+│ • Countdown timer showing remaining time (1:45)                               │
+│ • Helper text below explaining usage                                          │
+│ • "Generate New Code" button to refresh                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STATE 4: CODE COPIED (Temporary)                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ • Copy button shows green checkmark                                           │
+│ • Toast notification: "Copied!"                                               │
+│ • Returns to normal after 2 seconds                                           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ STATE 5: CODE EXPIRED                                                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ • Red warning box: "Code expired. Generate a new one."                        │
+│ • "Generate Connection Code" button to create new code                        │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            COLOR SCHEME                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Light Mode:
+  • Background: White (#FFFFFF)
+  • Border: Gray-200 (#E5E7EB)
+  • Text: Gray-800 (#1F2937)
+  • Primary (Purple): #724491
+  • Code Box Background: Purple-50 (#FAF5FF)
+  • Code Box Border: Purple-200 (#E9D5FF)
+  • Code Text: Purple-600 (#9333EA)
+
+Dark Mode:
+  • Background: Card (#1F2937)
+  • Border: Gray-800 (#1F2937)
+  • Text: Card-Foreground
+  • Primary (Purple): #B37ED7
+  • Code Box Background: Purple-950/20
+  • Code Box Border: Purple-800
+  • Code Text: Purple-400 (#C084FC)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          INTERACTIVE ELEMENTS                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. Generate Code Button
+   • Click → API call → Show loading → Display code
+   • Hover: Darker purple background
+   • Disabled during loading
+
+2. Copy Button
+   • Click → Copy to clipboard → Show checkmark → Toast notification
+   • Hover: Light purple background
+   • Icon changes: Clipboard → Checkmark (2 sec)
+
+3. Generate New Code Button
+   • Click → Invalidate old code → Generate new → Update display
+   • Outline style button
+   • Hover: Border highlight
+
+4. Countdown Timer
+   • Updates every second
+   • Format: M:SS (e.g., 1:45)
+   • Shows clock icon
+   • Turns red when < 30 seconds
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            RESPONSIVE DESIGN                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Mobile (< 640px):
+  • Full width card
+  • Stacked layout
+  • Large touch targets
+  • Code font size: 2xl (24px)
+
+Tablet (640px - 1024px):
+  • Centered card with padding
+  • Same layout as mobile
+  • Code font size: 3xl (30px)
+
+Desktop (> 1024px):
+  • Max width container
+  • Spacious padding
+  • Code font size: 3xl (30px)
+  • Hover effects more prominent
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          ACCESSIBILITY FEATURES                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+• Semantic HTML elements
+• ARIA labels on buttons
+• Keyboard navigation support
+• Focus indicators
+• Screen reader friendly
+• High contrast in both themes
+• Large touch targets (44px minimum)
+• Clear visual feedback
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            ANIMATIONS                                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. Loading Spinner
+   • Rotating refresh icon
+   • Smooth animation
+   • Duration: Continuous
+
+2. Button Hover
+   • Background color transition
+   • Duration: 200ms
+   • Easing: ease-in-out
+
+3. Copy Success
+   • Icon swap animation
+   • Duration: 200ms
+   • Auto-revert after 2 seconds
+
+4. Toast Notification
+   • Slide in from top
+   • Duration: 300ms
+   • Auto-dismiss after 3 seconds
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              COMPONENT PROPS                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ConnectionCodeCard Component:
+  • No props required
+  • Self-contained state management
+  • Uses useToast hook for notifications
+  • Uses useTheme hook for dark mode
+  • Fetches from /api/auth/generate-code
+  • Handles all error states internally
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                  END                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
