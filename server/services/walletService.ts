@@ -1,14 +1,28 @@
-import { PrismaClient, TransactionType, TransactionStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import Decimal from 'decimal.js';
 
 const prisma = new PrismaClient();
+
+// Local enum definitions (until Prisma client is regenerated)
+enum TransactionType {
+  CREDIT = 'CREDIT',
+  DEBIT = 'DEBIT'
+}
+
+enum TransactionStatus {
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+  REFUNDED = 'REFUNDED'
+}
 
 export class WalletService {
   /**
    * Get or create wallet for a user
    */
   async getOrCreateWallet(userId: number) {
-    let wallet = await prisma.wallet.findUnique({
+    let wallet = await (prisma as any).wallet.findUnique({
       where: { userId },
       include: {
         transactions: {
@@ -19,7 +33,7 @@ export class WalletService {
     });
 
     if (!wallet) {
-      wallet = await prisma.wallet.create({
+      wallet = await (prisma as any).wallet.create({
         data: {
           userId,
           balance: new Decimal(0),
@@ -69,7 +83,7 @@ export class WalletService {
     const balanceAfter = balanceBefore.plus(amount);
 
     // Create transaction record
-    const transaction = await prisma.walletTransaction.create({
+    const transaction = await (prisma as any).walletTransaction.create({
       data: {
         walletId: wallet.id,
         userId,
@@ -89,7 +103,7 @@ export class WalletService {
     });
 
     // Update wallet balance
-    await prisma.wallet.update({
+    await (prisma as any).wallet.update({
       where: { id: wallet.id },
       data: { balance: balanceAfter }
     });
@@ -129,7 +143,7 @@ export class WalletService {
     const balanceAfter = balanceBefore.minus(amount);
 
     // Create transaction record
-    const transaction = await prisma.walletTransaction.create({
+    const transaction = await (prisma as any).walletTransaction.create({
       data: {
         walletId: wallet.id,
         userId,
@@ -146,7 +160,7 @@ export class WalletService {
     });
 
     // Update wallet balance
-    await prisma.wallet.update({
+    await (prisma as any).wallet.update({
       where: { id: wallet.id },
       data: { balance: balanceAfter }
     });
@@ -165,14 +179,14 @@ export class WalletService {
   async getTransactionHistory(userId: number, limit: number = 50, offset: number = 0) {
     const wallet = await this.getOrCreateWallet(userId);
 
-    const transactions = await prisma.walletTransaction.findMany({
+    const transactions = await (prisma as any).walletTransaction.findMany({
       where: { walletId: wallet.id },
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip: offset
     });
 
-    const totalCount = await prisma.walletTransaction.count({
+    const totalCount = await (prisma as any).walletTransaction.count({
       where: { walletId: wallet.id }
     });
 
@@ -200,7 +214,7 @@ export class WalletService {
     const balanceBefore = new Decimal(wallet.balance.toString());
     const balanceAfter = balanceBefore.plus(amount);
 
-    const transaction = await prisma.walletTransaction.create({
+    const transaction = await (prisma as any).walletTransaction.create({
       data: {
         walletId: wallet.id,
         userId,
@@ -225,7 +239,7 @@ export class WalletService {
    * Complete pending transaction
    */
   async completePendingTransaction(transactionId: string, paymentId: string, paymentMethod: string) {
-    const transaction = await prisma.walletTransaction.findUnique({
+    const transaction = await (prisma as any).walletTransaction.findUnique({
       where: { id: transactionId }
     });
 
@@ -238,7 +252,7 @@ export class WalletService {
     }
 
     // Update transaction status
-    const updatedTransaction = await prisma.walletTransaction.update({
+    const updatedTransaction = await (prisma as any).walletTransaction.update({
       where: { id: transactionId },
       data: {
         status: TransactionStatus.COMPLETED,
@@ -248,7 +262,7 @@ export class WalletService {
     });
 
     // Update wallet balance
-    await prisma.wallet.update({
+    await (prisma as any).wallet.update({
       where: { id: transaction.walletId },
       data: { balance: transaction.balanceAfter }
     });
@@ -262,7 +276,7 @@ export class WalletService {
    * Fail pending transaction
    */
   async failPendingTransaction(transactionId: string, reason?: string) {
-    const transaction = await prisma.walletTransaction.findUnique({
+    const transaction = await (prisma as any).walletTransaction.findUnique({
       where: { id: transactionId }
     });
 
@@ -270,7 +284,7 @@ export class WalletService {
       throw new Error('Transaction not found');
     }
 
-    const updatedTransaction = await prisma.walletTransaction.update({
+    const updatedTransaction = await (prisma as any).walletTransaction.update({
       where: { id: transactionId },
       data: {
         status: TransactionStatus.FAILED,
@@ -327,15 +341,17 @@ export class WalletService {
     const wallet = await this.getOrCreateWallet(userId);
 
     const [totalCredits, totalDebits, transactionCount] = await Promise.all([
-      prisma.walletTransaction.aggregate({
+      // Total credits excluding refunds (only count actual top-ups)
+      (prisma as any).walletTransaction.aggregate({
         where: {
           walletId: wallet.id,
           type: TransactionType.CREDIT,
-          status: TransactionStatus.COMPLETED
+          status: TransactionStatus.COMPLETED,
+          referenceType: { not: 'refund' } // Exclude refunds from total added
         },
         _sum: { amount: true }
       }),
-      prisma.walletTransaction.aggregate({
+      (prisma as any).walletTransaction.aggregate({
         where: {
           walletId: wallet.id,
           type: TransactionType.DEBIT,
@@ -343,7 +359,7 @@ export class WalletService {
         },
         _sum: { amount: true }
       }),
-      prisma.walletTransaction.count({
+      (prisma as any).walletTransaction.count({
         where: { walletId: wallet.id }
       })
     ]);
