@@ -151,6 +151,17 @@ app.use((req, res, next) => {
   printAgentService.initialize(server);
   log('🖨️ Print Agent service initialized');
 
+  // Cleanup expired connection codes every 5 minutes
+  setInterval(async () => {
+    try {
+      const { connectionCodeService } = await import('./services/connectionCodeService');
+      await connectionCodeService.cleanExpired();
+      log('🧹 Cleaned expired connection codes');
+    } catch (error) {
+      console.error('❌ Error cleaning expired connection codes:', error);
+    }
+  }, 5 * 60 * 1000);
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";

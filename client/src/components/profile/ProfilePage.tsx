@@ -48,6 +48,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLocation as useLocationContext } from '@/contexts/LocationContext';
 import AddressManagement from "./AddressManagement";
 import LocationSelector from "./LocationSelector";
+import ConnectionCodeCard from "./ConnectionCodeCard";
 
 export default function ProfilePage() {
   const [, setLocation] = useLocation();
@@ -473,6 +474,14 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Connection Code - only for authenticated users */}
+          {!isTemporary && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">External Apps</h3>
+              <ConnectionCodeCard />
+            </div>
+          )}
 
           {/* Preferences */}
           <div className="space-y-4">

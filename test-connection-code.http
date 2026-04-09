@@ -1,0 +1,59 @@
+### SilloBite Connection Code API Tests
+### Use with REST Client extension in VS Code
+
+@baseUrl = http://localhost:5000
+@email = test@example.com
+
+### 1. Generate Connection Code (requires authentication)
+POST {{baseUrl}}/api/auth/generate-code
+Content-Type: application/json
+
+###
+
+### 2. Verify Connection Code
+POST {{baseUrl}}/api/auth/verify-code
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "code": "ABC123"
+}
+
+###
+
+### 3. Test with Invalid Code
+POST {{baseUrl}}/api/auth/verify-code
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "code": "INVALID"
+}
+
+###
+
+### 4. Test with Missing Email
+POST {{baseUrl}}/api/auth/verify-code
+Content-Type: application/json
+
+{
+  "code": "ABC123"
+}
+
+###
+
+### 5. Test with Missing Code
+POST {{baseUrl}}/api/auth/verify-code
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+###
+
+### 6. Use Access Token (replace with actual token from step 2)
+GET {{baseUrl}}/api/users/1
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+
+###

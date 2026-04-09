@@ -46,6 +46,7 @@ import systemSettingsRoutes from "./routes/systemSettings.js";
 import databaseManagementRoutes from "./routes/database-management.js";
 import googleAuthRoutes from "./routes/googleAuth.js";
 import authRoutes from "./routes/auth.js";
+import connectionCodeRoutes from "./routes/connectionCode.js";
 import sitemapRoutes from "./routes/sitemap.js";
 import restaurantManagementRoutes from "./routes/restaurantManagement.js";
 import printAgentRoutes from "./routes/printAgent.js";
@@ -9621,6 +9622,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register Email/Password Authentication API routes
   app.use('/api/auth', authRoutes);
+
+  // Register Connection Code API routes
+  app.use('/api/auth', connectionCodeRoutes);
 
   // Register Temporary User Session API routes
   const { default: tempUserSessionRoutes } = await import('./routes/tempUserSession');
