@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS connection_codes (
 -- Create api_tokens table
 CREATE TABLE IF NOT EXISTS api_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
   token VARCHAR(255) NOT NULL UNIQUE,
   created_at TIMESTAMP DEFAULT NOW()
 );
