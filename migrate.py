@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # MongoDB URIs - Update these with your actual connection strings
-SRC_URI = os.getenv("MONGODB_SOURCE_URI", "mongodb+srv://sillobite_db_user:GhjyPeMMgYWxnpTA@sillobiteprod.yha10xr.mongodb.net/")
-DST_URI = os.getenv("MONGODB_TARGET_URI", "mongodb+srv://sillobite_db_user:l9Jr6va3U9iHMw9P@komato.njnrif0.mongodb.net/")
+SRC_URI = os.getenv("")
+DST_URI = os.getenv("")
 
 # Database names - Update these with your actual database names
 # Common database names: sillobite, test, admin, local

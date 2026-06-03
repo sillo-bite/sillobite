@@ -61,6 +61,13 @@ import axios from "axios";
 import { getWebSocketManager } from "./websocket";
 import { PaymentSessionService } from "./payment-session-service";
 import { mongoToPlain } from "./storage-hybrid";
+import { 
+  requireAuth, 
+  requireAdmin, 
+  requireSuperAdmin, 
+  requireOwnershipOrAdmin, 
+  flexibleAuth 
+} from "./middleware/authMiddleware";
 
 const razorpay = razorpayInstance;
 // Global server start time for development update detection
@@ -280,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User management endpoints
-  app.get("/api/users", async (req, res) => {
+  app.get("/api/users", requireAuth, requireAdmin, async (req, res) => {
     try {
       console.log("📋 GET /api/users - Fetching all users");
       const users = await storage.getAllUsers();
@@ -293,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Paginated users endpoint with filtering
-  app.get("/api/users/paginated", async (req, res) => {
+  app.get("/api/users/paginated", requireAuth, requireAdmin, async (req, res) => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
@@ -316,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id", async (req, res) => {
+  app.get("/api/users/:id", requireAuth, requireOwnershipOrAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       console.log(`📋 GET /api/users/${userId} - Fetching user`);
@@ -333,7 +340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", async (req, res) => {
+  app.post("/api/users", requireAuth, requireAdmin, async (req, res) => {
     try {
       console.log("👤 POST /api/users - Creating new user", { email: req.body.email, role: req.body.role });
       const validatedData = insertUserSchema.parse(req.body);
@@ -398,7 +405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/by-email/:email", async (req, res) => {
+  app.get("/api/users/by-email/:email", requireAuth, requireAdmin, async (req, res) => {
     try {
       const email = req.params.email;
       console.log(`📋 GET /api/users/by-email/${email} - Looking up user by email`);
@@ -415,7 +422,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/by-register/:registerNumber", async (req, res) => {
+  app.get("/api/users/by-register/:registerNumber", requireAuth, requireAdmin, async (req, res) => {
     try {
       // Normalize register number for case-insensitive lookup
       const normalizedRegisterNumber = req.params.registerNumber.toUpperCase();
@@ -433,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/by-staff/:staffId", async (req, res) => {
+  app.get("/api/users/by-staff/:staffId", requireAuth, requireAdmin, async (req, res) => {
     try {
       // Normalize staff ID for case-insensitive lookup
       const normalizedStaffId = req.params.staffId.toUpperCase();
@@ -451,7 +458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", async (req, res) => {
+  app.patch("/api/users/:id", requireAuth, requireOwnershipOrAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       const { email } = req.body;
@@ -484,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/users/:id", async (req, res) => {
+  app.put("/api/users/:id", requireAuth, requireOwnershipOrAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       console.log(`🔄 Updating user ${userId} with data:`, JSON.stringify(req.body, null, 2));
@@ -564,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Save user's selected location
-  app.put("/api/users/:id/location", async (req, res) => {
+  app.put("/api/users/:id/location", requireAuth, requireOwnershipOrAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       const { locationType, locationId } = req.body;
@@ -601,7 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Apply Canteen QR Context to User (Location)
-  app.post("/api/users/:id/apply-canteen-qr-context", async (req, res) => {
+  app.post("/api/users/:id/apply-canteen-qr-context", requireAuth, requireOwnershipOrAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
 
@@ -664,7 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Apply QR Context to User (Location + Address)
-  app.post("/api/users/:id/apply-qr-context", async (req, res) => {
+  app.post("/api/users/:id/apply-qr-context", requireAuth, requireOwnershipOrAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
 
@@ -778,7 +785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", async (req, res) => {
+  app.delete("/api/users/:id", requireAuth, requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       console.log(`🗑️ Attempting to delete user ${userId}`);
@@ -809,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/all", async (req, res) => {
+  app.delete("/api/users/all", requireAuth, requireSuperAdmin, async (req, res) => {
     try {
       console.log("🗑️ DELETE /api/users/all - Deleting all users");
       await storage.deleteAllUsers();
@@ -822,7 +829,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session validation endpoint to check if user still exists in database
-  app.get("/api/users/:id/validate", async (req, res) => {
+  app.get("/api/users/:id/validate", requireAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       console.log(`🔍 GET /api/users/${userId}/validate - Validating user session`);
