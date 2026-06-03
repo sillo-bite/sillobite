@@ -378,5 +378,4 @@ Result: Order created, notification logged as warning
 1. Monitor rollback frequency
 2. Alert on critical rollback failures
 3. Track stock discrepancies
-4. Audit wallet transaction consistency
-5. Log all order creation attempts
+4. Audit wallet transac
