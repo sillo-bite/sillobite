@@ -153,13 +153,29 @@ export default function OrdersPage() {
     };
   }, [showFilters, showCanteenDropdown, showDateDropdown, showAmountDropdown, showPaymentDropdown]);
 
-  // Fetch real orders from database
+  // Fetch user's own orders from the filtered endpoint (auth-only, scoped to current user)
   const { data: allOrders = [], isLoading, error, refetch } = useQuery<Order[]>({
-    queryKey: ['/api/orders'],
-    enabled: true,
+    queryKey: ['/api/orders/filtered', currentUser?.id, filterStatus, filterCanteen, filterDateRange, filterAmountRange, filterPaymentStatus, searchTerm],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      const params = new URLSearchParams();
+      params.set('customerId', String(currentUser.id));
+      if (filterStatus !== 'all') params.set('status', filterStatus);
+      if (filterCanteen !== 'all') params.set('canteenId', filterCanteen);
+      if (filterDateRange !== 'all') params.set('dateRange', filterDateRange);
+      if (filterAmountRange !== 'all') params.set('amountRange', filterAmountRange);
+      if (filterPaymentStatus !== 'all') params.set('paymentMethod', filterPaymentStatus);
+      if (searchTerm) params.set('search', searchTerm);
+      params.set('limit', '100');
+      const res = await fetch(`/api/orders/filtered?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch orders');
+      const data = await res.json();
+      return data.orders ?? data;
+    },
+    enabled: isAuthenticated && !!currentUser?.id,
     refetchOnWindowFocus: false,
     refetchInterval: false,
-    retry: 3,
+    retry: false,
   });
 
   // Get unique canteen IDs from user's orders for multi-room subscription
@@ -196,14 +212,8 @@ export default function OrdersPage() {
     }
   });
 
-  // Filter orders to show only current user's orders
-  const userOrders = allOrders.filter((order: Order) => {
-    if (!currentUser) return false;
-    if (order.customerId === currentUser.id) return true;
-    if (currentUser.name && order.customerName === currentUser.name) return true;
-    if (currentUser.name && order.customerName?.toLowerCase().includes(currentUser.name.toLowerCase())) return true;
-    return false;
-  });
+  // Orders are already scoped to the current user by the server (customerId filter)
+  const userOrders = allOrders;
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {

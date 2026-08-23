@@ -257,7 +257,7 @@ export default function DishDetailPage() {
             categoryName === 'Bread' ? '🍞' : '🍽️';
 
   return (
-    <div className="min-h-screen pb-36 bg-background">
+    <div className="min-h-screen pb-28 bg-background">
       {/* Top Navigation Bar */}
       <div className="relative">
         {/* Image Section - Takes ~45% of screen */}
@@ -279,7 +279,8 @@ export default function DishDetailPage() {
           <span className={`text-8xl ${dish.imageUrl ? 'hidden' : ''}`}>🍽️</span>
 
           {/* Navigation Overlay */}
-          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-10">
+          <div className="absolute top-0 left-0 right-0 z-10 pt-4 pb-4">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
@@ -322,12 +323,14 @@ export default function DishDetailPage() {
                 <Share2 className="w-5 h-5" />
               </Button>
             </div>
+            </div>{/* /max-w-4xl nav overlay */}
           </div>
         </div>
       </div>
 
       {/* Content Section - Rounded top corners only */}
-      <div className="relative px-4 pt-16 pb-5 space-y-6 -mt-24 z-10 rounded-t-[40px] bg-background">
+      <div className="relative -mt-24 z-10 rounded-t-[40px] bg-background">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 pt-16 pb-5 space-y-6">
 
         {/* Dish Info - Positioned relative to avoid overlap with curve */}
         <div className="relative z-10">
@@ -409,14 +412,16 @@ export default function DishDetailPage() {
             </div>
           </div>
         )}
+        </div>{/* /max-w-4xl content */}
       </div>
 
       {/* Fixed Bottom Action Bar */}
-      <div className={`fixed bottom-12 left-4 right-4 p-4 rounded-2xl shadow-2xl backdrop-blur-md ${resolvedTheme === 'dark'
-          ? 'bg-card/98 border border-border'
-          : 'bg-card/98 border border-border'
-        }`}>
-        <div className="flex items-center gap-3">
+      <div className={`fixed bottom-0 left-0 right-0 backdrop-blur-md border-t ${resolvedTheme === 'dark'
+          ? 'bg-card/98 border-border'
+          : 'bg-card/98 border-border'
+        }`} style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+        <div className="max-w-4xl mx-auto px-4 md:px-6 pt-4 pb-3">
+          <div className="flex items-center gap-3">
           {/* Quantity Selector */}
           <div className={`flex items-center gap-3 px-3 py-2 rounded-lg ${resolvedTheme === 'dark'
               ? 'bg-muted'
@@ -454,6 +459,7 @@ export default function DishDetailPage() {
             Add to Cart - ₹{totalPrice}
           </Button>
         </div>
+        </div>{/* /max-w-4xl bottom bar */}
       </div>
     </div>
   );

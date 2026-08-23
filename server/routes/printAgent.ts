@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { printAgentService } from '../services/printAgentService';
 import { PrintAgent, PrintJob, Printer, PairingCode } from '../models/mongodb-models';
+import { requireAdmin, requireCanteenOwnerOrAdmin, requireAuth } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -13,8 +14,8 @@ router.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Debug endpoint to check agent (no auth required, for troubleshooting)
-router.get('/debug/agent/:agentId', async (req: Request, res: Response) => {
+// Debug endpoint — admin only in all environments
+router.get('/debug/agent/:agentId', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { agentId } = req.params;
     const agent = await PrintAgent.findOne({ agentId });
@@ -183,8 +184,8 @@ router.post('/ack', validateApiKey, rateLimiter, async (req: Request, res: Respo
   }
 });
 
-// POST /api/print/pair/generate - Generate pairing code (admin only)
-router.post('/pair/generate', async (req: Request, res: Response) => {
+// POST /api/print/pair/generate - Generate pairing code (canteen owner or admin)
+router.post('/pair/generate', requireCanteenOwnerOrAdmin, async (req: Request, res: Response) => {
   try {
     const { outletId, expiresInMinutes } = req.body;
 
@@ -204,8 +205,8 @@ router.post('/pair/generate', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/print/pair/exchange - Exchange pairing code for API key
-router.post('/pair/exchange', async (req: Request, res: Response) => {
+// POST /api/print/pair/exchange - Exchange pairing code for API key (auth required)
+router.post('/pair/exchange', requireAuth, async (req: Request, res: Response) => {
   try {
     const { code, agentId } = req.body;
 
@@ -231,7 +232,7 @@ router.post('/pair/exchange', async (req: Request, res: Response) => {
 });
 
 // GET /api/print/agents - Get all agents for an outlet
-router.get('/agents', async (req: Request, res: Response) => {
+router.get('/agents', requireCanteenOwnerOrAdmin, async (req: Request, res: Response) => {
   try {
     const { outletId } = req.query;
 
@@ -272,7 +273,7 @@ router.get('/agents', async (req: Request, res: Response) => {
 });
 
 // GET /api/print/jobs/history - Get print job history for an outlet
-router.get('/jobs/history', async (req: Request, res: Response) => {
+router.get('/jobs/history', requireCanteenOwnerOrAdmin, async (req: Request, res: Response) => {
   try {
     const { outletId, limit = 50, status } = req.query;
 
@@ -311,7 +312,7 @@ router.get('/jobs/history', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/print/agents/:agentId - Delete an agent
-router.delete('/agents/:agentId', async (req: Request, res: Response) => {
+router.delete('/agents/:agentId', requireCanteenOwnerOrAdmin, async (req: Request, res: Response) => {
   try {
     const { agentId } = req.params;
 
@@ -331,7 +332,7 @@ router.delete('/agents/:agentId', async (req: Request, res: Response) => {
 });
 
 // GET /api/print/stats - Get print agent statistics
-router.get('/stats', async (req: Request, res: Response) => {
+router.get('/stats', requireCanteenOwnerOrAdmin, async (req: Request, res: Response) => {
   try {
     const { outletId } = req.query;
 
@@ -371,7 +372,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 // POST /api/print/test - Create a test print job
-router.post('/test', async (req: Request, res: Response) => {
+router.post('/test', requireCanteenOwnerOrAdmin, async (req: Request, res: Response) => {
   try {
     const { outletId, receiptType = 'TOKEN' } = req.body;
 

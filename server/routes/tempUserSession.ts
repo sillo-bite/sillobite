@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { TempUserSessionModel } from '../models/TempUserSession';
 import { ObjectId } from 'mongodb';
 import mongoose from 'mongoose';
+import { requireAdmin } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -262,7 +263,7 @@ router.post('/api/temp-session/:sessionId/end', async (req, res) => {
 });
 
 // Get active sessions (admin endpoint)
-router.get('/api/temp-sessions/active', async (req, res) => {
+router.get('/api/temp-sessions/active', requireAdmin, async (req, res) => {
   try {
     const activeSessions = await TempUserSessionModel.find({ 
       isActive: true,
@@ -290,7 +291,7 @@ router.get('/api/temp-sessions/active', async (req, res) => {
 });
 
 // Get session statistics (admin endpoint)
-router.get('/api/temp-sessions/stats', async (req, res) => {
+router.get('/api/temp-sessions/stats', requireAdmin, async (req, res) => {
   try {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);

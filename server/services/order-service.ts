@@ -19,6 +19,7 @@ export interface CreateOrderParams {
     merchantTransactionId?: string;
     paymentId?: string; // Razorpay payment ID
     isPos?: boolean;
+    sessionPreValidated?: boolean; // Set to true when caller has already validated the checkoutSession (e.g. POST /api/orders route)
 }
 
 interface EnrichedOrderResult {
@@ -314,12 +315,15 @@ export class OrderService {
             // 5. Create Order
             // Note: We use `createOrder` which calls stock logic.
             // Online orders usually skip stock reduction if `checkoutSessionId` exists.
+            // The checkoutSessionId here comes from trusted payment metadata (not client request),
+            // so we mark it as pre-validated.
             const order = await this.createOrder({
                 orderData: insertOrderSchema.parse(completeOrderData),
                 orderItems: enriched.enrichedItems, // Passed for stock validation
                 checkoutSessionId: orderData.checkoutSessionId,
                 merchantTransactionId: merchantTransactionId,
-                isPos: false
+                isPos: false,
+                sessionPreValidated: true // Session ID from trusted payment metadata
             });
 
             console.log(`✅ [ORDER-SERVICE] Order created successfully: ${order.orderNumber} (${order.id})`);
@@ -390,15 +394,21 @@ export class OrderService {
             checkoutSessionId,
             merchantTransactionId,
             paymentId,
-            isPos = false
+            isPos = false,
+            sessionPreValidated = false
         } = params;
 
         console.log(`🔄 OrderService: Creating order for ${orderData.customerName} (POS: ${isPos})`);
 
         // 1. Determine Stock Strategy
-        // POS: Always reduce stock (unless explicitly handled elsewhere, but assuming not).
-        // Online: Skip if session exists (reserved).
-        const skipStockReduction = isPos ? false : !!checkoutSessionId;
+        // POS: Always reduce stock (payment already collected at counter).
+        // Online with webhook/status-check: checkoutSessionId comes from trusted payment metadata —
+        //   treat as pre-validated (sessionPreValidated=true by default for service calls).
+        // Online via POST /api/orders: session is validated by the route handler first,
+        //   then it calls with sessionPreValidated=true.
+        // If checkoutSessionId was NOT pre-validated (should not happen in current flows),
+        //   fall through to stock reduction for safety.
+        const skipStockReduction = isPos ? false : (!!checkoutSessionId && sessionPreValidated);
 
         // 2. Create Order via StockService
         const order = await stockService.processOrderWithStockManagement(

@@ -338,8 +338,8 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
         }}
       >
         <div className="pt-12">
-          <div className="px-4 pb-3">
-            <div className="flex items-center gap-3">
+          <div className="px-4 md:px-6 pb-3">
+            <div className="max-w-4xl mx-auto flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -393,9 +393,10 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
               </div>
             </div>
           </div>
-          <div
-            ref={categoriesScrollRef}
-            className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-4 px-4"
+          <div className="max-w-4xl mx-auto px-4 md:px-6">
+            <div
+              ref={categoriesScrollRef}
+              className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-4"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
@@ -447,10 +448,11 @@ export default function MenuListingPage({ initialSearchQuery = "" }: MenuListing
               </div>
             )}
           </div>
+          </div>{/* /max-w-4xl category pills */}
         </div>
       </div>
       <div className="h-[200px]"></div>
-      <div className="px-4 pb-4">
+      <div className="max-w-4xl mx-auto px-4 md:px-6 pb-4">
         {filteredItems.length === 0 && !isLoading ? (
           <div className={`text-center py-12 px-6 rounded-3xl border-2 border-dashed animate-slide-up-fade ${resolvedTheme === 'dark'
             ? 'bg-gradient-to-br from-gray-800/30 to-gray-900/30 border-gray-700/50'

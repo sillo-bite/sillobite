@@ -1,5 +1,6 @@
 import express from 'express';
 import { webPushService } from '../services/webPushService.js';
+import { requireAuth, requireAdmin } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.get('/vapid-public-key', (req, res) => {
 /**
  * Subscribe to push notifications
  */
-router.post('/subscribe', async (req, res) => {
+router.post('/subscribe', requireAuth, async (req, res) => {
   try {
     const { subscription, userId, userRole, canteenId, deviceInfo } = req.body;
 
@@ -72,7 +73,7 @@ router.post('/subscribe', async (req, res) => {
 /**
  * Unsubscribe from push notifications
  */
-router.post('/unsubscribe', async (req, res) => {
+router.post('/unsubscribe', requireAuth, async (req, res) => {
   try {
     const { subscriptionId } = req.body;
 
@@ -105,7 +106,7 @@ router.post('/unsubscribe', async (req, res) => {
 /**
  * Send test notification
  */
-router.post('/send-test', async (req, res) => {
+router.post('/send-test', requireAdmin, async (req, res) => {
   try {
     const { userId, title, message } = req.body;
 
@@ -147,7 +148,7 @@ router.post('/send-test', async (req, res) => {
 /**
  * Send notification to specific user
  */
-router.post('/send-to-user', async (req, res) => {
+router.post('/send-to-user', requireAdmin, async (req, res) => {
   try {
     const { userId, title, body, data, url } = req.body;
 
@@ -180,7 +181,7 @@ router.post('/send-to-user', async (req, res) => {
 /**
  * Send notification to users with specific role
  */
-router.post('/send-to-role', async (req, res) => {
+router.post('/send-to-role', requireAdmin, async (req, res) => {
   try {
     const { role, title, body, data, url } = req.body;
 
@@ -213,7 +214,7 @@ router.post('/send-to-role', async (req, res) => {
 /**
  * Send broadcast notification to all users
  */
-router.post('/send-to-all', async (req, res) => {
+router.post('/send-to-all', requireAdmin, async (req, res) => {
   try {
     const { title, body, data, url } = req.body;
 
@@ -249,7 +250,7 @@ router.post('/send-to-all', async (req, res) => {
 /**
  * Send test order status notification
  */
-router.post('/test-order-status', async (req, res) => {
+router.post('/test-order-status', requireAdmin, async (req, res) => {
   try {
     const { userId, orderNumber, status } = req.body;
 
@@ -282,7 +283,7 @@ router.post('/test-order-status', async (req, res) => {
   }
 });
 
-router.get('/stats', (req, res) => {
+router.get('/stats', requireAdmin, (req, res) => {
   try {
     const stats = webPushService.getStats();
     res.json(stats);
@@ -295,7 +296,7 @@ router.get('/stats', (req, res) => {
 /**
  * Get all notification templates
  */
-router.get('/templates', (req, res) => {
+router.get('/templates', requireAdmin, (req, res) => {
   try {
     const templates = webPushService.getNotificationTemplates();
     res.json(templates);
@@ -308,7 +309,7 @@ router.get('/templates', (req, res) => {
 /**
  * Get specific notification template
  */
-router.get('/templates/:status', (req, res) => {
+router.get('/templates/:status', requireAdmin, (req, res) => {
   try {
     const { status } = req.params;
     const template = webPushService.getNotificationTemplate(status);
@@ -330,7 +331,7 @@ router.get('/templates/:status', (req, res) => {
 /**
  * Update notification template
  */
-router.put('/templates/:status', async (req, res) => {
+router.put('/templates/:status', requireAdmin, async (req, res) => {
   try {
     const { status } = req.params;
     const template = req.body;
@@ -365,7 +366,7 @@ router.put('/templates/:status', async (req, res) => {
 /**
  * Create new notification template
  */
-router.post('/templates', async (req, res) => {
+router.post('/templates', requireAdmin, async (req, res) => {
   try {
     const template = req.body;
 
@@ -399,7 +400,7 @@ router.post('/templates', async (req, res) => {
 /**
  * Delete notification template
  */
-router.delete('/templates/:status', async (req, res) => {
+router.delete('/templates/:status', requireAdmin, async (req, res) => {
   try {
     const { status } = req.params;
     const deleted = await webPushService.deleteNotificationTemplate(status);
@@ -428,7 +429,7 @@ router.delete('/templates/:status', async (req, res) => {
 /**
  * Get all custom notification templates
  */
-router.get('/custom-templates', async (req, res) => {
+router.get('/custom-templates', requireAdmin, async (req, res) => {
   try {
     const templates = await webPushService.getCustomTemplates();
     res.json(templates);
@@ -441,7 +442,7 @@ router.get('/custom-templates', async (req, res) => {
 /**
  * Get specific custom notification template
  */
-router.get('/custom-templates/:id', async (req, res) => {
+router.get('/custom-templates/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const template = await webPushService.getCustomTemplate(id);
@@ -463,7 +464,7 @@ router.get('/custom-templates/:id', async (req, res) => {
 /**
  * Create new custom notification template
  */
-router.post('/custom-templates', async (req, res) => {
+router.post('/custom-templates', requireAdmin, async (req, res) => {
   try {
     const { name, title, message, icon, priority, requireInteraction, createdBy } = req.body;
 
@@ -506,7 +507,7 @@ router.post('/custom-templates', async (req, res) => {
 /**
  * Update custom notification template
  */
-router.put('/custom-templates/:id', async (req, res) => {
+router.put('/custom-templates/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
@@ -533,7 +534,7 @@ router.put('/custom-templates/:id', async (req, res) => {
 /**
  * Delete custom notification template
  */
-router.delete('/custom-templates/:id', async (req, res) => {
+router.delete('/custom-templates/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const deleted = await webPushService.deleteCustomTemplate(id);
@@ -558,7 +559,7 @@ router.delete('/custom-templates/:id', async (req, res) => {
 /**
  * Send notification with advanced targeting
  */
-router.post('/send-advanced', async (req, res) => {
+router.post('/send-advanced', requireAdmin, async (req, res) => {
   try {
     const { targetType, values, title, body, data, url } = req.body;
 
@@ -596,7 +597,7 @@ router.post('/send-advanced', async (req, res) => {
 /**
  * Send custom template notification with advanced targeting
  */
-router.post('/send-custom-template', async (req, res) => {
+router.post('/send-custom-template', requireAdmin, async (req, res) => {
   try {
     const { templateId, targetType, values, customData } = req.body;
 

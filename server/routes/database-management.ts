@@ -3,8 +3,12 @@ import { storage } from '../storage-hybrid';
 import { getHealthStatus } from '../health-check';
 import { getSchemaHealthStatus } from '../startup-schema-check';
 import { databaseMonitor } from '../monitoring/database-monitor';
+import { requireAdmin } from '../middleware/authMiddleware';
 
 const router = express.Router();
+
+// All database management routes require admin authentication
+router.use(requireAdmin);
 
 /**
  * Get comprehensive database statistics

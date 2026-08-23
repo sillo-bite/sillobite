@@ -28,6 +28,10 @@
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "baseUrl": ".",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./server/types"
+    ],
     "types": [
       "node"
     ],

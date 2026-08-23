@@ -107,7 +107,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
   }, [item.id, item.name, item.price, item.isVegetarian, item.imageUrl, item.description, selectedCanteen?.id, availableCanteens, toggleFavorite]);
 
   const cardClassName = useMemo(() => {
-    const baseClasses = 'rounded-3xl transition-all duration-300 cursor-pointer border-0 overflow-hidden transform relative';
+    const baseClasses = 'rounded-3xl transition-all duration-300 cursor-pointer border-0 transform relative';
     const themeClasses = resolvedTheme === 'dark' 
       ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90 hover:from-gray-800 hover:to-gray-850 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
       : 'bg-white hover:bg-gray-50/80 shadow-[0_4px_20px_rgba(0,0,0,0.06)]';
@@ -188,7 +188,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
     <Card className={cardClassName} onClick={() => setLocation(`/dish/${item.id}`)}>
       <CardContent className="p-0">
         {/* Top Section - Outer container with soft background */}
-        <div className={`w-full p-2 relative`}>
+        <div className={`w-full p-2 relative overflow-hidden rounded-t-3xl`}>
           {/* Soft colored background for outer container */}
           <div className={`absolute inset-0 rounded-t-3xl ${
             resolvedTheme === 'dark' 
@@ -240,7 +240,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
         </div>
 
         {/* Bottom Section - Content */}
-        <div className={contentPaddingClassName}>
+        <div className={`${contentPaddingClassName} rounded-b-3xl`}>
           {/* Item name and rating row */}
           <div className="flex items-start justify-between gap-2 mb-1">
             <h3 className={`${textClassName('title')} flex-1 text-sm`}>
@@ -288,59 +288,45 @@ const MenuItemCard = React.memo(function MenuItemCard({
             )}
           </div>
           
-          {/* Price row */}
+          {/* Price row + Add to cart button in same row */}
           <div className="flex justify-between items-center pb-1">
-            {/* Price */}
             <div className={`${textClassName('price')} text-base`}>
               ₹{item.price}
             </div>
+
+            {/* Add / quantity button — in-flow, no absolute positioning */}
+            {item.id && getCartQuantity(item.id) > 0 ? (
+              <div className={`rounded-xl flex items-center px-1.5 py-1.5 touch-manipulation transition-all duration-300 bg-primary`}
+                style={{ boxShadow: '0 4px 12px rgba(114, 68, 145, 0.4)' }}>
+                <button
+                  onClick={handleRemoveFromCart}
+                  className="w-7 h-7 rounded-md flex items-center justify-center transition-all touch-manipulation active:scale-90 bg-white/20 text-white hover:bg-white/30"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-xs font-bold min-w-[28px] text-center px-0.5 text-white">
+                  {String(getCartQuantity(item.id)).padStart(2, '0')}
+                </span>
+                <button
+                  onClick={handleAddToCart}
+                  className={`w-7 h-7 rounded-md flex items-center justify-center transition-all touch-manipulation active:scale-90 bg-white/20 text-white hover:bg-white/30 ${!isItemAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!isItemAvailable}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleAddToCart}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-primary text-white hover:shadow-xl ${!isItemAvailable ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''}`}
+                disabled={!isItemAvailable}
+                style={{ boxShadow: '0 4px 12px rgba(114, 68, 145, 0.4)' }}
+              >
+                <Plus className="w-5 h-5" strokeWidth={2.5} />
+              </button>
+            )}
           </div>
         </div>
-        
-        {/* Add to cart button - Positioned at bottom-right edge */}
-        {item.id && getCartQuantity(item.id) > 0 ? (
-          <div className={`absolute bottom-0 right-0 rounded-tl-xl flex items-center px-1.5 py-1.5 touch-manipulation transition-all duration-300 ${
-            resolvedTheme === 'dark' 
-              ? 'bg-primary' 
-              : 'bg-primary'
-          }`} style={{
-            boxShadow: 'inset 0 0 20px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(114, 68, 145, 0.4)'
-          }}>
-            <button
-              onClick={handleRemoveFromCart}
-              className="w-7 h-7 rounded-md flex items-center justify-center transition-all touch-manipulation active:scale-90 bg-white/20 text-white hover:bg-white/30"
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="text-xs font-bold min-w-[28px] text-center px-0.5 text-white">
-              {String(item.id ? getCartQuantity(item.id) : 0).padStart(2, '0')}
-            </span>
-            <button
-              onClick={handleAddToCart}
-              className={`w-7 h-7 rounded-md flex items-center justify-center transition-all touch-manipulation active:scale-90 bg-white/20 text-white hover:bg-white/30 ${
-                !isItemAvailable 
-                  ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              disabled={!isItemAvailable}
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleAddToCart}
-            className={`absolute bottom-0 right-0 w-11 h-11 rounded-tl-2xl flex items-center justify-center transition-all touch-manipulation active:scale-95 bg-primary text-white hover:shadow-xl ${
-              !isItemAvailable 
-                ? 'opacity-50 cursor-not-allowed bg-gray-400' : ''
-            }`}
-            disabled={!isItemAvailable}
-            style={{
-              boxShadow: 'inset 0 0 20px rgba(255, 255, 255, 0.3), 0 4px 12px rgba(114, 68, 145, 0.4)'
-            }}
-          >
-            <Plus className="w-5 h-5" strokeWidth={2.5} />
-          </button>
-        )}
       </CardContent>
     </Card>
   );

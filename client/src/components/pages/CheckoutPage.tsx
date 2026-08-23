@@ -1041,8 +1041,8 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-background px-4 py-4 pt-8 sticky top-0 z-10">
-        <div className="flex items-center justify-between w-full">
+      <div className="bg-background px-4 md:px-6 py-4 pt-8 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto flex items-center justify-between w-full">
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" onClick={() => {
               setShowBackConfirmDialog(true);
@@ -1068,9 +1068,9 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      <div className="pb-32">
+      <div className="max-w-4xl mx-auto pb-32">
         {/* Priority 1: Critical Warnings */}
-        <div className="px-4 pt-4 space-y-4">
+        <div className="px-4 md:px-6 pt-4 space-y-4">
           {/* Stock Validation Warning - Highest Priority */}
           <StockValidationWarning
             validationResult={validationResult}
@@ -1081,7 +1081,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Priority 2: Order Details & Payment */}
-        <div className="px-4 space-y-4">
+        <div className="px-4 md:px-6 space-y-4">
           {/* Order Summary - High Priority */}
           <Card className="bg-card border border-border shadow-lg">
             <CardContent className="p-4">
@@ -1291,7 +1291,8 @@ export default function CheckoutPage() {
       />
 
       {/* Place Order Button & Payment Method Selector */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border p-4 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50 pointer-events-auto rounded-t-2xl" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-card/90 backdrop-blur-xl border-t border-border shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-50 pointer-events-auto rounded-t-2xl" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+        <div className="max-w-4xl mx-auto p-4">
 
         {/* Expanded Payment Options (Slides Up from Button) */}
         <div className={`overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isPaymentMenuOpen ? 'grid-rows-[1fr] opacity-100 mb-4' : 'grid-rows-[0fr] opacity-0 mb-0'
@@ -1440,6 +1441,7 @@ export default function CheckoutPage() {
             Resolve stock issues to proceed.
           </p>
         ) : null}
+        </div>{/* /max-w-4xl bottom bar */}
       </div>
 
       {/* Notification Permission Dialog */}

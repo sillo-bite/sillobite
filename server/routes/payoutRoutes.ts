@@ -1,10 +1,36 @@
 import { Router } from "express";
 import { Settlement, PayoutRequest, Order, Payment } from "../models/mongodb-models";
 import mongoose from "mongoose";
+import { storage } from "../storage-hybrid";
 
 const router = Router();
 
 // ==================== AUTHENTICATION & RBAC MIDDLEWARES ====================
+
+// Per-session role cache (30-second TTL) — avoids a DB hit on every request
+// while still detecting role changes within 30 seconds of them happening.
+const _payoutRoleCache = new Map<string, { role: string; expiresAt: number }>();
+const _PAYOUT_ROLE_TTL = 30_000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of Array.from(_payoutRoleCache.entries())) {
+    if (now > v.expiresAt) _payoutRoleCache.delete(k);
+  }
+}, 5 * 60 * 1000);
+
+const _getPayoutLiveRole = async (userId: number, sessionRole: string): Promise<string> => {
+  const key = `role:${userId}`;
+  const cached = _payoutRoleCache.get(key);
+  if (cached && Date.now() < cached.expiresAt) return cached.role;
+  try {
+    const dbUser = await storage.getUser(userId);
+    const liveRole = dbUser ? String(dbUser.role ?? "").toLowerCase() : "";
+    _payoutRoleCache.set(key, { role: liveRole, expiresAt: Date.now() + _PAYOUT_ROLE_TTL });
+    return liveRole;
+  } catch {
+    return sessionRole; // fallback on DB error
+  }
+};
 
 // Middleware to ensure user is authenticated
 const requireAuth = (req: any, res: any, next: any) => {
@@ -15,41 +41,45 @@ const requireAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-// Middleware to verify Admin/Super Admin role
-const requireAdmin = (req: any, res: any, next: any) => {
+// Middleware to verify Admin/Super Admin role (DB-backed)
+const requireAdmin = async (req: any, res: any, next: any) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: "Not authenticated" });
   }
-  const role = user.role ? String(user.role).toLowerCase() : "";
-  if (role !== "admin" && role !== "super_admin") {
+  const sessionRole = String(user.role ?? "").toLowerCase();
+  const liveRole = await _getPayoutLiveRole(user.id, sessionRole);
+  if (liveRole !== "admin" && liveRole !== "super_admin") {
     return res.status(403).json({ error: "Forbidden: Admin access required" });
   }
+  if (liveRole !== sessionRole) req.session.user = { ...user, role: liveRole };
   next();
 };
 
-// Middleware to verify Canteen Owner role (or Admin)
-const requireCanteenOwner = (req: any, res: any, next: any) => {
+// Middleware to verify Canteen Owner role (or Admin) — DB-backed
+const requireCanteenOwner = async (req: any, res: any, next: any) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: "Not authenticated" });
   }
-  const role = user.role ? String(user.role).toLowerCase() : "";
-  if (role === "admin" || role === "super_admin") {
+  const sessionRole = String(user.role ?? "").toLowerCase();
+  const liveRole = await _getPayoutLiveRole(user.id, sessionRole);
+
+  if (liveRole === "admin" || liveRole === "super_admin") {
+    if (liveRole !== sessionRole) req.session.user = { ...user, role: liveRole };
     return next();
   }
-  // If not admin, they must be owner and requesting for their own canteen
-  if (role !== "canteen_owner" && role !== "canteen-owner") {
+  if (liveRole !== "canteen_owner" && liveRole !== "canteen-owner") {
     return res.status(403).json({ error: "Forbidden: Canteen Owner access required" });
   }
-  // To strictly verify ownership, we ideally check if user.canteenId / user.id matches the owner logic.
-  // We'll enforce that the authenticated user's email matches the canteen owner email if possible, or they have explicit access.
-  // For now, based on typical RBAC here, verifying role is standard, but you'd also want to verify `canteenId` against their profile.
+  if (liveRole !== sessionRole) req.session.user = { ...user, role: liveRole };
   next();
 };
 
 // Apply base authentication to all routes defined in this router
-router.use(requireAuth);
+// NOTE: requireAuth is intentionally applied per-route (via requireCanteenOwner / requireAdmin)
+// rather than globally, so that the router mounted at /api does not block public routes
+// like /api/icon.png that are registered after this router.
 
 // ==================== CANTEEN OWNER PAYOUT ENDPOINTS ====================
 

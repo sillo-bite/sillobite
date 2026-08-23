@@ -91,20 +91,21 @@ export default function ProfilePage() {
     }
   }, []);
 
-  // Fetch user's orders to calculate stats
+  // Fetch user's own orders to calculate stats (user-specific endpoint)
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ['/api/orders'],
-    enabled: !!userInfo?.email, // Only fetch when we have user email
+    queryKey: ['/api/orders/active/paginated', 1, 100, undefined, userInfo?.id],
+    queryFn: async () => {
+      if (!userInfo?.id) return [];
+      const response = await fetch(`/api/orders/active/paginated?page=1&limit=100&customerId=${userInfo.id}`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.orders || [];
+    },
+    enabled: !!userInfo?.id,
   });
 
-  // Calculate user statistics from orders - filter by current user
-  const userOrders = (orders as any[]).filter((order: any) => {
-    if (!userInfo) return false;
-    const currentUserId = userInfo.id;
-    return order.customerId === currentUserId ||
-      order.customerName === userInfo?.name ||
-      order.customerName?.toLowerCase().includes(userInfo?.name?.toLowerCase() || '');
-  });
+  // Orders are already filtered by customerId from the API, no extra filtering needed
+  const userOrders: any[] = Array.isArray(orders) ? orders : [];
 
   const userStats = {
     totalOrders: userOrders.length,

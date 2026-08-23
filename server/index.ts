@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import MongoStore from "connect-mongo";
+import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { performStartupCheck } from "./startup-check";
@@ -13,13 +14,67 @@ import { printAgentService } from "./services/printAgentService";
 
 const app = express();
 
+// ── Session secret guard ──────────────────────────────────────────────────────
+// Fail fast in production if SESSION_SECRET is not set to a real value.
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET === 'your-secret-key-change-in-production') {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ FATAL: SESSION_SECRET env var is not set or uses the default placeholder. Set a strong random secret before deploying.');
+    process.exit(1);
+  } else {
+    console.warn('⚠️  SESSION_SECRET is not set — using insecure default for development only.');
+  }
+}
+
 // Trust proxy - required for HTTPS detection behind reverse proxies (Render, etc.)
 app.set('trust proxy', 1);
+
+// ── Global API rate limiter ───────────────────────────────────────────────────
+// Applies to all /api/* routes. Generous limit — tighter per-route limits
+// (e.g. coupon validation, polling) are layered on top in routes.ts.
+const globalApiRateLimit = rateLimit({
+  windowMs: 60 * 1000,        // 1 minute
+  max: 300,                    // 300 requests per IP per minute (~5 req/s burst)
+  standardHeaders: true,       // Return RateLimit-* headers
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please slow down.' },
+  skip: (req) => {
+    // Skip rate limiting for Razorpay webhook (it uses HMAC signature verification instead)
+    return req.path === '/api/payments/webhook' || req.path === '/api/webhooks/razorpay';
+  },
+});
+app.use('/api/', globalApiRateLimit);
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// Client and API are served from the same Express process on the same origin,
+// so same-origin requests work without CORS headers. This block adds explicit
+// CORS support for any additional allowed origins (e.g. a separate mobile build
+// domain) configured via the ALLOWED_ORIGINS env var.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+if (ALLOWED_ORIGINS.length > 0) {
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin;
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With');
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+      }
+    }
+    next();
+  });
+}
 
 // Session configuration for OAuth — uses MongoDB store to prevent
 // session race conditions that occur with the default in-memory store
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  secret: SESSION_SECRET || 'dev-only-insecure-secret',
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
@@ -166,8 +221,9 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
-    throw err;
+    if (!res.headersSent) {
+      res.status(status).json({ message });
+    }
   });
 
   // importantly only setup vite in development and after

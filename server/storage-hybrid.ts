@@ -12,6 +12,16 @@ import {
 import { db as getPostgresDb } from "./db";
 import mongoose from 'mongoose';
 
+/**
+ * Escapes all special regex characters in a user-supplied string so it can be
+ * safely used inside `new RegExp(...)` without enabling ReDoS attacks.
+ * Without this, a caller can send patterns like `(a+)+` which cause catastrophic
+ * backtracking and block the Node.js event loop indefinitely.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Type definitions for insert operations
 export type InsertUser = Prisma.UserCreateInput;
 export type InsertCategory = { name: string; canteenId: string };
@@ -195,6 +205,7 @@ export interface IStorage {
   getActiveOrdersPaginated(page: number, limit: number, canteenId?: string, customerId?: number): Promise<{ orders: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getOrderStats(canteenId?: string): Promise<{ pending: number, preparing: number, completed: number, cancelled: number, total: number }>;
   getFilteredOrders(params: {
+    customerId?: number;
     canteenId?: string;
     search?: string;
     status?: string;
@@ -840,6 +851,7 @@ export class HybridStorage implements IStorage {
   }
 
   async getFilteredOrders(params: {
+    customerId?: number;
     canteenId?: string;
     search?: string;
     status?: string;
@@ -873,6 +885,11 @@ export class HybridStorage implements IStorage {
       // Build MongoDB query
       const query: any = {};
 
+      // Customer filter (for user-specific order history)
+      if (params.customerId) {
+        query.customerId = params.customerId;
+      }
+
       // Canteen filter
       if (params.canteenId) {
         query.canteenId = params.canteenId;
@@ -885,7 +902,7 @@ export class HybridStorage implements IStorage {
 
       // Search filter
       if (params.search) {
-        const searchRegex = new RegExp(params.search, 'i');
+        const searchRegex = new RegExp(escapeRegex(params.search), 'i');
         query.$or = [
           { orderNumber: searchRegex },
           { customerName: searchRegex },
@@ -1133,7 +1150,7 @@ export class HybridStorage implements IStorage {
 
     // Search query filter
     if (searchQuery && searchQuery.trim()) {
-      const searchRegex = new RegExp(searchQuery.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(searchQuery.trim()), 'i');
       filter.$or = [
         { merchantTransactionId: searchRegex },
         {

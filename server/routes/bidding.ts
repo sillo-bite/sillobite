@@ -2,13 +2,14 @@ import { Router, Request, Response } from 'express';
 import { PositionBid } from '../models/mongodb-models';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
+import { requireAuth } from '../middleware/authMiddleware';
 
 const router = Router();
 
 /**
  * Create or update a bid for position
  */
-router.post('/bid', async (req: Request, res: Response) => {
+router.post('/bid', requireAuth, async (req: Request, res: Response) => {
   try {
     const { canteenId, organizationId, collegeId, targetDate, bidAmount } = req.body;
 
@@ -89,7 +90,7 @@ router.post('/bid', async (req: Request, res: Response) => {
 /**
  * Get bid for a specific canteen and institution
  */
-router.get('/bid', async (req: Request, res: Response) => {
+router.get('/bid', requireAuth, async (req: Request, res: Response) => {
   try {
     const { canteenId, institutionId, institutionType, targetDate } = req.query;
 
@@ -123,7 +124,7 @@ router.get('/bid', async (req: Request, res: Response) => {
 /**
  * Get all bids for an institution and target date (sorted by bid amount)
  */
-router.get('/bids', async (req: Request, res: Response) => {
+router.get('/bids', requireAuth, async (req: Request, res: Response) => {
   try {
     const { institutionId, institutionType, targetDate } = req.query;
 
@@ -158,7 +159,7 @@ router.get('/bids', async (req: Request, res: Response) => {
 /**
  * Process payment for a bid
  */
-router.post('/bid/:bidId/pay', async (req: Request, res: Response) => {
+router.post('/bid/:bidId/pay', requireAuth, async (req: Request, res: Response) => {
   try {
     const { bidId } = req.params;
     const { paymentTransactionId } = req.body;

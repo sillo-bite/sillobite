@@ -46,71 +46,74 @@ const CategoryCarousel = React.memo(function CategoryCarousel({
   return (
     <div className="mb-2">
       <div className="relative">
-        {/* Native horizontal scrolling container with premium styling */}
-        <div
-          className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-            scrollBehavior: 'smooth'
-          }}
-          onScroll={onScroll}
-        >
-          {/* Show skeleton loader while initial loading */}
-          {isLoading && categories.length === 0 ? (
-            <CategorySkeletonLoader count={5} />
-          ) : (
-            <>
-              {/* Render loaded categories with premium styling */}
-              {Array.isArray(categories) ? categories.map((category, index) => {
-                const isFirst = index === 0;
-                const isLast = index === categories.length - 1;
-                const categoryNameLower = (category.name || "").toLowerCase().trim();
-                const categoryId = String(category.id || (category as any)._id || "").toLowerCase();
+        {/* Centered column — matches page layout width */}
+        <div className="max-w-4xl mx-auto">
+          {/* Native horizontal scrolling container with premium styling */}
+          <div
+            className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide px-4 md:px-6"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch',
+              scrollBehavior: 'smooth'
+            }}
+            onScroll={onScroll}
+          >
+            {/* Show skeleton loader while initial loading */}
+            {isLoading && categories.length === 0 ? (
+              <CategorySkeletonLoader count={5} />
+            ) : (
+              <>
+                {/* Render loaded categories with premium styling */}
+                {Array.isArray(categories) ? categories.map((category, index) => {
+                  const isFirst = index === 0;
+                  const isLast = index === categories.length - 1;
+                  const categoryNameLower = (category.name || "").toLowerCase().trim();
+                  const categoryId = String(category.id || (category as any)._id || "").toLowerCase();
 
-                // Detection for the 'Menu' (all) category - check name, ID, or if it's the very first one with ID 'all'
-                const isMenu = categoryNameLower === 'all' ||
-                  categoryNameLower === 'menu' ||
-                  categoryId === 'all';
+                  // Detection for the 'Menu' (all) category - check name, ID, or if it's the very first one with ID 'all'
+                  const isMenu = categoryNameLower === 'all' ||
+                    categoryNameLower === 'menu' ||
+                    categoryId === 'all';
 
-                return (
-                  <div
-                    key={category.id || (category as any)._id || `category-${index}`}
-                    className={`cursor-pointer transition-all duration-300 flex-shrink-0 ${isMenu ? 'w-[90px]' : 'w-[72px]'} flex flex-col items-center justify-center touch-manipulation hover:scale-105 active:scale-95 ${isFirst ? 'pl-4' : ''} ${isLast ? 'pr-4' : ''}`}
-                    onClick={() => handleCategoryClick(category.name)}
-                    style={{
-                      animationDelay: `${index * 50}ms`,
-                    }}
-                  >
-                    <div className="flex items-center justify-center mx-auto h-16 animate-stagger-fade" style={{ animationDelay: `${index * 50}ms` }}>
-                      <CategoryIcon category={category} size="md" isMenu={isMenu} />
+                  return (
+                    <div
+                      key={category.id || (category as any)._id || `category-${index}`}
+                      className={`cursor-pointer transition-all duration-300 flex-shrink-0 ${isMenu ? 'w-[90px]' : 'w-[72px]'} flex flex-col items-center justify-center touch-manipulation hover:scale-105 active:scale-95`}
+                      onClick={() => handleCategoryClick(category.name)}
+                      style={{
+                        animationDelay: `${index * 50}ms`,
+                      }}
+                    >
+                      <div className="flex items-center justify-center mx-auto h-16 animate-stagger-fade" style={{ animationDelay: `${index * 50}ms` }}>
+                        <CategoryIcon category={category} size="md" isMenu={isMenu} />
+                      </div>
+                      <p className={`${getCategoryTextClassName()} px-1 mt-2`} title={isMenu ? 'Menu' : category.name} style={{
+                        wordBreak: 'break-word',
+                        hyphens: 'auto',
+                        WebkitHyphens: 'auto',
+                        msHyphens: 'auto'
+                      }}>
+                        {isMenu ? 'Menu' : category.name}
+                      </p>
                     </div>
-                    <p className={`${getCategoryTextClassName()} px-1 mt-2`} title={isMenu ? 'Menu' : category.name} style={{
-                      wordBreak: 'break-word',
-                      hyphens: 'auto',
-                      WebkitHyphens: 'auto',
-                      msHyphens: 'auto'
-                    }}>
-                      {isMenu ? 'Menu' : category.name}
-                    </p>
-                  </div>
-                );
-              }) : []}
+                  );
+                }) : []}
 
-              {/* Show loading indicator for next page */}
-              {isFetchingNextPage && (
-                <div className="flex-shrink-0 w-[72px] flex flex-col items-center justify-center pr-4">
-                  <CategoryLoadingIndicator
-                    isFetching={isFetchingNextPage}
-                    hasNextPage={hasNextPage}
-                    totalLoaded={categories.length}
-                    totalAvailable={totalCategories}
-                  />
-                </div>
-              )}
-            </>
-          )}
+                {/* Show loading indicator for next page */}
+                {isFetchingNextPage && (
+                  <div className="flex-shrink-0 w-[72px] flex flex-col items-center justify-center">
+                    <CategoryLoadingIndicator
+                      isFetching={isFetchingNextPage}
+                      hasNextPage={hasNextPage}
+                      totalLoaded={categories.length}
+                      totalAvailable={totalCategories}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

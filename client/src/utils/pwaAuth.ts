@@ -54,7 +54,10 @@ export function getPWAAuthState(): { isAuthenticated: boolean; user: StoredUser 
   try {
     const userData = JSON.parse(storedUser);
     const loginTime = parseInt(sessionTimestamp);
-    const maxSessionDuration = 90 * 24 * 60 * 60 * 1000; // 90 days
+    // Match the server session TTL (24 hours) so local state and server session
+    // expire together. The old 90-day value meant a user appeared "logged in"
+    // on the frontend long after their server session had expired.
+    const maxSessionDuration = 24 * 60 * 60 * 1000; // 24 hours — matches server TTL
     const currentTime = Date.now();
     
     const sessionDebug = {
