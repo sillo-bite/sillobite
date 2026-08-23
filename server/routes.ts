@@ -54,6 +54,7 @@ import printAgentRoutes from "./routes/printAgent.js";
 import payoutRoutes from "./routes/payoutRoutes.js";
 import biddingRoutes from "./routes/bidding.js";
 import canteenAnalyticsRoutes from "./routes/canteenAnalytics.js";
+import walletRoutes from "./routes/wallet.js";
 import { mediaService } from "./services/mediaService.js";
 import multer from "multer";
 import axios from "axios";
@@ -217,6 +218,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (liveRole !== sessionRole) req.session.user = { ...user, role: liveRole };
     next();
   };
+  // Mount Wallet Routes
+  app.use("/api/wallet", walletRoutes);
 
   // Database schema health check endpoint
   app.get("/api/schema-status", requireAdmin, async (req, res) => {

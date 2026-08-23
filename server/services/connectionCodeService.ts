@@ -4,7 +4,7 @@ import crypto from 'crypto';
 const db = getDb();
 
 interface ConnectionCode {
-  id: string;
+  id: number;
   userId: number;
   code: string;
   expiresAt: Date;
@@ -66,7 +66,7 @@ export const connectionCodeService = {
     if (!usr) return null;
 
     const cc = await db.$queryRaw<Array<ConnectionCode>>`
-      SELECT id::text as id, user_id as "userId", code, expires_at as "expiresAt", is_used as "isUsed", created_at as "createdAt"
+      SELECT id, user_id as "userId", code, expires_at as "expiresAt", is_used as "isUsed", created_at as "createdAt"
       FROM connection_codes 
       WHERE user_id = ${usr.id} AND code = ${cd} AND is_used = false
       LIMIT 1
@@ -104,9 +104,23 @@ export const connectionCodeService = {
   },
 
   async validateToken(tk: string): Promise<number | null> {
+    console.log(`🔍 Validating token: ${tk.substring(0, 10)}...`);
+    
     const res = await db.$queryRaw<Array<ApiToken>>`
-      SELECT * FROM api_tokens WHERE token = ${tk} LIMIT 1
+      SELECT id, user_id as "userId", token, created_at as "createdAt" 
+      FROM api_tokens 
+      WHERE token = ${tk} 
+      LIMIT 1
     `;
-    return res.length > 0 ? res[0].userId : null;
+    
+    console.log(`📊 Query result: ${res.length} rows found`);
+    
+    if (res.length > 0) {
+      console.log(`✅ Token valid for user ID: ${res[0].userId}`);
+      return res[0].userId;
+    } else {
+      console.log(`❌ Token not found in database`);
+      return null;
+    }
   }
 };

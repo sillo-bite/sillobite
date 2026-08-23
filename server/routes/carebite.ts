@@ -4,6 +4,6 @@ import { requireAdmin } from '../middleware/authMiddleware';
 
 const rt = Router();
 
-rt.post('/menu', requireAdmin, carebiteController.getMenu);
+rt.post('/menu',requireAdmin,  carebiteController.getMenu);
 
 export default rt;
