@@ -3615,7 +3615,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stock status endpoint
-  app.get("/api/stock/status", requireCanteenOwnerOrAdmin, async (req, res) => {
+  app.get("/api/stock/status", requireAuth, async (req, res) => {
     try {
       const { itemIds } = req.query;
       console.log(`ðŸ“‹ GET /api/stock/status - Checking stock for items:`, itemIds);
