@@ -1,0 +1,365 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         WALLET SYSTEM ARCHITECTURE                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              USER INTERFACE                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │                      Profile Page                            │
+    │  ┌────────────────────────────────────────────────────────┐  │
+    │  │              Wallet Card Component                     │  │
+    │  │  ┌──────────────────────────────────────────────────┐  │  │
+    │  │  │  💰 My Wallet              History →            │  │  │
+    │  │  │                                                  │  │  │
+    │  │  │  Available Balance                              │  │  │
+    │  │  │  ₹500.00                                        │  │  │
+    │  │  │                                                  │  │  │
+    │  │  │  ┌──────────┐  ┌──────────┐                   │  │  │
+    │  │  │  │Total Added│  │Total Spent│                   │  │  │
+    │  │  │  │ ₹1000.00  │  │  ₹500.00  │                   │  │  │
+    │  │  │  └──────────┘  └──────────┘                   │  │  │
+    │  │  │                                                  │  │  │
+    │  │  │  [➕ Add Money]                                 │  │  │
+    │  │  └──────────────────────────────────────────────────┘  │  │
+    │  └────────────────────────────────────────────────────────┘  │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              API LAYER                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │                    Wallet Routes                             │
+    │                  /api/wallet/*                               │
+    │                                                              │
+    │  GET    /api/wallet/:userId                                 │
+    │  GET    /api/wallet/:userId/transactions                    │
+    │  GET    /api/wallet/:userId/balance                         │
+    │  POST   /api/wallet/:userId/topup/create-order              │
+    │  POST   /api/wallet/:userId/topup/verify                    │
+    │  POST   /api/wallet/webhook                                 │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SERVICE LAYER                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │                   Wallet Service                             │
+    │                                                              │
+    │  • getOrCreateWallet(userId)                                │
+    │  • getBalance(userId)                                       │
+    │  • creditWallet(params)                                     │
+    │  • debitWallet(params)                                      │
+    │  • getTransactionHistory(userId, limit, offset)             │
+    │  • createPendingTransaction(params)                         │
+    │  • completePendingTransaction(txnId, paymentId)             │
+    │  • failPendingTransaction(txnId, reason)                    │
+    │  • refundTransaction(params)                                │
+    │  • hasSufficientBalance(userId, amount)                     │
+    │  • getWalletStats(userId)                                   │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DATABASE LAYER                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────┐         ┌──────────────────────────┐
+    │       Wallets            │         │   Wallet Transactions    │
+    │                          │         │                          │
+    │  • id (PK)               │◄────────│  • id (PK, UUID)         │
+    │  • user_id (UNIQUE)      │         │  • wallet_id (FK)        │
+    │  • balance               │         │  • user_id               │
+    │  • currency              │         │  • type (CREDIT/DEBIT)   │
+    │  • is_active             │         │  • amount                │
+    │  • created_at            │         │  • balance_before        │
+    │  • updated_at            │         │  • balance_after         │
+    └──────────────────────────┘         │  • description           │
+                                         │  • reference_type        │
+                                         │  • reference_id          │
+                                         │  • payment_method        │
+                                         │  • payment_id            │
+                                         │  • order_id              │
+                                         │  • status                │
+                                         │  • metadata (JSON)       │
+                                         │  • created_at            │
+                                         └──────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        PAYMENT INTEGRATION                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │                      Razorpay                                │
+    │                                                              │
+    │  • Create Order                                             │
+    │  • Process Payment                                          │
+    │  • Verify Signature                                         │
+    │  • Send Webhooks                                            │
+    └──────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           PAYMENT FLOW DIAGRAM                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    User                Frontend            Backend            Razorpay         Database
+     │                     │                   │                  │                │
+     │  Click "Add Money"  │                   │                  │                │
+     ├────────────────────►│                   │                  │                │
+     │                     │                   │                  │                │
+     │  Enter Amount       │                   │                  │                │
+     ├────────────────────►│                   │                  │                │
+     │                     │                   │                  │                │
+     │  Click "Proceed"    │                   │                  │                │
+     ├────────────────────►│                   │                  │                │
+     │                     │                   │                  │                │
+     │                     │  Create Order     │                  │                │
+     │                     ├──────────────────►│                  │                │
+     │                     │                   │                  │                │
+     │                     │                   │  Create Order    │                │
+     │                     │                   ├─────────────────►│                │
+     │                     │                   │                  │                │
+     │                     │                   │  Order ID        │                │
+     │                     │                   │◄─────────────────┤                │
+     │                     │                   │                  │                │
+     │                     │                   │  Create Pending  │                │
+     │                     │                   │  Transaction     │                │
+     │                     │                   ├─────────────────────────────────►│
+     │                     │                   │                  │                │
+     │                     │  Order Details    │                  │                │
+     │                     │◄──────────────────┤                  │                │
+     │                     │                   │                  │                │
+     │  Open Razorpay      │                   │                  │                │
+     │  Checkout           │                   │                  │                │
+     │◄────────────────────┤                   │                  │                │
+     │                     │                   │                  │                │
+     │  Complete Payment   │                   │                  │                │
+     ├────────────────────────────────────────────────────────────►│                │
+     │                     │                   │                  │                │
+     │  Payment Success    │                   │                  │                │
+     │◄────────────────────────────────────────────────────────────┤                │
+     │                     │                   │                  │                │
+     │                     │  Verify Payment   │                  │                │
+     │                     ├──────────────────►│                  │                │
+     │                     │                   │                  │                │
+     │                     │                   │  Verify Signature│                │
+     │                     │                   ├─────────────────►│                │
+     │                     │                   │                  │                │
+     │                     │                   │  Valid ✓         │                │
+     │                     │                   │◄─────────────────┤                │
+     │                     │                   │                  │                │
+     │                     │                   │  Complete        │                │
+     │                     │                   │  Transaction     │                │
+     │                     │                   ├─────────────────────────────────►│
+     │                     │                   │                  │                │
+     │                     │                   │  Update Balance  │                │
+     │                     │                   ├─────────────────────────────────►│
+     │                     │                   │                  │                │
+     │                     │  Success          │                  │                │
+     │                     │◄──────────────────┤                  │                │
+     │                     │                   │                  │                │
+     │  Show Success       │                   │                  │                │
+     │  Update Balance     │                   │                  │                │
+     │◄────────────────────┤                   │                  │                │
+     │                     │                   │                  │                │
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        TRANSACTION FLOW (LEDGER)                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    Initial State:
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Wallet Balance: ₹0.00                                       │
+    └──────────────────────────────────────────────────────────────┘
+
+    Transaction 1: Top-up ₹100
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Type: CREDIT                                                │
+    │  Amount: ₹100.00                                             │
+    │  Balance Before: ₹0.00                                       │
+    │  Balance After: ₹100.00                                      │
+    │  Description: Wallet top-up                                  │
+    │  Status: COMPLETED                                           │
+    └──────────────────────────────────────────────────────────────┘
+
+    Transaction 2: Order Payment ₹50
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Type: DEBIT                                                 │
+    │  Amount: ₹50.00                                              │
+    │  Balance Before: ₹100.00                                     │
+    │  Balance After: ₹50.00                                       │
+    │  Description: Payment for order #123                         │
+    │  Status: COMPLETED                                           │
+    └──────────────────────────────────────────────────────────────┘
+
+    Transaction 3: Cashback ₹5
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Type: CREDIT                                                │
+    │  Amount: ₹5.00                                               │
+    │  Balance Before: ₹50.00                                      │
+    │  Balance After: ₹55.00                                       │
+    │  Description: 10% cashback on order #123                     │
+    │  Status: COMPLETED                                           │
+    └──────────────────────────────────────────────────────────────┘
+
+    Final State:
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Wallet Balance: ₹55.00                                      │
+    │  Total Credits: ₹105.00                                      │
+    │  Total Debits: ₹50.00                                        │
+    │  Transaction Count: 3                                        │
+    └──────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           SECURITY LAYERS                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Layer 1: Payment Signature Verification                     │
+    │  • Razorpay signature validation                             │
+    │  • HMAC SHA256 verification                                  │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Layer 2: Webhook Signature Verification                     │
+    │  • Webhook secret validation                                 │
+    │  • Request authenticity check                                │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Layer 3: Balance Validation                                 │
+    │  • Check sufficient balance before debit                     │
+    │  • Prevent negative balance                                  │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Layer 4: Transaction Immutability                           │
+    │  • Transactions cannot be modified                           │
+    │  • Complete audit trail                                      │
+    └──────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │  Layer 5: Amount Limits                                      │
+    │  • Minimum: ₹10                                              │
+    │  • Maximum: ₹10,000                                          │
+    └──────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         FILE STRUCTURE                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    sillobite/
+    │
+    ├── prisma/
+    │   └── schema.prisma                    ← Wallet & Transaction models
+    │
+    ├── server/
+    │   ├── services/
+    │   │   └── walletService.ts             ← Core wallet logic
+    │   │
+    │   ├── routes/
+    │   │   └── wallet.ts                    ← API endpoints
+    │   │
+    │   ├── examples/
+    │   │   └── wallet-order-integration.example.ts  ← Usage examples
+    │   │
+    │   └── routes.ts                        ← Route registration
+    │
+    ├── client/
+    │   └── src/
+    │       └── components/
+    │           └── profile/
+    │               ├── WalletCard.tsx       ← Wallet UI component
+    │               └── ProfilePage.tsx      ← Updated with wallet
+    │
+    └── Documentation/
+        ├── WALLET_README.md                 ← Main documentation
+        ├── WALLET_SYSTEM_DOCUMENTATION.md   ← Technical details
+        ├── WALLET_QUICK_REFERENCE.md        ← Quick API reference
+        ├── WALLET_IMPLEMENTATION_SUMMARY.md ← Implementation details
+        ├── WALLET_MIGRATION_GUIDE.md        ← Migration guide
+        ├── setup-wallet.md                  ← Setup instructions
+        ├── WALLET_SETUP_COMPLETE.md         ← Completion summary
+        └── WALLET_SYSTEM_DIAGRAM.txt        ← This file
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         TECHNOLOGY STACK                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    Frontend:
+    ┌──────────────────────────────────────────────────────────────┐
+    │  • React 18 + TypeScript                                     │
+    │  • TanStack Query (data fetching)                            │
+    │  • Tailwind CSS (styling)                                    │
+    │  • Radix UI (components)                                     │
+    │  • Razorpay Checkout (payment UI)                            │
+    └──────────────────────────────────────────────────────────────┘
+
+    Backend:
+    ┌──────────────────────────────────────────────────────────────┐
+    │  • Node.js + Express                                         │
+    │  • TypeScript                                                │
+    │  • Prisma ORM                                                │
+    │  • Decimal.js (precise calculations)                         │
+    │  • Razorpay SDK (payment processing)                         │
+    └──────────────────────────────────────────────────────────────┘
+
+    Database:
+    ┌──────────────────────────────────────────────────────────────┐
+    │  • PostgreSQL (wallet data)                                  │
+    │  • ACID compliance                                           │
+    │  • Decimal precision                                         │
+    │  • Indexed queries                                           │
+    └──────────────────────────────────────────────────────────────┘
+
+    Payment:
+    ┌──────────────────────────────────────────────────────────────┐
+    │  • Razorpay (payment gateway)                                │
+    │  • UPI, Cards, Net Banking                                   │
+    │  • Webhook notifications                                     │
+    │  • Test mode support                                         │
+    └──────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              SUMMARY                                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+    Status: ✅ Complete and Production Ready
+
+    Phase 1 (Current):
+    ✅ Wallet creation and management
+    ✅ Top-up via Razorpay
+    ✅ Transaction history
+    ✅ Balance tracking
+    ✅ Ledger-based system
+    ✅ Security features
+    ✅ UI components
+    ✅ Complete documentation
+
+    Phase 2 (Next):
+    ⏳ Order payment integration
+    ⏳ Partial payments
+    ⏳ Cashback system
+    ⏳ Refunds
+
+    Phase 3 (Future):
+    🔮 Wallet transfers
+    🔮 Rewards program
+    🔮 Advanced analytics
+    🔮 Admin dashboard
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                    Made with ❤️ for SilloBite POS
+                         Version 1.0.0 (Phase 1)
+
+═══════════════════════════════════════════════════════════════════════════════
