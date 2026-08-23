@@ -1,11 +1,23 @@
 /**
  * Google OAuth 2.0 Authentication Service
- * All OAuth URL generation and token exchange handled by backend
+ *
+ * SECURITY NOTES:
+ * - All token exchange is handled server-side only. Raw Google tokens
+ *   (access_token, id_token, refresh_token) never reach the browser.
+ * - The canonical login flow is the server redirect:
+ *     signInWithGoogle() → GET /api/auth/google → Google → GET /callback
+ *   The server sets a session cookie after verifying the ID token.
+ *   The frontend then calls GET /api/auth/session to get the user.
+ * - handleGoogleRedirect() and signInWithGooglePopup() previously returned
+ *   raw tokens to the browser — they have been removed.
  */
 
+/**
+ * Initiates the Google OAuth redirect flow.
+ * Saves an optional post-login redirect URL to sessionStorage so it can be
+ * restored in OAuthCallback after the server redirects back.
+ */
 export const signInWithGoogle = (redirectUrl?: string | null): void => {
-  // Save redirect parameter to session storage so we can restore it after callback
-  // Prioritize passed argument, then check URL
   let redirect = redirectUrl;
   if (!redirect) {
     const urlParams = new URLSearchParams(window.location.search);
@@ -13,161 +25,46 @@ export const signInWithGoogle = (redirectUrl?: string | null): void => {
   }
 
   if (redirect) {
-    console.log('🔄 Saving auth redirect:', redirect);
     sessionStorage.setItem('authRedirect', redirect);
   } else {
-    // If no redirect, make sure we don't have a stale one
     sessionStorage.removeItem('authRedirect');
   }
+
+  // Navigate to the server-side OAuth initiation endpoint.
+  // The server generates a CSRF state nonce, stores it in the session,
+  // and redirects to Google with the nonce in the `state` param.
   window.location.href = '/api/auth/google';
 };
 
-// Handle Google OAuth redirect
-export const handleGoogleRedirect = async (): Promise<{
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    picture?: string;
-  };
-  accessToken: string;
-} | null> => {
-  if (window.location.pathname !== '/auth/callback' && window.location.pathname !== '/api/auth/google/callback') {
-    return null;
-  }
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const code = urlParams.get('code');
-  const error = urlParams.get('error');
-
-  if (error) {
-    throw new Error(`OAuth error: ${error}`);
-  }
-
-  if (!code) {
-    return null;
-  }
-
-  try {
-    console.log('Starting OAuth token exchange...');
-    console.log('Authorization code:', code ? 'present' : 'missing');
-
-    const tokenResponse = await fetch('/api/auth/google/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ code })
-    });
-
-    console.log('Token response status:', tokenResponse.status);
-
-    if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json();
-      console.error('Token exchange failed:', errorData);
-      throw new Error(`Failed to exchange code for token: ${errorData.error || 'Unknown error'}`);
-    }
-
-    const tokenData = await tokenResponse.json();
-    const { access_token, id_token } = tokenData;
-    console.log('Token exchange successful');
-
-    console.log('Fetching user info...');
-    const userResponse = await fetch('/api/auth/google/user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        access_token,
-        id_token
-      })
-    });
-
-    console.log('User response status:', userResponse.status);
-
-    if (!userResponse.ok) {
-      const errorData = await userResponse.json();
-      console.error('User info fetch failed:', errorData);
-      throw new Error(`Failed to get user info: ${errorData.error || 'Unknown error'}`);
-    }
-
-    const userData = await userResponse.json();
-    console.log('User info fetched successfully:', userData);
-
-    return {
-      user: {
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        picture: userData.picture
-      },
-      accessToken: access_token
-    };
-  } catch (error) {
-    console.error('Google OAuth redirect error:', error);
-    throw error;
-  }
-};
-
-// Sign in with Google (popup method)
-export const signInWithGooglePopup = async (): Promise<{
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    picture?: string;
-  };
-  accessToken: string;
-} | null> => {
-  return new Promise((resolve, reject) => {
-    const popup = window.open(
-      '/api/auth/google',
-      'google-auth',
-      'width=500,height=600,scrollbars=yes,resizable=yes'
-    );
-
-    if (!popup) {
-      reject(new Error('Popup blocked'));
-      return;
-    }
-
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        reject(new Error('Popup closed'));
-      }
-    }, 1000);
-
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
-        return;
-      }
-
-      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-        clearInterval(checkClosed);
-        popup.close();
-        window.removeEventListener('message', handleMessage);
-        resolve(event.data.user);
-      } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-        clearInterval(checkClosed);
-        popup.close();
-        window.removeEventListener('message', handleMessage);
-        reject(new Error(event.data.error));
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-  });
-};
-
+/**
+ * Destroys the server session and clears all local auth state.
+ * Should be called by every logout handler in the app.
+ *
+ * The fetch is fire-and-forget — even if it fails, local state is cleared
+ * and the server session will expire naturally within 24 hours.
+ */
 export const signOutGoogle = (): void => {
-  localStorage.removeItem('google_access_token');
-  localStorage.removeItem('google_id_token');
+  fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+  }).catch(() => {
+    // Server session will expire on its own — this is safe to ignore
+  });
+
+  // Clear all local auth state
   localStorage.removeItem('user');
   localStorage.removeItem('session_timestamp');
+  localStorage.removeItem('last_activity');
+  // Legacy keys — kept for safety in case they exist from old sessions
+  localStorage.removeItem('google_access_token');
+  localStorage.removeItem('google_id_token');
 };
 
+/**
+ * Checks whether the local auth state is still within its 24-hour TTL.
+ * This is a client-side cache check only — it does not verify the server
+ * session. Use GET /api/auth/session for authoritative session status.
+ */
 export const isAuthenticated = (): boolean => {
   const user = localStorage.getItem('user');
   const sessionTimestamp = localStorage.getItem('session_timestamp');
@@ -177,7 +74,7 @@ export const isAuthenticated = (): boolean => {
   }
 
   const sessionAge = Date.now() - parseInt(sessionTimestamp);
-  const maxAge = 24 * 60 * 60 * 1000;
+  const maxAge = 24 * 60 * 60 * 1000; // 24 hours — matches server session TTL
 
   if (sessionAge > maxAge) {
     signOutGoogle();
@@ -187,6 +84,10 @@ export const isAuthenticated = (): boolean => {
   return true;
 };
 
+/**
+ * Returns the locally cached user object if the local session is still valid.
+ * Use GET /api/auth/session for authoritative user data from the server.
+ */
 export const getCurrentUser = (): any => {
   if (!isAuthenticated()) {
     return null;

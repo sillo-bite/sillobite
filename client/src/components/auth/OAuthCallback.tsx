@@ -1,15 +1,22 @@
 import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
-import { setPWAAuth } from '@/utils/pwaAuth';
 import { UserRole } from '@shared/schema';
 
+/**
+ * OAuth Callback Handler
+ *
+ * SECURITY: This component does NOT read user identity from URL params.
+ * The server sets the session after cryptographically verifying the Google
+ * ID token, then redirects here with only ?status=success.
+ * We call GET /api/auth/session to get the verified user from the server
+ * session cookie — the only trusted source of identity.
+ */
 export default function OAuthCallback() {
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
   const processedRef = useRef(false);
 
   useEffect(() => {
@@ -18,9 +25,6 @@ export default function OAuthCallback() {
       processedRef.current = true;
 
       try {
-        console.log('🔄 OAuthCallback component mounted');
-        console.log('📍 Current URL:', window.location.href);
-
         const urlParams = new URLSearchParams(window.location.search);
         const errorParam = urlParams.get('error');
 
@@ -31,25 +35,46 @@ export default function OAuthCallback() {
           return;
         }
 
-        // Read user data directly from URL params (set by server redirect)
-        // This avoids the race-prone session-based /me endpoint
-        const email = urlParams.get('email');
-        const name = urlParams.get('name');
-        const picture = urlParams.get('picture');
-        const id = urlParams.get('id');
-
-        if (!email || !id) {
-          throw new Error('Missing user data in OAuth callback URL');
+        // Only proceed if server signalled success
+        const status = urlParams.get('status');
+        if (status !== 'success') {
+          setError('OAuth callback received without a success status.');
+          setIsLoading(false);
+          setTimeout(() => setLocation('/login'), 3000);
+          return;
         }
 
-        const googleUser = { id, email, name: name || '', picture: picture || '' };
-        console.log('Google user authenticated from URL params:', googleUser.email);
+        // ── SECURITY FIX: Fetch identity from server session, not URL params ──
+        // The server set req.session.user after verifying the Google ID token.
+        // We ask the server "who am I?" — this is the only trusted path.
+        const sessionResponse = await fetch('/api/auth/session', {
+          credentials: 'include', // send the session cookie
+        });
 
-        setIsSuccess(true);
-        await handleUserAuthentication(googleUser);
-      } catch (error) {
-        console.error('OAuth callback error:', error);
-        setError(error instanceof Error ? error.message : 'Authentication failed');
+        if (!sessionResponse.ok) {
+          throw new Error('Session not found after OAuth. Please try signing in again.');
+        }
+
+        const sessionData = await sessionResponse.json();
+        const serverUser = sessionData.user;
+
+        if (!serverUser || !serverUser.email) {
+          throw new Error('No user in session after OAuth.');
+        }
+
+        console.log('✅ Identity verified from server session:', serverUser.email);
+
+        // Check if user is blocked
+        if (serverUser.role && serverUser.role.startsWith('blocked_')) {
+          setIsLoading(false);
+          setLocation('/login?blocked=true');
+          return;
+        }
+
+        await handleUserAuthentication(serverUser);
+      } catch (err) {
+        console.error('OAuth callback error:', err);
+        setError(err instanceof Error ? err.message : 'Authentication failed');
         setIsLoading(false);
         setTimeout(() => setLocation('/login'), 3000);
       }
@@ -58,61 +83,40 @@ export default function OAuthCallback() {
     handleCallback();
   }, [login]);
 
-  const handleUserAuthentication = async (user: any) => {
-    // Helper: check for stored redirect URL (from QR code flow)
+  const handleUserAuthentication = async (serverUser: any) => {
     const getPostLoginRedirect = (): string | null => {
       const authRedirect = sessionStorage.getItem('authRedirect');
       if (authRedirect) {
         sessionStorage.removeItem('authRedirect');
-        console.log('🔄 Found authRedirect in session:', authRedirect);
         return decodeURIComponent(authRedirect);
       }
       return null;
     };
 
     try {
-      console.log('Starting user authentication for:', user.email);
-
-      // Check if this is from organization QR code
+      // Check if this is from an organization QR code
       const pendingOrgQRData = sessionStorage.getItem('pendingOrgQRData');
       let orgQRData: { organizationId: string; address: string; hash: string; timestamp: number } | null = null;
 
       if (pendingOrgQRData) {
         try {
           orgQRData = JSON.parse(pendingOrgQRData);
-        } catch (error) {
-          console.error('Error parsing org QR data:', error);
+        } catch {
+          // ignore parse errors
         }
       }
 
-      // Check if user exists in database
-      // Use cache: 'force-cache' to prevent duplicate calls if data was recently fetched
-      const userResponse = await fetch(`/api/users/by-email/${user.email}`, {
-        cache: 'default', // Use browser cache if available
-        headers: {
-          'Cache-Control': 'max-age=60' // Cache for 60 seconds
-        }
+      // Fetch full user profile (server session has the DB record already,
+      // but we may need additional fields for the UI)
+      const userResponse = await fetch(`/api/users/by-email/${encodeURIComponent(serverUser.email)}`, {
+        credentials: 'include',
       });
-      console.log('User response status:', userResponse.status);
 
       if (userResponse.ok) {
-        // User exists, check if they are blocked
         const userData = await userResponse.json();
-        console.log('User data received:', userData);
 
-        // Check if user is blocked (role starts with 'blocked_')
-        if (userData.role && userData.role.startsWith('blocked_')) {
-          setIsLoading(false);
-          setLocation('/login?blocked=true');
-          return;
-        }
-
-        // Debug logs removed
-
-
-        // Check if user came from organization QR; apply context but do not force profile setup
+        // Handle org QR context
         if (orgQRData && (userData.role === UserRole.GUEST || !userData.organizationId)) {
-          // Validate QR code first
           const validateResponse = await fetch(
             `/api/system-settings/qr-codes/validate/${orgQRData.organizationId}/${orgQRData.hash}?address=${encodeURIComponent(orgQRData.address)}`
           );
@@ -120,74 +124,52 @@ export default function OAuthCallback() {
           if (validateResponse.ok) {
             const validationData = await validateResponse.json();
             const { organization, fullAddress } = validationData;
-
-            // Store organization context (including full address)
             sessionStorage.setItem('orgContext', JSON.stringify({
               organizationId: organization.id,
               organizationName: organization.name,
-              fullAddress: fullAddress,
+              fullAddress,
             }));
-
-            // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
-            // Do not require phone number; continue to login flow
           }
         }
 
-        // Get organizationId from database (now stored in user record)
-        // For guest users, organizationId is stored in the database
         const organizationId = userData.organizationId || null;
-        console.log('🔧 Organization ID from database:', organizationId);
 
-        // Login user directly without profile completion check
         const userDisplayData = {
           id: userData.id,
           name: userData.name,
           email: userData.email,
           role: userData.role ? String(userData.role).toLowerCase() : UserRole.GUEST,
           phoneNumber: userData.phoneNumber || '',
-          college: userData.college || '', // Include college field
-          // Use organizationId from database
-          ...(organizationId && {
-            organization: organizationId,
-            organizationId: organizationId,
-          }),
-          ...((userData.role === UserRole.STUDENT || userData.role === UserRole.EMPLOYEE || userData.role === UserRole.CONTRACTOR || userData.role === UserRole.VISITOR || userData.role === UserRole.GUEST) && {
+          college: userData.college || '',
+          ...(organizationId && { organization: organizationId, organizationId }),
+          ...((userData.role === UserRole.STUDENT ||
+               userData.role === UserRole.EMPLOYEE ||
+               userData.role === UserRole.CONTRACTOR ||
+               userData.role === UserRole.VISITOR ||
+               userData.role === UserRole.GUEST) && {
             registerNumber: userData.registerNumber || '',
             department: userData.department || '',
             currentStudyYear: userData.currentStudyYear?.toString() || '1',
             isPassed: userData.isPassed || false,
           }),
-          ...(userData.role === UserRole.STAFF && {
-            staffId: userData.staffId || '',
-          }),
-          // Include location preferences
+          ...(userData.role === UserRole.STAFF && { staffId: userData.staffId || '' }),
           selectedLocationType: userData.selectedLocationType,
           selectedLocationId: userData.selectedLocationId,
-          // Include restaurant context if present
           restaurantId: userData.restaurantId,
           restaurantName: userData.restaurantName,
-          tableNumber: userData.tableNumber
+          tableNumber: userData.tableNumber,
         };
 
-        console.log('Logging in user with data:', userDisplayData);
-        console.log('🔧 Organization ID from database:', userDisplayData.organization);
-
-        // Use the proper login function to maintain authentication state
         login(userDisplayData);
 
-        // Keep loading state true until redirect completes
-        // Check for stored redirect (from QR code etc)
         const authRedirect = sessionStorage.getItem('authRedirect');
         if (authRedirect) {
           sessionStorage.removeItem('authRedirect');
-          console.log('🔄 Restoring redirect from session:', authRedirect);
           setLocation(decodeURIComponent(authRedirect));
           return;
         }
 
-        // Redirect based on role
-        // Normalize role to lowercase for comparison
         const userRole = userData.role ? String(userData.role).toLowerCase() : '';
 
         if (userRole === UserRole.SUPER_ADMIN) {
@@ -195,46 +177,28 @@ export default function OAuthCallback() {
         } else if (userRole === UserRole.ADMIN) {
           setLocation('/college-admin');
         } else if (userRole === UserRole.CANTEEN_OWNER || userRole === 'canteen-owner') {
-          // For canteen owners, we need to get their canteen ID first
           try {
-            console.log('Fetching canteen for owner:', userData.email);
-            const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`);
-            console.log('Canteen response status:', canteenResponse.status);
-
+            const canteenResponse = await fetch(`/api/system-settings/canteens/by-owner/${userData.email}`, {
+              credentials: 'include',
+            });
             if (canteenResponse.ok) {
               const canteenData = await canteenResponse.json();
-              console.log('Canteen data received:', canteenData);
-              console.log('Redirecting canteen owner to:', `/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
               setLocation(`/canteen-owner-dashboard/${canteenData.canteen.id}/counters`);
             } else {
-              // If canteen not found, redirect to login with error
-              const errorText = await canteenResponse.text();
-              console.error('Canteen not found for owner:', userData.email, 'Response:', errorText);
               setLocation('/login?error=no_canteen');
             }
-          } catch (error) {
-            console.error('Error fetching canteen for owner:', error);
+          } catch {
             setLocation('/login?error=canteen_fetch_failed');
           }
         } else if (userRole === UserRole.DELIVERY_PERSON) {
-          console.log('✅ Login successful, redirecting delivery person to portal');
-          setTimeout(() => {
-            setLocation('/delivery-portal');
-          }, 100);
+          setTimeout(() => setLocation('/delivery-portal'), 100);
         } else {
-          // Always redirect to /app after successful login to avoid splash screen
-          console.log('✅ Login successful, redirecting to app');
-          // Add a small delay to ensure login state is persisted
-          setTimeout(() => {
-            setLocation('/app');
-          }, 100);
+          setTimeout(() => setLocation('/app'), 100);
         }
-      } else {
-        console.log('User not found, checking for organization QR context');
 
-        // User doesn't exist - check if from organization QR
+      } else {
+        // User does not exist in DB yet — create them
         if (orgQRData) {
-          // Validate QR code first
           const validateResponse = await fetch(
             `/api/system-settings/qr-codes/validate/${orgQRData.organizationId}/${orgQRData.hash}?address=${encodeURIComponent(orgQRData.address)}`
           );
@@ -249,187 +213,94 @@ export default function OAuthCallback() {
           const validationData = await validateResponse.json();
           const { organization, fullAddress } = validationData;
 
-          // Create guest user - no registerNumber, department, or joiningYear needed
           const guestUser = {
-            email: user.email,
-            name: user.name || '',
-            phoneNumber: '', // Will be collected in profile setup
+            email: serverUser.email,
+            name: serverUser.name || '',
+            phoneNumber: '',
             role: UserRole.GUEST,
-            college: organization.name, // Store organization name in college field
-            isProfileComplete: false, // Need to collect phone number
+            college: organization.name,
+            isProfileComplete: false,
           };
 
           const createResponse = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(guestUser)
+            body: JSON.stringify(guestUser),
           });
 
-          if (createResponse.ok) {
-            const newUser = await createResponse.json();
+          if (createResponse.ok || createResponse.status === 409) {
+            const newUser = createResponse.ok
+              ? await createResponse.json()
+              : await fetch(`/api/users/by-email/${encodeURIComponent(serverUser.email)}`, { credentials: 'include' }).then(r => r.json());
 
-            // Store organization context for profile setup (including full address)
             sessionStorage.setItem('orgContext', JSON.stringify({
               organizationId: organization.id,
               organizationName: organization.name,
-              fullAddress: fullAddress, // Store full address to auto-add to user addresses
+              fullAddress,
             }));
-
-            // Remove pending QR data
             sessionStorage.removeItem('pendingOrgQRData');
 
-            console.log('✅ Guest user created with organization context');
             setIsLoading(false);
             const redirect = getPostLoginRedirect();
             setLocation(redirect || `/profile-setup?email=${encodeURIComponent(newUser.email)}&name=${encodeURIComponent(newUser.name)}`);
-          } else if (createResponse.status === 409) {
-            // User already exists (race condition - Google OAuth created user first)
-            // Fetch the existing user and continue with the flow
-            console.log('⚠️ User already exists (race condition), fetching existing user...');
-            const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
-            if (existingUserResponse.ok) {
-              const existingUser = await existingUserResponse.json();
-
-              // Store organization context for profile setup (including full address)
-              sessionStorage.setItem('orgContext', JSON.stringify({
-                organizationId: organization.id,
-                organizationName: organization.name,
-                fullAddress: fullAddress, // Store full address to auto-add to user addresses
-              }));
-
-              // Remove pending QR data
-              sessionStorage.removeItem('pendingOrgQRData');
-
-              // Check if user needs profile completion
-              if (!existingUser.phoneNumber || !existingUser.organizationId) {
-                // Update user with organizationId if missing
-                if (!existingUser.organizationId) {
-                  try {
-                    await fetch(`/api/users/${existingUser.id}`, {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        organizationId: organization.id,
-                      })
-                    });
-                  } catch (e) {
-                    console.error('Error updating user with organizationId:', e);
-                  }
-                }
-
-                console.log('✅ Existing user needs profile completion, redirecting to profile setup');
-                setIsLoading(false);
-                setLocation(`/profile-setup?email=${encodeURIComponent(existingUser.email)}&name=${encodeURIComponent(existingUser.name)}`);
-              } else {
-                // User is complete, log them in
-                const organizationId = existingUser.organizationId || organization.id;
-                const userDisplayData = {
-                  id: existingUser.id,
-                  name: existingUser.name,
-                  email: existingUser.email,
-                  role: existingUser.role || UserRole.GUEST,
-                  phoneNumber: existingUser.phoneNumber || '',
-                  ...(organizationId && {
-                    organization: organizationId,
-                    organizationId: organizationId,
-                  }),
-                };
-                login(userDisplayData);
-                setIsLoading(false);
-                const redirect = getPostLoginRedirect();
-                setTimeout(() => {
-                  setLocation(redirect || '/app');
-                }, 100);
-              }
-            } else {
-              const errorData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
-              alert(`Failed to create account: ${errorData.message || 'Unknown error'}`);
-              setIsLoading(false);
-              setLocation('/login');
-            }
           } else {
-            const errorData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
-            alert(`Failed to create account: ${errorData.message || 'Unknown error'}`);
+            const errData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
+            alert(`Failed to create account: ${errData.message}`);
             setIsLoading(false);
             setLocation('/login');
           }
         } else {
-          // Regular new Google user - create minimal account and login
-          const minimalUser = {
-            email: user.email,
-            name: user.name || '',
-            role: UserRole.GUEST,
-            isProfileComplete: false,
-          };
+          // Regular new Google user
           const createResponse = await fetch('/api/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(minimalUser)
+            body: JSON.stringify({
+              email: serverUser.email,
+              name: serverUser.name || '',
+              role: UserRole.GUEST,
+              isProfileComplete: false,
+            }),
           });
-          if (createResponse.ok) {
-            const created = await createResponse.json();
-            const userDisplayData = {
-              id: created.id,
-              name: created.name,
-              email: created.email,
-              role: created.role || UserRole.GUEST,
-              phoneNumber: created.phoneNumber || '',
-            };
-            login(userDisplayData);
+
+          const createdUser = createResponse.ok
+            ? await createResponse.json()
+            : createResponse.status === 409
+              ? await fetch(`/api/users/by-email/${encodeURIComponent(serverUser.email)}`, { credentials: 'include' }).then(r => r.json())
+              : null;
+
+          if (createdUser) {
+            login({
+              id: createdUser.id,
+              name: createdUser.name,
+              email: createdUser.email,
+              role: createdUser.role || UserRole.GUEST,
+              phoneNumber: createdUser.phoneNumber || '',
+            });
             setIsLoading(false);
             const redirect = getPostLoginRedirect();
-            setTimeout(() => {
-              setLocation(redirect || '/app');
-            }, 100);
-          } else if (createResponse.status === 409) {
-            const existingUserResponse = await fetch(`/api/users/by-email/${user.email}`);
-            if (existingUserResponse.ok) {
-              const existingUser = await existingUserResponse.json();
-              const userDisplayData = {
-                id: existingUser.id,
-                name: existingUser.name,
-                email: existingUser.email,
-                role: existingUser.role || 'guest',
-                phoneNumber: existingUser.phoneNumber || '',
-              };
-              login(userDisplayData);
-              setIsLoading(false);
-              const redirect2 = getPostLoginRedirect();
-              setTimeout(() => {
-                setLocation(redirect2 || '/app');
-              }, 100);
-            } else {
-              const errData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
-              alert(`Failed to create account: ${errData.message || 'Unknown error'}`);
-              setIsLoading(false);
-              setLocation('/login');
-            }
+            setTimeout(() => setLocation(redirect || '/app'), 100);
           } else {
             const errData = await createResponse.json().catch(() => ({ message: 'Unknown error' }));
-            alert(`Failed to create account: ${errData.message || 'Unknown error'}`);
+            alert(`Failed to create account: ${errData.message}`);
             setIsLoading(false);
             setLocation('/login');
           }
         }
       }
-    } catch (error) {
-      console.error('User authentication error:', error);
+    } catch (err) {
+      console.error('User authentication error:', err);
       setError('Failed to authenticate user');
       setIsLoading(false);
     }
   };
 
-  if (isLoading || isSuccess) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-foreground mb-2">
-            {isSuccess ? 'Sign-in successful!' : 'Completing sign-in...'}
-          </h2>
-          <p className="text-muted-foreground">
-            {isSuccess ? 'Redirecting you now...' : 'Please wait while we authenticate your account.'}
-          </p>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Completing sign-in...</h2>
+          <p className="text-muted-foreground">Please wait while we verify your account.</p>
         </div>
       </div>
     );

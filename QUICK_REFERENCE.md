@@ -1,6 +1,5 @@
 # Connection Code System - Quick Reference
 
-## 🚀 Quick Start
 
 ```bash
 # Setup (Windows)

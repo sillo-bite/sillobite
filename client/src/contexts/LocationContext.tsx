@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useAuthSync } from '@/hooks/useDataSync';
 
 interface LocationContextType {
@@ -22,6 +22,9 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedLocationName, setSelectedLocationName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Track the last fetched location key to avoid duplicate fetches when user object
+  // re-renders with the same values (e.g. multiple auth state updates on login)
+  const lastFetchedKey = useRef<string | null>(null);
 
   useEffect(() => {
     const loadLocation = async () => {
@@ -34,6 +37,13 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
           if (userLocationId.startsWith('college-')) userLocationType = 'college';
           else if (userLocationId.startsWith('org-')) userLocationType = 'organization';
           else if (userLocationId.startsWith('rest-')) userLocationType = 'restaurant';
+        }
+
+        // Skip if we already fetched for this exact location key
+        const fetchKey = userLocationType && userLocationId ? `${userLocationType}:${userLocationId}` : null;
+        if (fetchKey && fetchKey === lastFetchedKey.current) {
+          setIsLoading(false);
+          return;
         }
 
         if (userLocationType && userLocationId) {
@@ -59,6 +69,7 @@ export const LocationProvider = React.memo(function LocationProvider({ children 
                 // Save to localStorage for offline access
                 localStorage.setItem('selectedLocation', JSON.stringify(locationData));
                 console.log('✅ Location loaded from user data:', location.name);
+                lastFetchedKey.current = fetchKey;
                 setIsLoading(false);
                 return;
               }

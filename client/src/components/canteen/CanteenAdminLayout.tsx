@@ -94,16 +94,19 @@ export default function CanteenAdminLayout({ children, canteenId }: CanteenAdmin
 
   const handleLogout = async () => {
     try {
-      // Clear any stored authentication data
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-
-      // Redirect to login
-      setLocation('/admin/login');
-
+      // Destroy server session so the cookie is invalidated immediately
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Server logout error:', error);
     }
+
+    // Clear local auth state
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('session_timestamp');
+    localStorage.removeItem('last_activity');
+
+    setLocation('/admin/login');
   };
 
   // Redirect to login if not authenticated

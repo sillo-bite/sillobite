@@ -79,9 +79,9 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
   useEffect(() => {
     const handleResize = () => {
-      // Banner is 1:1 aspect ratio, so height = width
+      // Banner has a max height of min(100vw, 420px)
       if (selectedCanteen?.bannerUrl) {
-        setScrollThreshold(Math.max(20, window.innerWidth - 80));
+        setScrollThreshold(Math.min(Math.max(20, window.innerWidth - 80), 380));
       } else {
         setScrollThreshold(20);
       }
@@ -576,7 +576,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
         {/* Canteen Banner Background - Fixed position with parallax effect */}
         {selectedCanteen?.bannerUrl && (
-          <div className="fixed top-0 left-0 w-full aspect-[1/1] z-0 overflow-hidden pointer-events-none">
+          <div className="fixed top-0 left-0 w-full z-0 overflow-hidden pointer-events-none" style={{ height: 'min(100vw, 420px)' }}>
             <div
               className="w-full h-full relative"
               style={{
@@ -612,8 +612,8 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
             }`}
         >
           {/* Top section - Canteen selector and profile */}
-          <div className="px-4 pt-6 pb-3">
-            <div className="flex items-center justify-between gap-2">
+          <div className="px-4 md:px-6 pt-6 pb-3">
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-2">
               <div className="flex items-center flex-1 min-w-0 gap-2">
                 <Button
                   variant="ghost"
@@ -706,7 +706,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
         {/* Spacer for Fixed Banner or Fixed Header */}
         {selectedCanteen?.bannerUrl ? (
-          <div className="w-full aspect-[1/1] pointer-events-none" />
+          <div className="w-full pointer-events-none" style={{ height: 'min(100vw, 420px)' }} />
         ) : (
           <div className="w-full h-[88px] pointer-events-none" />
         )}
@@ -728,7 +728,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
           <div className="bg-background min-h-[50vh] pb-20 pt-4 relative z-20">
             {/* Canteen Info Card Overlay - Inside background but pulled up */}
             {selectedCanteen?.bannerUrl && (
-              <div className="px-4 -mt-16 mb-6">
+              <div className="max-w-4xl mx-auto px-4 md:px-6 -mt-16 mb-6">
                 <CanteenInfoCard
                   className="shadow-xl"
                   title={selectedCanteen.name}
@@ -741,7 +741,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
 
             {/* Incomplete Profile Message */}
             {showIncompleteProfileMessage && !hasRestaurantContext && (
-              <div className="px-4 mt-4">
+              <div className="max-w-4xl mx-auto px-4 md:px-6 mt-4">
                 <Card className={`border-2 ${resolvedTheme === 'dark'
                   ? 'bg-blue-950/50 border-blue-800'
                   : 'bg-blue-50 border-blue-200'
@@ -824,7 +824,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
             )} */}
 
             {/* Main Content Sections */}
-            <div className="px-4 space-y-8 mt-8">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 space-y-8 mt-8">
               {/* Trending Now Section - Premium Design */}
               <ErrorBoundary>
                 <section className="animate-slide-up-fade" style={{ animationDelay: '300ms' }}>
@@ -839,7 +839,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   </div>
 
                   {trendingItems.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {trendingItems.map((item, index) => (
                         <div
                           key={item.id}
@@ -887,7 +887,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                   </div>
 
                   {quickPickItems.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {quickPickItems.map((item, index) => (
                         <div
                           key={item.id}
@@ -986,14 +986,14 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
             >
               {/* Search Header */}
               <div
-                className="sticky top-0 z-10 px-4 pt-12 pb-4"
+                className="sticky top-0 z-10 px-4 md:px-6 pt-12 pb-4"
                 style={{
                   background: resolvedTheme === 'dark'
                     ? 'rgba(15, 10, 24, 0.95)'
                     : 'rgba(255, 255, 255, 0.95)',
                 }}
               >
-                <div className="flex items-center gap-3">
+                <div className="max-w-4xl mx-auto flex items-center gap-3">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1070,7 +1070,8 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
               </div>
 
               {/* Search Content */}
-              <div className="px-4 py-4 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
+              <div className="px-4 md:px-6 py-4 overflow-y-auto" style={{ height: 'calc(100vh - 120px)' }}>
+                <div className="max-w-4xl mx-auto">
                 {hasSearchQuery ? (
                   <div className="animate-in fade-in duration-200">
                     {/* Results header */}
@@ -1225,6 +1226,7 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                     </div>
                   </div>
                 )}
+                </div>{/* /max-w-4xl */}
               </div>
             </div>
           )}

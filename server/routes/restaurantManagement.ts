@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import mongoose from "mongoose";
 import { insertRestaurantSchema, insertRestaurantEmployeeSchema, insertRestaurantTableSchema } from "../../shared/schema";
 import { validateQRCodeHash, generateQRCodeUrl } from "../../shared/qrCodeUtils";
+import { requireAdmin, requireAuth } from "../middleware/authMiddleware";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const checkMongoConnection = () => {
 };
 
 // Restaurant CRUD operations
-router.get("/api/admin/restaurants", async (req, res) => {
+router.get("/api/admin/restaurants", requireAdmin, async (req, res) => {
   try {
     const db = checkMongoConnection();
     const restaurants = await db.collection("restaurants").find({}).toArray();
@@ -26,7 +27,7 @@ router.get("/api/admin/restaurants", async (req, res) => {
   }
 });
 
-router.get("/api/admin/restaurants/:id", async (req, res) => {
+router.get("/api/admin/restaurants/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const restaurant = await checkMongoConnection().collection("restaurants").findOne({ _id: new ObjectId(id) });
@@ -42,7 +43,7 @@ router.get("/api/admin/restaurants/:id", async (req, res) => {
   }
 });
 
-router.post("/api/admin/restaurants", async (req, res) => {
+router.post("/api/admin/restaurants", requireAdmin, async (req, res) => {
   try {
     const validatedData = insertRestaurantSchema.parse(req.body);
 
@@ -64,7 +65,7 @@ router.post("/api/admin/restaurants", async (req, res) => {
   }
 });
 
-router.put("/api/admin/restaurants/:id", async (req, res) => {
+router.put("/api/admin/restaurants/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertRestaurantSchema.parse(req.body);
@@ -94,7 +95,7 @@ router.put("/api/admin/restaurants/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/admin/restaurants/:id", async (req, res) => {
+router.delete("/api/admin/restaurants/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -124,7 +125,7 @@ router.delete("/api/admin/restaurants/:id", async (req, res) => {
 });
 
 // GET employees by restaurant ID
-router.get("/api/admin/restaurants/:restaurantId/employees", async (req, res) => {
+router.get("/api/admin/restaurants/:restaurantId/employees", requireAdmin, async (req, res) => {
   try {
     const db = checkMongoConnection();
     const { restaurantId } = req.params;
@@ -137,7 +138,7 @@ router.get("/api/admin/restaurants/:restaurantId/employees", async (req, res) =>
 });
 
 // GET tables by restaurant ID
-router.get("/api/admin/restaurants/:restaurantId/tables", async (req, res) => {
+router.get("/api/admin/restaurants/:restaurantId/tables", requireAdmin, async (req, res) => {
   try {
     const db = checkMongoConnection();
     const { restaurantId } = req.params;
@@ -150,7 +151,7 @@ router.get("/api/admin/restaurants/:restaurantId/tables", async (req, res) => {
 });
 
 // Employee CRUD operations
-router.get("/api/admin/employees", async (req, res) => {
+router.get("/api/admin/employees", requireAdmin, async (req, res) => {
   try {
     const employees = await checkMongoConnection().collection("restaurantEmployees").find({}).toArray();
     res.json(employees);
@@ -160,7 +161,7 @@ router.get("/api/admin/employees", async (req, res) => {
   }
 });
 
-router.get("/api/admin/restaurants/:restaurantId/employees", async (req, res) => {
+router.get("/api/admin/restaurants/:restaurantId/employees", requireAdmin, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const employees = await checkMongoConnection().collection("restaurantEmployees").find({ restaurantId }).toArray();
@@ -171,7 +172,7 @@ router.get("/api/admin/restaurants/:restaurantId/employees", async (req, res) =>
   }
 });
 
-router.get("/api/admin/employees/:id", async (req, res) => {
+router.get("/api/admin/employees/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const employee = await checkMongoConnection().collection("restaurantEmployees").findOne({ _id: new ObjectId(id) });
@@ -187,7 +188,7 @@ router.get("/api/admin/employees/:id", async (req, res) => {
   }
 });
 
-router.post("/api/admin/employees", async (req, res) => {
+router.post("/api/admin/employees", requireAdmin, async (req, res) => {
   try {
     // Convert hireDate string to Date object if it exists
     const dataToValidate = {
@@ -215,7 +216,7 @@ router.post("/api/admin/employees", async (req, res) => {
   }
 });
 
-router.put("/api/admin/employees/:id", async (req, res) => {
+router.put("/api/admin/employees/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -252,7 +253,7 @@ router.put("/api/admin/employees/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/admin/employees/:id", async (req, res) => {
+router.delete("/api/admin/employees/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -285,7 +286,7 @@ router.delete("/api/admin/employees/:id", async (req, res) => {
 });
 
 // Table CRUD operations
-router.get("/api/admin/tables", async (req, res) => {
+router.get("/api/admin/tables", requireAdmin, async (req, res) => {
   try {
     const tables = await checkMongoConnection().collection("restaurantTables").find({}).toArray();
     res.json(tables);
@@ -295,7 +296,7 @@ router.get("/api/admin/tables", async (req, res) => {
   }
 });
 
-router.get("/api/admin/restaurants/:restaurantId/tables", async (req, res) => {
+router.get("/api/admin/restaurants/:restaurantId/tables", requireAdmin, async (req, res) => {
   try {
     const { restaurantId } = req.params;
     const tables = await checkMongoConnection().collection("restaurantTables").find({ restaurantId }).toArray();
@@ -306,7 +307,7 @@ router.get("/api/admin/restaurants/:restaurantId/tables", async (req, res) => {
   }
 });
 
-router.get("/api/admin/tables/:id", async (req, res) => {
+router.get("/api/admin/tables/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const table = await checkMongoConnection().collection("restaurantTables").findOne({ _id: new ObjectId(id) });
@@ -322,7 +323,7 @@ router.get("/api/admin/tables/:id", async (req, res) => {
   }
 });
 
-router.post("/api/admin/tables", async (req, res) => {
+router.post("/api/admin/tables", requireAdmin, async (req, res) => {
   try {
     const validatedData = insertRestaurantTableSchema.parse(req.body);
 
@@ -354,7 +355,7 @@ router.post("/api/admin/tables", async (req, res) => {
   }
 });
 
-router.put("/api/admin/tables/:id", async (req, res) => {
+router.put("/api/admin/tables/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const validatedData = insertRestaurantTableSchema.parse(req.body);
@@ -395,7 +396,7 @@ router.put("/api/admin/tables/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/admin/tables/:id", async (req, res) => {
+router.delete("/api/admin/tables/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -413,7 +414,7 @@ router.delete("/api/admin/tables/:id", async (req, res) => {
 });
 
 // Dashboard statistics
-router.get("/api/admin/restaurant-stats", async (req, res) => {
+router.get("/api/admin/restaurant-stats", requireAdmin, async (req, res) => {
   try {
     const totalRestaurants = await checkMongoConnection().collection("restaurants").countDocuments();
     const activeRestaurants = await checkMongoConnection().collection("restaurants").countDocuments({ isActive: true });
@@ -501,7 +502,7 @@ router.get('/api/table-access/:restaurantId/:tableNumber/:hash', async (req, res
 });
 
 // Generate QR code URL with secure hash
-router.post('/api/admin/generate-qr-code', async (req, res) => {
+router.post('/api/admin/generate-qr-code', requireAdmin, async (req, res) => {
   try {
     const { restaurantId, tableNumber, baseUrl } = req.body;
 

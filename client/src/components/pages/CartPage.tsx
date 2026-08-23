@@ -312,9 +312,9 @@ export default function CartPage() {
         className={`w-full h-auto min-h-fit flex flex-col bg-background`}
       >
         {/* Header */}
-        <div className={`px-4 pt-12 pb-6 rounded-b-2xl flex-shrink-0 ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'
+        <div className={`px-4 md:px-6 pt-12 pb-6 rounded-b-2xl flex-shrink-0 ${resolvedTheme === 'dark' ? 'bg-background' : 'bg-background'
           }`}>
-          <div className="flex items-center justify-between">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -358,7 +358,7 @@ export default function CartPage() {
 
         {/* Scrollable Content Area */}
         <div
-          className="flex flex-col px-4 space-y-4 mt-4"
+          className="max-w-4xl mx-auto w-full px-4 md:px-6 flex flex-col space-y-4 mt-4"
           style={{
             paddingBottom: cart.length > 0
               ? 'calc(100px + env(safe-area-inset-bottom, 0px))'
@@ -582,12 +582,13 @@ export default function CartPage() {
         {/* Premium Floating Checkout Card */}
         {cart.length > 0 && (
           <div
-            className={`fixed left-4 right-4 z-[9998] p-5 rounded-[28px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] ${resolvedTheme === 'dark' ? 'bg-[#1a1a1a] border border-gray-800' : 'bg-white'
-              }`}
+            className={`fixed bottom-0 left-0 right-0 z-[9998] ${resolvedTheme === 'dark' ? 'bg-[#1a1a1a] border-t border-gray-800' : 'bg-white border-t border-gray-100'} shadow-[0_-8px_30px_rgba(0,0,0,0.08)]`}
             style={{
-              bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+              paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
             }}
           >
+            <div className="max-w-4xl mx-auto px-4 md:px-6 pt-5 pb-1">
+              <div className={`rounded-[28px] p-5 ${resolvedTheme === 'dark' ? 'bg-[#1a1a1a]' : 'bg-white'}`}>
             <div className="flex justify-between items-start mb-5 px-1">
               <div className="flex flex-col">
                 <span className={`text-[15px] font-bold tracking-tight leading-tight ${resolvedTheme === 'dark' ? 'text-gray-300' : 'text-gray-800'}`}>
@@ -635,6 +636,8 @@ export default function CartPage() {
                 <span>Checkout</span>
               )}
             </button>
+            </div>{/* /rounded card */}
+            </div>{/* /max-w-4xl */}
           </div>
         )}
 

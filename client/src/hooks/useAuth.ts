@@ -236,38 +236,47 @@ export function useAuth() {
   const logout = async () => {
     console.log("🚀 Complete logout initiated...");
 
-    // Check if this is a temporary user
     const isTemporary = isTempUser(user);
 
     if (isTemporary) {
       console.log("🍽️ Logging out temporary user...");
-
-      // Check if this is a server-managed temp user
       const serverTempUser = getServerTempUserSession();
       if (serverTempUser && serverTempUser.sessionId) {
         console.log("🔄 Ending server session...");
         try {
           await fetch(`/api/temp-session/${serverTempUser.sessionId}/end`, {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include',
           });
         } catch (error) {
           console.warn("⚠️ Failed to end server session:", error);
         }
         clearServerTempUserSession();
       } else {
-        // Clear legacy temporary user data
         clearTempUserData();
       }
     } else {
-      // Sign out from Google OAuth to clear cached Google accounts
+      // ── SECURITY FIX: Destroy the server-side session first ──────────────
+      // Without this, the session cookie remains valid even after localStorage
+      // is cleared — an attacker who copied the cookie could still use it.
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        console.log("✅ Server session destroyed");
+      } catch (error) {
+        console.warn("⚠️ Server session logout failed (will expire naturally):", error);
+      }
+
+      // Clear Google OAuth local state (also calls server logout again — harmless)
       try {
         signOutGoogle();
-        console.log("✅ Google OAuth session cleared");
+        console.log("✅ Google OAuth local state cleared");
       } catch (error) {
         console.warn("⚠️ Google OAuth signOut failed:", error);
       }
 
-      // Complete cache clearing for logout
       try {
         await CacheManager.clearLogoutCaches();
         console.log("✅ Complete logout cache clearing finished");
@@ -276,13 +285,10 @@ export function useAuth() {
       }
     }
 
-    // Clear local app session
     setUser(null);
     clearPWAAuth();
-    // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('userAuthChange'));
 
-    // Force reload to ensure clean state
     setTimeout(() => {
       window.location.href = isTemporary ? '/' : '/login';
     }, 100);

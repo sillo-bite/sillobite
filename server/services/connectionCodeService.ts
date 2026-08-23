@@ -80,7 +80,7 @@ export const connectionCodeService = {
     await db.$executeRaw`
       UPDATE connection_codes 
       SET is_used = true 
-      WHERE id = ${ccd.id}
+      WHERE id = ${ccd.id}::uuid
     `;
 
     const tk = genToken();
@@ -92,8 +92,6 @@ export const connectionCodeService = {
       ON CONFLICT (user_id) 
       DO UPDATE SET token = ${tk}, created_at = NOW()
     `;
-
-    console.log(`✅ Token created for user ${usr.id}: ${tk.substring(0, 10)}...`);
 
     return { token: tk, userId: usr.id };
   },

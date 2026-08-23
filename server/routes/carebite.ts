@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { carebiteController } from '../controllers/carebiteController';
+import { requireAdmin } from '../middleware/authMiddleware';
 
 const rt = Router();
 
-rt.post('/menu', carebiteController.getMenu);
-rt.post('/create-order', carebiteController.createOrder);
+rt.post('/menu',requireAdmin,  carebiteController.getMenu);
 
 export default rt;

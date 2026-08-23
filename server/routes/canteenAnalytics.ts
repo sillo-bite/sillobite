@@ -1,9 +1,10 @@
 import express from 'express';
 import { Order, MenuItem } from '../models/mongodb-models';
+import { requireCanteenOwnerOrAdmin, requireAuth } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-router.get('/:canteenId/monitor', async (req, res) => {
+router.get('/:canteenId/monitor', requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
         const { canteenId } = req.params;
         const startOfDay = new Date();
@@ -55,7 +56,7 @@ router.get('/:canteenId/monitor', async (req, res) => {
     }
 });
 
-router.get('/:canteenId/menu-stats', async (req, res) => {
+router.get('/:canteenId/menu-stats', requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
         const { canteenId } = req.params;
 

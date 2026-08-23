@@ -99,29 +99,32 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const handleLogout = async () => {
     console.log("🚀 Complete logout initiated...");
-    
-    // Sign out from Google OAuth to clear cached Google accounts
+
+    // Destroy server session first so the cookie is invalidated immediately
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      console.log("✅ Server session destroyed");
+    } catch (error) {
+      console.warn("⚠️ Server session logout failed:", error);
+    }
+
     try {
       signOutGoogle();
       console.log("✅ Google OAuth session cleared");
     } catch (error) {
       console.warn("⚠️ Google OAuth signOut failed:", error);
     }
-    
-    // Complete cache clearing for logout
+
     try {
       await CacheManager.clearLogoutCaches();
       console.log("✅ Complete logout cache clearing finished");
     } catch (error) {
       console.warn("⚠️ Cache clearing failed:", error);
     }
-    
-    // Clear local app session
+
     clearPWAAuth();
-    // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent('userAuthChange'));
-    
-    // Force reload to ensure clean state
+
     setTimeout(() => {
       setLocation("/login");
     }, 100);
