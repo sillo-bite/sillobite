@@ -150,6 +150,11 @@ export default {
           "0%": { transform: "rotate(0deg)" },
           "100%": { transform: "rotate(360deg)" },
         },
+        "scan-line": {
+          "0%": { top: "17.5%", opacity: "1" },
+          "50%": { top: "82.5%", opacity: "1" },
+          "100%": { top: "17.5%", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -163,6 +168,7 @@ export default {
         "pulse-soft": "pulse-soft 3s ease-in-out infinite",
         "pulse-slow": "pulse-slow 4s ease-in-out infinite",
         "spin-slow": "spin-slow 15s linear infinite",
+        "scan-line": "scan-line 2s ease-in-out infinite",
       },
     },
   },
