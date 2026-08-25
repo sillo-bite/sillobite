@@ -3,7 +3,7 @@ import { useLocation, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, ChefHat, Package, Phone, ArrowLeft, Store, CreditCard, XCircle, AlertTriangle, RefreshCw, Truck, ChevronDown, ChevronUp } from "lucide-react";
-import JsBarcode from 'jsbarcode';
+import { QRCodeSVG } from 'qrcode.react';
 import { formatOrderIdDisplay } from "@shared/utils";
 import type { Order } from '@shared/schema';
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -14,50 +14,29 @@ import { updateStatusBarColor, getColorFromTailwindClass } from "@/utils/statusB
 import { useTheme } from "@/contexts/ThemeContext";
 import Lottie from "lottie-react";
 const preparingAnimation = "/lottiefiles/preparing.json";
-// Real Barcode Generator Component using JsBarcode library
-const BarcodeGenerator = ({ orderId }: { orderId: string }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+// QR Code Generator Component
+// Encodes "orderId-barcodeId" so the store counter can scan and auto-fetch the order
+const OrderQRCode = ({ orderId, barcodeId }: { orderId: string; barcodeId: string }) => {
   const { resolvedTheme } = useTheme();
-  useEffect(() => {
-    if (canvasRef.current) {
-      try {
-        // Generate a proper Code 128 barcode
-        JsBarcode(canvasRef.current, orderId, {
-          format: "CODE128",
-          width: 2,
-          height: 60,
-          displayValue: true,
-          background: "transparent",
-          lineColor: resolvedTheme === 'dark' ? "#ffffff" : "#31084A",
-          margin: 10,
-          fontSize: 14,
-          textAlign: "center",
-          textPosition: "bottom"
-        });
-      } catch (error) {
-        // Barcode generation failed - fallback to text display
-        const canvas = canvasRef.current;
-        const ctx = canvas?.getContext('2d');
-        if (ctx && canvas) {
-          canvas.width = 250;
-          canvas.height = 80;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = '#31084A';
-          ctx.font = '16px monospace';
-          ctx.textAlign = 'center';
-          ctx.fillText(`Order: ${orderId}`, canvas.width / 2, canvas.height / 2);
-        }
-      }
-    }
-  }, [orderId]);
+  const qrValue = `${orderId}-${barcodeId}`;
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="mx-auto"
-      style={{ maxWidth: '100%', height: 'auto' }}
-    />
+    <div className="flex flex-col items-center">
+      <div className={`p-3 rounded-xl ${resolvedTheme === 'dark' ? 'bg-white' : 'bg-white'} shadow-md inline-block`}>
+        <QRCodeSVG
+          value={qrValue}
+          size={160}
+          bgColor="#ffffff"
+          fgColor="#31084A"
+          level="M"
+          includeMargin={false}
+        />
+      </div>
+      <p className="text-[10px] text-muted-foreground mt-1.5 font-mono opacity-60 tracking-wider">
+        Scan at counter
+      </p>
+    </div>
   );
 };
 
@@ -823,8 +802,11 @@ export default function OrderStatusPage() {
         )}
         {/* Order Barcode - At the Top (Hidden for cancelled/rejected orders) */}
         {orderStatus !== "cancelled" && orderStatus !== "rejected" && (
-          <div className={`p-3  mb-4 `}>
-            <BarcodeGenerator orderId={orderDetails.id} />
+          <div className="p-3 mb-4 flex justify-center">
+            <OrderQRCode
+              orderId={finalOrder.id}
+              barcodeId={orderDetails.id}
+            />
           </div>)
         }
       </div>
@@ -867,7 +849,7 @@ export default function OrderStatusPage() {
                           </p>
                         </div>
                         <p className={`text-[10px] mt-2 font-medium ${themeConfig.iconColor} opacity-80 text-center`}>
-                          Show this OTP or scan barcode above
+                          Show this OTP or scan QR code above
                         </p>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { formatOrderIdDisplay } from '@shared/utils';
 import OrderDetailsModal from '@/components/orders/OrderDetailsModal';
 import BarcodeScanModal from '@/components/modals/BarcodeScanModal';
+import CameraQRScannerModal from '@/components/modals/CameraQRScannerModal';
 import OrderFoundModal from '@/components/orders/OrderFoundModal';
 import OrderNotFoundModal from '@/components/orders/OrderNotFoundModal';
 
@@ -35,7 +36,8 @@ import {
   AlertTriangle,
   Zap,
   Truck,
-  Receipt
+  Receipt,
+  Camera
 } from 'lucide-react';
 
 interface StoreModeProps {
@@ -188,6 +190,8 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   const [isOrderNotFoundModalOpen, setIsOrderNotFoundModalOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState('');
   const [isDelivering, setIsDelivering] = useState(false);
+  const [isCameraQRModalOpen, setIsCameraQRModalOpen] = useState(false);
+  const [isQRFetching, setIsQRFetching] = useState(false);
   const [isDeliveryPersonModalOpen, setIsDeliveryPersonModalOpen] = useState(false);
   const [currentOrderForDelivery, setCurrentOrderForDelivery] = useState<any>(null);
   const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
@@ -1253,6 +1257,76 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     setCurrentOrderForBarcode(null);
   };
 
+  /**
+   * Called when the camera QR scanner successfully decodes a QR code.
+   * Expected QR value format: "<orderId>-<barcodeId>"
+   *   - orderId  = the MongoDB _id of the order  (used to fetch the order)
+   *   - barcodeId = the order.barcode value       (used to verify & open the delivery dialog)
+   */
+  const handleQRScanned = useCallback(async (rawValue: string) => {
+    console.log('📷 QR scanned raw value:', rawValue);
+
+    // Parse "orderId-barcodeId"
+    const dashIndex = rawValue.indexOf('-');
+    if (dashIndex === -1) {
+      console.warn('⚠️ QR value does not match expected format "orderId-barcodeId":', rawValue);
+      setScannedBarcode(rawValue);
+      setCurrentOrderForBarcode(null);
+      setIsOrderNotFoundModalOpen(true);
+      return;
+    }
+
+    const scannedOrderId = rawValue.slice(0, dashIndex);
+    const scannedBarcodeId = rawValue.slice(dashIndex + 1);
+
+    console.log('📷 Parsed QR — orderId:', scannedOrderId, '| barcodeId:', scannedBarcodeId);
+
+    setIsQRFetching(true);
+    try {
+      // Fetch the order directly by its MongoDB ID for efficiency
+      const fetchedOrder = await apiRequest(`/api/orders/${scannedOrderId}`) as any;
+      console.log('📷 Fetched order:', fetchedOrder?.orderNumber, '| status:', fetchedOrder?.status);
+
+      if (!fetchedOrder) {
+        setScannedBarcode(scannedBarcodeId);
+        setCurrentOrderForBarcode(null);
+        setIsOrderNotFoundModalOpen(true);
+        return;
+      }
+
+      // Filter the order so this counter only sees its own items
+      const filtered = filterOrderForCounter(fetchedOrder, counterId) ?? fetchedOrder;
+
+      setCurrentOrderForBarcode(filtered);
+      setScannedBarcode(scannedBarcodeId);
+
+      const status = fetchedOrder.status as string;
+      const isReady =
+        status === 'ready' ||
+        status === 'out_for_delivery' ||
+        areCounterItemsReady(filtered);
+
+      if (isReady) {
+        // Order is ready — open the OrderFoundModal (delivery confirmation dialog)
+        // using the parsed barcodeId as the verified barcode
+        console.log('✅ QR scan: order is ready, opening delivery dialog');
+        setIsOrderFoundModalOpen(true);
+      } else {
+        // Order is not yet ready — open the order details dialog so staff can see it
+        console.log('⏳ QR scan: order not ready, opening details dialog');
+        setSelectedOrder(filtered);
+        setIsModalOpen(true);
+      }
+    } catch (err) {
+      console.error('❌ Failed to fetch order from QR scan:', err);
+      setScannedBarcode(scannedBarcodeId);
+      setCurrentOrderForBarcode(null);
+      setIsOrderNotFoundModalOpen(true);
+    } finally {
+      setIsQRFetching(false);
+    }
+  }, [counterId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleMarkDelivered = async () => {
     try {
       if (!currentOrderForBarcode) {
@@ -1370,7 +1444,9 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/orders', canteenId, counterId] });
+              }}
               className="flex items-center space-x-2 flex-shrink-0"
               aria-label="Refresh"
             >
@@ -1431,14 +1507,31 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
             </div>
 
             <div className="mb-3 md:mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search active orders..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 text-sm md:text-base"
-                />
+              <div className="relative flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search active orders..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 text-sm md:text-base"
+                  />
+                </div>
+                {/* Camera QR scan button */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="flex-shrink-0 h-10 w-10 border-dashed border-primary/50 hover:border-primary hover:bg-primary/10 relative"
+                  onClick={() => setIsCameraQRModalOpen(true)}
+                  title="Scan QR code from order status screen"
+                  disabled={isQRFetching}
+                >
+                  {isQRFetching ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <Camera className="h-4 w-4 text-primary" />
+                  )}
+                </Button>
               </div>
             </div>
 
@@ -2239,6 +2332,13 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         isOpen={isOrderNotFoundModalOpen}
         onClose={handleCloseOrderNotFoundModal}
         scannedBarcode={scannedBarcode}
+      />
+
+      {/* Camera QR Scanner Modal */}
+      <CameraQRScannerModal
+        isOpen={isCameraQRModalOpen}
+        onClose={() => setIsCameraQRModalOpen(false)}
+        onQRScanned={handleQRScanned}
       />
     </div>
   );
