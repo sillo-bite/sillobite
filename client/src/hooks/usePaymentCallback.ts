@@ -8,7 +8,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { PAYMENT_CONFIG, PAYMENT_STATUS, type PaymentStatus } from '@/constants/payment';
-import type { PaymentData, PaymentStatusResponse, RazorpayCallbackParams, UsePaymentCallbackReturn } from '@/types/payment';
+import type { PaymentData, PaymentStatusResponse, ZohoCallbackParams, UsePaymentCallbackReturn } from '@/types/payment';
 import { PaymentVerificationError, PaymentStatusCheckError, PaymentCallbackError } from '@/lib/errors/paymentErrors';
 import { logger } from '@/lib/logger';
 import { trackPaymentEvent } from '@/utils/analytics';
@@ -44,9 +44,10 @@ export function usePaymentCallback(): UsePaymentCallbackReturn {
       try {
         // Extract payment info from URL or localStorage
         const urlParams = new URLSearchParams(window.location.search);
-        const razorpayPaymentId = urlParams.get('razorpay_payment_id');
-        const razorpayOrderId = urlParams.get('razorpay_order_id');
-        const razorpaySignature = urlParams.get('razorpay_signature');
+        const zohoPaymentId = urlParams.get('zoho_payment_id');
+        const zohoPaymentSessionId = urlParams.get('zoho_payment_session_id');
+        // Fallback for razorpay format just in case it's still coming from some places temporarily
+        const legacyRazorpayPaymentId = urlParams.get('razorpay_payment_id');
 
         merchantTransactionId = localStorage.getItem(PAYMENT_CONFIG.STORAGE_KEYS.TRANSACTION_ID);
         const storedOrderId = localStorage.getItem(PAYMENT_CONFIG.STORAGE_KEYS.ORDER_ID);
@@ -54,16 +55,15 @@ export function usePaymentCallback(): UsePaymentCallbackReturn {
         // Industry Standard: Track analytics
         trackPaymentEvent('callback.started', { transactionId: merchantTransactionId || undefined });
 
-        // If Razorpay callback parameters exist, verify and use them
-        if (razorpayPaymentId && razorpayOrderId && razorpaySignature) {
+        // If Zoho callback parameters exist, verify and use them
+        if (zohoPaymentId && zohoPaymentSessionId) {
           try {
-            const verifyResponse = await apiRequest<PaymentStatusResponse>('/api/payments/verify-razorpay', {
+            const verifyResponse = await apiRequest<PaymentStatusResponse>('/api/payments/verify-zoho', {
               method: 'POST',
               body: JSON.stringify({
-                razorpay_payment_id: razorpayPaymentId,
-                razorpay_order_id: razorpayOrderId,
-                razorpay_signature: razorpaySignature,
-              } as RazorpayCallbackParams),
+                zoho_payment_id: zohoPaymentId,
+                zoho_payment_session_id: zohoPaymentSessionId,
+              } as ZohoCallbackParams),
             });
 
             if (verifyResponse.success && verifyResponse.data?.merchantTransactionId) {
@@ -78,7 +78,7 @@ export function usePaymentCallback(): UsePaymentCallbackReturn {
               error: err.message,
             });
             throw new PaymentVerificationError(
-              'Failed to verify Razorpay payment',
+              'Failed to verify Zoho payment',
               merchantTransactionId || 'unknown',
               'VERIFICATION_FAILED'
             );

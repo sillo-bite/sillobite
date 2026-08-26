@@ -843,7 +843,7 @@ export default function CheckoutPage() {
       // Generate idempotency key to prevent duplicate payments
       const idempotencyKey = `payment_${userData.id || 'guest'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Initiate Razorpay payment with complete order data
+      // Initiate Zoho payment with complete order data
       const paymentResponse = await apiRequest('/api/payments/initiate', {
         method: 'POST',
         body: JSON.stringify({
@@ -865,7 +865,7 @@ export default function CheckoutPage() {
                 status: 'payment_initiated',
                 metadata: {
                   merchantTransactionId: paymentResponse.merchantTransactionId,
-                  razorpayOrderId: paymentResponse.razorpayOrderId
+                  zohoPaymentSessionId: paymentResponse.zohoPaymentSessionId
                 }
               })
             });
@@ -875,7 +875,7 @@ export default function CheckoutPage() {
         }
 
         // Validate required fields
-        if (!paymentResponse.keyId || !paymentResponse.razorpayOrderId) {
+        if (!paymentResponse.zohoPaymentSessionId || !paymentResponse.accountId) {
           setPaymentInProgress(false);
           paymentValidRef.current = false;
           localStorage.removeItem('pendingOrderData');
@@ -885,100 +885,65 @@ export default function CheckoutPage() {
 
         localStorage.setItem('currentPaymentTxnId', paymentResponse.merchantTransactionId);
 
-        // Function to initialize Razorpay checkout
-        const initRazorpay = () => {
+        // Function to initialize Zoho Payments checkout
+        const initZohoPayments = () => {
           try {
-            if (!(window as any).Razorpay) {
-              throw new Error('Razorpay script not loaded');
+            if (!(window as any).ZPayments) {
+              throw new Error('Zoho Payments script not loaded');
             }
 
-            const options = {
-              key: paymentResponse.keyId,
-              amount: paymentResponse.amount,
-              currency: paymentResponse.currency || 'INR',
-              name: 'Kit SilloBite',
-              description: 'Order Payment',
-              order_id: paymentResponse.razorpayOrderId,
-              handler: function (response: any) {
-                // Payment successful - update checkout session status before redirect
-                if (checkoutSessionId) {
-                  apiRequest(`/api/checkout-sessions/${checkoutSessionId}/update-status`, {
-                    method: 'POST',
-                    body: JSON.stringify({ status: 'payment_completed' })
-                  }).catch(console.error);
-                }
-                // Redirect to callback page
-                window.location.href = `/payment-callback?razorpay_payment_id=${response.razorpay_payment_id}&razorpay_order_id=${response.razorpay_order_id}&razorpay_signature=${response.razorpay_signature}`;
-              },
-              prefill: {
-                name: userData.name || 'Guest User',
-                email: userData.email || '',
-                contact: userData.phone || ''
-              },
-              theme: {
-                color: '#6366f1'
-              },
-              modal: {
-                ondismiss: async function () {
-                  // User closed the modal - restore stock and navigate back to cart
-                  setPaymentInProgress(false);
-                  paymentValidRef.current = false;
-
-                  // Restore stock by abandoning the session
-                  if (checkoutSessionId) {
-                    try {
-                      await apiRequest(`/api/checkout-sessions/${checkoutSessionId}/abandon`, {
-                        method: 'POST'
-                      });
-                      console.log('✅ Stock restored after payment modal dismissal');
-                    } catch (error) {
-                      console.error('Error restoring stock:', error);
-                    }
-                  }
-
-                  // Clean up local storage
-                  localStorage.removeItem('pendingOrderData');
-                  localStorage.removeItem('currentPaymentTxnId');
-                  localStorage.removeItem('currentCheckoutSessionId');
-
-                  // Navigate back to cart page
-                  window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
-                  setLocation('/app?view=cart');
-                }
+            const instance = new (window as any).ZPayments({
+              account_id: paymentResponse.accountId,
+              domain: 'IN',
+              otherOptions: {
+                api_key: paymentResponse.apiKey,
+                is_test_mode: paymentResponse.isTestMode
               }
-            };
+            });
 
-            const razorpay = new (window as any).Razorpay(options);
-            razorpay.on('payment.failed', async function (response: any) {
-              console.error('Payment failed:', response);
-
-              // Restore stock and update checkout session status to payment_failed
+            instance.requestPaymentMethod({
+              amount: paymentResponse.amount.toString(),
+              currency_code: paymentResponse.currency || 'INR',
+              payments_session_id: paymentResponse.zohoPaymentSessionId,
+              description: 'Order Payment'
+            }).then(function (response: any) {
+              // Payment successful - update checkout session status before redirect
               if (checkoutSessionId) {
-                try {
-                  // Restore stock by abandoning the session (which restores stock)
-                  await apiRequest(`/api/checkout-sessions/${checkoutSessionId}/abandon`, {
-                    method: 'POST'
-                  });
-                  // Then mark as payment_failed
-                  await apiRequest(`/api/checkout-sessions/${checkoutSessionId}/update-status`, {
-                    method: 'POST',
-                    body: JSON.stringify({ status: 'payment_failed' })
-                  });
-                  console.log('✅ Stock restored after payment failure');
-                } catch (error) {
-                  console.error('Error restoring stock or updating checkout session status:', error);
-                }
+                apiRequest(`/api/checkout-sessions/${checkoutSessionId}/update-status`, {
+                  method: 'POST',
+                  body: JSON.stringify({ status: 'payment_completed' })
+                }).catch(console.error);
               }
-
+              // Redirect to callback page
+              window.location.href = `/payment-callback?zoho_payment_id=${response.payment_id || response.id}&zoho_payment_session_id=${paymentResponse.zohoPaymentSessionId}`;
+            }).catch(function(error: any) {
+              console.error('Payment error or closed:', error);
+              // User closed the modal or payment failed - restore stock and navigate back to cart
               setPaymentInProgress(false);
               paymentValidRef.current = false;
+
+              // Restore stock by abandoning the session
+              if (checkoutSessionId) {
+                apiRequest(`/api/checkout-sessions/${checkoutSessionId}/abandon`, {
+                  method: 'POST'
+                }).then(() => {
+                  console.log('✅ Stock restored after payment failure/dismissal');
+                }).catch(err => {
+                  console.error('Error restoring stock:', err);
+                });
+              }
+
+              // Clean up local storage
               localStorage.removeItem('pendingOrderData');
               localStorage.removeItem('currentPaymentTxnId');
-              window.location.href = '/payment-callback?status=failed';
+              localStorage.removeItem('currentCheckoutSessionId');
+
+              // Navigate back to cart page
+              window.dispatchEvent(new CustomEvent('appNavigateToCart', {}));
+              setLocation('/app?view=cart');
             });
-            razorpay.open();
           } catch (error) {
-            console.error('Error initializing Razorpay:', error);
+            console.error('Error initializing Zoho Payments:', error);
             setPaymentInProgress(false);
             paymentValidRef.current = false;
             localStorage.removeItem('pendingOrderData');
@@ -987,27 +952,26 @@ export default function CheckoutPage() {
           }
         };
 
-        // Check if Razorpay script is already loaded
-        if ((window as any).Razorpay) {
-          initRazorpay();
+        // Check if Zoho script is already loaded
+        if ((window as any).ZPayments) {
+          initZohoPayments();
         } else {
-          // Load Razorpay Checkout script dynamically
-          const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+          // Load Zoho Checkout script dynamically
+          const existingScript = document.querySelector('script[src="https://static.zohocdn.com/zpay/zpay-js/v1/zpayments.js"]');
           if (existingScript) {
             // Script already exists, wait for it to load
-            existingScript.addEventListener('load', initRazorpay);
-            if ((window as any).Razorpay) {
-              initRazorpay();
+            existingScript.addEventListener('load', initZohoPayments);
+            if ((window as any).ZPayments) {
+              initZohoPayments();
             }
           } else {
             const script = document.createElement('script');
-            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-            script.onload = initRazorpay;
+            script.src = 'https://static.zohocdn.com/zpay/zpay-js/v1/zpayments.js';
+            script.onload = initZohoPayments;
             script.onerror = () => {
               setPaymentInProgress(false);
               paymentValidRef.current = false;
-              localStorage.removeItem('pendingOrderData');
-              alert('Failed to load payment gateway. Please try again.');
+              alert('Failed to load payment gateway script. Please check your connection.');
             };
             document.body.appendChild(script);
           }

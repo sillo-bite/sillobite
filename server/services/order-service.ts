@@ -6,7 +6,7 @@ import { webPushService } from './webPushService';
 import { CheckoutSessionService, checkDuplicatePaymentMiddleware } from '../checkout-session-service';
 import { getWebSocketManager } from '../websocket';
 import { MenuItem, CanteenCharge, Order } from '../models/mongodb-models';
-import { PAYMENT_STATUS } from '@shared/razorpay';
+import { PAYMENT_STATUS } from '@shared/zoho-payments';
 import { generateOrderNumber } from '@shared/utils';
 import { insertOrderSchema } from '@shared/schema';
 

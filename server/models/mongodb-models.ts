@@ -565,9 +565,11 @@ export interface IPayment extends Document {
   canteenId?: string; // Added canteenId field for direct canteen mapping
   merchantTransactionId: string;
   phonePeTransactionId?: string; // Legacy field for backward compatibility
-  razorpayTransactionId?: string;
-  razorpayOrderId?: string; // Razorpay Order ID for webhook lookups
-  razorpayPaymentId?: string; // Razorpay Payment ID for webhook lookups
+  razorpayTransactionId?: string; // Legacy: kept for historical data
+  razorpayOrderId?: string; // Legacy: Razorpay Order ID for historical webhook lookups
+  razorpayPaymentId?: string; // Legacy: Razorpay Payment ID for historical webhook lookups
+  zohoPaymentSessionId?: string; // Zoho Payment Session ID for webhook lookups
+  zohoPaymentId?: string; // Zoho Payment ID for webhook lookups
   checkoutSessionId?: string; // Checkout session ID for session-based lookups
   amount: number;
   status: string;
@@ -586,9 +588,11 @@ const PaymentSchema = new Schema<IPayment>({
   canteenId: { type: String }, // Added canteenId field for direct canteen mapping
   merchantTransactionId: { type: String, required: true, unique: true },
   phonePeTransactionId: { type: String }, // Legacy field for backward compatibility
-  razorpayTransactionId: { type: String, index: true }, // Indexed for webhook lookups
-  razorpayOrderId: { type: String, index: true }, // Indexed for webhook lookups by order ID
-  razorpayPaymentId: { type: String, index: true }, // Indexed for webhook lookups by payment ID
+  razorpayTransactionId: { type: String, index: true }, // Legacy: kept for historical data
+  razorpayOrderId: { type: String, index: true }, // Legacy: kept for historical data
+  razorpayPaymentId: { type: String, index: true }, // Legacy: kept for historical data
+  zohoPaymentSessionId: { type: String, index: true }, // Zoho Payment Session ID for webhook lookups
+  zohoPaymentId: { type: String, index: true }, // Zoho Payment ID for webhook lookups
   checkoutSessionId: { type: String, index: true }, // Indexed for session-based lookups
   amount: { type: Number, required: true },
   status: { type: String, default: 'pending' },
@@ -607,8 +611,10 @@ PaymentSchema.index({ orderId: 1 }); // For order-based payment lookups
 PaymentSchema.index({ status: 1, createdAt: -1 }); // For status-based queries
 PaymentSchema.index({ merchantTransactionId: 1 }); // Already unique, but explicit index for lookups
 PaymentSchema.index({ customerId: 1, createdAt: -1 }); // For user-specific payment queries (My Payments)
-PaymentSchema.index({ razorpayOrderId: 1 }); // For webhook lookups by Razorpay Order ID
-PaymentSchema.index({ razorpayPaymentId: 1 }); // For webhook lookups by Razorpay Payment ID
+PaymentSchema.index({ razorpayOrderId: 1 }); // Legacy: For webhook lookups by Razorpay Order ID
+PaymentSchema.index({ razorpayPaymentId: 1 }); // Legacy: For webhook lookups by Razorpay Payment ID
+PaymentSchema.index({ zohoPaymentSessionId: 1 }); // For webhook lookups by Zoho Payment Session ID
+PaymentSchema.index({ zohoPaymentId: 1 }); // For webhook lookups by Zoho Payment ID
 PaymentSchema.index({ checkoutSessionId: 1 }); // For session-based lookups
 
 export const Payment = mongoose.model<IPayment>('Payment', PaymentSchema);
@@ -844,9 +850,11 @@ export const PaymentSession = mongoose.model<IPaymentSession>('PaymentSession', 
 
 // Webhook Log Model - Tracks webhook events for retry and debugging
 export interface IWebhookLog extends Document {
-  event: string; // Webhook event type (e.g., payment.captured)
-  paymentId?: string; // Razorpay payment ID
-  razorpayOrderId?: string; // Razorpay order ID
+  event: string; // Webhook event type (e.g., payment.succeeded)
+  paymentId?: string; // Payment gateway payment ID
+  razorpayOrderId?: string; // Legacy: Razorpay order ID
+  zohoPaymentSessionId?: string; // Zoho Payment Session ID
+  zohoPaymentId?: string; // Zoho Payment ID
   payload: string; // Full webhook payload as JSON string
   status: 'success' | 'failed' | 'pending'; // Processing status
   retryCount: number; // Number of retry attempts
@@ -859,7 +867,9 @@ export interface IWebhookLog extends Document {
 const WebhookLogSchema = new Schema<IWebhookLog>({
   event: { type: String, required: true },
   paymentId: { type: String, index: true },
-  razorpayOrderId: { type: String, index: true },
+  razorpayOrderId: { type: String, index: true }, // Legacy
+  zohoPaymentSessionId: { type: String, index: true },
+  zohoPaymentId: { type: String, index: true },
   payload: { type: String, required: true },
   status: {
     type: String,
@@ -876,7 +886,8 @@ const WebhookLogSchema = new Schema<IWebhookLog>({
 
 // Indexes for efficient queries
 WebhookLogSchema.index({ status: 1, retryCount: 1, createdAt: -1 }); // For retry queries
-WebhookLogSchema.index({ razorpayOrderId: 1, event: 1 }); // For duplicate detection
+WebhookLogSchema.index({ razorpayOrderId: 1, event: 1 }); // Legacy: For duplicate detection
+WebhookLogSchema.index({ zohoPaymentSessionId: 1, event: 1 }); // For Zoho duplicate detection
 WebhookLogSchema.index({ createdAt: -1 }); // For recent logs
 
 export const WebhookLog = mongoose.model<IWebhookLog>('WebhookLog', WebhookLogSchema);

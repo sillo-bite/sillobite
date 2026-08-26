@@ -1,6 +1,6 @@
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
 import { getRedisClient } from '../config/redis';
-import { createRazorpayOrder } from '../../shared/razorpay';
+import { createPaymentSession } from '../../shared/zoho-payments';
 import { CheckoutSessionService } from '../checkout-session-service';
 import { storage } from '../storage-hybrid';
 
@@ -10,9 +10,9 @@ import { storage } from '../storage-hybrid';
  * SCALABILITY FIX: Only creates queue if Redis is available
  */
 let paymentQueue: Queue | null = null;
-let razorpayQueue: Queue | null = null;
+let zohoPaymentsQueue: Queue | null = null;
 let paymentWorker: Worker | null = null;
-let razorpayWorker: Worker | null = null;
+let zohoPaymentsWorker: Worker | null = null;
 
 /**
  * Get or create payment queue (lazy initialization)
@@ -50,10 +50,10 @@ async function getPaymentQueue(): Promise<Queue | null> {
 }
 
 /**
- * Get or create Razorpay queue (lazy initialization)
+ * Get or create Zoho Payments queue (lazy initialization)
  */
-async function getRazorpayQueue(): Promise<Queue | null> {
-  if (razorpayQueue) return razorpayQueue;
+async function getZohoPaymentsQueue(): Promise<Queue | null> {
+  if (zohoPaymentsQueue) return zohoPaymentsQueue;
 
   const { isRedisAvailable } = await import('../config/redis');
   const available = await isRedisAvailable();
@@ -62,7 +62,7 @@ async function getRazorpayQueue(): Promise<Queue | null> {
     return null;
   }
 
-  razorpayQueue = new Queue('razorpay-api', {
+  zohoPaymentsQueue = new Queue('zoho-payments-api', {
     connection: getRedisClient(),
     defaultJobOptions: {
       attempts: 3,
@@ -81,7 +81,7 @@ async function getRazorpayQueue(): Promise<Queue | null> {
     // limiter is not a valid option for Queue, it belongs to Worker
   });
 
-  return razorpayQueue;
+  return zohoPaymentsQueue;
 }
 
 /**
@@ -97,12 +97,14 @@ export interface PaymentJobData {
 }
 
 /**
- * Razorpay order creation job data
+ * Zoho Payments session creation job data
  */
-export interface RazorpayOrderJobData {
+export interface ZohoSessionJobData {
   amount: number;
   currency: string;
   merchantOrderId: string;
+  customerName: string;
+  customerEmail?: string;
   notes: Record<string, string>;
 }
 
@@ -121,14 +123,14 @@ export async function queuePaymentInitiation(data: PaymentJobData): Promise<Job<
 }
 
 /**
- * Add Razorpay order creation job to queue
+ * Add Zoho payment session creation job to queue
  * Returns null if Redis/queue is not available
  */
-export async function queueRazorpayOrder(data: RazorpayOrderJobData): Promise<Job<RazorpayOrderJobData> | null> {
-  const queue = await getRazorpayQueue();
+export async function queueZohoSession(data: ZohoSessionJobData): Promise<Job<ZohoSessionJobData> | null> {
+  const queue = await getZohoPaymentsQueue();
   if (!queue) return null;
 
-  return await queue.add('create-razorpay-order', data, {
+  return await queue.add('create-zoho-session', data, {
     priority: 1,
   });
 }
@@ -167,51 +169,57 @@ async function initializeWorkers() {
           throw new Error(`Duplicate payment request for checkout session ${checkoutSessionId}`);
         }
 
-        // Create Razorpay order via queue (throttled)
-        const razorpayJob = await queueRazorpayOrder({
+        // Create Zoho Session via queue (throttled)
+        const zohoJob = await queueZohoSession({
           amount,
           currency: 'INR',
           merchantOrderId,
+          customerName,
+          customerEmail: orderData.customerEmail,
           notes: {
-            customerName,
             canteenId: orderData.canteenId || '',
             checkoutSessionId: checkoutSessionId,
+            merchantOrderId
           },
         });
 
-        if (!razorpayJob) {
-          // Queue not available, create Razorpay order directly
-          const razorpayOrder = await createRazorpayOrder(
+        if (!zohoJob) {
+          // Queue not available, create Zoho session directly
+          const sessionData = await createPaymentSession(
             amount,
             'INR',
-            merchantOrderId,
             {
               customerName,
-              canteenId: orderData.canteenId || '',
-              checkoutSessionId: checkoutSessionId,
+              customerEmail: orderData.customerEmail,
+              description: `Order ${merchantOrderId}`,
+              notes: {
+                canteenId: orderData.canteenId || '',
+                checkoutSessionId: checkoutSessionId,
+                merchantOrderId
+              }
             }
           );
 
           return {
             success: true,
             merchantTransactionId: merchantOrderId,
-            razorpayOrderId: razorpayOrder.id,
-            amount: razorpayOrder.amount,
-            currency: razorpayOrder.currency,
+            zohoPaymentSessionId: sessionData.payment_session_id,
+            amount: sessionData.amount,
+            currency: sessionData.currency,
           };
         }
 
-        // Wait for Razorpay order creation
+        // Wait for Zoho session creation
         // We need QueueEvents to wait for job completion
-        const queueEvents = new QueueEvents('razorpay-api', { connection: getRedisClient() });
-        const razorpayResult = await razorpayJob.waitUntilFinished(queueEvents) as any;
+        const queueEvents = new QueueEvents('zoho-payments-api', { connection: getRedisClient() });
+        const zohoResult = await zohoJob.waitUntilFinished(queueEvents) as any;
         await queueEvents.close();
 
-        if (!razorpayResult || !razorpayResult.success) {
-          throw new Error(`Razorpay order creation failed: ${razorpayResult?.error || 'Unknown error'}`);
+        if (!zohoResult || !zohoResult.success) {
+          throw new Error(`Zoho session creation failed: ${zohoResult?.error || 'Unknown error'}`);
         }
 
-        const razorpayOrder = razorpayResult.data;
+        const sessionData = zohoResult.data;
 
         // Update checkout session status
         await CheckoutSessionService.updateStatus(
@@ -219,7 +227,7 @@ async function initializeWorkers() {
           'payment_initiated',
           {
             ...orderData,
-            razorpayOrderId: razorpayOrder.id,
+            zohoPaymentSessionId: sessionData.payment_session_id,
             merchantTransactionId: merchantOrderId,
             amount: amount,
             idempotencyKey: idempotencyKey || null,
@@ -231,7 +239,7 @@ async function initializeWorkers() {
         await storage.createPayment({
           customerId: orderData.customerId || undefined,
           merchantTransactionId: merchantOrderId,
-          razorpayOrderId: razorpayOrder.id, // Store as indexed field
+          zohoPaymentSessionId: sessionData.payment_session_id, // Store as indexed field
           checkoutSessionId: checkoutSessionId, // Store as indexed field
           amount: amount * 100, // Store in paise
           status: 'pending',
@@ -239,7 +247,7 @@ async function initializeWorkers() {
           checksum: '',
           metadata: JSON.stringify({
             ...orderData,
-            razorpayOrderId: razorpayOrder.id,
+            zohoPaymentSessionId: sessionData.payment_session_id,
             checkoutSessionId: checkoutSessionId,
             idempotencyKey: idempotencyKey || null,
           }),
@@ -248,9 +256,9 @@ async function initializeWorkers() {
         return {
           success: true,
           merchantTransactionId: merchantOrderId,
-          razorpayOrderId: razorpayOrder.id,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
+          zohoPaymentSessionId: sessionData.payment_session_id,
+          amount: sessionData.amount,
+          currency: sessionData.currency,
         };
       } catch (error) {
         console.error(`❌ Payment job ${job.id} failed:`, error);
@@ -275,32 +283,36 @@ async function initializeWorkers() {
     }
   );
 
-  razorpayWorker = new Worker<RazorpayOrderJobData>(
-    'razorpay-api',
-    async (job: Job<RazorpayOrderJobData>) => {
-      const { amount, currency, merchantOrderId, notes } = job.data;
+  zohoPaymentsWorker = new Worker<ZohoSessionJobData>(
+    'zoho-payments-api',
+    async (job: Job<ZohoSessionJobData>) => {
+      const { amount, currency, merchantOrderId, customerName, customerEmail, notes } = job.data;
 
-      console.log(`🔄 Creating Razorpay order: ${merchantOrderId}`);
+      console.log(`🔄 Creating Zoho session: ${merchantOrderId}`);
 
       try {
-        const razorpayOrder = await createRazorpayOrder(
+        const sessionData = await createPaymentSession(
           amount,
           currency,
-          merchantOrderId,
-          notes
+          {
+            customerName,
+            customerEmail,
+            description: `Order ${merchantOrderId}`,
+            notes
+          }
         );
 
         return {
           success: true,
-          data: razorpayOrder,
+          data: sessionData,
         };
       } catch (error: any) {
-        console.error(`❌ Razorpay order creation failed for ${merchantOrderId}:`, error);
+        console.error(`❌ Zoho session creation failed for ${merchantOrderId}:`, error);
 
-        // Check if it's a rate limit error from Razorpay
+        // Check if it's a rate limit error from Zoho (typically 429)
         if (error.message?.includes('rate limit') || error.message?.includes('429')) {
           // Retry with longer delay
-          throw new Error(`Razorpay API rate limit exceeded. Retrying...`);
+          throw new Error(`Zoho Payments API rate limit exceeded. Retrying...`);
         }
 
         throw error;
@@ -308,9 +320,9 @@ async function initializeWorkers() {
     },
     {
       connection: getRedisClient(),
-      concurrency: parseInt(process.env.RAZORPAY_WORKER_CONCURRENCY || '5'), // Process 5 Razorpay calls concurrently
+      concurrency: parseInt(process.env.ZOHO_PAYMENTS_WORKER_CONCURRENCY || '5'), // Process 5 Zoho API calls concurrently
       limiter: {
-        max: parseInt(process.env.RAZORPAY_QUEUE_MAX_JOBS || '10'),
+        max: parseInt(process.env.ZOHO_PAYMENTS_QUEUE_MAX_JOBS || '10'),
         duration: 1000,
       },
     }
@@ -325,12 +337,12 @@ async function initializeWorkers() {
     console.error(`❌ Payment job ${job?.id} failed:`, err);
   });
 
-  razorpayWorker.on('completed', (job: Job) => {
-    console.log(`✅ Razorpay job ${job.id} completed`);
+  zohoPaymentsWorker.on('completed', (job: Job) => {
+    console.log(`✅ Zoho Payments job ${job.id} completed`);
   });
 
-  razorpayWorker.on('failed', (job: Job | undefined, err: Error) => {
-    console.error(`❌ Razorpay job ${job?.id} failed:`, err);
+  zohoPaymentsWorker.on('failed', (job: Job | undefined, err: Error) => {
+    console.error(`❌ Zoho Payments job ${job?.id} failed:`, err);
   });
 }
 
@@ -344,12 +356,11 @@ initializeWorkers().catch(() => {
  */
 export async function closeQueues(): Promise<void> {
   if (paymentWorker) await paymentWorker.close();
-  if (razorpayWorker) await razorpayWorker.close();
+  if (zohoPaymentsWorker) await zohoPaymentsWorker.close();
   if (paymentQueue) await paymentQueue.close();
-  if (razorpayQueue) await razorpayQueue.close();
+  if (zohoPaymentsQueue) await zohoPaymentsQueue.close();
   console.log('✅ Payment queues closed');
 }
 
 // Export queue getters for use in routes
-export { getPaymentQueue, getRazorpayQueue };
-
+export { getPaymentQueue, getZohoPaymentsQueue };

@@ -17,6 +17,13 @@ export interface PaymentData {
   [key: string]: unknown;
 }
 
+export interface ZohoCallbackParams {
+  zoho_payment_id: string;
+  zoho_payment_session_id: string;
+  status: string;
+}
+
+/** @deprecated Use ZohoCallbackParams instead — kept for backward compatibility */
 export interface RazorpayCallbackParams {
   razorpay_payment_id: string;
   razorpay_order_id: string;
@@ -37,4 +44,3 @@ export interface UsePaymentCallbackReturn {
 }
 
 export type PaymentStatus = 'checking' | 'success' | 'failed' | 'pending';
-

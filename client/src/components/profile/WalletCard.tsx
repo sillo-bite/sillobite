@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 declare global {
   interface Window {
-    Razorpay: any;
+    ZPayments: any;
   }
 }
 
@@ -63,10 +63,10 @@ export default function WalletCard({ userId }: WalletCardProps) {
     enabled: showTransactionsDialog
   });
 
-  // Load Razorpay script
+  // Load Zoho Payments script
   useEffect(() => {
     const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.src = 'https://static.zohocdn.com/zpay/zpay-js/v1/zpayments.js';
     script.async = true;
     document.body.appendChild(script);
 
@@ -75,7 +75,7 @@ export default function WalletCard({ userId }: WalletCardProps) {
     };
   }, []);
 
-  // Create Razorpay order mutation
+  // Create Zoho Payments session mutation
   const createOrderMutation = useMutation({
     mutationFn: async (amount: number) => {
       const response = await fetch(`/api/wallet/${userId}/topup/create-order`, {
@@ -86,7 +86,7 @@ export default function WalletCard({ userId }: WalletCardProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create order');
+        throw new Error(error.message || 'Failed to create session');
       }
 
       return response.json();
@@ -142,61 +142,58 @@ export default function WalletCard({ userId }: WalletCardProps) {
     setIsProcessing(true);
 
     try {
-      // Create Razorpay order
+      // Create Zoho Payments session
       const orderData = await createOrderMutation.mutateAsync(amount);
 
-      // Initialize Razorpay
-      const options = {
-        key: orderData.key,
-        amount: orderData.amount,
-        currency: orderData.currency,
-        name: 'Wallet Top-up',
-        description: `Add ₹${amount} to your wallet`,
-        order_id: orderData.orderId,
-        handler: async function (response: any) {
-          try {
-            // Verify payment
-            await verifyPaymentMutation.mutateAsync({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              transactionId: orderData.transactionId
-            });
-
-            toast({
-              title: "Success!",
-              description: `₹${amount} added to your wallet successfully`,
-              variant: "default"
-            });
-          } catch (error: any) {
-            console.error('Payment verification failed:', error);
-            toast({
-              title: "Payment Failed",
-              description: error.message || 'Payment verification failed',
-              variant: "destructive"
-            });
-            setIsProcessing(false);
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-          }
-        },
-        prefill: {
-          name: '',
-          email: '',
-          contact: ''
-        },
-        theme: {
-          color: '#724491'
+      // Initialize Zoho Payments
+      const instance = new (window as any).ZPayments({
+        account_id: orderData.accountId,
+        domain: 'IN',
+        otherOptions: {
+          api_key: orderData.apiKey,
+          is_test_mode: orderData.isTestMode
         }
-      };
+      });
 
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      instance.requestPaymentMethod({
+        amount: orderData.amount.toString(),
+        currency_code: orderData.currency || 'INR',
+        payments_session_id: orderData.orderId, // We mapped zohoPaymentSessionId to orderId in response for compatibility
+        description: `Add ₹${amount} to your wallet`
+      }).then(async function (response: any) {
+        try {
+          // Verify payment
+          await verifyPaymentMutation.mutateAsync({
+            zoho_payment_id: response.payment_id || response.id,
+            zoho_payment_session_id: orderData.orderId,
+            transactionId: orderData.transactionId
+          });
+
+          toast({
+            title: "Success!",
+            description: `₹${amount} added to your wallet successfully`,
+            variant: "default"
+          });
+        } catch (error: any) {
+          console.error('Payment verification failed:', error);
+          toast({
+            title: "Payment Failed",
+            description: error.message || 'Payment verification failed',
+            variant: "destructive"
+          });
+          setIsProcessing(false);
+        }
+      }).catch(function(error: any) {
+        console.error('Payment error or closed:', error);
+        toast({
+          title: "Payment Cancelled/Failed",
+          description: "Payment was not completed",
+          variant: "destructive"
+        });
+        setIsProcessing(false);
+      });
     } catch (error: any) {
-      console.error('Failed to create order:', error);
+      console.error('Failed to create session:', error);
       toast({
         title: "Error",
         description: error.message || 'Failed to initiate payment',

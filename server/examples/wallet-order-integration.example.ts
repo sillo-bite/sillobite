@@ -288,7 +288,7 @@ async function getWalletSummary(userId: number) {
     console.log(`   Transactions: ${stats.transactionCount}`);
     console.log(`\n📊 Recent Transactions:`);
     
-    recentTransactions.transactions.forEach((txn, index) => {
+    recentTransactions.transactions.forEach((txn: any, index: number) => {
       const icon = txn.type === 'CREDIT' ? '↓' : '↑';
       const color = txn.type === 'CREDIT' ? '🟢' : '🔴';
       console.log(

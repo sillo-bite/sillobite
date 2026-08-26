@@ -1,4 +1,4 @@
-﻿import type { Express } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import mongoose from "mongoose";
 import { storage } from "./storage-hybrid";
@@ -18,21 +18,15 @@ import {
 } from "@shared/schema";
 import { generateOrderNumber } from "@shared/utils";
 import {
-  RAZORPAY_CONFIG,
-  razorpayInstance,
-  createRazorpayOrder,
+  ZOHO_PAYMENTS_CONFIG,
+  createPaymentSession,
   verifyWebhookSignature,
-  verifyPaymentSignature,
   getPaymentDetails,
-  getOrderDetails,
-  createRazorpayQR,
-  fetchRazorpayQR,
-  fetchAllRazorpayQRPayments,
-  closeRazorpayQR,
-  extractUpiLinkFromQR,
+  getPaymentSessionDetails,
+  getPaymentsForSession,
   PAYMENT_STATUS,
-  RAZORPAY_RESPONSE_CODES,
-} from "@shared/razorpay";
+  ZOHO_PAYMENT_EVENTS,
+} from "@shared/zoho-payments";
 import { healthCheckHandler } from "./health-check";
 import { SimpleSchemaValidator } from "./migrations/simple-schema-check";
 import { stockService } from "./stock-service";
@@ -66,7 +60,6 @@ import { invalidateRoleCache } from "./middleware/authMiddleware";
 /** Escapes special regex characters in user-supplied strings to prevent ReDoS. */
 const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const razorpay = razorpayInstance;
 // Global server start time for development update detection
 const SERVER_START_TIME = Date.now();
 // Performance optimization: Cache payment status API failures to avoid repeated slow calls
@@ -177,7 +170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       _inlineRoleCache.set(key, { role: liveRole, expiresAt: Date.now() + _ROLE_TTL });
       return liveRole;
     } catch {
-      return sessionRole; // fallback on DB error — never lock out due to transient failure
+      return sessionRole; // fallback on DB error â€” never lock out due to transient failure
     }
   };
 
@@ -347,12 +340,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User management endpoints
   app.get("/api/users", requireAdmin, async (req, res) => {
     try {
-      console.log("ðŸ“‹ GET /api/users - Fetching all users");
+      console.log("Ã°Å¸â€œâ€¹ GET /api/users - Fetching all users");
       const users = await storage.getAllUsers();
-      console.log(`âœ… Successfully fetched ${users.length} users`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched ${users.length} users`);
       res.json(users);
     } catch (error) {
-      console.error("âŒ Error fetching users:", error);
+      console.error("Ã¢ÂÅ’ Error fetching users:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -371,12 +364,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         year: req.query.year as string
       };
 
-      console.log(`ðŸ“‹ GET /api/users/paginated - Page: ${page}, Limit: ${limit}`, filters);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/users/paginated - Page: ${page}, Limit: ${limit}`, filters);
       const result = await storage.getUsersPaginated(page, limit, filters);
-      console.log(`âœ… Successfully fetched paginated users - Total: ${result.totalCount}, Items: ${result.users.length}`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched paginated users - Total: ${result.totalCount}, Items: ${result.users.length}`);
       res.json(result);
     } catch (error) {
-      console.error("âŒ Error fetching paginated users:", error);
+      console.error("Ã¢ÂÅ’ Error fetching paginated users:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -384,39 +377,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:id", requireAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      console.log(`ðŸ“‹ GET /api/users/${userId} - Fetching user`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/users/${userId} - Fetching user`);
       const user = await storage.getUser(userId);
       if (!user) {
-        console.log(`âŒ User ${userId} not found`);
+        console.log(`Ã¢ÂÅ’ User ${userId} not found`);
         return res.status(404).json({ message: "User not found" });
       }
-      console.log(`âœ… User ${userId} found: ${user.name} (${user.email})`);
+      console.log(`Ã¢Å“â€¦ User ${userId} found: ${user.name} (${user.email})`);
       res.json(user);
     } catch (error) {
-      console.error(`âŒ Error fetching user ${req.params.id}:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching user ${req.params.id}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
   app.post("/api/users", async (req, res) => {
     try {
-      console.log("👤 POST /api/users - Creating new user", { email: req.body.email, role: req.body.role });
+      console.log("ðŸ‘¤ POST /api/users - Creating new user", { email: req.body.email, role: req.body.role });
 
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // SECURITY: Strip role from request body before schema parsing.
       // Public registration ALWAYS creates a student account.
       // Elevated roles (admin, super_admin, canteen_owner) must be assigned
       // by an existing admin via PUT /api/users/:id with requireAdmin guard.
       // Without this fix, any unauthenticated caller could POST { role: "admin" }
       // and receive a full admin account.
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const safeBody = { ...req.body, role: UserRole.STUDENT };
       const validatedData = insertUserSchema.parse(safeBody);
 
       // Check for duplicate email first
       const existingEmailUser = await storage.getUserByEmail(validatedData.email);
       if (existingEmailUser) {
-        console.log(`â„¹ï¸ Email ${validatedData.email} is already registered, returning existing user`);
+        console.log(`Ã¢â€žÂ¹Ã¯Â¸Â Email ${validatedData.email} is already registered, returning existing user`);
         return res.status(200).json(existingEmailUser);
       }
 
@@ -424,7 +417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (validatedData.role === UserRole.SUPER_ADMIN) {
         const existingSuperAdmin = await storage.getUserByRole(UserRole.SUPER_ADMIN);
         if (existingSuperAdmin) {
-          console.log(`âŒ Cannot create super admin - one already exists`);
+          console.log(`Ã¢ÂÅ’ Cannot create super admin - one already exists`);
           return res.status(403).json({
             message: "Only one super admin is allowed in the system. A super admin already exists."
           });
@@ -436,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const normalizedRegisterNumber = validatedData.registerNumber.toUpperCase();
         const existingRegisterUser = await storage.getUserByRegisterNumber(normalizedRegisterNumber);
         if (existingRegisterUser) {
-          console.log(`âŒ Register number ${normalizedRegisterNumber} is already registered`);
+          console.log(`Ã¢ÂÅ’ Register number ${normalizedRegisterNumber} is already registered`);
           return res.status(409).json({ message: "Register number is already registered" });
         }
       }
@@ -446,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const normalizedStaffId = validatedData.staffId.toUpperCase();
         const existingStaffUser = await storage.getUserByStaffId(normalizedStaffId);
         if (existingStaffUser) {
-          console.log(`âŒ Staff ID ${normalizedStaffId} is already registered`);
+          console.log(`Ã¢ÂÅ’ Staff ID ${normalizedStaffId} is already registered`);
           return res.status(409).json({ message: "Staff ID is already registered" });
         }
       }
@@ -456,19 +449,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // User registered with college
         (validatedData as any).selectedLocationType = 'college';
         (validatedData as any).selectedLocationId = validatedData.college;
-        console.log(`ðŸ“ Auto-setting location to college: ${validatedData.college}`);
+        console.log(`Ã°Å¸â€œÂ Auto-setting location to college: ${validatedData.college}`);
       } else if ((validatedData as any).organizationId) {
         // User registered via organization QR
         (validatedData as any).selectedLocationType = 'organization';
         (validatedData as any).selectedLocationId = (validatedData as any).organizationId;
-        console.log(`ðŸ“ Auto-setting location to organization: ${(validatedData as any).organizationId}`);
+        console.log(`Ã°Å¸â€œÂ Auto-setting location to organization: ${(validatedData as any).organizationId}`);
       }
 
       const user = await storage.createUser(validatedData as any);
-      console.log(`âœ… User created successfully - ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Role: ${user.role}`);
+      console.log(`Ã¢Å“â€¦ User created successfully - ID: ${user.id}, Name: ${user.name}, Email: ${user.email}, Role: ${user.role}`);
       res.status(201).json(user);
     } catch (error) {
-      console.error("âŒ Error creating user:", error);
+      console.error("Ã¢ÂÅ’ Error creating user:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -476,16 +469,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/by-email/:email", requireAuth, async (req, res) => {
     try {
       const email = req.params.email;
-      console.log(`ðŸ“‹ GET /api/users/by-email/${email} - Looking up user by email`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/users/by-email/${email} - Looking up user by email`);
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        console.log(`âŒ User with email ${email} not found`);
+        console.log(`Ã¢ÂÅ’ User with email ${email} not found`);
         return res.status(404).json({ message: "User not found" });
       }
-      console.log(`âœ… User found by email: ${user.name} (ID: ${user.id})`);
+      console.log(`Ã¢Å“â€¦ User found by email: ${user.name} (ID: ${user.id})`);
       res.json(user);
     } catch (error) {
-      console.error(`âŒ Error fetching user by email ${req.params.email}:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching user by email ${req.params.email}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -494,16 +487,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Normalize register number for case-insensitive lookup
       const normalizedRegisterNumber = req.params.registerNumber.toUpperCase();
-      console.log(`ðŸ“‹ GET /api/users/by-register/${normalizedRegisterNumber} - Looking up user by register number`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/users/by-register/${normalizedRegisterNumber} - Looking up user by register number`);
       const user = await storage.getUserByRegisterNumber(normalizedRegisterNumber);
       if (!user) {
-        console.log(`âŒ User with register number ${normalizedRegisterNumber} not found`);
+        console.log(`Ã¢ÂÅ’ User with register number ${normalizedRegisterNumber} not found`);
         return res.status(404).json({ message: "User not found" });
       }
-      console.log(`âœ… User found by register number: ${user.name} (ID: ${user.id})`);
+      console.log(`Ã¢Å“â€¦ User found by register number: ${user.name} (ID: ${user.id})`);
       res.json(user);
     } catch (error) {
-      console.error(`âŒ Error fetching user by register number ${req.params.registerNumber}:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching user by register number ${req.params.registerNumber}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -512,16 +505,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Normalize staff ID for case-insensitive lookup
       const normalizedStaffId = req.params.staffId.toUpperCase();
-      console.log(`ðŸ“‹ GET /api/users/by-staff/${normalizedStaffId} - Looking up user by staff ID`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/users/by-staff/${normalizedStaffId} - Looking up user by staff ID`);
       const user = await storage.getUserByStaffId(normalizedStaffId);
       if (!user) {
-        console.log(`âŒ User with staff ID ${normalizedStaffId} not found`);
+        console.log(`Ã¢ÂÅ’ User with staff ID ${normalizedStaffId} not found`);
         return res.status(404).json({ message: "User not found" });
       }
-      console.log(`âœ… User found by staff ID: ${user.name} (ID: ${user.id})`);
+      console.log(`Ã¢Å“â€¦ User found by staff ID: ${user.name} (ID: ${user.id})`);
       res.json(user);
     } catch (error) {
-      console.error(`âŒ Error fetching user by staff ID ${req.params.staffId}:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching user by staff ID ${req.params.staffId}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -531,30 +524,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const { email } = req.body;
 
-      console.log(`ðŸ”„ PATCH /api/users/${userId} - Updating user email to: ${email}`);
+      console.log(`Ã°Å¸â€â€ž PATCH /api/users/${userId} - Updating user email to: ${email}`);
 
       if (!email) {
-        console.log(`âŒ Email is required for user ${userId}`);
+        console.log(`Ã¢ÂÅ’ Email is required for user ${userId}`);
         return res.status(400).json({ message: "Email is required" });
       }
 
       // Check if email is already taken by another user
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser && existingUser.id !== userId) {
-        console.log(`âŒ Email ${email} is already in use by user ${existingUser.id}`);
+        console.log(`Ã¢ÂÅ’ Email ${email} is already in use by user ${existingUser.id}`);
         return res.status(409).json({ message: "Email is already in use by another account" });
       }
 
       const updatedUser = await storage.updateUserEmail(userId, email);
       if (!updatedUser) {
-        console.log(`âŒ User ${userId} not found for email update`);
+        console.log(`Ã¢ÂÅ’ User ${userId} not found for email update`);
         return res.status(404).json({ message: "User not found" });
       }
 
-      console.log(`âœ… User ${userId} email updated successfully to: ${email}`);
+      console.log(`Ã¢Å“â€¦ User ${userId} email updated successfully to: ${email}`);
       res.json(updatedUser);
     } catch (error) {
-      console.error(`âŒ Error updating user email for user ${req.params.id}:`, error);
+      console.error(`Ã¢ÂÅ’ Error updating user email for user ${req.params.id}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -563,16 +556,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
 
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // SECURITY FIX 2: Strip all sensitive fields from the update payload.
       // A regular user must not be able to elevate their own role by sending
-      // { "role": "admin" } — that would be persisted directly via Prisma.
+      // { "role": "admin" } â€” that would be persisted directly via Prisma.
       // Sensitive fields that must NEVER come from req.body:
-      //   - role          → only admin can change roles (checked below)
-      //   - passwordHash  → password changes use a dedicated endpoint
-      //   - id            → immutable primary key
-      //   - createdAt     → immutable timestamp
-      // ─────────────────────────────────────────────────────────────────────
+      //   - role          â†’ only admin can change roles (checked below)
+      //   - passwordHash  â†’ password changes use a dedicated endpoint
+      //   - id            â†’ immutable primary key
+      //   - createdAt     â†’ immutable timestamp
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const {
         role: requestedRole,
         passwordHash,
@@ -581,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...safeUpdateData
       } = req.body;
 
-      console.log(`🔄 Updating user ${userId} with data:`, JSON.stringify(safeUpdateData, null, 2));
+      console.log(`ðŸ”„ Updating user ${userId} with data:`, JSON.stringify(safeUpdateData, null, 2));
 
       // Check if user exists first
       const existingUser = await storage.getUser(userId);
@@ -589,13 +582,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // ── Role change: requires admin ────────────────────────────────────
+      // â”€â”€ Role change: requires admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (requestedRole !== undefined) {
         const sessionRole = String(req.session?.user?.role ?? "").toLowerCase();
         const isAdmin = sessionRole === "admin" || sessionRole === "super_admin";
 
         if (!isAdmin) {
-          console.warn(`🚨 User ${req.session?.user?.id} (role: ${sessionRole}) attempted role change on user ${userId} — blocked`);
+          console.warn(`ðŸš¨ User ${req.session?.user?.id} (role: ${sessionRole}) attempted role change on user ${userId} â€” blocked`);
           return res.status(403).json({
             message: "Role changes require admin privileges.",
             errorCode: "ROLE_CHANGE_REQUIRES_ADMIN"
@@ -613,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Admin is allowed — include the role in the safe update
+        // Admin is allowed â€” include the role in the safe update
         (safeUpdateData as any).role = requestedRole;
       }
 
@@ -629,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.updateUser(userId, safeUpdateData as any);
-      console.log(`✅ User ${userId} updated successfully`);
+      console.log(`âœ… User ${userId} updated successfully`);
 
       // If role was changed, immediately invalidate the role cache for this user
       // so the new role takes effect on their very next request (no 30-second delay)
@@ -641,7 +634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(user);
     } catch (error: any) {
-      console.error("❌ Error updating user:", error);
+      console.error("âŒ Error updating user:", error);
       res.status(500).json({ message: "Internal server error", error: error?.message || String(error) });
     }
   });
@@ -650,7 +643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/locations/:type", async (req, res) => {
     try {
       const type = req.params.type as 'college' | 'organization' | 'restaurant';
-      console.log(`ðŸ“ GET /api/locations/${type} - Fetching locations`);
+      console.log(`Ã°Å¸â€œÂ GET /api/locations/${type} - Fetching locations`);
 
       // Fetch system settings to get the lists
       const SystemSettingsSchema = new mongoose.Schema({}, { strict: false });
@@ -669,10 +662,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid location type. Must be 'college', 'organization', or 'restaurant'" });
       }
 
-      console.log(`âœ… Found ${locations.length} ${type}s`);
+      console.log(`Ã¢Å“â€¦ Found ${locations.length} ${type}s`);
       res.json({ locations });
     } catch (error) {
-      console.error(`âŒ Error fetching locations:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching locations:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -683,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const { locationType, locationId } = req.body;
 
-      console.log(`ðŸ“ PUT /api/users/${userId}/location - Saving location:`, { locationType, locationId });
+      console.log(`Ã°Å¸â€œÂ PUT /api/users/${userId}/location - Saving location:`, { locationType, locationId });
 
       if (!locationType || !locationId) {
         return res.status(400).json({ message: "locationType and locationId are required" });
@@ -706,10 +699,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const updatedUser = await storage.updateUser(userId, updateData);
-      console.log(`âœ… User ${userId} location updated successfully`);
+      console.log(`Ã¢Å“â€¦ User ${userId} location updated successfully`);
       res.json(updatedUser);
     } catch (error) {
-      console.error(`âŒ Error updating user location:`, error);
+      console.error(`Ã¢ÂÅ’ Error updating user location:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -721,13 +714,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(userId);
       if (!user) {
-        console.log(`âŒ User ${userId} not found for applying canteen QR context`);
+        console.log(`Ã¢ÂÅ’ User ${userId} not found for applying canteen QR context`);
         return res.status(404).json({ message: "User not found" });
       }
 
       const { qrId } = req.body;
 
-      console.log(`ðŸ“± POST /api/users/${userId}/apply-canteen-qr-context - QR ID: ${qrId}`);
+      console.log(`Ã°Å¸â€œÂ± POST /api/users/${userId}/apply-canteen-qr-context - QR ID: ${qrId}`);
 
       if (!qrId) {
         return res.status(400).json({ message: "qrId is required" });
@@ -738,7 +731,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const targetQrCode = await CanteenQRCode.findOne({ qrId, isActive: true });
 
       if (!targetQrCode) {
-        console.log(`âŒ Canteen QR Code ${qrId} not found or inactive`);
+        console.log(`Ã¢ÂÅ’ Canteen QR Code ${qrId} not found or inactive`);
         return res.status(404).json({ message: "Invalid or inactive QR Code" });
       }
 
@@ -746,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locationType = targetQrCode.locationType;
       const locationId = targetQrCode.locationId;
 
-      console.log(`âœ… Found QR belonging to Canteen: ${canteenId}, Location: ${locationType} (${locationId})`);
+      console.log(`Ã¢Å“â€¦ Found QR belonging to Canteen: ${canteenId}, Location: ${locationType} (${locationId})`);
 
       // Verify canteen exists
       const canteen = await CanteenEntity.findOne({ id: canteenId, isActive: true });
@@ -759,7 +752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedLocationType: locationType,
         selectedLocationId: locationId
       });
-      console.log(`ðŸ“ User ${userId} location updated to ${locationType}: ${locationId}`);
+      console.log(`Ã°Å¸â€œÂ User ${userId} location updated to ${locationType}: ${locationId}`);
 
       // We don't add full addresses automatically here since location QRs are just for global context,
       // but we could if we wanted to store address data on the QR model.
@@ -772,7 +765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error(`âŒ Error applying canteen QR context:`, error);
+      console.error(`Ã¢ÂÅ’ Error applying canteen QR context:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -784,13 +777,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userContext = await storage.getUser(userId);
       if (!userContext) {
-        console.log(`âŒ User ${userId} not found for applying QR context`);
+        console.log(`Ã¢ÂÅ’ User ${userId} not found for applying QR context`);
         return res.status(404).json({ message: "User not found" });
       }
 
       const { qrId } = req.body;
 
-      console.log(`ðŸ“± POST /api/users/${userId}/apply-qr-context - QR ID: ${qrId}`);
+      console.log(`Ã°Å¸â€œÂ± POST /api/users/${userId}/apply-qr-context - QR ID: ${qrId}`);
 
       if (!qrId) {
         return res.status(400).json({ message: "qrId is required" });
@@ -819,21 +812,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!targetCollege || !targetQrCode) {
-        console.log(`âŒ QR Code ${qrId} not found in any college`);
+        console.log(`Ã¢ÂÅ’ QR Code ${qrId} not found in any college`);
         return res.status(404).json({ message: "Invalid QR Code" });
       }
 
       const collegeId = targetCollege.id;
       const addressDetails = targetQrCode.fullAddress;
 
-      console.log(`âœ… Found QR belonging to College: ${targetCollege.name} (${collegeId})`);
+      console.log(`Ã¢Å“â€¦ Found QR belonging to College: ${targetCollege.name} (${collegeId})`);
 
       // 2. Update User Location
       await storage.updateUser(userId, {
         selectedLocationType: 'college',
         selectedLocationId: collegeId
       });
-      console.log(`ðŸ“ User ${userId} location updated to College: ${collegeId}`);
+      console.log(`Ã°Å¸â€œÂ User ${userId} location updated to College: ${collegeId}`);
 
       // 3. Add Address (De-duplication Logic)
       if (addressDetails && addressDetails.addressLine1) {
@@ -872,9 +865,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               phoneNumber: user.phoneNumber || '0000000000', // Use user's phone or dummy fallback if missing
               isDefault: false
             });
-            console.log(`ðŸ  added new address for user ${userId}`);
+            console.log(`Ã°Å¸ÂÂ  added new address for user ${userId}`);
           } else {
-            console.log(`â„¹ï¸ Address already exists for user ${userId}, skipping addition`);
+            console.log(`Ã¢â€žÂ¹Ã¯Â¸Â Address already exists for user ${userId}, skipping addition`);
           }
         }
       }
@@ -887,7 +880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error(`âŒ Error applying QR context:`, error);
+      console.error(`Ã¢ÂÅ’ Error applying QR context:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -895,42 +888,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/users/:id", requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      console.log(`ðŸ—‘ï¸ Attempting to delete user ${userId}`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â Attempting to delete user ${userId}`);
 
       // Check if user exists first
       const existingUser = await storage.getUser(userId);
       if (!existingUser) {
-        console.log(`âŒ User ${userId} not found for deletion`);
+        console.log(`Ã¢ÂÅ’ User ${userId} not found for deletion`);
         return res.status(404).json({ message: "User not found" });
       }
 
       // Prevent deletion of super admin
       if ((existingUser.role as any) === UserRole.SUPER_ADMIN) {
-        console.log(`ðŸš« Cannot delete super admin: ${existingUser.name} (${existingUser.email})`);
+        console.log(`Ã°Å¸Å¡Â« Cannot delete super admin: ${existingUser.name} (${existingUser.email})`);
         return res.status(403).json({
           message: "Super admin cannot be deleted. There must always be at least one super admin in the system."
         });
       }
 
-      console.log(`ðŸ“‹ Deleting user: ${existingUser.name} (${existingUser.email})`);
+      console.log(`Ã°Å¸â€œâ€¹ Deleting user: ${existingUser.name} (${existingUser.email})`);
       await storage.deleteUser(userId);
-      console.log(`âœ… User ${userId} deleted successfully from database`);
+      console.log(`Ã¢Å“â€¦ User ${userId} deleted successfully from database`);
 
       res.json({ message: "User deleted successfully" });
     } catch (error: any) {
-      console.error("âŒ Error deleting user:", error);
+      console.error("Ã¢ÂÅ’ Error deleting user:", error);
       res.status(500).json({ message: "Internal server error", error: error?.message || String(error) });
     }
   });
 
   app.delete("/api/users/all", requireAdmin, async (req, res) => {
     try {
-      console.log("ðŸ—‘ï¸ DELETE /api/users/all - Deleting all users");
+      console.log("Ã°Å¸â€”â€˜Ã¯Â¸Â DELETE /api/users/all - Deleting all users");
       await storage.deleteAllUsers();
-      console.log("âœ… All users deleted successfully");
+      console.log("Ã¢Å“â€¦ All users deleted successfully");
       res.json({ message: "All users deleted successfully" });
     } catch (error) {
-      console.error("âŒ Error deleting all users:", error);
+      console.error("Ã¢ÂÅ’ Error deleting all users:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -939,16 +932,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:id/validate", async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      console.log(`ðŸ” GET /api/users/${userId}/validate - Validating user session`);
+      console.log(`Ã°Å¸â€Â GET /api/users/${userId}/validate - Validating user session`);
       const user = await storage.getUser(userId) as any;
 
       if (!user) {
         // Session validation failed: User no longer exists
-        console.log(`âŒ User ${userId} validation failed - user not found`);
+        console.log(`Ã¢ÂÅ’ User ${userId} validation failed - user not found`);
         return res.status(404).json({ message: "User not found", userExists: false });
       }
 
-      console.log(`âœ… User ${userId} validation successful - user exists: ${user.name}`);
+      console.log(`Ã¢Å“â€¦ User ${userId} validation successful - user exists: ${user.name}`);
 
       // Normalize role to ensure consistency
       const userRole = user.role ? String(user.role).toLowerCase() : UserRole.GUEST;
@@ -1194,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sortBy = req.query.sortBy as string || 'name';
       const sortOrder = req.query.sortOrder as string || 'asc';
 
-      console.log(`ðŸ“‹ GET /api/categories - Canteen: ${canteenId}, Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/categories - Canteen: ${canteenId}, Page: ${page}, Limit: ${limit}, Search: ${search || 'none'}`);
       // Categories API called
 
       // Build query with server-side filtering
@@ -1260,10 +1253,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      console.log(`âœ… Successfully fetched ${plainCategories.length} categories (Total: ${totalItems})`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched ${plainCategories.length} categories (Total: ${totalItems})`);
       res.json(response);
     } catch (error) {
-      console.error('âŒ Categories API error:', error);
+      console.error('Ã¢ÂÅ’ Categories API error:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -1272,9 +1265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/canteens/:canteenId/charges", async (req, res) => {
     try {
       const { canteenId } = req.params;
-      console.log(`ðŸ” Fetching charges for canteenId: ${canteenId}`);
+      console.log(`Ã°Å¸â€Â Fetching charges for canteenId: ${canteenId}`);
       const charges = await CanteenCharge.find({ canteenId }).sort({ createdAt: -1 });
-      console.log(`ðŸ“Š Found ${charges.length} total charges`);
+      console.log(`Ã°Å¸â€œÅ  Found ${charges.length} total charges`);
       const items = charges.map((c) => {
         const obj: any = c.toObject ? c.toObject() : c;
         obj.id = obj._id?.toString();
@@ -1283,7 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return obj;
       });
       const activeCount = items.filter(i => i.active).length;
-      console.log(`âœ… Returning ${items.length} charges (${activeCount} active)`);
+      console.log(`Ã¢Å“â€¦ Returning ${items.length} charges (${activeCount} active)`);
       res.json({ items });
     } catch (error) {
       console.error("Error fetching charges:", error);
@@ -1295,14 +1288,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/canteens/:canteenId/settings", async (req, res) => {
     try {
       const { canteenId } = req.params;
-      console.log(`ðŸ” Fetching settings for canteenId: ${canteenId}`);
+      console.log(`Ã°Å¸â€Â Fetching settings for canteenId: ${canteenId}`);
 
       const { CanteenSettings } = await import('./models/mongodb-models');
       let settings = await CanteenSettings.findOne({ canteenId });
 
       // If no settings exist, create default settings
       if (!settings) {
-        console.log(`ðŸ“ Creating default settings for canteenId: ${canteenId}`);
+        console.log(`Ã°Å¸â€œÂ Creating default settings for canteenId: ${canteenId}`);
         settings = await CanteenSettings.create({
           canteenId,
           taxRate: 5, // Default 5% GST
@@ -1315,7 +1308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete settingsObj._id;
       delete settingsObj.__v;
 
-      console.log(`âœ… Returning settings:`, settingsObj);
+      console.log(`Ã¢Å“â€¦ Returning settings:`, settingsObj);
       res.json(settingsObj);
     } catch (error) {
       console.error("Error fetching canteen settings:", error);
@@ -1328,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { canteenId } = req.params;
       const { taxRate, taxName, favoriteCounterId } = req.body;
 
-      console.log(`ðŸ”„ Updating settings for canteenId: ${canteenId}`, { taxRate, taxName, favoriteCounterId });
+      console.log(`Ã°Å¸â€â€ž Updating settings for canteenId: ${canteenId}`, { taxRate, taxName, favoriteCounterId });
 
       // Validate taxRate
       if (taxRate !== undefined && (taxRate < 0 || taxRate > 100)) {
@@ -1356,7 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete settingsObj._id;
       delete settingsObj.__v;
 
-      console.log(`âœ… Settings updated successfully:`, settingsObj);
+      console.log(`Ã¢Å“â€¦ Settings updated successfully:`, settingsObj);
       res.json(settingsObj);
     } catch (error) {
       console.error("Error updating canteen settings:", error);
@@ -1437,10 +1430,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userIdParam = req.query.userId as string;
       const userId = userIdParam ? parseInt(userIdParam, 10) : null;
 
-      console.log('ðŸ  Home Data API called with:', { canteenId, userId });
+      console.log('Ã°Å¸ÂÂ  Home Data API called with:', { canteenId, userId });
 
       if (!canteenId) {
-        console.log(`âŒ Missing canteenId for home data request`);
+        console.log(`Ã¢ÂÅ’ Missing canteenId for home data request`);
         return res.status(400).json({ error: 'canteenId is required' });
       }
 
@@ -1536,7 +1529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         banner.originalName
       );
 
-      console.log('ðŸ  Home Data API response:', {
+      console.log('Ã°Å¸ÂÂ  Home Data API response:', {
         mediaBanners: mediaBanners.length,
         validMediaBanners: validMediaBanners.length,
         trendingItems: trendingItems.length,
@@ -1556,17 +1549,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       };
 
-      console.log(`âœ… Home data fetched - Banners: ${validMediaBanners.length}, Trending: ${trendingItems.length}, Quick Picks: ${quickPicks.length}`);
+      console.log(`Ã¢Å“â€¦ Home data fetched - Banners: ${validMediaBanners.length}, Trending: ${trendingItems.length}, Quick Picks: ${quickPicks.length}`);
       res.json(response);
     } catch (error) {
-      console.error('âŒ Home Data API error:', error);
+      console.error('Ã¢ÂÅ’ Home Data API error:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
   app.post("/api/categories", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ POST /api/categories - Creating category: ${req.body.name} for canteen: ${req.body.canteenId}`);
+      console.log(`Ã°Å¸â€œâ€¹ POST /api/categories - Creating category: ${req.body.name} for canteen: ${req.body.canteenId}`);
       const validatedData = insertCategorySchema.parse(req.body);
 
       // Check if category already exists for this canteen (optimized query)
@@ -1576,7 +1569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (existingCategory) {
-        console.log(`âŒ Category "${validatedData.name}" already exists in canteen ${validatedData.canteenId}`);
+        console.log(`Ã¢ÂÅ’ Category "${validatedData.name}" already exists in canteen ${validatedData.canteenId}`);
         return res.status(409).json({
           message: `Category "${validatedData.name}" already exists in this canteen`,
           field: 'name',
@@ -1585,7 +1578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const category = await storage.createCategory(validatedData);
-      console.log(`âœ… Category created successfully - ID: ${category.id}, Name: ${category.name}`);
+      console.log(`Ã¢Å“â€¦ Category created successfully - ID: ${category.id}, Name: ${category.name}`);
       res.status(201).json(category);
     } catch (error: any) {
       if (error.code === 11000 || error.message?.includes('E11000')) { // MongoDB duplicate key error
@@ -1617,12 +1610,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/categories/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const categoryId = req.params.id;
-      console.log(`ðŸ—‘ï¸ DELETE /api/categories/${categoryId} - Deleting category`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â DELETE /api/categories/${categoryId} - Deleting category`);
       await storage.deleteCategory(categoryId);
-      console.log(`âœ… Category ${categoryId} deleted successfully`);
+      console.log(`Ã¢Å“â€¦ Category ${categoryId} deleted successfully`);
       res.status(204).send();
     } catch (error) {
-      console.error(`âŒ Error deleting category ${req.params.id}:`, error);
+      console.error(`Ã¢ÂÅ’ Error deleting category ${req.params.id}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -1720,7 +1713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sortOrder = req.query.sortOrder as string || 'asc';
 
       // Log the request for debugging
-      console.log('ðŸ“‹ Menu API Request:', {
+      console.log('Ã°Å¸â€œâ€¹ Menu API Request:', {
         canteenId,
         search,
         category,
@@ -1754,18 +1747,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (objectIds.length > 0) {
             query._id = { $in: objectIds };
-            console.log(`âœ… OPTIMIZED: Fetching ${objectIds.length} specific menu items by IDs`);
+            console.log(`Ã¢Å“â€¦ OPTIMIZED: Fetching ${objectIds.length} specific menu items by IDs`);
           }
         }
       } else {
         // Canteen filter (REQUIRED for menu management - always filter by canteenId)
         if (canteenId && canteenId.trim()) {
           query.canteenId = canteenId.trim();
-          console.log('âœ… Filtering menu items by canteenId:', canteenId.trim());
+          console.log('Ã¢Å“â€¦ Filtering menu items by canteenId:', canteenId.trim());
         } else {
           // If canteenId is not provided, return error for menu management
           // (This prevents accidentally showing items from all canteens)
-          console.warn('âš ï¸ Menu API called without canteenId - returning empty results');
+          console.warn('Ã¢Å¡Â Ã¯Â¸Â Menu API called without canteenId - returning empty results');
           return res.json({
             items: [],
             pagination: {
@@ -1853,7 +1846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
 
               // KEY FIX: Allow optional vowel(s) between this consonant and the next consonant
-              // This handles biryani â†’ biriyani (optional 'i' between 'r' and 'y')
+              // This handles biryani Ã¢â€ â€™ biriyani (optional 'i' between 'r' and 'y')
               if (nextChar && (isConsonant(nextChar) || nextChar === 'y')) {
                 pattern += '[aeiou]*';
               }
@@ -1888,7 +1881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           query.$or.push({ categoryId: { $in: matchingCategoryIds } });
         }
 
-        console.log('ðŸ” Fuzzy search applied:', searchTerm, 'â†’ pattern:', fuzzyPattern, 'Matching categories:', matchingCategoryIds.length);
+        console.log('Ã°Å¸â€Â Fuzzy search applied:', searchTerm, 'Ã¢â€ â€™ pattern:', fuzzyPattern, 'Matching categories:', matchingCategoryIds.length);
       }
 
       // Stock filter (for admin views - overrides availableOnly filter)
@@ -1953,7 +1946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalPages = Math.ceil(totalItems / limit);
       const skip = (page - 1) * limit;
 
-      console.log('ðŸ“‹ Menu Query Details:', {
+      console.log('Ã°Å¸â€œâ€¹ Menu Query Details:', {
         query,
         totalItems,
         totalPages,
@@ -1973,7 +1966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .lean() // Use lean() last to get plain JavaScript objects (faster, preserves all fields)
         .exec(); // Explicit exec() for better performance tracking
 
-      console.log('ðŸ“‹ Menu Items Found:', {
+      console.log('Ã°Å¸â€œâ€¹ Menu Items Found:', {
         count: menuItems.length,
         sampleCanteenIds: menuItems.slice(0, 5).map(item => item.canteenId),
         requestedCanteenId: canteenId
@@ -1985,7 +1978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (itemsWithoutCounterIds.length > 0) {
-        console.warn(`âš ï¸ ${itemsWithoutCounterIds.length} menu items missing counter IDs:`,
+        console.warn(`Ã¢Å¡Â Ã¯Â¸Â ${itemsWithoutCounterIds.length} menu items missing counter IDs:`,
           itemsWithoutCounterIds.map(item => ({
             id: item._id,
             name: item.name,
@@ -1998,7 +1991,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log sample item for debugging
       if (menuItems.length > 0) {
         const sampleItem = menuItems[0];
-        console.log('ðŸ“‹ Sample menu item counter IDs:', {
+        console.log('Ã°Å¸â€œâ€¹ Sample menu item counter IDs:', {
           itemId: sampleItem._id,
           itemName: sampleItem.name,
           storeCounterId: sampleItem.storeCounterId,
@@ -2035,7 +2028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Log if counter IDs are missing (for debugging)
           if (!result.storeCounterId || !result.paymentCounterId) {
-            console.warn(`âš ï¸ Menu item missing counter IDs: ${result.name} (${result.id})`, {
+            console.warn(`Ã¢Å¡Â Ã¯Â¸Â Menu item missing counter IDs: ${result.name} (${result.id})`, {
               storeCounterId: result.storeCounterId,
               paymentCounterId: result.paymentCounterId,
               rawItem: plainItem
@@ -2077,7 +2070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "itemIds array is required" });
       }
 
-      // Minimal projection â€” only fetch what we need
+      // Minimal projection Ã¢â‚¬â€ only fetch what we need
       const items = await MenuItem.find(
         { _id: { $in: itemIds } },
         { _id: 1, name: 1, stock: 1, available: 1 }
@@ -2100,15 +2093,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/menu/:id", async (req, res) => {
     try {
       const menuItemId = req.params.id;
-      console.log(`ðŸ“‹ GET /api/menu/${menuItemId} - Fetching menu item`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/menu/${menuItemId} - Fetching menu item`);
       const menuItem = await storage.getMenuItem(menuItemId);
       if (!menuItem) {
-        console.log(`âŒ Menu item ${menuItemId} not found`);
+        console.log(`Ã¢ÂÅ’ Menu item ${menuItemId} not found`);
         return res.status(404).json({ message: "Menu item not found" });
       }
 
       // Log counter IDs for debugging
-      console.log(`âœ… Menu item found: ${menuItem.name}`, {
+      console.log(`Ã¢Å“â€¦ Menu item found: ${menuItem.name}`, {
         storeCounterId: menuItem.storeCounterId,
         paymentCounterId: menuItem.paymentCounterId,
         kotCounterId: menuItem.kotCounterId,
@@ -2126,19 +2119,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       if (!result.storeCounterId || !result.paymentCounterId) {
-        console.warn(`âš ï¸ Menu item missing counter IDs: ${result.name} (${result.id})`);
+        console.warn(`Ã¢Å¡Â Ã¯Â¸Â Menu item missing counter IDs: ${result.name} (${result.id})`);
       }
 
       res.json(result);
     } catch (error) {
-      console.error(`âŒ Error fetching menu item ${req.params.id}:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching menu item ${req.params.id}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
   app.post("/api/menu", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ POST /api/menu - Creating menu item: ${req.body.name} for canteen: ${req.body.canteenId}`);
+      console.log(`Ã°Å¸â€œâ€¹ POST /api/menu - Creating menu item: ${req.body.name} for canteen: ${req.body.canteenId}`);
       const validatedData = insertMenuItemSchema.parse(req.body);
 
       // Convert categoryId to string if it exists (handle both string and object formats)
@@ -2151,7 +2144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ) : undefined
       };
       const menuItem = await storage.createMenuItem(menuItemData);
-      console.log(`âœ… Menu item created successfully - ID: ${menuItem.id}, Name: ${menuItem.name}, Price: ${menuItem.price}`);
+      console.log(`Ã¢Å“â€¦ Menu item created successfully - ID: ${menuItem.id}, Name: ${menuItem.name}, Price: ${menuItem.price}`);
       res.status(201).json(menuItem);
     } catch (error: any) {
       console.error("Error creating menu item:", error);
@@ -2166,7 +2159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/menu/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const menuItemId = req.params.id;
-      console.log(`ðŸ”„ PUT /api/menu/${menuItemId} - Updating menu item`);
+      console.log(`Ã°Å¸â€â€ž PUT /api/menu/${menuItemId} - Updating menu item`);
       // Validate the request data, but allow partial updates
       const validatedData = insertMenuItemSchema.partial().parse(req.body);
 
@@ -2180,13 +2173,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ) : undefined
       };
       // Log the update data being sent
-      console.log(`ðŸ” Update data for menu item ${menuItemId}:`, {
+      console.log(`Ã°Å¸â€Â Update data for menu item ${menuItemId}:`, {
         ...updateData,
         kotCounterId: updateData.kotCounterId || 'not provided'
       });
 
       const menuItem = await storage.updateMenuItem(menuItemId, updateData);
-      console.log(`âœ… Menu item ${menuItemId} updated successfully`, {
+      console.log(`Ã¢Å“â€¦ Menu item ${menuItemId} updated successfully`, {
         storeCounterId: menuItem.storeCounterId,
         paymentCounterId: menuItem.paymentCounterId,
         kotCounterId: menuItem.kotCounterId
@@ -2201,12 +2194,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/menu/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const menuItemId = req.params.id;
-      console.log(`ðŸ—‘ï¸ DELETE /api/menu/${menuItemId} - Deleting menu item`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â DELETE /api/menu/${menuItemId} - Deleting menu item`);
       await storage.deleteMenuItem(menuItemId);
-      console.log(`âœ… Menu item ${menuItemId} deleted successfully`);
+      console.log(`Ã¢Å“â€¦ Menu item ${menuItemId} deleted successfully`);
       res.status(204).send();
     } catch (error) {
-      console.error(`âŒ Error deleting menu item ${req.params.id}:`, error);
+      console.error(`Ã¢ÂÅ’ Error deleting menu item ${req.params.id}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -2234,7 +2227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Handle multer errors
     upload.single('image')(req, res, (err) => {
       if (err) {
-        console.error('âŒ Multer error:', err);
+        console.error('Ã¢ÂÅ’ Multer error:', err);
         // Check for multer-specific error codes
         if (err && typeof err === 'object' && 'code' in err) {
           if (err.code === 'LIMIT_FILE_SIZE') {
@@ -2324,23 +2317,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/menu/:id/image", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const menuItemId = req.params.id;
-      console.log(`ðŸ—‘ï¸ DELETE /api/menu/${menuItemId}/image - Deleting menu item image`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â DELETE /api/menu/${menuItemId}/image - Deleting menu item image`);
       const menuItem = await storage.getMenuItem(menuItemId);
       if (!menuItem) {
-        console.log(`âŒ Menu item ${menuItemId} not found`);
+        console.log(`Ã¢ÂÅ’ Menu item ${menuItemId} not found`);
         return res.status(404).json({ message: "Menu item not found" });
       }
 
       if (!menuItem.imagePublicId) {
-        console.log(`âŒ No image found for menu item ${menuItemId}`);
+        console.log(`Ã¢ÂÅ’ No image found for menu item ${menuItemId}`);
         return res.status(404).json({ message: "No image found for this menu item" });
       }
 
       // Delete from Cloudinary
-      console.log(`ðŸ”„ Deleting image from Cloudinary: ${menuItem.imagePublicId}`);
+      console.log(`Ã°Å¸â€â€ž Deleting image from Cloudinary: ${menuItem.imagePublicId}`);
       const deleted = await cloudinaryService.deleteImage(menuItem.imagePublicId);
       if (!deleted) {
-        console.log(`âŒ Failed to delete image from Cloudinary`);
+        console.log(`Ã¢ÂÅ’ Failed to delete image from Cloudinary`);
         return res.status(500).json({ message: "Failed to delete image from Cloudinary" });
       }
 
@@ -2350,14 +2343,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imagePublicId: undefined
       } as any);
 
-      console.log(`âœ… Image deleted successfully for menu item ${menuItemId}`);
+      console.log(`Ã¢Å“â€¦ Image deleted successfully for menu item ${menuItemId}`);
       res.json({
         success: true,
         message: "Image deleted successfully",
         menuItem: updatedMenuItem
       });
     } catch (error) {
-      console.error("âŒ Error deleting menu item image:", error);
+      console.error("Ã¢ÂÅ’ Error deleting menu item image:", error);
       res.status(500).json({
         message: "Failed to delete image",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -2373,7 +2366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isOffline = req.query.isOffline as string;
       const paymentStatus = req.query.paymentStatus as string;
 
-      console.log(`ðŸ“‹ GET /api/orders - Filters: canteenId=${canteenId}, counterId=${counterId}, isOffline=${isOffline}, paymentStatus=${paymentStatus}`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/orders - Filters: canteenId=${canteenId}, counterId=${counterId}, isOffline=${isOffline}, paymentStatus=${paymentStatus}`);
       const orders = await storage.getOrders();
 
       // Filter by canteenId if provided
@@ -2397,10 +2390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filteredOrders = filteredOrders.filter((order: any) => order.paymentStatus === paymentStatus);
       }
 
-      console.log(`âœ… Successfully fetched ${filteredOrders.length} orders (from ${orders.length} total)`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched ${filteredOrders.length} orders (from ${orders.length} total)`);
       res.json(filteredOrders);
     } catch (error) {
-      console.error("âŒ Error fetching orders:", error);
+      console.error("Ã¢ÂÅ’ Error fetching orders:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -2460,8 +2453,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(stats);
     } catch (error) {
-      console.error("âŒ Error fetching order stats:", error);
-      console.error("âŒ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+      console.error("Ã¢ÂÅ’ Error fetching order stats:", error);
+      console.error("Ã¢ÂÅ’ Error stack:", error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({
         message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -2472,7 +2465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Server-side filtered orders endpoint
   app.get("/api/orders/filtered", requireAuth, async (req, res) => {
     try {
-      console.log("ðŸ” Fetching filtered orders...");
+      console.log("Ã°Å¸â€Â Fetching filtered orders...");
       const {
         canteenId,
         customerId,
@@ -2488,7 +2481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit = "15"
       } = req.query;
 
-      console.log("ðŸ” Filter params:", {
+      console.log("Ã°Å¸â€Â Filter params:", {
         canteenId,
         search,
         status,
@@ -2517,10 +2510,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit: parseInt(limit as string)
       });
 
-      console.log(`ðŸ” Found ${result.orders.length} filtered orders, total: ${result.totalCount}`);
+      console.log(`Ã°Å¸â€Â Found ${result.orders.length} filtered orders, total: ${result.totalCount}`);
       res.json(result);
     } catch (error) {
-      console.error("âŒ Error fetching filtered orders:", error);
+      console.error("Ã¢ÂÅ’ Error fetching filtered orders:", error);
       res.status(500).json({
         message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -2554,7 +2547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/orders/:id", requireAuth, async (req, res) => {
     try {
       const identifier = req.params.id;
-      console.log(`ðŸ” GET /api/orders/:id - Looking up order with identifier: ${identifier}`);
+      console.log(`Ã°Å¸â€Â GET /api/orders/:id - Looking up order with identifier: ${identifier}`);
 
       let order = null;
 
@@ -2563,39 +2556,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (isValidObjectId) {
         // Try to find by MongoDB ObjectId first
-        console.log(`ðŸ” Identifier looks like ObjectId, trying getOrder...`);
+        console.log(`Ã°Å¸â€Â Identifier looks like ObjectId, trying getOrder...`);
         try {
           order = await storage.getOrder(identifier);
         } catch (error) {
-          console.error(`âŒ Error in getOrder for ObjectId ${identifier}:`, error);
+          console.error(`Ã¢ÂÅ’ Error in getOrder for ObjectId ${identifier}:`, error);
           // Continue to try other methods
         }
       }
 
       // If not found, try finding by orderNumber
       if (!order) {
-        console.log(`ðŸ” Trying getOrderByOrderNumber...`);
+        console.log(`Ã°Å¸â€Â Trying getOrderByOrderNumber...`);
         try {
           order = await storage.getOrderByOrderNumber(identifier);
         } catch (error) {
-          console.error(`âŒ Error in getOrderByOrderNumber for ${identifier}:`, error);
+          console.error(`Ã¢ÂÅ’ Error in getOrderByOrderNumber for ${identifier}:`, error);
           // Continue to try barcode
         }
       }
 
       // If still not found, try finding by barcode (supports full barcode or 4-digit OTP)
       if (!order) {
-        console.log(`ðŸ” Trying getOrderByBarcode...`);
+        console.log(`Ã°Å¸â€Â Trying getOrderByBarcode...`);
         try {
           order = await storage.getOrderByBarcode(identifier);
         } catch (error) {
-          console.error(`âŒ Error in getOrderByBarcode for ${identifier}:`, error);
+          console.error(`Ã¢ÂÅ’ Error in getOrderByBarcode for ${identifier}:`, error);
         }
       }
 
       // If still not found and it's a 4-digit OTP, try searching by first 4 digits of order number
       if (!order && identifier.length === 4 && /^\d{4}$/.test(identifier)) {
-        console.log(`ðŸ” Trying to find order by 4-digit OTP (first 4 digits of order number)...`);
+        console.log(`Ã°Å¸â€Â Trying to find order by 4-digit OTP (first 4 digits of order number)...`);
         try {
           const { Order } = await import('./models/mongodb-models');
           const regex = new RegExp('^' + identifier);
@@ -2605,22 +2598,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             order = mongoToPlain(foundOrder);
           }
         } catch (error) {
-          console.error(`âŒ Error searching by OTP for ${identifier}:`, error);
+          console.error(`Ã¢ÂÅ’ Error searching by OTP for ${identifier}:`, error);
         }
       }
 
       if (!order) {
-        console.log(`âŒ Order not found with identifier: ${identifier}`);
+        console.log(`Ã¢ÂÅ’ Order not found with identifier: ${identifier}`);
         return res.status(404).json({ message: "Order not found" });
       }
 
-      console.log(`âœ… Order found: ${order.orderNumber || order.id}`);
+      console.log(`Ã¢Å“â€¦ Order found: ${order.orderNumber || order.id}`);
       console.log('  - Order chargesTotal:', order.chargesTotal);
       console.log('  - Order chargesApplied:', JSON.stringify(order.chargesApplied, null, 2));
       console.log('  - Order paymentMethod:', order.paymentMethod);
       res.json(order);
     } catch (error) {
-      console.error("âŒ Error fetching order:", error);
+      console.error("Ã¢ÂÅ’ Error fetching order:", error);
       res.status(500).json({
         message: "Internal server error",
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -2683,7 +2676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Still in rate limit window
           if (rateLimit.count >= POLLING_RATE_LIMIT.maxRequests) {
             const retryAfter = Math.ceil((rateLimit.resetTime - now) / 1000);
-            console.warn(`âš ï¸ Rate limit exceeded for IP ${clientIp}: ${rateLimit.count}/${POLLING_RATE_LIMIT.maxRequests} requests`);
+            console.warn(`Ã¢Å¡Â Ã¯Â¸Â Rate limit exceeded for IP ${clientIp}: ${rateLimit.count}/${POLLING_RATE_LIMIT.maxRequests} requests`);
             return res.status(429).json({
               success: false,
               message: 'Polling rate limit reached. This is a fallback mechanism - WebSocket should handle updates. Please wait a moment.',
@@ -2708,7 +2701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      console.log(`ðŸ“Š POST /api/orders/poll-status - Polling ${orderIds.length} orders (IP: ${clientIp})`);
+      console.log(`Ã°Å¸â€œÅ  POST /api/orders/poll-status - Polling ${orderIds.length} orders (IP: ${clientIp})`);
 
       const orders: any[] = [];
 
@@ -2738,12 +2731,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orders.push(order);
           }
         } catch (error) {
-          console.error(`âŒ Error fetching order ${identifier} in batch:`, error);
+          console.error(`Ã¢ÂÅ’ Error fetching order ${identifier} in batch:`, error);
           // Continue with other orders
         }
       }
 
-      console.log(`âœ… Polling complete: ${orders.length}/${orderIds.length} orders found`);
+      console.log(`Ã¢Å“â€¦ Polling complete: ${orders.length}/${orderIds.length} orders found`);
 
       res.json({
         success: true,
@@ -2752,7 +2745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         requested: orderIds.length
       });
     } catch (error) {
-      console.error("âŒ Error in polling endpoint:", error);
+      console.error("Ã¢ÂÅ’ Error in polling endpoint:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -2763,19 +2756,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/orders", requireAuth, async (req, res) => {
     try {
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // SECURITY: Verify payment before creating online orders
       // Online orders (isOffline=false, isCounterOrder=false) MUST have a
       // successfully captured Razorpay payment before an order is persisted.
       // This prevents fake orders created by sending isOffline:false with no
       // actual payment.
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const isOnlineOrder = !req.body.isOffline && !req.body.isCounterOrder;
       if (isOnlineOrder && req.body.amount > 0) {
         const merchantTransactionId = req.body.merchantTransactionId;
 
         if (!merchantTransactionId) {
-          console.warn(`🚨 Online order attempted without merchantTransactionId by user ${(req as any).session?.user?.id}`);
+          console.warn(`ðŸš¨ Online order attempted without merchantTransactionId by user ${(req as any).session?.user?.id}`);
           return res.status(400).json({
             message: "Payment reference is required for online orders. Complete payment before placing the order.",
             errorCode: 'PAYMENT_REFERENCE_REQUIRED'
@@ -2786,7 +2779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const paymentRecord = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
 
         if (!paymentRecord) {
-          console.warn(`🚨 Online order attempted with unknown merchantTransactionId ${merchantTransactionId}`);
+          console.warn(`ðŸš¨ Online order attempted with unknown merchantTransactionId ${merchantTransactionId}`);
           return res.status(400).json({
             message: "Payment not found. Complete payment before placing the order.",
             errorCode: 'PAYMENT_NOT_FOUND'
@@ -2795,7 +2788,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Payment must be in success status (set by webhook after Razorpay captures it)
         if (paymentRecord.status !== 'success') {
-          console.warn(`🚨 Online order attempted with unconfirmed payment ${merchantTransactionId} (status: ${paymentRecord.status})`);
+          console.warn(`ðŸš¨ Online order attempted with unconfirmed payment ${merchantTransactionId} (status: ${paymentRecord.status})`);
           return res.status(402).json({
             message: `Payment has not been confirmed yet (status: ${paymentRecord.status}). Please wait for payment confirmation.`,
             errorCode: 'PAYMENT_NOT_CONFIRMED'
@@ -2805,7 +2798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Payment must belong to this user (prevents using another user's payment)
         const sessionUserId = (req as any).session?.user?.id;
         if (paymentRecord.customerId && sessionUserId && paymentRecord.customerId !== sessionUserId) {
-          console.warn(`🚨 Online order attempted with payment belonging to a different user. Session: ${sessionUserId}, Payment owner: ${paymentRecord.customerId}`);
+          console.warn(`ðŸš¨ Online order attempted with payment belonging to a different user. Session: ${sessionUserId}, Payment owner: ${paymentRecord.customerId}`);
           return res.status(403).json({
             message: "This payment does not belong to your account.",
             errorCode: 'PAYMENT_USER_MISMATCH'
@@ -2814,14 +2807,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Payment must not already be linked to a different order (prevents reuse)
         if (paymentRecord.orderId) {
-          console.warn(`🚨 Online order attempted but payment ${merchantTransactionId} is already linked to order ${paymentRecord.orderId}`);
+          console.warn(`ðŸš¨ Online order attempted but payment ${merchantTransactionId} is already linked to order ${paymentRecord.orderId}`);
           return res.status(409).json({
             message: "This payment has already been used for another order.",
             errorCode: 'PAYMENT_ALREADY_USED'
           });
         }
 
-        console.log(`✅ Payment verification passed for online order: merchantTransactionId=${merchantTransactionId}, status=${paymentRecord.status}`);
+        console.log(`âœ… Payment verification passed for online order: merchantTransactionId=${merchantTransactionId}, status=${paymentRecord.status}`);
       }
 
       // Check for duplicate order session (for offline orders)
@@ -2830,7 +2823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const canteenId = req.body.canteenId || '';
         const amount = req.body.amount;
 
-        console.log(`ðŸ” Checking for duplicate order session: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}`);
+        console.log(`Ã°Å¸â€Â Checking for duplicate order session: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}`);
 
         const duplicateCheck = await checkDuplicatePaymentMiddleware(
           customerId,
@@ -2839,7 +2832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         if (!duplicateCheck.allowed) {
-          console.log(`âš ï¸ Duplicate order attempt blocked for customer ${customerId}`);
+          console.log(`Ã¢Å¡Â Ã¯Â¸Â Duplicate order attempt blocked for customer ${customerId}`);
           return res.status(429).json({ // 429 Too Many Requests
             success: false,
             message: duplicateCheck.message,
@@ -2870,7 +2863,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderNumber = generateOrderNumber();
       const barcode = generateOrderNumber();
 
-      console.log('ðŸ“¦ POST /api/orders - Received order request:', {
+      console.log('Ã°Å¸â€œÂ¦ POST /api/orders - Received order request:', {
         customerName: req.body.customerName,
         collegeName: req.body.collegeName,
         canteenId: req.body.canteenId,
@@ -2897,7 +2890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderData = { ...req.body, orderNumber, barcode };
       const validatedData = insertOrderSchema.parse(orderData);
 
-      console.log('âœ… Validated order data:', {
+      console.log('Ã¢Å“â€¦ Validated order data:', {
         isCounterOrder: validatedData.isCounterOrder,
         isOffline: validatedData.isOffline,
         status: validatedData.status,
@@ -2944,7 +2937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             kotCounterIds.add(menuItem.kotCounterId);
           }
 
-          console.log(`âœ… Added properties to item ${item.name}:`, {
+          console.log(`Ã¢Å“â€¦ Added properties to item ${item.name}:`, {
             storeCounterId: item.storeCounterId,
             paymentCounterId: item.paymentCounterId,
             kotCounterId: item.kotCounterId,
@@ -2952,7 +2945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isVegetarian: item.isVegetarian
           });
         } else {
-          console.log(`âŒ Menu item not found for ID: ${item.id}, item: ${item.name}`);
+          console.log(`Ã¢ÂÅ’ Menu item not found for ID: ${item.id}, item: ${item.name}`);
           // Still add null/false values so item structure is consistent
           item.storeCounterId = null;
           item.paymentCounterId = null;
@@ -2970,7 +2963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allKotCounterIds = Array.from(kotCounterIds);
       const allCounterIds = Array.from(new Set([...Array.from(storeCounterIds), ...Array.from(paymentCounterIds), ...Array.from(kotCounterIds)]));
 
-      console.log('ðŸ“Š Counter IDs collected from items:', {
+      console.log('Ã°Å¸â€œÅ  Counter IDs collected from items:', {
         allStoreCounterIds,
         allPaymentCounterIds,
         allKotCounterIds,
@@ -2992,18 +2985,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log('ðŸ“Š Markable items analysis:', {
+      console.log('Ã°Å¸â€œÅ  Markable items analysis:', {
         hasMarkableItem,
         hasMarkableItemWithKot,
         allKotCounterIds: allKotCounterIds.length > 0 ? allKotCounterIds : 'none'
       });
 
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // SECURITY: Do NOT trust isCounterOrder / isOffline flags from the client
       // for determining paymentStatus. Derive elevated flags from the session
       // role so a regular user cannot set isCounterOrder=true to get
       // paymentStatus='completed' for free.
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const sessionRole = String((req as any).session?.user?.role ?? '').toLowerCase();
       const isPrivilegedRole = sessionRole === 'admin' ||
         sessionRole === 'super_admin' ||
@@ -3021,7 +3014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveIsOffline = !!validatedData.isOffline;
 
       if (clientIsCounterOrder && !isPrivilegedRole) {
-        console.warn(`🚨 User ${(req as any).session?.user?.id} (role: ${sessionRole}) attempted counter order — not allowed`);
+        console.warn(`ðŸš¨ User ${(req as any).session?.user?.id} (role: ${sessionRole}) attempted counter order â€” not allowed`);
         return res.status(403).json({
           message: "Counter orders require canteen staff privileges.",
           errorCode: 'INSUFFICIENT_ROLE_FOR_COUNTER_ORDER'
@@ -3032,14 +3025,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let orderStatus;
       let paymentStatus = validatedData.paymentStatus; // Keep existing paymentStatus if provided
 
-      console.log('ðŸ” Status determination - isCounterOrder:', validatedData.isCounterOrder, 'isOffline:', validatedData.isOffline);
+      console.log('Ã°Å¸â€Â Status determination - isCounterOrder:', validatedData.isCounterOrder, 'isOffline:', validatedData.isOffline);
 
       if (effectiveIsCounterOrder) {
         // For counter orders (POS): payment already collected, but order still needs preparation
         // Status determined by markable items (same as regular orders)
         orderStatus = hasMarkableItem ? "pending" : "ready";
         paymentStatus = paymentStatus || 'completed'; // POS orders are already paid at counter
-        console.log('✅ Counter order detected - status:', orderStatus, '(payment already completed)');
+        console.log('âœ… Counter order detected - status:', orderStatus, '(payment already completed)');
       } else if (effectiveIsOffline) {
         // For offline orders (pay at counter), check if amount is 0 (free orders don't need payment)
         const orderAmount = validatedData.amount || 0;
@@ -3053,7 +3046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentStatus = paymentStatus || 'pending'; // Set paymentStatus to 'pending' for pay at counter orders
         }
       } else {
-        // For regular online orders — payment already verified above
+        // For regular online orders â€” payment already verified above
         orderStatus = hasMarkableItem ? "pending" : "ready";
         paymentStatus = paymentStatus || 'paid'; // Payment verified at the top of this handler
       }
@@ -3086,7 +3079,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log(`ðŸ” Initialized itemStatusByCounter for auto-ready items:`, {
+      console.log(`Ã°Å¸â€Â Initialized itemStatusByCounter for auto-ready items:`, {
         autoReadyItemsCount: orderItems.filter((item: any) => item.isMarkable !== true).length,
         itemStatusByCounterKeys: Object.keys(itemStatusByCounter),
         itemStatusByCounter: Object.keys(itemStatusByCounter).length > 0 ? itemStatusByCounter : 'none'
@@ -3159,7 +3152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Debug: Check what fields are being passed to storage
-      console.log(`ðŸ” Final order data being passed to storage:`, {
+      console.log(`Ã°Å¸â€Â Final order data being passed to storage:`, {
         isCounterOrder: finalOrderData.isCounterOrder,
         isOffline: finalOrderData.isOffline,
         paymentStatus: finalOrderData.paymentStatus,
@@ -3194,8 +3187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let serverValidatedCouponCode: string | null = null;
 
       if (req.body.appliedCoupon) {
-        console.log(`ðŸŽŸï¸ Validating coupon: ${req.body.appliedCoupon}`);
-        console.log(`ðŸŽŸï¸ Customer ID from request:`, {
+        console.log(`Ã°Å¸Å½Å¸Ã¯Â¸Â Validating coupon: ${req.body.appliedCoupon}`);
+        console.log(`Ã°Å¸Å½Å¸Ã¯Â¸Â Customer ID from request:`, {
           customerId: req.body.customerId,
           customerIdType: typeof req.body.customerId,
           customerIdParsed: Number(req.body.customerId),
@@ -3205,7 +3198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // CRITICAL: Ensure customerId is a number, not a string
         const customerIdAsNumber = Number(req.body.customerId);
         if (isNaN(customerIdAsNumber)) {
-          console.error(`âŒ Invalid customerId: ${req.body.customerId}`);
+          console.error(`Ã¢ÂÅ’ Invalid customerId: ${req.body.customerId}`);
           return res.status(400).json({ 
             message: 'Invalid customer ID',
             errorCode: 'INVALID_CUSTOMER_ID'
@@ -3224,7 +3217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         if (!couponValidation.valid) {
-          console.log(`âŒ Coupon validation failed: ${couponValidation.message}`);
+          console.log(`Ã¢ÂÅ’ Coupon validation failed: ${couponValidation.message}`);
           return res.status(400).json({ 
             message: couponValidation.message,
             errorCode: 'INVALID_COUPON'
@@ -3235,7 +3228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverValidatedDiscountAmount = couponValidation.discountAmount || 0;
         serverValidatedCouponCode = req.body.appliedCoupon;
 
-        console.log(`âœ… Coupon validated: ${serverValidatedCouponCode}, discount: â‚¹${serverValidatedDiscountAmount}`);
+        console.log(`Ã¢Å“â€¦ Coupon validated: ${serverValidatedCouponCode}, discount: Ã¢â€šÂ¹${serverValidatedDiscountAmount}`);
 
         // Update order data with server-validated values
         finalOrderData.appliedCoupon = serverValidatedCouponCode;
@@ -3243,24 +3236,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         finalOrderData.amount = (req.body.originalAmount || req.body.amount) - serverValidatedDiscountAmount;
       }
 
-      console.log(`ðŸ”„ Order ${orderNumber}: Creating order for canteen ID: ${finalOrderData.canteenId}`);
-      console.log(`ðŸ”„ Order ${orderNumber}: ${hasMarkableItem ? 'Has markable items - status: pending' : 'All non-markable items - status: ready'}`);
+      console.log(`Ã°Å¸â€â€ž Order ${orderNumber}: Creating order for canteen ID: ${finalOrderData.canteenId}`);
+      console.log(`Ã°Å¸â€â€ž Order ${orderNumber}: ${hasMarkableItem ? 'Has markable items - status: pending' : 'All non-markable items - status: ready'}`);
 
       // Check if stock was already reserved at checkout
       const checkoutSessionId = req.body.checkoutSessionId;
 
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       // SECURITY: Validate the checkout session before trusting it to skip
       // stock reduction. A session must exist, be active, and belong to this
       // user. Without this, any arbitrary string could bypass stock checks.
-      // ─────────────────────────────────────────────────────────────────────
+      // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       let skipStockReduction = false;
       if (checkoutSessionId) {
         const chkSession = await CheckoutSessionService.getSession(checkoutSessionId);
         const isChkActive = await CheckoutSessionService.isSessionActive(checkoutSessionId);
 
         if (!chkSession || !isChkActive) {
-          console.warn(`🚨 Order attempted with invalid/expired checkoutSessionId: ${checkoutSessionId}`);
+          console.warn(`ðŸš¨ Order attempted with invalid/expired checkoutSessionId: ${checkoutSessionId}`);
           return res.status(400).json({
             message: "Checkout session is invalid or has expired. Please start a new checkout.",
             errorCode: 'INVALID_CHECKOUT_SESSION'
@@ -3271,15 +3264,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sessionCustomerId = req.body.customerId ? Number(req.body.customerId) : null;
         if (chkSession.customerId && chkSession.customerId !== 0 &&
             sessionCustomerId && chkSession.customerId !== sessionCustomerId) {
-          console.warn(`🚨 Checkout session ${checkoutSessionId} belongs to user ${chkSession.customerId}, but order is for user ${sessionCustomerId}`);
+          console.warn(`ðŸš¨ Checkout session ${checkoutSessionId} belongs to user ${chkSession.customerId}, but order is for user ${sessionCustomerId}`);
           return res.status(403).json({
             message: "Checkout session does not belong to this user.",
             errorCode: 'SESSION_USER_MISMATCH'
           });
         }
 
-        skipStockReduction = true; // Validated — stock was already reserved at checkout
-        console.log(`📦 Stock already reserved at checkout for session ${checkoutSessionId}, skipping stock reduction`);
+        skipStockReduction = true; // Validated â€” stock was already reserved at checkout
+        console.log(`ðŸ“¦ Stock already reserved at checkout for session ${checkoutSessionId}, skipping stock reduction`);
       }
 
       // Process order with atomic stock management
@@ -3295,7 +3288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use itemsSubtotal (menu items cost only, before charges) for coupon validation
         const amountForCouponValidation = req.body.itemsSubtotal || req.body.originalAmount || req.body.amount;
         
-        console.log(`ðŸŽŸï¸ [ORDER-CREATION] About to apply coupon:`, {
+        console.log(`Ã°Å¸Å½Å¸Ã¯Â¸Â [ORDER-CREATION] About to apply coupon:`, {
           couponCode: serverValidatedCouponCode,
           orderId: order.id,
           orderNumber: order.orderNumber,
@@ -3314,21 +3307,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           order.orderNumber
         );
 
-        console.log(`ðŸŽŸï¸ [ORDER-CREATION] Coupon application result:`, {
+        console.log(`Ã°Å¸Å½Å¸Ã¯Â¸Â [ORDER-CREATION] Coupon application result:`, {
           success: couponApplication.success,
           message: couponApplication.message,
           discountAmount: couponApplication.discountAmount
         });
 
         if (!couponApplication.success) {
-          console.error(`âŒ Failed to apply coupon after order creation: ${couponApplication.message}`);
+          console.error(`Ã¢ÂÅ’ Failed to apply coupon after order creation: ${couponApplication.message}`);
           // Order is already created, so we log the error but don't fail the request
           // Admin should be notified to manually review this order
         } else {
-          console.log(`âœ… Coupon ${serverValidatedCouponCode} applied successfully to order ${order.orderNumber}`);
+          console.log(`Ã¢Å“â€¦ Coupon ${serverValidatedCouponCode} applied successfully to order ${order.orderNumber}`);
         }
       } else {
-        console.log(`ðŸŽŸï¸ [ORDER-CREATION] Skipping coupon application:`, {
+        console.log(`Ã°Å¸Å½Å¸Ã¯Â¸Â [ORDER-CREATION] Skipping coupon application:`, {
           hasValidatedCoupon: !!serverValidatedCouponCode,
           hasOrder: !!order,
           couponCode: serverValidatedCouponCode
@@ -3339,22 +3332,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (checkoutSessionId && order) {
         try {
           await CheckoutSessionService.clearReservedStock(checkoutSessionId);
-          console.log(`âœ… Cleared reserved stock metadata for checkout session ${checkoutSessionId}`);
+          console.log(`Ã¢Å“â€¦ Cleared reserved stock metadata for checkout session ${checkoutSessionId}`);
         } catch (error) {
-          console.error(`âŒ Error clearing reserved stock metadata:`, error);
+          console.error(`Ã¢ÂÅ’ Error clearing reserved stock metadata:`, error);
           // Don't fail the order if clearing metadata fails
         }
       }
 
-      console.log(`âœ… Order ${orderNumber} created successfully with canteenId: ${order.canteenId}`);
-      console.log(`ðŸ“¦ Order details saved to MongoDB:`, {
+      console.log(`Ã¢Å“â€¦ Order ${orderNumber} created successfully with canteenId: ${order.canteenId}`);
+      console.log(`Ã°Å¸â€œÂ¦ Order details saved to MongoDB:`, {
         id: order.id,
         isCounterOrder: order.isCounterOrder,
         isOffline: order.isOffline,
         paymentStatus: order.paymentStatus,
         status: order.status
       });
-      console.log(`ðŸ“¦ Order counter arrays:`, {
+      console.log(`Ã°Å¸â€œÂ¦ Order counter arrays:`, {
         allStoreCounterIds: order.allStoreCounterIds,
         allPaymentCounterIds: order.allPaymentCounterIds,
         allKotCounterIds: order.allKotCounterIds,
@@ -3363,7 +3356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send push notification to canteen owner
       try {
-        console.log(`ðŸ”” Triggering push notification for order ${order.orderNumber} to canteen ${order.canteenId}`);
+        console.log(`Ã°Å¸â€â€ Triggering push notification for order ${order.orderNumber} to canteen ${order.canteenId}`);
         await webPushService.sendNewOrderNotification(
           order.orderNumber,
           order.customerName || "Customer",
@@ -3371,11 +3364,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           order.canteenId
         );
       } catch (error) {
-        console.error('âŒ Failed to send new order push notification:', error);
+        console.error('Ã¢ÂÅ’ Failed to send new order push notification:', error);
       }
 
       // Debug: Check if this is an offline order
-      console.log(`ðŸ” Order type check:`, {
+      console.log(`Ã°Å¸â€Â Order type check:`, {
         isOffline: order.isOffline,
         paymentStatus: order.paymentStatus,
         isOfflineCheck: order.isOffline === true,
@@ -3413,7 +3406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Always add payment counter IDs (for payment processing)
         allPaymentCounterIds.forEach(counterId => {
           targetCounterIds.push(counterId);
-          console.log(`ðŸ” Added payment counter to broadcast: ${counterId}`);
+          console.log(`Ã°Å¸â€Â Added payment counter to broadcast: ${counterId}`);
         });
 
         // Routing logic for markable items:
@@ -3426,29 +3419,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Markable items with KOT counters -> send to BOTH KOT and store counters
             allKotCounterIds.forEach(counterId => {
               targetCounterIds.push(counterId);
-              console.log(`ðŸ” Added KOT counter to broadcast (markable items with KOT): ${counterId}`);
+              console.log(`Ã°Å¸â€Â Added KOT counter to broadcast (markable items with KOT): ${counterId}`);
             });
             // Also send to store counters (they'll show order but disable buttons)
             allStoreCounterIds.forEach(counterId => {
               targetCounterIds.push(counterId);
-              console.log(`ðŸ” Added store counter to broadcast (markable items with KOT - for visibility): ${counterId}`);
+              console.log(`Ã°Å¸â€Â Added store counter to broadcast (markable items with KOT - for visibility): ${counterId}`);
             });
-            console.log(`ðŸ“‹ Order ${order.orderNumber}: Markable items have KOT counters - routing to BOTH KOT and store counters`);
+            console.log(`Ã°Å¸â€œâ€¹ Order ${order.orderNumber}: Markable items have KOT counters - routing to BOTH KOT and store counters`);
           } else {
             // Markable items without KOT counters -> send directly to store counters
             allStoreCounterIds.forEach(counterId => {
               targetCounterIds.push(counterId);
-              console.log(`ðŸ” Added store counter to broadcast (markable items without KOT): ${counterId}`);
+              console.log(`Ã°Å¸â€Â Added store counter to broadcast (markable items without KOT): ${counterId}`);
             });
-            console.log(`ðŸ“‹ Order ${order.orderNumber}: Markable items without KOT counters - routing directly to store counters`);
+            console.log(`Ã°Å¸â€œâ€¹ Order ${order.orderNumber}: Markable items without KOT counters - routing directly to store counters`);
           }
         } else {
           // No markable items -> send to store counters directly
           allStoreCounterIds.forEach(counterId => {
             targetCounterIds.push(counterId);
-            console.log(`ðŸ” Added store counter to broadcast (no markable items): ${counterId}`);
+            console.log(`Ã°Å¸â€Â Added store counter to broadcast (no markable items): ${counterId}`);
           });
-          console.log(`ðŸ“‹ Order ${order.orderNumber}: No markable items - routing directly to store counters`);
+          console.log(`Ã°Å¸â€œâ€¹ Order ${order.orderNumber}: No markable items - routing directly to store counters`);
         }
 
         // Also add KOT counters for non-markable items that might have KOT assignments
@@ -3457,7 +3450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           allKotCounterIds.forEach(counterId => {
             if (!targetCounterIds.includes(counterId)) {
               targetCounterIds.push(counterId);
-              console.log(`ðŸ” Added KOT counter to broadcast (non-markable items): ${counterId}`);
+              console.log(`Ã°Å¸â€Â Added KOT counter to broadcast (non-markable items): ${counterId}`);
             }
           });
         }
@@ -3486,7 +3479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           };
 
-          console.log(`ðŸ“¢ Broadcasting order ${order.orderNumber} to counter rooms:`, {
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting order ${order.orderNumber} to counter rooms:`, {
             targetCounterIds: uniqueCounterIds,
             allStoreCounterIds,
             allPaymentCounterIds,
@@ -3501,15 +3494,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
 
           wsManager.broadcastToCounters(uniqueCounterIds, orderMessage.type, orderMessage.data);
-          console.log(`ðŸ“¢ Order ${order.orderNumber} broadcasted to counter rooms: ${uniqueCounterIds.join(', ')}`);
+          console.log(`Ã°Å¸â€œÂ¢ Order ${order.orderNumber} broadcasted to counter rooms: ${uniqueCounterIds.join(', ')}`);
         } else {
           // Fallback: broadcast to canteen room if no specific counters assigned
-          console.log(`ðŸ“¢ No specific counters assigned for order ${order.orderNumber}, broadcasting to canteen room ${order.canteenId}`);
+          console.log(`Ã°Å¸â€œÂ¢ No specific counters assigned for order ${order.orderNumber}, broadcasting to canteen room ${order.canteenId}`);
           wsManager.broadcastNewOrder(order.canteenId, order);
-          console.log(`ðŸ“¢ Order ${order.orderNumber} broadcasted to canteen room ${order.canteenId} (no specific counters assigned)`);
+          console.log(`Ã°Å¸â€œÂ¢ Order ${order.orderNumber} broadcasted to canteen room ${order.canteenId} (no specific counters assigned)`);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for broadcast');
       }
 
       // Delivery person assignment is now done manually from store counter
@@ -3518,7 +3511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Mark checkout session as completed if exists
       if (req.body.checkoutSessionId) {
         await CheckoutSessionService.updateStatus(req.body.checkoutSessionId, 'completed');
-        console.log(`âœ… Checkout session ${req.body.checkoutSessionId} marked as completed for order ${order.orderNumber}`);
+        console.log(`Ã¢Å“â€¦ Checkout session ${req.body.checkoutSessionId} marked as completed for order ${order.orderNumber}`);
       }
 
       res.status(201).json(order);
@@ -3529,7 +3522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.sessionId) {
         try {
           await PaymentSessionService.cancelSession(req.body.sessionId);
-          console.log(`âŒ Cancelled payment session ${req.body.sessionId} due to order creation error`);
+          console.log(`Ã¢ÂÅ’ Cancelled payment session ${req.body.sessionId} due to order creation error`);
         } catch (cancelError) {
           console.error('Error cancelling session:', cancelError);
         }
@@ -3549,25 +3542,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/orders/:id/cancel", requireAuth, async (req, res) => {
     try {
       const orderId = req.params.id;
-      console.log(`ðŸš« POST /api/orders/${orderId}/cancel - Cancelling order`);
+      console.log(`Ã°Å¸Å¡Â« POST /api/orders/${orderId}/cancel - Cancelling order`);
       const order = await storage.getOrder(orderId);
       if (!order) {
-        console.log(`âŒ Order ${orderId} not found for cancellation`);
+        console.log(`Ã¢ÂÅ’ Order ${orderId} not found for cancellation`);
         return res.status(404).json({ message: "Order not found" });
       }
 
-      console.log(`ðŸ“¦ Order ${order.orderNumber} current status: ${order.status}`);
+      console.log(`Ã°Å¸â€œÂ¦ Order ${order.orderNumber} current status: ${order.status}`);
 
       // Check if order can be cancelled
       if (order.status === 'delivered' || order.status === 'cancelled') {
-        console.log(`âŒ Cannot cancel order ${order.orderNumber} - status is ${order.status}`);
+        console.log(`Ã¢ÂÅ’ Cannot cancel order ${order.orderNumber} - status is ${order.status}`);
         return res.status(400).json({
           message: `Cannot cancel order with status: ${order.status}`
         });
       }
 
       // Restore stock for the cancelled order
-      console.log(`ðŸ”„ Restoring stock for cancelled order ${order.orderNumber}`);
+      console.log(`Ã°Å¸â€â€ž Restoring stock for cancelled order ${order.orderNumber}`);
       await stockService.restoreStockForOrder(orderId);
 
       // Update order status to cancelled
@@ -3586,10 +3579,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             "cancelled",
             `Your order #${order.orderNumber} has been cancelled. If you have any questions, please contact us.`
           );
-          console.log(`ðŸ”” Cancellation notification sent to customer ${customer.email} for order ${order.orderNumber}`);
+          console.log(`Ã°Å¸â€â€ Cancellation notification sent to customer ${customer.email} for order ${order.orderNumber}`);
         }
       } catch (pushError) {
-        console.error(`âŒ Failed to send cancellation notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
+        console.error(`Ã¢ÂÅ’ Failed to send cancellation notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
       }
 
       // Broadcast cancellation via WebSocket to canteen-specific room
@@ -3601,12 +3594,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'active',
           'cancelled'
         );
-        console.log(`ðŸ“¢ Successfully broadcasted cancellation for order ${updatedOrder.orderNumber} to canteen room ${updatedOrder.canteenId}`);
+        console.log(`Ã°Å¸â€œÂ¢ Successfully broadcasted cancellation for order ${updatedOrder.orderNumber} to canteen room ${updatedOrder.canteenId}`);
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for cancellation broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for cancellation broadcast');
       }
 
-      console.log(`ðŸš« Order ${order.orderNumber} cancelled and stock restored`);
+      console.log(`Ã°Å¸Å¡Â« Order ${order.orderNumber} cancelled and stock restored`);
       res.json({
         message: "Order cancelled successfully",
         order: updatedOrder
@@ -3621,18 +3614,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/stock/status", requireAuth, async (req, res) => {
     try {
       const { itemIds } = req.query;
-      console.log(`ðŸ“‹ GET /api/stock/status - Checking stock for items:`, itemIds);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/stock/status - Checking stock for items:`, itemIds);
       if (!itemIds) {
-        console.log(`âŒ itemIds query parameter is required`);
+        console.log(`Ã¢ÂÅ’ itemIds query parameter is required`);
         return res.status(400).json({ message: "itemIds query parameter is required" });
       }
 
       const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
       const stockStatus = await stockService.getStockStatus(ids as string[]);
-      console.log(`âœ… Stock status retrieved for ${ids.length} items`);
+      console.log(`Ã¢Å“â€¦ Stock status retrieved for ${ids.length} items`);
       res.json(stockStatus);
     } catch (error) {
-      console.error("âŒ Error getting stock status:", error);
+      console.error("Ã¢ÂÅ’ Error getting stock status:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -3640,13 +3633,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/orders/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const orderId = req.params.id;
-      console.log(`ðŸ”„ PUT /api/orders/${orderId} - Updating order`, { status: req.body.status, paymentStatus: req.body.paymentStatus });
+      console.log(`Ã°Å¸â€â€ž PUT /api/orders/${orderId} - Updating order`, { status: req.body.status, paymentStatus: req.body.paymentStatus });
 
       // Get order before update to check if it has a delivery person
       const oldOrder = await storage.getOrder(orderId);
 
       const order = await storage.updateOrder(orderId, req.body);
-      console.log(`âœ… Order ${order.orderNumber} updated successfully`);
+      console.log(`Ã¢Å“â€¦ Order ${order.orderNumber} updated successfully`);
 
       // If order status changed to "delivered", mark delivery person as available again
       if (req.body.status === 'delivered' && oldOrder?.deliveryPersonId) {
@@ -3662,17 +3655,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               where: { id: deliveryPerson.id },
               data: { isAvailable: true }
             });
-            console.log(`âœ… Marked delivery person ${oldOrder.deliveryPersonId} as available after delivery`);
+            console.log(`Ã¢Å“â€¦ Marked delivery person ${oldOrder.deliveryPersonId} as available after delivery`);
           }
         } catch (error) {
-          console.error('âŒ Error marking delivery person as available:', error);
+          console.error('Ã¢ÂÅ’ Error marking delivery person as available:', error);
           // Don't fail the order update if this fails
         }
       }
 
       res.json(order);
     } catch (error) {
-      console.error(`âŒ Error updating order ${req.params.id}:`, error);
+      console.error(`Ã¢ÂÅ’ Error updating order ${req.params.id}:`, error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -3682,15 +3675,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const orderId = req.params.id;
       const { userId } = req.body;
-      console.log(`ðŸ‘ï¸ PATCH /api/orders/${orderId}/mark-seen - User ${userId} marking order as seen`);
+      console.log(`Ã°Å¸â€˜ÂÃ¯Â¸Â PATCH /api/orders/${orderId}/mark-seen - User ${userId} marking order as seen`);
       if (!userId) {
-        console.log(`âŒ User ID is required for marking order as seen`);
+        console.log(`Ã¢ÂÅ’ User ID is required for marking order as seen`);
         return res.status(400).json({ message: "User ID is required" });
       }
 
       const order = await storage.getOrder(orderId);
       if (!order) {
-        console.log(`âŒ Order ${orderId} not found`);
+        console.log(`Ã¢ÂÅ’ Order ${orderId} not found`);
         return res.status(404).json({ message: "Order not found" });
       }
 
@@ -3699,10 +3692,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!seenBy.includes(userId)) {
         seenBy.push(userId);
         const updatedOrder = await storage.updateOrder(orderId, { seenBy: seenBy });
-        console.log(`âœ… Order ${order.orderNumber} marked as seen by user ${userId}`);
+        console.log(`Ã¢Å“â€¦ Order ${order.orderNumber} marked as seen by user ${userId}`);
         res.json(updatedOrder);
       } else {
-        console.log(`â„¹ï¸ Order ${order.orderNumber} already seen by user ${userId}`);
+        console.log(`Ã¢â€žÂ¹Ã¯Â¸Â Order ${order.orderNumber} already seen by user ${userId}`);
         res.json(order); // Already seen by this user
       }
     } catch (error) {
@@ -3714,9 +3707,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/orders/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const orderId = req.params.id;
-      console.log(`ðŸ”„ PATCH /api/orders/${orderId} - Updating order with data:`, req.body);
+      console.log(`Ã°Å¸â€â€ž PATCH /api/orders/${orderId} - Updating order with data:`, req.body);
       const order = await storage.updateOrder(orderId, req.body);
-      console.log(`âœ… Order ${order.orderNumber} updated successfully`);
+      console.log(`Ã¢Å“â€¦ Order ${order.orderNumber} updated successfully`);
 
       // Send push notification to customer when status changes
       if (req.body.status && order.customerId) {
@@ -3732,13 +3725,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Optional custom message can be passed from the request
               req.body.notificationMessage
             );
-            console.log(`ðŸ”” Push notification sent to customer ${customer.email} for order ${order.orderNumber} (status: ${req.body.status})`);
+            console.log(`Ã°Å¸â€â€ Push notification sent to customer ${customer.email} for order ${order.orderNumber} (status: ${req.body.status})`);
           } else {
-            console.warn(`âš ï¸  Customer not found for order ${order.orderNumber} (customerId: ${order.customerId})`);
+            console.warn(`Ã¢Å¡Â Ã¯Â¸Â  Customer not found for order ${order.orderNumber} (customerId: ${order.customerId})`);
           }
         } catch (pushError) {
           // Don't fail the order update if push notification fails
-          console.error(`âŒ Failed to send push notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
+          console.error(`Ã¢ÂÅ’ Failed to send push notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
         }
       }
 
@@ -3752,12 +3745,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             req.body.oldStatus || 'unknown',
             req.body.status
           );
-          console.log(`ðŸ“¢ Successfully broadcasted status change for ${order.orderNumber} to canteen room ${order.canteenId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Successfully broadcasted status change for ${order.orderNumber} to canteen room ${order.canteenId}`);
         } else {
-          console.log('ðŸ“¡ WebSocket manager not available for status broadcast');
+          console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for status broadcast');
         }
       } else {
-        console.log('ðŸ“¡ No status change to broadcast');
+        console.log('Ã°Å¸â€œÂ¡ No status change to broadcast');
       }
 
       res.json(order);
@@ -3776,7 +3769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const orderId = req.params.id;
-      console.log(`ðŸ—‘ï¸ DELETE /api/orders/${orderId} - Deleting order in development mode`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â DELETE /api/orders/${orderId} - Deleting order in development mode`);
 
       const order = await storage.getOrder(orderId);
       if (!order) {
@@ -3789,7 +3782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to delete order" });
       }
 
-      console.log(`ðŸ—‘ï¸ Successfully deleted order ${order.orderNumber} (ID: ${orderId})`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â Successfully deleted order ${order.orderNumber} (ID: ${orderId})`);
       res.status(204).send(); // No content response for successful deletion
     } catch (error) {
       console.error("Error deleting order:", error);
@@ -3880,7 +3873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if barcode was already used
       if (order.barcodeUsed) {
         return res.status(400).json({
-          message: "ðŸ”’ This order has already been delivered.",
+          message: "Ã°Å¸â€â€™ This order has already been delivered.",
           error: "BARCODE_ALREADY_USED",
           deliveredAt: order.deliveredAt
         });
@@ -3913,10 +3906,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             "delivered",
             `Your order #${order.orderNumber} has been successfully delivered. Thank you for your order!`
           );
-          console.log(`ðŸ”” Delivery notification sent to customer ${customer.email} for order ${order.orderNumber}`);
+          console.log(`Ã°Å¸â€â€ Delivery notification sent to customer ${customer.email} for order ${order.orderNumber}`);
         }
       } catch (pushError) {
-        console.error(`âŒ Failed to send delivery notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
+        console.error(`Ã¢ÂÅ’ Failed to send delivery notification for order ${order.orderNumber}:`, pushError instanceof Error ? pushError.message : 'Unknown push notification error');
       }
 
       res.json({
@@ -3933,18 +3926,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/delivery/verify/:barcode", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const { barcode } = req.params;
-      console.log(`ðŸ” GET /api/delivery/verify/${barcode} - Verifying barcode`);
+      console.log(`Ã°Å¸â€Â GET /api/delivery/verify/${barcode} - Verifying barcode`);
 
       const order = await storage.getOrderByBarcode(barcode);
       if (!order) {
-        console.log(`âŒ Barcode ${barcode} not found`);
+        console.log(`Ã¢ÂÅ’ Barcode ${barcode} not found`);
         return res.status(404).json({
           valid: false,
           message: "Invalid barcode"
         });
       }
 
-      console.log(`âœ… Barcode ${barcode} verified - Order: ${order.orderNumber}, Status: ${order.status}`);
+      console.log(`Ã¢Å“â€¦ Barcode ${barcode} verified - Order: ${order.orderNumber}, Status: ${order.status}`);
       res.json({
         valid: true,
         order: {
@@ -3958,7 +3951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error("âŒ Error verifying barcode:", error);
+      console.error("Ã¢ÂÅ’ Error verifying barcode:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -3966,7 +3959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin analytics endpoint
   app.get("/api/admin/analytics", requireAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ GET /api/admin/analytics - Fetching admin analytics`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/admin/analytics - Fetching admin analytics`);
       const orders = await storage.getOrders();
       const menuItems = await storage.getMenuItems();
 
@@ -3975,7 +3968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const activeMenuItems = menuItems.filter(item => item.available).length;
       const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
-      console.log(`âœ… Analytics calculated - Orders: ${totalOrders}, Revenue: ${totalRevenue}, Active Items: ${activeMenuItems}`);
+      console.log(`Ã¢Å“â€¦ Analytics calculated - Orders: ${totalOrders}, Revenue: ${totalRevenue}, Active Items: ${activeMenuItems}`);
       res.json({
         totalOrders,
         totalRevenue,
@@ -3983,7 +3976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         averageOrderValue
       });
     } catch (error) {
-      console.error("âŒ Error fetching admin analytics:", error);
+      console.error("Ã¢ÂÅ’ Error fetching admin analytics:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -3992,14 +3985,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/media-banners/canteen/:canteenId", async (req, res) => {
     try {
       const canteenId = req.params.canteenId;
-      console.log(`ðŸ–¼ï¸ GET /api/media-banners/canteen/${canteenId} - Fetching banners`);
+      console.log(`Ã°Å¸â€“Â¼Ã¯Â¸Â GET /api/media-banners/canteen/${canteenId} - Fetching banners`);
 
       const banners = await mediaService.getBannersByCanteen(canteenId);
-      console.log(`âœ… Found ${banners.length} banners for canteen ${canteenId}`);
+      console.log(`Ã¢Å“â€¦ Found ${banners.length} banners for canteen ${canteenId}`);
 
       res.json(banners);
     } catch (error) {
-      console.error(`âŒ Error fetching banners for canteen ${req.params.canteenId}:`, error);
+      console.error(`Ã¢ÂÅ’ Error fetching banners for canteen ${req.params.canteenId}:`, error);
       res.status(500).json({ message: "Failed to fetch banners" });
     }
   });
@@ -4009,25 +4002,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check if this is an admin request based on query parameter or user role
       const isAdmin = req.query.admin === 'true';
-      console.log(`ðŸ“‹ GET /api/media-banners - Admin: ${isAdmin}`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/media-banners - Admin: ${isAdmin}`);
 
       const banners = isAdmin
         ? await mediaService.getAllBannersForAdmin()
         : await mediaService.getGlobalBanners();
 
-      console.log(`âœ… Successfully fetched ${banners.length} media banners`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched ${banners.length} media banners`);
       res.json(banners);
     } catch (error) {
-      console.error("âŒ Error fetching media banners:", error);
+      console.error("Ã¢ÂÅ’ Error fetching media banners:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
   app.post("/api/media-banners", requireCanteenOwnerOrAdmin, mediaUpload.single('file'), async (req, res) => {
     try {
-      console.log(`ðŸ“‹ POST /api/media-banners - Uploading media banner`);
+      console.log(`Ã°Å¸â€œâ€¹ POST /api/media-banners - Uploading media banner`);
       if (!req.file) {
-        console.log(`âŒ No file uploaded for media banner`);
+        console.log(`Ã¢ÂÅ’ No file uploaded for media banner`);
         return res.status(400).json({ message: "No file uploaded" });
       }
 
@@ -4035,7 +4028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uploadedBy = req.body.userId ? parseInt(req.body.userId) : undefined;
       const canteenId = req.body.canteenId;
 
-      console.log(`ðŸ–¼ï¸ Uploading banner: ${originalname}, size: ${buffer.length} bytes, canteenId: ${canteenId || 'global'}`);
+      console.log(`Ã°Å¸â€“Â¼Ã¯Â¸Â Uploading banner: ${originalname}, size: ${buffer.length} bytes, canteenId: ${canteenId || 'global'}`);
 
       const banner = await mediaService.uploadFile(
         buffer,
@@ -4053,9 +4046,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'banner_updated',
           data: { action: 'created', banner }
         });
-        console.log('ðŸ“¢ Successfully broadcasted banner creation to all clients');
+        console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted banner creation to all clients');
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for banner broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for banner broadcast');
       }
 
       res.status(201).json(banner);
@@ -4121,9 +4114,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'banner_updated',
           data: { action: 'updated', banner: updatedBanner }
         });
-        console.log('ðŸ“¢ Successfully broadcasted banner update to all clients');
+        console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted banner update to all clients');
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for banner broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for banner broadcast');
       }
 
       res.json(updatedBanner);
@@ -4146,9 +4139,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'banner_updated',
           data: { action: 'toggled', banner: updatedBanner }
         });
-        console.log('ðŸ“¢ Successfully broadcasted banner status toggle to all clients');
+        console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted banner status toggle to all clients');
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for banner broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for banner broadcast');
       }
 
       res.json(updatedBanner);
@@ -4176,9 +4169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'banner_updated',
           data: { action: 'display_mode_updated', banner: updatedBanner }
         });
-        console.log('ðŸ“¢ Successfully broadcasted banner display mode update to all clients');
+        console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted banner display mode update to all clients');
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for banner broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for banner broadcast');
       }
 
       res.json(updatedBanner);
@@ -4201,9 +4194,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'banner_updated',
           data: { action: 'deleted', bannerId: id }
         });
-        console.log('ðŸ“¢ Successfully broadcasted banner deletion to all clients');
+        console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted banner deletion to all clients');
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for banner broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for banner broadcast');
       }
 
       res.json({ message: "Media banner deleted successfully" });
@@ -4230,9 +4223,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           type: 'banner_updated',
           data: { action: 'reordered', bannerIds }
         });
-        console.log('ðŸ“¢ Successfully broadcasted banner reordering to all clients');
+        console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted banner reordering to all clients');
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for banner broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for banner broadcast');
       }
 
       res.json({ message: "Banners reordered successfully" });
@@ -4321,7 +4314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const canteenId = orderData.canteenId || '';
 
       try {
-        console.log(`ðŸ” Verifying payment amount for canteen ${canteenId}`);
+        console.log(`Ã°Å¸â€Â Verifying payment amount for canteen ${canteenId}`);
         // 0. Parse order items carefully (handles JSON strings and urlencoded objects)
         let cartItems: any[] = [];
         try {
@@ -4375,15 +4368,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // 7. Verify match within 1 Rupee tolerance (to handle potential floating point drift between client/server JS)
         if (Math.abs(pricingResult.finalTotal - amount) > 1) {
-          console.error(`ðŸš¨ Payment Mismatch Detected: Frontend sent â‚¹${amount} but backend calculated â‚¹${pricingResult.finalTotal}`);
+          console.error(`Ã°Å¸Å¡Â¨ Payment Mismatch Detected: Frontend sent Ã¢â€šÂ¹${amount} but backend calculated Ã¢â€šÂ¹${pricingResult.finalTotal}`);
           return res.status(400).json({
             success: false,
             message: "Payment amount verification failed. Please refresh your cart and try again."
           });
         }
-        console.log(`âœ… Payment amount verified successfully (â‚¹${pricingResult.finalTotal})`);
+        console.log(`Ã¢Å“â€¦ Payment amount verified successfully (Ã¢â€šÂ¹${pricingResult.finalTotal})`);
       } catch (calcError) {
-        console.error("âŒ Error calculating secure amount:", calcError);
+        console.error("Ã¢ÂÅ’ Error calculating secure amount:", calcError);
         return res.status(500).json({
           success: false,
           message: "Error verifying payment amount. Please try again."
@@ -4394,7 +4387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const customerId = orderData.customerId || 0;
       const checkoutSessionId = req.body.checkoutSessionId;
 
-      console.log(`ðŸ” Checking for duplicate payment: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}, CheckoutSessionId: ${checkoutSessionId || 'none'}`);
+      console.log(`Ã°Å¸â€Â Checking for duplicate payment: Customer ${customerId}, Amount ${amount}, Canteen ${canteenId}, CheckoutSessionId: ${checkoutSessionId || 'none'}`);
 
       // Validate checkout session exists and is active
       if (!checkoutSessionId) {
@@ -4424,7 +4417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for duplicate payment from the same checkout session (primary check)
       const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
       if (sessionDuplicateCheck.isDuplicate) {
-        console.log(`âš ï¸ Duplicate payment request blocked for checkout session ${checkoutSessionId}`);
+        console.log(`Ã¢Å¡Â Ã¯Â¸Â Duplicate payment request blocked for checkout session ${checkoutSessionId}`);
 
         // If payment was already initiated, return the existing payment details
         if (sessionDuplicateCheck.existingPayment) {
@@ -4452,7 +4445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!duplicateCheck.allowed) {
-        console.log(`âš ï¸ Duplicate payment attempt blocked for customer ${customerId}`);
+        console.log(`Ã¢Å¡Â Ã¯Â¸Â Duplicate payment attempt blocked for customer ${customerId}`);
         return res.status(429).json({ // 429 Too Many Requests
           success: false,
           message: duplicateCheck.message,
@@ -4477,11 +4470,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const redirectUrl = `${baseUrl}/payment-callback`;
 
       // Minimal logging for production performance
-      console.log(`ðŸ’° Payment URLs generated: ${baseUrl}`);
+      console.log(`Ã°Å¸â€™Â° Payment URLs generated: ${baseUrl}`);
 
-      // Validate Razorpay configuration
-      if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
-        console.error('ðŸš¨ Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
+      // Validate Zoho Payments configuration
+      if (!ZOHO_PAYMENTS_CONFIG.ACCOUNT_ID || !ZOHO_PAYMENTS_CONFIG.CLIENT_ID) {
+        console.error('Ã°Å¸Å¡Â¨ Zoho Payments configuration missing: ACCOUNT_ID or CLIENT_ID not set');
         return res.status(500).json({
           success: false,
           message: "Payment gateway configuration error. Please contact support."
@@ -4534,8 +4527,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.json({
               success: true,
               merchantTransactionId: jobResult.merchantTransactionId,
-              razorpayOrderId: jobResult.razorpayOrderId,
-              keyId: RAZORPAY_CONFIG.KEY_ID,
+              zohoPaymentSessionId: jobResult.zohoPaymentSessionId,
+              accountId: ZOHO_PAYMENTS_CONFIG.ACCOUNT_ID,
+              apiKey: ZOHO_PAYMENTS_CONFIG.API_KEY,
               amount: jobResult.amount,
               currency: jobResult.currency,
               checkoutSessionId: checkoutSessionId
@@ -4555,27 +4549,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (queueError) {
           // If queue fails, fall back to direct processing
-          console.warn('âš ï¸ Payment queue unavailable, falling back to direct processing:', queueError);
+          console.warn('Ã¢Å¡Â Ã¯Â¸Â Payment queue unavailable, falling back to direct processing:', queueError);
         }
       }
 
       // FALLBACK: Direct payment processing (when Redis unavailable or queue fails)
       // Fallback to direct processing when Redis unavailable
-      console.log('ðŸ”„ Processing payment directly (Redis unavailable or queue failed)');
+      console.log('Ã°Å¸â€â€ž Processing payment directly (Redis unavailable or queue failed)');
 
-      // Create Razorpay order directly
-      const razorpayOrder = await createRazorpayOrder(
+      // Create Zoho Payment Session directly
+      const sessionData = await createPaymentSession(
         amount,
         'INR',
-        merchantOrderId,
         {
           customerName,
-          canteenId: orderData.canteenId || '',
-          checkoutSessionId: checkoutSessionId
+          customerEmail: orderData.customerEmail,
+          description: `Order ${merchantOrderId}`,
+          notes: {
+            canteenId: orderData.canteenId || '',
+            checkoutSessionId: checkoutSessionId,
+            merchantOrderId
+          }
         }
       );
 
-      console.log(`ðŸ’° Razorpay order created: ${razorpayOrder.id}`);
+      console.log(`Ã°Å¸â€™Â° Zoho payment session created: ${sessionData.payment_session_id}`);
 
       // Update checkout session status to payment_initiated
       await CheckoutSessionService.updateStatus(
@@ -4583,7 +4581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'payment_initiated',
         {
           ...orderData,
-          razorpayOrderId: razorpayOrder.id,
+          zohoPaymentSessionId: sessionData.payment_session_id,
           merchantTransactionId: merchantOrderId,
           amount: amount,
           idempotencyKey: idempotencyKey || null,
@@ -4595,7 +4593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createPayment({
         customerId: orderData.customerId || undefined,
         merchantTransactionId: merchantOrderId,
-        razorpayOrderId: razorpayOrder.id, // Store as indexed field
+        zohoPaymentSessionId: sessionData.payment_session_id, // Store as indexed field
         checkoutSessionId: checkoutSessionId, // Store as indexed field
         amount: amount * 100, // Store in paise
         status: PAYMENT_STATUS.PENDING,
@@ -4603,7 +4601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         checksum: '',
         metadata: JSON.stringify({
           ...orderData,
-          razorpayOrderId: razorpayOrder.id,
+          zohoPaymentSessionId: sessionData.payment_session_id,
           checkoutSessionId: checkoutSessionId,
           idempotencyKey: idempotencyKey || null
         })
@@ -4612,11 +4610,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         merchantTransactionId: merchantOrderId,
-        razorpayOrderId: razorpayOrder.id,
-        keyId: RAZORPAY_CONFIG.KEY_ID,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        checkoutSessionId: checkoutSessionId
+        zohoPaymentSessionId: sessionData.payment_session_id,
+        accountId: ZOHO_PAYMENTS_CONFIG.ACCOUNT_ID,
+        apiKey: ZOHO_PAYMENTS_CONFIG.API_KEY,
+        amount: sessionData.amount,
+        currency: sessionData.currency,
+        checkoutSessionId: checkoutSessionId,
+        isTestMode: ZOHO_PAYMENTS_CONFIG.ENV === 'sandbox'
       });
     } catch (error) {
       console.error('Payment initiation error:', error);
@@ -4626,15 +4626,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (checkoutSessionId) {
         try {
           await CheckoutSessionService.updateStatus(checkoutSessionId, 'payment_failed');
-          console.log(`âŒ Updated checkout session ${checkoutSessionId} to payment_failed due to error`);
+          console.log(`Ã¢ÂÅ’ Updated checkout session ${checkoutSessionId} to payment_failed due to error`);
         } catch (updateError) {
           console.error('Error updating checkout session status:', updateError);
         }
       }
 
-      // Handle Razorpay errors
-      if ((error as any).error) {
-        console.error('ðŸš¨ Razorpay API error:', (error as any).error);
+      // Handle API errors
+      if ((error as any).response?.data) {
+        console.error('Ã°Å¸Å¡Â¨ Payment Gateway API error:', (error as any).response.data);
         return res.status(502).json({
           success: false,
           message: `Payment gateway error: ${(error as any).error?.description || 'Service unavailable'}`
@@ -4681,7 +4681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for duplicate payment from the same checkout session
       const sessionDuplicateCheck = await CheckoutSessionService.checkDuplicatePaymentFromSession(checkoutSessionId);
       if (sessionDuplicateCheck.isDuplicate) {
-        console.log(`âš ï¸ Duplicate POS payment request blocked for checkout session ${checkoutSessionId}`);
+        console.log(`Ã¢Å¡Â Ã¯Â¸Â Duplicate POS payment request blocked for checkout session ${checkoutSessionId}`);
 
         if (sessionDuplicateCheck.existingPayment) {
           return res.status(409).json({
@@ -4702,36 +4702,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique merchant order ID
       const merchantOrderId = `POS_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      // Validate Razorpay configuration
-      if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
-        console.error('ðŸš¨ Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
+      // Validate Zoho Payments configuration
+      if (!ZOHO_PAYMENTS_CONFIG.ACCOUNT_ID || !ZOHO_PAYMENTS_CONFIG.CLIENT_ID) {
+        console.error('Ã°Å¸Å¡Â¨ Zoho Payments configuration missing: ACCOUNT_ID or CLIENT_ID not set');
         return res.status(500).json({
           success: false,
           message: "Payment gateway configuration error. Please contact support."
         });
       }
 
-      // Create Razorpay order
-      const razorpayOrder = await createRazorpayOrder(
+      // Create Zoho Payments session
+      const sessionData = await createPaymentSession(
         amount,
         'INR',
-        merchantOrderId,
         {
           customerName,
-          canteenId: canteenId,
-          checkoutSessionId: checkoutSessionId,
-          orderType: 'pos'
+          description: `Order ${merchantOrderId}`,
+          notes: {
+            canteenId: canteenId,
+            checkoutSessionId: checkoutSessionId,
+            orderType: 'pos'
+          }
         }
       );
 
-      console.log(`ðŸ’° POS Razorpay order created: ${razorpayOrder.id}`);
+      console.log(`Ã°Å¸â€™Â° POS Zoho session created: ${sessionData.payment_session_id}`);
 
       // Update checkout session status to payment_initiated
       await CheckoutSessionService.updateStatus(
         checkoutSessionId,
         'payment_initiated',
         {
-          razorpayOrderId: razorpayOrder.id,
+          zohoPaymentSessionId: sessionData.payment_session_id,
           merchantTransactionId: merchantOrderId,
           amount: amount,
           customerName: customerName,
@@ -4754,7 +4756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerName,
           canteenId,
           checkoutSessionId,
-          razorpayOrderId: razorpayOrder.id,
+          zohoPaymentSessionId: sessionData.payment_session_id,
           orderType: 'pos',
           cart: cart,
           totals: totals
@@ -4764,12 +4766,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         merchantTransactionId: merchantOrderId,
-        razorpayOrderId: razorpayOrder.id,
-        keyId: RAZORPAY_CONFIG.KEY_ID,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        checkoutSessionId: checkoutSessionId,
-        qrCodeUrl: `upi://pay?pa=${RAZORPAY_CONFIG.KEY_ID}@razorpay&pn=Merchant&am=${amount}&cu=INR&tn=Order%20${merchantOrderId}`
+        zohoPaymentSessionId: sessionData.payment_session_id,
+        accountId: ZOHO_PAYMENTS_CONFIG.ACCOUNT_ID,
+        apiKey: ZOHO_PAYMENTS_CONFIG.API_KEY,
+        amount: sessionData.amount,
+        currency: sessionData.currency,
+        checkoutSessionId: checkoutSessionId
       });
     } catch (error) {
       console.error('POS Payment initiation error:', error);
@@ -4800,22 +4802,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POS Order Creation After Payment Success
   app.post("/api/pos/orders/create", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      const { checkoutSessionId, paymentId, razorpayOrderId, razorpaySignature } = req.body;
+      const { checkoutSessionId, paymentId, zohoPaymentSessionId } = req.body;
 
-      if (!checkoutSessionId || !paymentId || !razorpayOrderId) {
+      if (!checkoutSessionId || !paymentId || !zohoPaymentSessionId) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: checkoutSessionId, paymentId, razorpayOrderId"
+          message: "Missing required fields: checkoutSessionId, paymentId, zohoPaymentSessionId"
         });
       }
 
-      // Verify payment signature
-      const isValid = verifyPaymentSignature(razorpayOrderId, paymentId, razorpaySignature);
-      if (!isValid) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid payment signature"
-        });
+      // Verify payment with Zoho API directly since frontend doesn't get webhook signature
+      try {
+        const paymentDetails = await getPaymentDetails(paymentId);
+        if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized' && paymentDetails.status !== 'success') {
+           return res.status(400).json({
+             success: false,
+             message: "Payment is not in a successful state"
+           });
+        }
+      } catch (error) {
+         console.error("Error verifying payment with Zoho:", error);
+         return res.status(400).json({
+           success: false,
+           message: "Failed to verify payment details with gateway"
+         });
       }
 
       // Get checkout session to retrieve cart and order data
@@ -4860,11 +4870,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch payment details from Razorpay to get payment method
       let paymentMethod = 'online'; // Default to 'online'
       try {
-        const razorpayPayment = await razorpay.payments.fetch(paymentId);
-        paymentMethod = razorpayPayment.method || 'online';
-        console.log(`ðŸ’³ POS Payment method: ${paymentMethod}`);
+        // Default to online for Zoho
+        console.log(`Ã°Å¸â€™Â³ POS Payment method: ${paymentMethod}`);
       } catch (error) {
-        console.error('âŒ Failed to fetch Razorpay payment details:', {
+        console.error('Ã¢ÂÅ’ Failed to fetch Razorpay payment details:', {
           message: (error as any)?.message,
           code: (error as any)?.code,
           status: (error as any)?.statusCode
@@ -4907,7 +4916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderType: 'pos',
           checkoutSessionId,
           paymentId,
-          razorpayOrderId,
+          zohoPaymentSessionId,
           paymentMethod
         })
       };
@@ -4922,7 +4931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPos: true
       });
 
-      console.log(`âœ… POS Order ${orderNumber} created successfully with payment ${paymentId}`);
+      console.log(`Ã¢Å“â€¦ POS Order ${orderNumber} created successfully with payment ${paymentId}`);
 
       // Update payment status (Specific to POS Flow)
       if (metadata.merchantTransactionId) {
@@ -4949,7 +4958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
     } catch (error) {
-      console.error('âŒ Failed to fetch Razorpay payment details:', {
+      console.error('Ã¢ÂÅ’ Failed to fetch Razorpay payment details:', {
         message: (error as any)?.message,
         code: (error as any)?.code,
         status: (error as any)?.statusCode
@@ -5048,7 +5057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isPos: true
       });
 
-      console.log(`âœ… POS Offline Order ${orderNumber} created successfully`);
+      console.log(`Ã¢Å“â€¦ POS Offline Order ${orderNumber} created successfully`);
 
       res.json({
         success: true,
@@ -5079,785 +5088,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create Razorpay QR code for POS billing
+  // Deprecated: Create Razorpay QR code for POS billing
   app.post("/api/payments/create-qr", requireAuth, async (req, res) => {
-    try {
-      const { amount, customerName, canteenId, cart, totals, checkoutSessionId } = req.body;
-
-      if (!amount || !customerName || !canteenId || !cart) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required fields: amount, customerName, canteenId, cart"
-        });
-      }
-
-      if (amount <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid amount: amount must be greater than 0"
-        });
-      }
-
-      // SECURITY ALGORITHM: Recalculate and verify correct amount on backend for QR payments
-      try {
-        console.log(`ðŸ” Verifying QR payment amount for canteen ${canteenId}`);
-        const itemIds = cart.map((item: any) => item.id);
-        const menuItemsFromDb = await MenuItem.find({ _id: { $in: itemIds } });
-
-        const verifiedCart = cart.map((cartItem: any) => {
-          const dbItem = menuItemsFromDb.find(item => item._id?.toString() === cartItem.id);
-          if (!dbItem) throw new Error(`Menu item not found: ${cartItem.id}`);
-          return {
-            id: cartItem.id,
-            price: dbItem.price,
-            quantity: cartItem.quantity
-          };
-        });
-
-        const activeCharges = await CanteenCharge.find({ canteenId, active: true });
-
-        const formattedCharges = activeCharges.map(c => ({
-          name: c.name,
-          type: c.type as 'percent' | 'fixed',
-          value: c.value,
-          active: c.active
-        }));
-
-        const mappedCoupon = totals?.appliedCoupon ? {
-          type: 'fixed' as const,
-          value: totals.appliedCoupon.discountAmount,
-          maxDiscountAmount: undefined
-        } : undefined;
-
-        const pricingResult = calculateOrderTotal(verifiedCart, formattedCharges, mappedCoupon);
-
-        if (Math.abs(pricingResult.finalTotal - amount) > 1) {
-          console.error(`ðŸš¨ QR Payment Mismatch Detected: Frontend sent â‚¹${amount} but backend calculated â‚¹${pricingResult.finalTotal}`);
-          return res.status(400).json({
-            success: false,
-            message: "Payment amount verification failed. Please refresh your cart and try again."
-          });
-        }
-        console.log(`âœ… QR Payment amount verified successfully (â‚¹${pricingResult.finalTotal})`);
-      } catch (calcError) {
-        console.error("âŒ Error calculating secure amount for QR:", calcError);
-        return res.status(500).json({
-          success: false,
-          message: "Error verifying payment amount. Please try again."
-        });
-      }
-
-      // Validate Razorpay configuration
-      if (!RAZORPAY_CONFIG.KEY_ID || !RAZORPAY_CONFIG.KEY_SECRET) {
-        console.error('ðŸš¨ Razorpay configuration missing: KEY_ID or KEY_SECRET not set');
-        return res.status(500).json({
-          success: false,
-          message: "Payment gateway configuration error. Please contact support."
-        });
-      }
-
-      // Generate unique order number and barcode
-      const orderNumber = generateOrderNumber();
-      const barcode = generateOrderNumber();
-
-      // Prepare order items
-      const orderItems = cart.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity
-      }));
-
-      // Process each item to add counter IDs
-      const storeCounterIds = new Set<string>();
-      const paymentCounterIds = new Set<string>();
-      const kotCounterIds = new Set<string>();
-
-      // OPTIMIZATION: Run Razorpay API call and menu item batch query in parallel
-      const itemIds = orderItems.map((item: any) => item.id);
-      const [qrCode, menuItemsFromDb] = await Promise.all([
-        createRazorpayQR(
-          orderNumber,
-          amount,
-          'INR',
-          `POS Order ${orderNumber}`,
-          customerName || 'POS Customer'
-        ),
-        MenuItem.find({ _id: { $in: itemIds } }).lean()
-      ]);
-
-      console.log(`ðŸ’³ Razorpay QR code created: ${qrCode.id} for order ${orderNumber}`);
-
-      // OPTIMIZATION: Build lookup map from batch query result
-      const menuItemMap = new Map(menuItemsFromDb.map((m: any) => [m._id.toString(), m]));
-
-      // Process each item using the batch-fetched data
-      for (const item of orderItems) {
-        const menuItem = menuItemMap.get(item.id);
-
-        if (menuItem) {
-          item.storeCounterId = menuItem.storeCounterId || null;
-          item.paymentCounterId = menuItem.paymentCounterId || null;
-          item.kotCounterId = menuItem.kotCounterId || null;
-          item.isMarkable = menuItem.isMarkable || false;
-          item.isVegetarian = menuItem.isVegetarian !== undefined ? menuItem.isVegetarian : true;
-          item.categoryId = menuItem.categoryId ? String(menuItem.categoryId) : null;
-          item.available = menuItem.available !== undefined ? menuItem.available : true;
-
-          if (menuItem.storeCounterId) storeCounterIds.add(menuItem.storeCounterId);
-          if (menuItem.paymentCounterId) paymentCounterIds.add(menuItem.paymentCounterId);
-          if (menuItem.kotCounterId) kotCounterIds.add(menuItem.kotCounterId);
-        } else {
-          item.storeCounterId = null;
-          item.paymentCounterId = null;
-          item.kotCounterId = null;
-          item.isMarkable = false;
-          item.isVegetarian = true;
-          item.categoryId = null;
-          item.available = true;
-        }
-      }
-
-      // OPTIMIZATION: Extract UPI link from QR image (runs while we prepare order data)
-      const upiLinkPromise = extractUpiLinkFromQR(qrCode.image_url);
-
-      const allStoreCounterIds = Array.from(storeCounterIds);
-      const allPaymentCounterIds = Array.from(paymentCounterIds);
-      const allKotCounterIds = Array.from(kotCounterIds);
-      const allCounterIds = Array.from(new Set([...allStoreCounterIds, ...allPaymentCounterIds, ...allKotCounterIds]));
-
-      // Determine if order has markable items
-      let hasMarkableItem = false;
-      for (const item of orderItems) {
-        if (item.isMarkable) {
-          hasMarkableItem = true;
-          break;
-        }
-      }
-
-      // QR orders start as pending payment
-      const orderStatus = 'pending';
-
-      // Initialize itemStatusByCounter
-      const itemStatusByCounter: { [counterId: string]: { [itemId: string]: 'pending' | 'ready' | 'completed' } } = {};
-      for (const counterId of allCounterIds) {
-        itemStatusByCounter[counterId] = {};
-        for (const item of orderItems) {
-          itemStatusByCounter[counterId][item.id] = 'pending';
-        }
-      }
-
-      // Calculate charges from totals (QR payments include charges)
-      let chargesTotal = 0;
-      let chargesApplied: any[] = [];
-
-      console.log('ðŸ” [QR] Checking totals for charges calculation:', { totals, hasSubtotal: !!totals?.subtotal, hasTotal: !!totals?.total });
-
-      if (totals && totals.subtotal && totals.total) {
-        try {
-          console.log(`ðŸ” [QR] Fetching canteen charges for canteenId: ${canteenId}`);
-          const canteenChargesDb = await CanteenCharge.find({ canteenId }).sort({ createdAt: -1 });
-          const canteenCharges = canteenChargesDb.map((c: any) => {
-            const obj: any = c.toObject ? c.toObject() : c;
-            obj.id = obj._id?.toString();
-            delete obj._id;
-            delete obj.__v;
-            return obj;
-          });
-          console.log(`ðŸ“Š [QR] Retrieved ${canteenCharges.length} total canteen charges`);
-
-          const activeCharges = canteenCharges.filter((charge: any) => charge.active);
-          console.log(`ðŸ“Š [QR] QR Payment - Found ${activeCharges.length} active canteen charges:`, activeCharges);
-
-          if (activeCharges.length > 0) {
-            // Calculate charges and total
-            activeCharges.forEach((charge: any) => {
-              let chargeAmount = 0;
-              if (charge.type === 'percent') {
-                chargeAmount = (totals.subtotal * charge.value) / 100;
-              } else {
-                chargeAmount = charge.value;
-              }
-
-              console.log(`  - Processing charge: ${charge.name} (${charge.type}=${charge.value}) = ${chargeAmount}`);
-
-              if (chargeAmount > 0) {
-                chargesTotal += chargeAmount;
-                chargesApplied.push({
-                  name: charge.name,
-                  type: charge.type,
-                  value: charge.value,
-                  amount: chargeAmount
-                });
-              }
-            });
-
-            console.log(`ðŸ’° [QR] Calculated chargesTotal: ${chargesTotal}`);
-            console.log(`ðŸ’° [QR] Calculated chargesApplied: ${JSON.stringify(chargesApplied)}`);
-          } else {
-            console.warn('âš ï¸ [QR] No active canteen charges found - order will have no charges');
-          }
-        } catch (error) {
-          console.error('âŒ [QR] Error fetching canteen charges:', error);
-        }
-      } else {
-        console.warn('âš ï¸ [QR] Totals missing or invalid - cannot calculate charges');
-      }
-
-      console.log('ðŸ’° QR Order Charges Debug:');
-      console.log('  - chargesTotal:', chargesTotal);
-      console.log('  - chargesApplied:', JSON.stringify(chargesApplied, null, 2));
-
-      // Create order with PENDING payment status
-      const order = await storage.createOrder({
-        customerName: customerName,
-        // collegeName: 'POS Order', // Removed as it is not in InsertOrder schema
-        canteenId: canteenId,
-        customerId: 0,
-        items: JSON.stringify(orderItems),
-        amount: totals?.total || amount,
-        itemsSubtotal: totals?.subtotal || amount,
-        taxAmount: totals?.tax || 0,
-        chargesTotal: chargesTotal,
-        chargesApplied: chargesApplied.length > 0 ? chargesApplied : undefined,
-        originalAmount: totals?.subtotal || amount,
-        discountAmount: totals?.discount || 0,
-        status: orderStatus,
-        orderNumber: orderNumber,
-        barcode: barcode,
-        estimatedTime: 15,
-        isOffline: false,
-        isCounterOrder: true,
-        paymentStatus: 'PENDING',
-        paymentMethod: 'qr',
-        qrId: qrCode.id,
-        orderType: 'takeaway',
-        allStoreCounterIds: allStoreCounterIds,
-        allPaymentCounterIds: allPaymentCounterIds,
-        allKotCounterIds: allKotCounterIds,
-        allCounterIds: allCounterIds,
-        itemStatusByCounter: JSON.stringify(itemStatusByCounter),
-        metadata: JSON.stringify({
-          orderType: 'pos_qr',
-          checkoutSessionId: checkoutSessionId,
-          paymentMethod: 'qr'
-        })
-      } as any);
-
-      console.log(`âœ… POS QR Order ${orderNumber} created with PENDING payment status`);
-      console.log('  - Saved chargesTotal:', order.chargesTotal);
-      console.log('  - Saved chargesApplied:', JSON.stringify(order.chargesApplied, null, 2));
-
-      // Store QR code details in payment record
-      await storage.createPayment({
-        merchantTransactionId: orderNumber,
-        amount: amount * 100,
-        status: PAYMENT_STATUS.PENDING,
-        canteenId: canteenId,
-        orderId: order.id,
-        checksum: '',
-        metadata: JSON.stringify({
-          qrCodeId: qrCode.id,
-          orderId: order.id,
-          orderNumber: orderNumber,
-          customerName: customerName,
-          canteenId: canteenId,
-          checkoutSessionId: checkoutSessionId,
-          orderType: 'pos_qr',
-          cart: cart,
-          totals: totals,
-          qrCodeDetails: qrCode
-        })
-      });
-
-      // Update checkout session if provided
-      if (checkoutSessionId) {
-        await CheckoutSessionService.updateStatus(
-          checkoutSessionId,
-          'payment_initiated',
-          {
-            qrCodeId: qrCode.id,
-            orderId: order.id,
-            orderNumber: orderNumber,
-            merchantTransactionId: orderNumber,
-            amount: amount,
-            customerName: customerName,
-            cart: cart,
-            totals: totals,
-            canteenId: canteenId,
-            orderType: 'pos_qr',
-            paymentInitiatedAt: new Date().toISOString()
-          }
-        );
-      }
-
-      // Await the UPI link extraction (started earlier, should be done by now)
-      const upiLink = await upiLinkPromise;
-
-      res.json({
-        success: true,
-        qrId: qrCode.id,
-        qrImageUrl: qrCode.image_url,
-        upiLink: upiLink,
-        qrCodeData: qrCode,
-        orderId: order.id,
-        orderNumber: orderNumber,
-        amount: amount,
-        expiresAt: qrCode.close_by,
-        status: qrCode.status,
-        paymentStatus: 'PENDING'
-      });
-    } catch (error: any) {
-      console.error('QR code creation error:', error);
-
-      const checkoutSessionId = req.body.checkoutSessionId;
-      if (checkoutSessionId) {
-        try {
-          await CheckoutSessionService.updateStatus(checkoutSessionId, 'payment_failed');
-        } catch (updateError) {
-          console.error('Error updating checkout session status:', updateError);
-        }
-      }
-
-      if (error.message && error.message.includes('Razorpay QR API Error')) {
-        return res.status(502).json({
-          success: false,
-          message: error.message
-        });
-      }
-
-      res.status(500).json({
-        success: false,
-        message: "Internal server error during QR code creation",
-        error: error.message || 'Unknown error'
-      });
-    }
+    return res.status(501).json({ success: false, message: "Deprecated" });
   });
 
-  // Get Razorpay QR code status and update order if payment received
+  // Deprecated: Get Razorpay QR code status
   app.get("/api/payments/qr-status/:qrCodeId", async (req, res) => {
-    try {
-      const { qrCodeId } = req.params;
-
-      if (!qrCodeId) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required parameter: qrCodeId"
-        });
-      }
-
-      // Fetch QR code details
-      const qrCode = await fetchRazorpayQR(qrCodeId);
-
-      // Fetch all payments for this QR code
-      const payments = await fetchAllRazorpayQRPayments(qrCodeId);
-
-      console.log(`ðŸ“Š QR code status fetched: ${qrCodeId}, status: ${qrCode.status}, payments: ${payments.count}`);
-
-      // Check if payment was received
-      let paymentReceived = false;
-      let razorpayPaymentId: string | null = null;
-
-      if (payments.count > 0 && payments.items && payments.items.length > 0) {
-        const successfulPayment = payments.items.find((p: any) =>
-          p.status === 'captured' || p.status === 'authorized'
-        );
-
-        if (successfulPayment) {
-          paymentReceived = true;
-          razorpayPaymentId = successfulPayment.id;
-
-          // Update order payment status
-          const order = await storage.getOrderByQrId(qrCodeId);
-          if (order && order.paymentStatus === 'PENDING') {
-            await storage.updateOrder(order.id, {
-              paymentStatus: 'PAID',
-              paymentId: razorpayPaymentId
-            } as any);
-
-            // Update payment record
-            const paymentRecord = await storage.getPaymentByMetadataField('qrCodeId', qrCodeId);
-            if (paymentRecord) {
-              await storage.updatePaymentStatus(
-                paymentRecord.merchantTransactionId,
-                PAYMENT_STATUS.SUCCESS
-              );
-            }
-
-            // Update checkout session if exists
-            const metadata = order.metadata ? JSON.parse(order.metadata) : {};
-            if (metadata.checkoutSessionId) {
-              await CheckoutSessionService.updateStatus(
-                metadata.checkoutSessionId,
-                'payment_completed',
-                {
-                  paymentId: razorpayPaymentId,
-                  paymentCompletedAt: new Date().toISOString()
-                }
-              );
-            }
-
-            // Broadcast order update via WebSocket
-            const wsManager = getWebSocketManager();
-            if (wsManager) {
-              const updatedOrder = await storage.getOrder(order.id);
-              if (updatedOrder) {
-                wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
-                wsManager.broadcastToCanteen(order.canteenId, 'payment_success', {
-                  orderNumber: order.orderNumber,
-                  orderId: order.id,
-                  paymentId: razorpayPaymentId,
-                  qrCodeId: qrCodeId
-                });
-
-                if (order.allCounterIds) {
-                  order.allCounterIds.forEach((counterId: string) => {
-                    wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
-                    wsManager.broadcastToCounter(counterId, 'payment_success', {
-                      orderNumber: order.orderNumber,
-                      orderId: order.id,
-                      paymentId: razorpayPaymentId,
-                      qrCodeId: qrCodeId
-                    });
-                  });
-                }
-              }
-            }
-
-            console.log(`âœ… Order payment updated: ${order.orderNumber} - Payment ID: ${razorpayPaymentId}`);
-          }
-        }
-      }
-
-      // Get order details to include in response
-      const order = await storage.getOrderByQrId(qrCodeId);
-
-      res.json({
-        success: true,
-        qrCode: qrCode,
-        payments: payments,
-        hasPayment: payments.count > 0,
-        paymentReceived: paymentReceived,
-        paymentId: razorpayPaymentId,
-        status: qrCode.status,
-        orderNumber: order?.orderNumber,
-        orderId: order?.id
-      });
-    } catch (error: any) {
-      console.error('QR status fetch error:', error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch QR code status",
-        error: error.message || 'Unknown error'
-      });
-    }
+    return res.status(501).json({ success: false, message: "Deprecated" });
   });
 
-  // Close Razorpay QR code
+  // Deprecated: Close Razorpay QR code
   app.post("/api/payments/qr-close/:qrCodeId", requireAuth, async (req, res) => {
-    try {
-      const { qrCodeId } = req.params;
-
-      if (!qrCodeId) {
-        return res.status(400).json({
-          success: false,
-          message: "Missing required parameter: qrCodeId"
-        });
-      }
-
-      // Close the QR code
-      const qrCode = await closeRazorpayQR(qrCodeId);
-
-      console.log(`ðŸ”’ QR code closed: ${qrCodeId}`);
-
-      res.json({
-        success: true,
-        qrCode: qrCode,
-        message: "QR code closed successfully"
-      });
-    } catch (error: any) {
-      console.error('QR close error:', error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to close QR code",
-        error: error.message || 'Unknown error'
-      });
-    }
+    return res.status(501).json({ success: false, message: "Deprecated" });
   });
 
-  // Razorpay QR webhook handler for payment notifications
+  // Deprecated: Razorpay QR webhook handler
   app.post("/api/webhooks/razorpay", async (req, res) => {
-    console.log(`ðŸ“¡ [QR-WEBHOOK] Razorpay QR webhook received at ${new Date().toISOString()}`);
-    console.log(`ðŸ“¡ [QR-WEBHOOK] Event:`, req.body.event);
-    console.log(`ðŸ“¡ [QR-WEBHOOK] Payment ID:`, req.body.payload?.payment?.entity?.id);
-    
-    const startTime = Date.now();
-    try {
-      const receivedSignature = req.headers['x-razorpay-signature'] as string;
-      const payload = req.body;
-
-      console.log('ðŸ“¡ Razorpay QR webhook received:', {
-        event: payload.event,
-        timestamp: new Date().toISOString()
-      });
-
-      if (!receivedSignature) {
-        console.warn('ðŸ“¡ QR Webhook missing signature');
-        return res.status(401).json({ success: false, message: 'Missing signature' });
-      }
-
-      // Verify webhook signature
-      const payloadString = JSON.stringify(payload);
-      if (!verifyWebhookSignature(payloadString, receivedSignature)) {
-        console.error('Invalid QR webhook signature - rejecting request');
-        return res.status(401).json({ success: false, message: 'Invalid signature' });
-      }
-
-      // Handle Razorpay webhook payload structure
-      const event = payload.event;
-      const entity = payload.payload?.payment?.entity || payload.payload?.qr_code?.entity;
-
-      if (!entity) {
-        console.error('ðŸ“¡ Invalid QR webhook payload structure:', payload);
-        return res.status(400).json({ success: false, message: 'Invalid payload structure' });
-      }
-
-      console.log('ðŸ“¡ QR Webhook event:', event);
-
-      // Handle payment.captured event for QR code payments
-      if (event === 'payment.captured' || event === 'payment.authorized') {
-        const razorpayPaymentId = entity.id;
-        const paymentStatus = entity.status;
-        const paymentMethod = entity.method;
-        const notes = entity.notes || {};
-
-        // Extract QR code reference from notes
-        const orderId = notes.orderId || notes.reference_id;
-        const qrCodeId = entity.qr_code_id;
-
-        console.log('ðŸ“¡ Payment captured:', {
-          paymentId: razorpayPaymentId,
-          orderId: orderId,
-          qrCodeId: qrCodeId,
-          status: paymentStatus
-        });
-
-        if (!orderId && !qrCodeId) {
-          console.log('ðŸ“¡ Standard payment webhook detected (no QR notes) - checking indexed fields');
-
-          // Try to handle standard payment using indexed fields (FAST)
-          console.log(`ðŸ“¡ Looking up payment for Razorpay Payment ID: ${razorpayPaymentId}`);
-
-          try {
-            // Find the payment record using the Razorpay Order ID (order_...)
-            // The webhook payload has `entity.order_id` which matches what we stored in razorpayOrderId
-            const razorpayOrderId = entity.order_id;
-            let paymentRecord = null;
-
-            if (razorpayOrderId) {
-              console.log(`ðŸ“¡ Searching for payment with Razorpay Order ID: ${razorpayOrderId}`);
-              // Use new indexed field lookup (FAST)
-              paymentRecord = await storage.getPaymentByRazorpayOrderId(razorpayOrderId);
-            } else {
-              // Fallback: Try to find by payment ID
-              console.log('âš ï¸ Webhook payload missing order_id - attempting fallback by payment ID');
-              paymentRecord = await storage.getPaymentByRazorpayId(razorpayPaymentId);
-            }
-
-            if (paymentRecord && paymentRecord.metadata) {
-              console.log(`âœ… Found local payment record for ${razorpayPaymentId}`);
-
-              // 2. Parse the metadata
-              let metadata;
-              try {
-                metadata = typeof paymentRecord.metadata === 'string'
-                  ? JSON.parse(paymentRecord.metadata)
-                  : paymentRecord.metadata;
-              } catch (e) {
-                console.error('âŒ Failed to parse payment metadata:', e);
-              }
-
-              // 3. Check for cartItems or orderData (saved as flattened object in initiate)
-              // In initiate we save: ...orderData, razorpayOrderId, checkoutSessionId
-              if (metadata && (metadata.cartItems || metadata.items || metadata.customerId)) {
-                console.log('âœ… Found order data in local payment metadata - attempting to create order');
-
-                const merchantTransactionId = paymentRecord.merchantTransactionId;
-
-                // Create order using service
-                // We pass metadata as orderData since it contains what we saved
-                const newOrder = await orderService.createOrderFromPayment(metadata, merchantTransactionId);
-
-                console.log(`âœ… Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) via QR Webhook fallback`);
-                return res.json({ success: true, message: 'Order created from webhook' });
-              } else {
-                console.warn('âš ï¸ Payment record found but missing required order data in metadata');
-              }
-            } else {
-              console.log(`âš ï¸ No local payment record found for ${razorpayPaymentId}`);
-              
-              // Log failed webhook for retry
-              try {
-                const { WebhookLog } = await import('./models/mongodb-models');
-                await WebhookLog.create({
-                  event: event,
-                  paymentId: razorpayPaymentId,
-                  razorpayOrderId: razorpayOrderId || undefined,
-                  payload: JSON.stringify(payload),
-                  status: 'failed',
-                  retryCount: 0,
-                  error: 'Payment record not found in database'
-                });
-                console.log('ðŸ“ Logged failed webhook for retry');
-              } catch (logError) {
-                console.error('âŒ Failed to log webhook:', logError);
-              }
-            }
-
-          } catch (error: any) {
-            console.error('âŒ Error in QR webhook standard payment fallback:', error);
-            if (error.message && error.message.includes('Duplicate')) {
-              return res.json({ success: true, message: 'Order already exists' });
-            }
-            // Don't return error, let it fall through to 404
-          }
-        }
-
-        // Find order by QR ID or order number
-        let order = null;
-
-        if (qrCodeId) {
-          order = await storage.getOrderByQrId(qrCodeId);
-          console.log('ðŸ“¡ Order lookup by QR ID:', { qrCodeId, found: !!order });
-        }
-
-        if (!order && orderId) {
-          order = await storage.getOrderByOrderNumber(orderId);
-          console.log('ðŸ“¡ Order lookup by order number:', { orderId, found: !!order });
-        }
-
-        if (!order) {
-          console.error('ðŸ“¡ Order not found for payment:', { orderId, qrCodeId });
-          
-          // Log failed webhook for retry
-          try {
-            const { WebhookLog } = await import('./models/mongodb-models');
-            await WebhookLog.create({
-              event: event,
-              paymentId: razorpayPaymentId,
-              razorpayOrderId: entity.order_id || undefined,
-              payload: JSON.stringify(payload),
-              status: 'failed',
-              retryCount: 0,
-              error: `Order not found for payment - orderId: ${orderId}, qrCodeId: ${qrCodeId}`
-            });
-            console.log('ðŸ“ Logged failed webhook for retry');
-          } catch (logError) {
-            console.error('âŒ Failed to log webhook:', logError);
-          }
-          
-          return res.status(404).json({ success: false, message: 'Order not found' });
-        }
-
-        // Check if payment is already processed
-        if (order.paymentStatus === 'PAID') {
-          console.log('ðŸ“¡ Payment already processed for order:', order.orderNumber);
-          return res.status(200).json({
-            success: true,
-            message: 'Payment already processed'
-          });
-        }
-
-        // Update order payment status
-        await storage.updateOrder(order.id, {
-          paymentStatus: 'PAID',
-          paymentId: razorpayPaymentId,
-          paymentMethod: paymentMethod || 'qr'
-        } as any);
-
-        console.log(`âœ… Order payment updated via webhook: ${order.orderNumber} - Payment ID: ${razorpayPaymentId}`);
-
-        // Update payment record if exists
-        const paymentRecord = await storage.getPaymentByMetadataField('qrCodeId', qrCodeId || '');
-        if (!paymentRecord && order.orderNumber) {
-          const paymentByOrderNumber = await storage.getPaymentByMerchantTxnId(order.orderNumber);
-          if (paymentByOrderNumber) {
-            await storage.updatePaymentStatus(order.orderNumber, PAYMENT_STATUS.SUCCESS);
-            await storage.updatePaymentByMerchantTxnId(order.orderNumber, {
-              razorpayTransactionId: razorpayPaymentId,
-              razorpayPaymentId: razorpayPaymentId, // Store payment ID
-              paymentMethod: paymentMethod || 'qr'
-            });
-          }
-        } else if (paymentRecord) {
-          await storage.updatePaymentStatus(paymentRecord.merchantTransactionId, PAYMENT_STATUS.SUCCESS);
-          await storage.updatePaymentByMerchantTxnId(paymentRecord.merchantTransactionId, {
-            razorpayTransactionId: razorpayPaymentId,
-            razorpayPaymentId: razorpayPaymentId, // Store payment ID
-            paymentMethod: paymentMethod || 'qr'
-          });
-        }
-
-        // Update checkout session if exists
-        const metadata = order.metadata ? JSON.parse(order.metadata) : {};
-        if (metadata.checkoutSessionId) {
-          await CheckoutSessionService.updateStatus(
-            metadata.checkoutSessionId,
-            'payment_completed',
-            {
-              paymentId: razorpayPaymentId,
-              paymentCompletedAt: new Date().toISOString()
-            }
-          );
-        }
-
-        // Broadcast order update via WebSocket
-        const wsManager = getWebSocketManager();
-        if (wsManager) {
-          const updatedOrder = await storage.getOrder(order.id);
-          if (updatedOrder) {
-            wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
-            wsManager.broadcastToCanteen(order.canteenId, 'payment_success', {
-              orderNumber: order.orderNumber,
-              paymentId: razorpayPaymentId
-            });
-
-            if (order.allCounterIds) {
-              order.allCounterIds.forEach((counterId: string) => {
-                wsManager.broadcastToCounter(counterId, 'order_updated', updatedOrder);
-                wsManager.broadcastToCounter(counterId, 'payment_success', {
-                  orderNumber: order.orderNumber,
-                  paymentId: razorpayPaymentId
-                });
-              });
-            }
-          }
-        }
-
-        const processingTime = Date.now() - startTime;
-        console.log(`âœ… QR webhook processed successfully in ${processingTime}ms`);
-
-        res.status(200).json({
-          success: true,
-          message: 'Payment processed successfully',
-          orderNumber: order.orderNumber
-        });
-      } else {
-        console.log('ðŸ“¡ Unhandled QR webhook event:', event);
-        res.status(200).json({
-          success: true,
-          message: 'Event acknowledged but not processed'
-        });
-      }
-    } catch (error: any) {
-      console.error('ðŸ“¡ QR Webhook processing error:', error);
-      console.error('ðŸ“¡ Error stack:', error.stack);
-      res.status(500).json({
-        success: false,
-        message: 'Webhook processing failed',
-        error: error.message || 'Unknown error'
-      });
-    }
+    return res.status(501).json({ success: false, message: "Deprecated" });
   });
 
   // Get payment job status (for polling)
@@ -5907,26 +5155,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Razorpay webhook handler with production optimizations
+  // Zoho Payments webhook handler with production optimizations
   app.post("/api/payments/webhook", async (req, res) => {
-    console.log(`ðŸ“¡ [WEBHOOK] Razorpay webhook received at ${new Date().toISOString()}`);
-    console.log(`ðŸ“¡ [WEBHOOK] Event:`, req.body.event);
-    console.log(`ðŸ“¡ [WEBHOOK] Payment ID:`, req.body.payload?.payment?.entity?.id);
+    console.log(`Ã°Å¸â€œÂ¡ [WEBHOOK] Zoho webhook received at ${new Date().toISOString()}`);
+    console.log(`Ã°Å¸â€œÂ¡ [WEBHOOK] Event:`, req.body.event || req.body.event_type);
     
     const startTime = Date.now();
     try {
-      const receivedSignature = req.headers['x-razorpay-signature'] as string;
+      // Zoho sends signature in X-Zoho-Webhook-Signature
+      const receivedSignature = req.headers['x-zoho-webhook-signature'] as string;
       const payload = req.body;
 
       if (!receivedSignature) {
-        console.warn('ðŸ“¡ Webhook missing signature');
+        console.warn('Ã°Å¸â€œÂ¡ Webhook missing signature');
         return res.status(401).json({ success: false, message: 'Missing signature' });
       }
 
       // Verify webhook signature
       const signatureStart = Date.now();
       const payloadString = JSON.stringify(payload);
-      console.log('ðŸ“¡ Webhook verification details:', {
+      console.log('Ã°Å¸â€œÂ¡ Webhook verification details:', {
         receivedSignature: receivedSignature.substring(0, 20) + '...',
         payloadKeys: Object.keys(payload),
         environment: process.env.NODE_ENV
@@ -5937,40 +5185,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ success: false, message: 'Invalid signature' });
       }
       const signatureTime = Date.now() - signatureStart;
-      console.log(`ðŸ“¡ Signature verification took ${signatureTime}ms`);
+      console.log(`Ã°Å¸â€œÂ¡ Signature verification took ${signatureTime}ms`);
 
-      // Handle Razorpay webhook payload structure
-      const event = payload.event;
-      const entity = payload.payload?.payment?.entity || payload.payload?.order?.entity;
+      // Handle Zoho webhook payload structure
+      const event = payload.event || payload.event_type;
+      const entity = payload.data?.payment || payload.data || payload.payment;
 
       if (!entity) {
-        console.error('ðŸ“¡ Invalid webhook payload structure:', payload);
+        console.error('Ã°Å¸â€œÂ¡ Invalid webhook payload structure:', payload);
         return res.status(400).json({ success: false, message: 'Invalid payload structure' });
       }
 
       // Extract payment/order information
-      const razorpayPaymentId = entity.id || entity.payment_id;
-      const razorpayOrderId = entity.order_id;
+      const zohoPaymentId = entity.payment_id || entity.id;
+      const zohoPaymentSessionId = entity.payment_session_id;
       const paymentStatus = entity.status;
-      const paymentMethod = entity.method;
+      const paymentMethod = entity.payment_mode || entity.method;
 
-      // Find payment by razorpayOrderId using indexed field (FAST)
+      // Find payment by zohoPaymentSessionId using indexed field (FAST)
       let payment = null;
       
-      if (razorpayOrderId) {
-        console.log(`ðŸ“¡ Looking up payment by Razorpay Order ID: ${razorpayOrderId}`);
-        payment = await storage.getPaymentByRazorpayOrderId(razorpayOrderId);
+      if (zohoPaymentSessionId) {
+        console.log(`Ã°Å¸â€œÂ¡ Looking up payment by Zoho Payment Session ID: ${zohoPaymentSessionId}`);
+        payment = await storage.getPaymentByZohoSessionId(zohoPaymentSessionId);
       }
       
       // Fallback: Search through all payments (SLOW - for backward compatibility)
       if (!payment) {
-        console.log('ðŸ“¡ Indexed lookup failed, falling back to metadata search');
+        console.log('Ã°Å¸â€œÂ¡ Indexed lookup failed, falling back to metadata search');
         const payments = await storage.getPayments();
         for (const p of payments) {
           if (p.metadata) {
             try {
               const metadata = JSON.parse(p.metadata);
-              if (metadata.razorpayOrderId === razorpayOrderId) {
+              if (metadata.zohoPaymentSessionId === zohoPaymentSessionId) {
                 payment = p;
                 break;
               }
@@ -5982,17 +5230,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!payment) {
-        console.error('ðŸ“¡ Payment not found for order:', razorpayOrderId);
+        console.error('Ã°Å¸â€œÂ¡ Payment not found for session:', zohoPaymentSessionId);
         return res.status(404).json({ success: false, message: 'Payment not found' });
       }
 
       const merchantTransactionId = payment.merchantTransactionId;
 
-      // Map Razorpay status to our payment status
+      // Map Zoho status to our payment status
       let mappedPaymentStatus: string;
-      if (paymentStatus === 'captured' || paymentStatus === 'authorized') {
+      if (paymentStatus === 'captured' || paymentStatus === 'authorized' || paymentStatus === 'success' || event === ZOHO_PAYMENT_EVENTS.PAYMENT_SUCCEEDED) {
         mappedPaymentStatus = PAYMENT_STATUS.SUCCESS;
-      } else if (paymentStatus === 'failed') {
+      } else if (paymentStatus === 'failed' || event === ZOHO_PAYMENT_EVENTS.PAYMENT_FAILED) {
         mappedPaymentStatus = PAYMENT_STATUS.FAILED;
       } else {
         mappedPaymentStatus = PAYMENT_STATUS.PENDING;
@@ -6000,12 +5248,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update payment record
       await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-        razorpayTransactionId: razorpayPaymentId,
-        razorpayPaymentId: razorpayPaymentId, // Store payment ID as indexed field
+        zohoPaymentId: zohoPaymentId, // Store payment ID as indexed field
         status: mappedPaymentStatus,
         paymentMethod: paymentMethod || 'unknown',
         responseCode: paymentStatus,
-        responseMessage: entity.error_description || `Payment ${paymentStatus}`
+        responseMessage: entity.error_message || entity.error_description || `Payment ${paymentStatus}`
       });
 
       // Get updated payment after status update
@@ -6025,14 +5272,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               throw new Error('Order creation returned invalid order object');
             }
 
-            console.log(`âœ… Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from Razorpay webhook`);
+            console.log(`Ã¢Å“â€¦ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from Razorpay webhook`);
           } catch (error) {
             // Check if error is due to race condition (order already being created)
             if (error instanceof Error && error.message.includes('already in progress or completed')) {
-              console.log(`â„¹ï¸ Order creation already handled by another process (webhook race condition handled)`);
+              console.log(`Ã¢â€žÂ¹Ã¯Â¸Â Order creation already handled by another process (webhook race condition handled)`);
               // This is expected - don't log as error
             } else {
-              console.error('âŒ Error creating order from webhook:', error);
+              console.error('Ã¢ÂÅ’ Error creating order from webhook:', error);
             }
             // Don't fail the webhook
           }
@@ -6040,7 +5287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (mappedPaymentStatus === PAYMENT_STATUS.FAILED) {
         // Handle any failed payment event (payment.failed, order.paid with failed status, etc.)
         // If payment failed, create order entry but don't broadcast to counters
-        console.log(`ðŸ“¡ Processing failed payment webhook for merchantTransactionId: ${merchantTransactionId}, event: ${event}`);
+        console.log(`Ã°Å¸â€œÂ¡ Processing failed payment webhook for merchantTransactionId: ${merchantTransactionId}, event: ${event}`);
 
         if (updatedPayment?.metadata && !updatedPayment.orderId) {
           // Parse order data from metadata
@@ -6049,12 +5296,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Create order for failed payment (no broadcasting)
           try {
             const newOrder = await orderService.createOrderForFailedPayment(orderData, merchantTransactionId);
-            console.log(`âœ… Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from Razorpay webhook`);
+            console.log(`Ã¢Å“â€¦ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from Razorpay webhook`);
           } catch (error) {
-            console.error('âŒ Error creating order for failed payment from webhook:', error);
+            console.error('Ã¢ÂÅ’ Error creating order for failed payment from webhook:', error);
           }
         } else {
-          console.log(`ðŸ“¡ Failed payment webhook - Order already exists or no metadata. orderId: ${updatedPayment?.orderId}, hasMetadata: ${!!updatedPayment?.metadata}`);
+          console.log(`Ã°Å¸â€œÂ¡ Failed payment webhook - Order already exists or no metadata. orderId: ${updatedPayment?.orderId}, hasMetadata: ${!!updatedPayment?.metadata}`);
         }
       }
 
@@ -6072,14 +5319,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const payment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
 
       if (!payment) {
-        console.log(`âŒ Payment ${merchantTransactionId} not found`);
+        console.log(`Ã¢ÂÅ’ Payment ${merchantTransactionId} not found`);
         return res.status(404).json({
           success: false,
           message: "Payment not found"
         });
       }
 
-      console.log(`âœ… Payment ${merchantTransactionId} found - Status: ${payment.status}`);
+      console.log(`Ã¢Å“â€¦ Payment ${merchantTransactionId} found - Status: ${payment.status}`);
 
       if (payment.status !== PAYMENT_STATUS.FAILED) {
         return res.status(400).json({
@@ -6146,15 +5393,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If already successful, ensure order is created and return cached status
       if (payment.status === PAYMENT_STATUS.SUCCESS) {
-        console.log(`ðŸ“Š [PAYMENT-STATUS] Payment ${merchantTransactionId} is SUCCESS, checking for order`);
+        console.log(`Ã°Å¸â€œÅ  [PAYMENT-STATUS] Payment ${merchantTransactionId} is SUCCESS, checking for order`);
         let orderNumber = null;
 
         // Create order if not already created (FIXED: Use helper function with stock service)
         if (payment.metadata && !payment.orderId) {
-          console.log(`ðŸ“Š [PAYMENT-STATUS] No orderId found, creating order from metadata`);
+          console.log(`Ã°Å¸â€œÅ  [PAYMENT-STATUS] No orderId found, creating order from metadata`);
           try {
             const orderData = JSON.parse(payment.metadata);
-            console.log(`ðŸ“Š [PAYMENT-STATUS] Order data:`, {
+            console.log(`Ã°Å¸â€œÅ  [PAYMENT-STATUS] Order data:`, {
               customerId: orderData.customerId,
               hasAppliedCoupon: !!orderData.appliedCoupon,
               appliedCouponValue: orderData.appliedCoupon,
@@ -6163,28 +5410,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             const newOrder = await orderService.createOrderFromPayment(orderData, merchantTransactionId);
             orderNumber = newOrder.orderNumber;
-            console.log(`ðŸ“¦ Order ${newOrder.orderNumber} created via cached status check with stock management`);
+            console.log(`Ã°Å¸â€œÂ¦ Order ${newOrder.orderNumber} created via cached status check with stock management`);
           } catch (error) {
             // Check if error is due to race condition (order already being created)
             if (error instanceof Error && error.message.includes('already in progress or completed')) {
-              console.log(`â„¹ï¸ Order creation already handled by another process (status check race condition handled)`);
+              console.log(`Ã¢â€žÂ¹Ã¯Â¸Â Order creation already handled by another process (status check race condition handled)`);
               // Try to get the existing order
               const updatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
               if (updatedPayment?.orderId) {
                 const existingOrder = await storage.getOrder(updatedPayment.orderId);
                 if (existingOrder) {
                   orderNumber = existingOrder.orderNumber;
-                  console.log(`âœ… Retrieved existing order: ${orderNumber}`);
+                  console.log(`Ã¢Å“â€¦ Retrieved existing order: ${orderNumber}`);
                 }
               }
             } else {
-              console.error('âŒ Error creating order from payment callback:', error);
+              console.error('Ã¢ÂÅ’ Error creating order from payment callback:', error);
             }
             // Don't fail the request, just log the error
             // Order creation will be retried on next status check
           }
         } else if (payment.orderId) {
-          console.log(`ðŸ“Š [PAYMENT-STATUS] Order already exists: ${payment.orderId}`);
+          console.log(`Ã°Å¸â€œÅ  [PAYMENT-STATUS] Order already exists: ${payment.orderId}`);
           // Get existing order number
           const order = await storage.getOrder(payment.orderId);
           orderNumber = order?.orderNumber;
@@ -6216,7 +5463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get updated payment with order ID (order is already linked in createOrderForFailedPayment)
             const updatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
 
-            console.log(`âœ… Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from status check`);
+            console.log(`Ã¢Å“â€¦ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from status check`);
 
             return res.json({
               success: true,
@@ -6229,7 +5476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             });
           } catch (error) {
-            console.error('âŒ Error creating order for failed payment from status check:', error);
+            console.error('Ã¢ÂÅ’ Error creating order for failed payment from status check:', error);
             // Continue to return failed status even if order creation fails
           }
         }
@@ -6250,7 +5497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = Date.now();
 
       if (cachedInfo?.shouldSkipApi && (now - cachedInfo.lastAttempt) < API_RETRY_INTERVAL) {
-        console.log(`âš¡ Skipping Razorpay API (${cachedInfo.consecutiveFailures} failures) - returning cached data for ${merchantTransactionId}`);
+        console.log(`Ã¢Å¡Â¡ Skipping Razorpay API (${cachedInfo.consecutiveFailures} failures) - returning cached data for ${merchantTransactionId}`);
         return res.json({
           success: true,
           status: payment.status,
@@ -6259,62 +5506,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Try to check with Razorpay for latest status
-      console.log(`âš¡ Attempting Razorpay status check for ${merchantTransactionId}`);
+      console.log(`Ã¢Å¡Â¡ Attempting Razorpay status check for ${merchantTransactionId}`);
 
-      // Get Razorpay order ID from metadata
-      let razorpayOrderId = null;
+      // Get Zoho session ID from metadata
+      let zohoPaymentSessionId = null;
       if (payment.metadata) {
         try {
           const metadata = JSON.parse(payment.metadata);
-          razorpayOrderId = metadata.razorpayOrderId;
+          zohoPaymentSessionId = metadata.zohoPaymentSessionId || metadata.razorpayOrderId; // fallback to razorpayOrderId for legacy records
         } catch (e) {
           console.error('Error parsing payment metadata:', e);
         }
       }
 
-      if (!razorpayOrderId) {
-        console.log('âš¡ No Razorpay order ID found in metadata, returning cached status');
+      if (!zohoPaymentSessionId) {
+        console.log('Ã¢Å¡Â¡ No Zoho payment session ID found in metadata, returning cached status');
         return res.json({
           success: true,
           status: payment.status,
-          data: { ...payment, fromCache: true, reason: 'no_razorpay_order_id' }
+          data: { ...payment, fromCache: true, reason: 'no_zoho_session_id' }
         });
       }
 
       try {
-        // Fetch order details from Razorpay
-        const razorpayOrder = await getOrderDetails(razorpayOrderId);
+        // Fetch session details from Zoho Payments
+        const sessionDetails = await getPaymentSessionDetails(zohoPaymentSessionId);
 
         // API call succeeded - reset failure count
         paymentStatusCache.set(cacheKey, { lastAttempt: now, consecutiveFailures: 0, shouldSkipApi: false });
 
         // Get payment details if available
-
         let paymentStatus: string = PAYMENT_STATUS.PENDING;
-        let razorpayPaymentId: string | undefined;
+        let zohoPaymentId: string | undefined;
         let paymentMethod = 'unknown';
 
-        if ((razorpayOrder as any).payments && (razorpayOrder as any).payments.length > 0) {
-          const latestPayment = (razorpayOrder as any).payments[0] as any;
-          razorpayPaymentId = latestPayment.id;
-          paymentMethod = latestPayment.method || 'unknown';
+        if (sessionDetails.payments && sessionDetails.payments.length > 0) {
+          // Zoho session payments array contains payments associated with the session
+          const latestPayment = sessionDetails.payments[0];
+          zohoPaymentId = latestPayment.payment_id;
+          paymentMethod = latestPayment.payment_mode || 'unknown';
 
-          if (latestPayment.status === 'captured' || latestPayment.status === 'authorized') {
+          if (latestPayment.status === 'captured' || latestPayment.status === 'success' || latestPayment.status === 'succeeded') {
             paymentStatus = PAYMENT_STATUS.SUCCESS;
           } else if (latestPayment.status === 'failed') {
             paymentStatus = PAYMENT_STATUS.FAILED;
           }
-        } else if (razorpayOrder.status === 'paid') {
-          paymentStatus = PAYMENT_STATUS.SUCCESS;
+        } else if (sessionDetails.status === 'completed' || sessionDetails.status === 'paid') {
+           paymentStatus = PAYMENT_STATUS.SUCCESS;
         }
 
-        // Update payment record with correct data from Razorpay response
+        // Update payment record with correct data from Zoho response
         const updatedPayment = await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
-          razorpayTransactionId: razorpayPaymentId,
+          razorpayTransactionId: zohoPaymentId, // mapped for legacy reasons
           status: paymentStatus,
           paymentMethod: paymentMethod,
-          responseCode: razorpayOrder.status,
-          responseMessage: `Payment ${razorpayOrder.status}`
+          responseCode: sessionDetails.status,
+          responseMessage: `Session ${sessionDetails.status}`
         });
 
         // If payment successful or failed, create order if not already created
@@ -6339,9 +5586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
 
               if (!updateResult) {
-                console.error(`âŒ Failed to update payment ${merchantTransactionId} with orderId ${newOrder.id}`);
+                console.error(`Ã¢ÂÅ’ Failed to update payment ${merchantTransactionId} with orderId ${newOrder.id}`);
               } else {
-                console.log(`âœ… Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from payment status check and linked to payment`);
+                console.log(`Ã¢Å“â€¦ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) from payment status check and linked to payment`);
               }
 
               // Get updated payment with order ID
@@ -6349,25 +5596,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (error) {
               // Check if error is due to race condition (order already being created)
               if (error instanceof Error && error.message.includes('already in progress or completed')) {
-                console.log(`â„¹ï¸ Order creation already handled by another process (payment status race condition handled)`);
+                console.log(`Ã¢â€žÂ¹Ã¯Â¸Â Order creation already handled by another process (payment status race condition handled)`);
                 // Try to get the existing order
                 const latestPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
                 if (latestPayment?.orderId) {
                   const existingOrder = await storage.getOrder(latestPayment.orderId);
                   if (existingOrder) {
                     finalUpdatedPayment = { ...latestPayment, orderNumber: existingOrder.orderNumber };
-                    console.log(`âœ… Retrieved existing order: ${existingOrder.orderNumber}`);
+                    console.log(`Ã¢Å“â€¦ Retrieved existing order: ${existingOrder.orderNumber}`);
                   }
                 }
               } else {
-                console.error('âŒ Error creating order from payment status check:', error);
-                console.error('âŒ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+                console.error('Ã¢ÂÅ’ Error creating order from payment status check:', error);
+                console.error('Ã¢ÂÅ’ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
                 if (updatedPayment?.metadata) {
                   try {
                     const errorOrderData = JSON.parse(updatedPayment.metadata);
-                    console.error('âŒ Order data:', JSON.stringify(errorOrderData, null, 2));
+                    console.error('Ã¢ÂÅ’ Order data:', JSON.stringify(errorOrderData, null, 2));
                   } catch (e) {
-                    console.error('âŒ Could not parse order data from metadata');
+                    console.error('Ã¢ÂÅ’ Could not parse order data from metadata');
                   }
                 }
               }
@@ -6396,16 +5643,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Get updated payment with order ID (order is already linked in createOrderForFailedPayment)
               finalUpdatedPayment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
 
-              console.log(`âœ… Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from payment status check`);
+              console.log(`Ã¢Å“â€¦ Successfully created order ${newOrder.orderNumber} (ID: ${newOrder.id}) for failed payment from payment status check`);
             } catch (error) {
-              console.error('âŒ Error creating order for failed payment from payment status check:', error);
-              console.error('âŒ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+              console.error('Ã¢ÂÅ’ Error creating order for failed payment from payment status check:', error);
+              console.error('Ã¢ÂÅ’ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
               if (updatedPayment?.metadata) {
                 try {
                   const errorOrderData = JSON.parse(updatedPayment.metadata);
-                  console.error('âŒ Order data:', JSON.stringify(errorOrderData, null, 2));
+                  console.error('Ã¢ÂÅ’ Order data:', JSON.stringify(errorOrderData, null, 2));
                 } catch (e) {
-                  console.error('âŒ Could not parse order data from metadata');
+                  console.error('Ã¢ÂÅ’ Could not parse order data from metadata');
                 }
               }
               // Don't fail the request, order creation can be retried
@@ -6453,7 +5700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } catch (error) {
         // API call failed - track failure and return cached data
-        console.log(`âš¡ Razorpay API error:`, error);
+        console.log(`Ã¢Å¡Â¡ Razorpay API error:`, error);
 
         return res.json({
           success: true,
@@ -6478,11 +5725,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shouldSkipApi: newFailures >= MAX_CONSECUTIVE_FAILURES
       });
 
-      console.log(`âš¡ Razorpay API failed (${newFailures}/${MAX_CONSECUTIVE_FAILURES}) for ${req.params.merchantTransactionId}`);
+      console.log(`Ã¢Å¡Â¡ Razorpay API failed (${newFailures}/${MAX_CONSECUTIVE_FAILURES}) for ${req.params.merchantTransactionId}`);
 
       // Handle timeout specifically
       if ((error as any).code === 'ECONNABORTED' || (error as any).code === 'ETIMEDOUT') {
-        console.log('â° Razorpay API timeout - returning cached payment status if available');
+        console.log('Ã¢ÂÂ° Razorpay API timeout - returning cached payment status if available');
 
         // Return the cached payment status to avoid user seeing timeout error
         try {
@@ -6548,7 +5795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
 
-      console.log(`ðŸ“‹ Fetching payments for user ${userId}, page ${page}, limit ${limit}`);
+      console.log(`Ã°Å¸â€œâ€¹ Fetching payments for user ${userId}, page ${page}, limit ${limit}`);
 
       const result = await storage.getPaymentsByCustomerId(userId, page, limit);
 
@@ -6590,7 +5837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPage: result.currentPage,
       });
     } catch (error) {
-      console.error('âŒ Error fetching user payments:', error);
+      console.error('Ã¢ÂÅ’ Error fetching user payments:', error);
       res.status(500).json({ success: false, message: "Failed to fetch payments" });
     }
   });
@@ -6609,7 +5856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "Missing transaction ID" });
       }
 
-      console.log(`ðŸ” User ${userId} verifying payment: ${merchantTransactionId}`);
+      console.log(`Ã°Å¸â€Â User ${userId} verifying payment: ${merchantTransactionId}`);
 
       // 1. Fetch the payment record
       const payment = await storage.getPaymentByMerchantTxnId(merchantTransactionId);
@@ -6634,7 +5881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (paymentCustomerId !== userId) {
-        console.warn(`âš ï¸ User ${userId} attempted to verify payment ${merchantTransactionId} belonging to user ${paymentCustomerId}`);
+        console.warn(`Ã¢Å¡Â Ã¯Â¸Â User ${userId} attempted to verify payment ${merchantTransactionId} belonging to user ${paymentCustomerId}`);
         return res.status(403).json({ success: false, message: "You are not authorized to verify this payment" });
       }
 
@@ -6665,16 +5912,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // 5. Check with Razorpay for the real status
-      let razorpayOrderId: string | null = null;
+      // 5. Check with Zoho Payments for the real status
+      let zohoPaymentSessionId: string | null = null;
       try {
         if (payment.metadata) {
           const metadata = typeof payment.metadata === 'string' ? JSON.parse(payment.metadata) : payment.metadata;
-          razorpayOrderId = metadata.razorpayOrderId || null;
+          zohoPaymentSessionId = metadata.zohoPaymentSessionId || null;
         }
       } catch (e) { /* ignore */ }
 
-      if (!razorpayOrderId) {
+      if (!zohoPaymentSessionId) {
         return res.json({
           success: true,
           status: 'pending',
@@ -6683,18 +5930,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Query Razorpay API for order status
-      const razorpay = new (await import('razorpay')).default({
-        key_id: RAZORPAY_CONFIG.KEY_ID,
-        key_secret: RAZORPAY_CONFIG.KEY_SECRET,
-      });
+      // Query Zoho Payments API for session status
+      const zohoSession = await getPaymentSessionDetails(zohoPaymentSessionId);
+      console.log(`Ã°Å¸â€œâ€¹ Zoho session ${zohoPaymentSessionId} status: ${zohoSession.status}`);
 
-      const razorpayOrder = await razorpay.orders.fetch(razorpayOrderId);
-      console.log(`ðŸ“‹ Razorpay order ${razorpayOrderId} status: ${razorpayOrder.status}`);
-
-      if (razorpayOrder.status === 'paid') {
+      if (zohoSession.status === 'captured' || zohoSession.status === 'authorized' || zohoSession.status === 'success') {
         // Payment was successful! Create the order if it doesn't exist
-        console.log(`âœ… Payment ${merchantTransactionId} confirmed as PAID by Razorpay`);
+        console.log(`Ã¢Å“â€¦ Payment ${merchantTransactionId} confirmed as PAID by Zoho`);
 
         // Update payment status
         await storage.updatePaymentByMerchantTxnId(merchantTransactionId, {
@@ -6720,7 +5962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 status: PAYMENT_STATUS.SUCCESS,
               });
 
-              console.log(`âœ… Order ${newOrder.orderNumber} created from verified payment`);
+              console.log(`Ã¢Å“â€¦ Order ${newOrder.orderNumber} created from verified payment`);
 
               return res.json({
                 success: true,
@@ -6734,7 +5976,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           } catch (orderError: any) {
-            console.error('âŒ Error creating order from verified payment:', orderError);
+            console.error('Ã¢ÂÅ’ Error creating order from verified payment:', orderError);
             return res.json({
               success: true,
               status: 'verified_order_failed',
@@ -6751,13 +5993,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: { paymentStatus: PAYMENT_STATUS.SUCCESS }
         });
 
-      } else if (razorpayOrder.status === 'attempted' || razorpayOrder.status === 'created') {
+      } else if (zohoSession.status === 'attempted' || zohoSession.status === 'created' || zohoSession.status === 'pending') {
         // Payment not completed yet
         return res.json({
           success: true,
           status: 'pending',
           message: 'Payment has not been completed on the payment gateway yet.',
-          data: { paymentStatus: 'PENDING', razorpayStatus: razorpayOrder.status }
+          data: { paymentStatus: 'PENDING', zohoStatus: zohoSession.status }
         });
       } else {
         // Update local status
@@ -6769,11 +6011,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           success: true,
           status: 'failed',
           message: 'This payment was not successful on the payment gateway.',
-          data: { paymentStatus: PAYMENT_STATUS.FAILED, razorpayStatus: razorpayOrder.status }
+          data: { paymentStatus: PAYMENT_STATUS.FAILED, zohoStatus: zohoSession.status }
         });
       }
     } catch (error: any) {
-      console.error('âŒ Error verifying payment:', error);
+      console.error('Ã¢ÂÅ’ Error verifying payment:', error);
       res.status(500).json({
         success: false,
         message: `Payment verification failed: ${error.message || 'Internal error'}`
@@ -6781,40 +6023,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Verify Razorpay payment signature (for frontend callback)
-  app.post("/api/payments/verify-razorpay", requireAuth, async (req, res) => {
+  // Verify Zoho payment (for frontend callback)
+  app.post("/api/payments/verify-zoho", requireAuth, async (req, res) => {
     try {
-      const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+      const { zoho_payment_id, zoho_payment_session_id } = req.body;
 
-      if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      if (!zoho_payment_id || !zoho_payment_session_id) {
         return res.status(400).json({
           success: false,
           message: "Missing required fields"
         });
       }
 
-      // Verify payment signature
-      const isValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-
-      if (!isValid) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid payment signature"
-        });
+      // Verify payment details directly with Zoho API
+      let paymentDetails;
+      try {
+        paymentDetails = await getPaymentDetails(zoho_payment_id);
+        console.log(`[VERIFY-ZOHO] Extracted payment status: ${paymentDetails?.status}`);
+        
+        // Log if we're rejecting it to see why
+        if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized' && paymentDetails.status !== 'success' && paymentDetails.status !== 'succeeded') {
+          console.log(`[VERIFY-ZOHO] Rejecting because status is '${paymentDetails.status}'`);
+          return res.status(400).json({
+            success: false,
+            message: "Payment is not in a successful state"
+          });
+        }
+      } catch (error) {
+         console.error("Error verifying payment with Zoho:", error);
+         return res.status(400).json({
+           success: false,
+           message: "Failed to verify payment details with gateway"
+         });
       }
 
-      // Find payment by razorpay order ID using the indexed field (fast O(1) lookup)
-      let payment = await storage.getPaymentByRazorpayOrderId(razorpay_order_id);
+      // Find payment by zoho payment session ID using the indexed field (fast O(1) lookup)
+      let payment = await storage.getPaymentByZohoSessionId(zoho_payment_session_id);
 
-      // Fallback: scan metadata for older payments that predate the razorpayOrderId index
+      // Fallback: scan metadata for older payments that predate the zohoPaymentSessionId index
       if (!payment) {
-        console.warn(`⚠️ Indexed lookup failed for razorpayOrderId ${razorpay_order_id}, falling back to metadata scan`);
+        console.warn(`âš ï¸ Indexed lookup failed for zohoPaymentSessionId ${zoho_payment_session_id}, falling back to metadata scan`);
         const payments = await storage.getPayments();
         for (const p of payments) {
           if (p.metadata) {
             try {
               const metadata = JSON.parse(p.metadata);
-              if (metadata.razorpayOrderId === razorpay_order_id) {
+              if (metadata.zohoPaymentSessionId === zoho_payment_session_id) {
                 payment = p;
                 break;
               }
@@ -6832,9 +6086,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update payment with Razorpay transaction ID
+      // Update payment with Zoho transaction ID
       await storage.updatePaymentByMerchantTxnId(payment.merchantTransactionId, {
-        razorpayTransactionId: razorpay_payment_id,
+        zohoPaymentId: zoho_payment_id,
         status: PAYMENT_STATUS.SUCCESS
       });
 
@@ -6854,12 +6108,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all payments (admin)
   app.get("/api/payments", requireAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ GET /api/payments - Fetching all payments`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/payments - Fetching all payments`);
       const payments = await storage.getPayments();
-      console.log(`âœ… Successfully fetched ${payments.length} payments`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched ${payments.length} payments`);
       res.json(payments);
     } catch (error) {
-      console.error("âŒ Error fetching payments:", error);
+      console.error("Ã¢ÂÅ’ Error fetching payments:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -6944,7 +6198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Migration endpoint to update payments with canteenId
   app.post("/api/migrate-payments-canteen", requireAdmin, async (req, res) => {
     try {
-      console.log('ðŸ”„ Starting payments canteen migration...');
+      console.log('Ã°Å¸â€â€ž Starting payments canteen migration...');
 
       const { Payment, Order } = await import('./models/mongodb-models');
       const DEFAULT_CANTEEN_ID = 'canteen-1758205071111';
@@ -6954,7 +6208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         canteenId: { $exists: false }
       });
 
-      console.log(`ðŸ“Š Found ${paymentsWithoutCanteen.length} payments without canteenId`);
+      console.log(`Ã°Å¸â€œÅ  Found ${paymentsWithoutCanteen.length} payments without canteenId`);
 
       let updatedCount = 0;
       let defaultAssignedCount = 0;
@@ -6971,14 +6225,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 canteenId: order.canteenId
               });
               updatedCount++;
-              console.log(`âœ… Updated payment ${payment.merchantTransactionId} with canteenId: ${order.canteenId}`);
+              console.log(`Ã¢Å“â€¦ Updated payment ${payment.merchantTransactionId} with canteenId: ${order.canteenId}`);
             } else {
               // Order not found or doesn't have canteenId, assign to default
               await Payment.findByIdAndUpdate(payment._id, {
                 canteenId: DEFAULT_CANTEEN_ID
               });
               defaultAssignedCount++;
-              console.log(`âš ï¸ Payment ${payment.merchantTransactionId} assigned to default canteen (order not found or no canteenId)`);
+              console.log(`Ã¢Å¡Â Ã¯Â¸Â Payment ${payment.merchantTransactionId} assigned to default canteen (order not found or no canteenId)`);
             }
           } else {
             // Payment has no orderId, assign to default canteen
@@ -6986,15 +6240,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               canteenId: DEFAULT_CANTEEN_ID
             });
             defaultAssignedCount++;
-            console.log(`âš ï¸ Payment ${payment.merchantTransactionId} assigned to default canteen (no orderId)`);
+            console.log(`Ã¢Å¡Â Ã¯Â¸Â Payment ${payment.merchantTransactionId} assigned to default canteen (no orderId)`);
           }
         } catch (error) {
-          console.error(`âŒ Error updating payment ${payment.merchantTransactionId}:`, error);
+          console.error(`Ã¢ÂÅ’ Error updating payment ${payment.merchantTransactionId}:`, error);
         }
       }
 
-      console.log('ðŸŽ‰ Payments canteen migration completed!');
-      console.log(`ðŸ“Š Summary:`);
+      console.log('Ã°Å¸Å½â€° Payments canteen migration completed!');
+      console.log(`Ã°Å¸â€œÅ  Summary:`);
       console.log(`   - Updated from orders: ${updatedCount}`);
       console.log(`   - Assigned to default canteen: ${defaultAssignedCount}`);
       console.log(`   - Total processed: ${updatedCount + defaultAssignedCount}`);
@@ -7127,7 +6381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             orderDetails: orderDetails || (customerName ? { customerName } : null),
             customerName: customerName || 'Guest User', // Fallback for display
             metadata: parsedMetadata,
-            formattedAmount: `â‚¹${payment.amount / 100}`,
+            formattedAmount: `Ã¢â€šÂ¹${payment.amount / 100}`,
             createdAtFormatted: new Date(payment.createdAt).toLocaleString('en-IN'),
             updatedAtFormatted: new Date(payment.updatedAt).toLocaleString('en-IN')
           };
@@ -7186,9 +6440,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               message: 'Test payment completed successfully'
             }
           });
-          console.log('ðŸ“¢ Successfully broadcasted test payment success to all clients');
+          console.log('Ã°Å¸â€œÂ¢ Successfully broadcasted test payment success to all clients');
         } else {
-          console.log('ðŸ“¡ WebSocket manager not available for test payment broadcast');
+          console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for test payment broadcast');
         }
       }
 
@@ -7210,12 +6464,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/confirm/:orderId", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const { orderId } = req.params;
-      console.log(`ðŸ’° POST /api/payments/confirm/${orderId} - Confirming payment for offline order`);
+      console.log(`Ã°Å¸â€™Â° POST /api/payments/confirm/${orderId} - Confirming payment for offline order`);
 
       // Get the offline order
       const order = await storage.getOrder(orderId);
       if (!order) {
-        console.log(`âŒ Order ${orderId} not found`);
+        console.log(`Ã¢ÂÅ’ Order ${orderId} not found`);
         return res.status(404).json({
           success: false,
           message: "Order not found"
@@ -7224,7 +6478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if it's an offline order with pending payment
       if (!order.isOffline || order.paymentStatus !== 'pending') {
-        console.log(`âŒ Order ${order.orderNumber} is not an offline order with pending payment - isOffline: ${order.isOffline}, paymentStatus: ${order.paymentStatus}`);
+        console.log(`Ã¢ÂÅ’ Order ${order.orderNumber} is not an offline order with pending payment - isOffline: ${order.isOffline}, paymentStatus: ${order.paymentStatus}`);
         return res.status(400).json({
           success: false,
           message: "Order is not an offline order with pending payment"
@@ -7256,7 +6510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let newStatus = order.status;
       if (order.status === 'pending_payment') {
         newStatus = hasMarkableItem ? 'pending' : 'ready';
-        console.log(`ðŸ’³ Payment confirmation: Order has markable items: ${hasMarkableItem}, setting status to: ${newStatus}`);
+        console.log(`Ã°Å¸â€™Â³ Payment confirmation: Order has markable items: ${hasMarkableItem}, setting status to: ${newStatus}`);
       }
 
       const updatedOrder = await storage.updateOrder(orderId, {
@@ -7276,10 +6530,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Also broadcast order update to ensure all clients get the status change
         wsManager.broadcastToCanteen(order.canteenId, 'order_updated', updatedOrder);
 
-        console.log(`ðŸ“¢ Payment confirmed for offline order ${order.orderNumber} in canteen ${order.canteenId}`);
-        console.log(`ðŸ“¢ Order status changed from pending_payment to ${newStatus}`);
-        console.log(`ðŸ“¢ Broadcasting to canteen room: canteen_${order.canteenId}`);
-        console.log(`ðŸ“¢ Updated order data:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Payment confirmed for offline order ${order.orderNumber} in canteen ${order.canteenId}`);
+        console.log(`Ã°Å¸â€œÂ¢ Order status changed from pending_payment to ${newStatus}`);
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting to canteen room: canteen_${order.canteenId}`);
+        console.log(`Ã°Å¸â€œÂ¢ Updated order data:`, {
           id: updatedOrder.id,
           orderNumber: updatedOrder.orderNumber,
           status: updatedOrder.status,
@@ -7628,7 +6882,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all inventory items (menu item stock tracking)
   app.get("/api/inventory", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ GET /api/inventory - Fetching inventory items`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/inventory - Fetching inventory items`);
       // Fetch menu items and categories from database
       const menuItems = await storage.getMenuItems();
       const categories = await storage.getCategories();
@@ -7667,10 +6921,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
-      console.log(`âœ… Successfully fetched ${inventoryItems.length} inventory items`);
+      console.log(`Ã¢Å“â€¦ Successfully fetched ${inventoryItems.length} inventory items`);
       res.json(inventoryItems);
     } catch (error) {
-      console.error("âŒ Error fetching inventory:", error);
+      console.error("Ã¢ÂÅ’ Error fetching inventory:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -7678,12 +6932,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add new inventory item
   app.post("/api/inventory", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ POST /api/inventory - Creating inventory item: ${req.body.name}`);
+      console.log(`Ã°Å¸â€œâ€¹ POST /api/inventory - Creating inventory item: ${req.body.name}`);
       const itemData = req.body;
 
       // Validate required fields
       if (!itemData.name || !itemData.category) {
-        console.log(`âŒ Missing required fields: name or category`);
+        console.log(`Ã¢ÂÅ’ Missing required fields: name or category`);
         return res.status(400).json({ message: "Name and category are required" });
       }
 
@@ -7703,11 +6957,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // In production, save to database
-      console.log(`âœ… New inventory item created: ${newItem.name} (ID: ${newItem.id})`);
+      console.log(`Ã¢Å“â€¦ New inventory item created: ${newItem.name} (ID: ${newItem.id})`);
 
       res.json(newItem);
     } catch (error) {
-      console.error("âŒ Error creating inventory item:", error);
+      console.error("Ã¢ÂÅ’ Error creating inventory item:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -7716,7 +6970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/inventory/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`ðŸ”„ PATCH /api/inventory/${id} - Updating inventory item`);
+      console.log(`Ã°Å¸â€â€ž PATCH /api/inventory/${id} - Updating inventory item`);
       const updateData = req.body;
 
       // In production, update in database
@@ -7733,14 +6987,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/inventory/:id", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`ðŸ—‘ï¸ DELETE /api/inventory/${id} - Deleting inventory item`);
+      console.log(`Ã°Å¸â€”â€˜Ã¯Â¸Â DELETE /api/inventory/${id} - Deleting inventory item`);
 
       // In production, delete from database
-      console.log(`âœ… Inventory item ${id} deleted successfully`);
+      console.log(`Ã¢Å“â€¦ Inventory item ${id} deleted successfully`);
 
       res.json({ message: "Item deleted successfully" });
     } catch (error) {
-      console.error("âŒ Error deleting inventory item:", error);
+      console.error("Ã¢ÂÅ’ Error deleting inventory item:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -7748,7 +7002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get stock movements based on menu items  
   app.get("/api/inventory/movements", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      console.log(`ðŸ“‹ GET /api/inventory/movements - Fetching stock movements`);
+      console.log(`Ã°Å¸â€œâ€¹ GET /api/inventory/movements - Fetching stock movements`);
       // Fetch menu items to generate realistic movements
       const menuItems = await storage.getMenuItems();
 
@@ -8433,7 +7687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`ðŸ“¢ Broadcasting process-payment update for order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting process-payment update for order ${result.orderNumber}:`, {
           orderId: result.id,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -8446,11 +7700,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting process-payment update to counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting process-payment update to counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for process-payment broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for process-payment broadcast');
       }
 
       res.json({ message: "Payment processed successfully", order: result });
@@ -8478,13 +7732,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update order status to preparing and payment status to completed
-      console.log(`ðŸ’³ Server: About to confirm offline payment for order ${orderId}`);
+      console.log(`Ã°Å¸â€™Â³ Server: About to confirm offline payment for order ${orderId}`);
       const result = await storage.confirmOfflinePayment(orderId, counterId);
       if (!result) {
-        console.log(`ðŸ’³ Server: Order ${orderId} not found during confirmation`);
+        console.log(`Ã°Å¸â€™Â³ Server: Order ${orderId} not found during confirmation`);
         return res.status(404).json({ message: "Order not found" });
       }
-      console.log(`ðŸ’³ Server: Order ${orderId} confirmed successfully:`, {
+      console.log(`Ã°Å¸â€™Â³ Server: Order ${orderId} confirmed successfully:`, {
         id: result.id,
         orderNumber: result.orderNumber,
         status: result.status,
@@ -8495,7 +7749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`ðŸ“¢ Broadcasting confirm-payment update for offline order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting confirm-payment update for offline order ${result.orderNumber}:`, {
           orderId: result.id,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -8512,7 +7766,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Broadcast to all store counter rooms that this order should now be processed
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
-            console.log(`ðŸ“¢ Broadcasting offline order confirmation to store counter room: ${storeCounterId}`);
+            console.log(`Ã°Å¸â€œÂ¢ Broadcasting offline order confirmation to store counter room: ${storeCounterId}`);
             wsManager.broadcastToCounter(storeCounterId, 'new_order', result);
           });
         }
@@ -8520,18 +7774,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Broadcast to ALL payment counters to remove the order from their UI
         if (result.allPaymentCounterIds && result.allPaymentCounterIds.length > 0) {
           result.allPaymentCounterIds.forEach((paymentCounterId: string) => {
-            console.log(`ðŸ“¢ Broadcasting payment confirmation to payment counter room: ${paymentCounterId}`);
+            console.log(`Ã°Å¸â€œÂ¢ Broadcasting payment confirmation to payment counter room: ${paymentCounterId}`);
             wsManager.broadcastToCounter(paymentCounterId, 'payment_confirmed', result);
           });
         }
 
         // Also broadcast to the specific payment counter that confirmed the payment
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting confirm-payment update to confirming payment counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting confirm-payment update to confirming payment counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for confirm-payment broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for confirm-payment broadcast');
       }
 
       res.json({ message: "Offline payment confirmed successfully - order broadcasted to store counters", order: result });
@@ -8559,13 +7813,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update order status to rejected
-      console.log(`ðŸ’³ Server: About to reject offline order ${orderId} with counter ${counterId}`);
+      console.log(`Ã°Å¸â€™Â³ Server: About to reject offline order ${orderId} with counter ${counterId}`);
       const result = await storage.rejectOfflineOrder(orderId, counterId);
       if (!result) {
-        console.log(`ðŸ’³ Server: Order ${orderId} not found during rejection`);
+        console.log(`Ã°Å¸â€™Â³ Server: Order ${orderId} not found during rejection`);
         return res.status(404).json({ message: "Order not found" });
       }
-      console.log(`ðŸ’³ Server: Order ${orderId} rejected successfully:`, {
+      console.log(`Ã°Å¸â€™Â³ Server: Order ${orderId} rejected successfully:`, {
         id: result.id,
         orderNumber: result.orderNumber,
         status: result.status,
@@ -8578,7 +7832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`ðŸ“¢ Broadcasting order rejection for offline order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting order rejection for offline order ${result.orderNumber}:`, {
           orderId: result.id,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -8594,9 +7848,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Broadcast to all payment counters to remove the order from their UI
         if (result.allPaymentCounterIds && result.allPaymentCounterIds.length > 0) {
-          console.log(`ðŸ“¢ Broadcasting order rejection to ${result.allPaymentCounterIds.length} payment counters:`, result.allPaymentCounterIds);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting order rejection to ${result.allPaymentCounterIds.length} payment counters:`, result.allPaymentCounterIds);
           result.allPaymentCounterIds.forEach((paymentCounterId: string) => {
-            console.log(`ðŸ“¢ Broadcasting order rejection to payment counter room: ${paymentCounterId}`);
+            console.log(`Ã°Å¸â€œÂ¢ Broadcasting order rejection to payment counter room: ${paymentCounterId}`);
             const rejectionMessage = {
               type: 'order_rejected',
               data: result,
@@ -8606,14 +7860,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               rejectedByCounter: counterId,
               message: 'Order rejected - remove from payment counter UI'
             };
-            console.log(`ðŸ“¢ Rejection message for counter ${paymentCounterId}:`, rejectionMessage);
+            console.log(`Ã°Å¸â€œÂ¢ Rejection message for counter ${paymentCounterId}:`, rejectionMessage);
             wsManager.broadcastToCounter(paymentCounterId, 'order_rejected', result);
           });
         } else {
-          console.log(`ðŸ“¢ No payment counter IDs found for order ${result.orderNumber}, cannot broadcast rejection`);
+          console.log(`Ã°Å¸â€œÂ¢ No payment counter IDs found for order ${result.orderNumber}, cannot broadcast rejection`);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for order rejection broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for order rejection broadcast');
       }
 
       res.json({ message: "Offline order rejected successfully", order: result });
@@ -8629,7 +7883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderId = req.params.id;
       const { counterId, deliveryPersonId, deliveryPersonEmail } = req.body;
 
-      console.log(`ðŸšš POST /api/orders/${orderId}/out-for-delivery - Request received:`, {
+      console.log(`Ã°Å¸Å¡Å¡ POST /api/orders/${orderId}/out-for-delivery - Request received:`, {
         orderId,
         counterId,
         deliveryPersonId,
@@ -8637,22 +7891,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!orderId || orderId === 'undefined' || orderId === 'null') {
-        console.error(`âŒ Invalid order ID: ${orderId}`);
+        console.error(`Ã¢ÂÅ’ Invalid order ID: ${orderId}`);
         return res.status(400).json({ message: "Invalid order ID" });
       }
 
       if (!counterId) {
-        console.error(`âŒ Counter ID is required but not provided`);
+        console.error(`Ã¢ÂÅ’ Counter ID is required but not provided`);
         return res.status(400).json({ message: "Counter ID is required" });
       }
 
       if (!deliveryPersonId) {
-        console.error(`âŒ Delivery person ID is required but not provided`);
+        console.error(`Ã¢ÂÅ’ Delivery person ID is required but not provided`);
         return res.status(400).json({ message: "Delivery person ID is required" });
       }
 
       if (!deliveryPersonEmail) {
-        console.warn(`âš ï¸ Delivery person email not provided, WebSocket notification may fail`);
+        console.warn(`Ã¢Å¡Â Ã¯Â¸Â Delivery person email not provided, WebSocket notification may fail`);
       }
 
       const oldOrder = await storage.getOrder(orderId);
@@ -8668,7 +7922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify the update was successful
       const updatedOrder = await storage.getOrder(orderId);
-      console.log(`âœ… Order updated. Verification:`, {
+      console.log(`Ã¢Å“â€¦ Order updated. Verification:`, {
         orderId: updatedOrder?.id || updatedOrder?._id,
         orderNumber: updatedOrder?.orderNumber,
         status: updatedOrder?.status,
@@ -8678,7 +7932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (updatedOrder?.deliveryPersonId !== deliveryPersonId) {
-        console.error(`âŒ WARNING: Order deliveryPersonId mismatch! Expected: ${deliveryPersonId}, Got: ${updatedOrder?.deliveryPersonId}`);
+        console.error(`Ã¢ÂÅ’ WARNING: Order deliveryPersonId mismatch! Expected: ${deliveryPersonId}, Got: ${updatedOrder?.deliveryPersonId}`);
       }
 
       // Update delivery person stats and mark as unavailable
@@ -8692,7 +7946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         if (deliveryPerson) {
-          console.log(`ðŸ” Found delivery person in database:`, {
+          console.log(`Ã°Å¸â€Â Found delivery person in database:`, {
             id: deliveryPerson.id,
             deliveryPersonId: deliveryPerson.deliveryPersonId,
             name: deliveryPerson.name,
@@ -8702,7 +7956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Verify email matches
           if (deliveryPerson.email !== deliveryPersonEmail) {
-            console.warn(`âš ï¸ Email mismatch! Delivery person ${deliveryPersonId} has email ${deliveryPerson.email}, but assignment requested ${deliveryPersonEmail}`);
+            console.warn(`Ã¢Å¡Â Ã¯Â¸Â Email mismatch! Delivery person ${deliveryPersonId} has email ${deliveryPerson.email}, but assignment requested ${deliveryPersonEmail}`);
           }
 
           await database.deliveryPerson.update({
@@ -8712,9 +7966,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               totalOrderDelivered: { increment: 1 }
             }
           });
-          console.log(`âœ… Assigned delivery person ${deliveryPersonId} (${deliveryPerson.email}) to order ${result.orderNumber}`);
+          console.log(`Ã¢Å“â€¦ Assigned delivery person ${deliveryPersonId} (${deliveryPerson.email}) to order ${result.orderNumber}`);
         } else {
-          console.warn(`âš ï¸ Delivery person ${deliveryPersonId} not found in database`);
+          console.warn(`Ã¢Å¡Â Ã¯Â¸Â Delivery person ${deliveryPersonId} not found in database`);
         }
       }
 
@@ -8724,7 +7978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get order ID in correct format (MongoDB uses _id)
         const orderIdForMessage = (result as any)._id?.toString() || result.id?.toString() || result.id;
 
-        console.log(`ðŸ“¢ Broadcasting out-for-delivery for order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting out-for-delivery for order ${result.orderNumber}:`, {
           orderId: orderIdForMessage,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -8753,35 +8007,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
               deliveryPersonId: deliveryPersonId
             }
           });
-          console.log(`ðŸ“¤ Sent delivery assignment notification to ${deliveryPersonEmail} for order ${result.orderNumber}`);
+          console.log(`Ã°Å¸â€œÂ¤ Sent delivery assignment notification to ${deliveryPersonEmail} for order ${result.orderNumber}`);
         } else {
-          console.warn(`âš ï¸ No delivery person email provided, cannot send WebSocket notification`);
+          console.warn(`Ã¢Å¡Â Ã¯Â¸Â No delivery person email provided, cannot send WebSocket notification`);
         }
 
         // Broadcast to all relevant counter rooms with item-level status update
         if (result.allStoreCounterIds && result.allStoreCounterIds.length > 0) {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
-            console.log(`ðŸ“¢ Broadcasting item-level out-for-delivery to counter room: ${storeCounterId}`);
+            console.log(`Ã°Å¸â€œÂ¢ Broadcasting item-level out-for-delivery to counter room: ${storeCounterId}`);
             wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', result);
           });
         }
 
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting item-level out-for-delivery to specific counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting item-level out-for-delivery to specific counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'item_status_changed', result);
         }
 
         // If overall order status changed to out_for_delivery, also broadcast order status change
         if (result.status === 'out_for_delivery' && oldOrder.status !== 'out_for_delivery') {
-          console.log(`ðŸ“¢ Broadcasting overall order status change to out_for_delivery`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting overall order status change to out_for_delivery`);
           wsManager.broadcastOrderStatusUpdate(result.canteenId, result, oldOrder.status, result.status);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for out-for-delivery broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for out-for-delivery broadcast');
       }
 
-      console.log(`âœ… Order ${orderId} marked as out for delivery`);
+      console.log(`Ã¢Å“â€¦ Order ${orderId} marked as out for delivery`);
       res.json(result);
     } catch (error) {
       console.error("Error marking order as out for delivery:", error);
@@ -8797,7 +8051,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate orderId
       if (!orderId || orderId === 'undefined' || orderId === 'null') {
-        console.error(`âŒ Invalid order ID: ${orderId}`);
+        console.error(`Ã¢ÂÅ’ Invalid order ID: ${orderId}`);
         return res.status(400).json({ message: "Invalid order ID" });
       }
 
@@ -8827,7 +8081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`ðŸ“¢ Broadcasting mark-ready update for order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting mark-ready update for order ${result.orderNumber}:`, {
           orderId: result.id,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -8843,7 +8097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Fetch full order from DB to ensure all fields are included (especially important for KOT counter updates)
         const fullOrderForUser = await storage.getOrder(orderId);
         if (!fullOrderForUser) {
-          console.error(`âŒ Could not fetch full order ${orderId} for user broadcast`);
+          console.error(`Ã¢ÂÅ’ Could not fetch full order ${orderId} for user broadcast`);
         } else {
           // Prepare order data with updated itemStatusByCounter
           const orderDataForUser = {
@@ -8852,7 +8106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: result.status || fullOrderForUser.status
           };
 
-          console.log(`ðŸ“¢ Broadcasting to canteen room for user order status page:`, {
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting to canteen room for user order status page:`, {
             orderNumber: orderDataForUser.orderNumber,
             canteenId: orderDataForUser.canteenId,
             itemStatusByCounter: orderDataForUser.itemStatusByCounter,
@@ -8865,19 +8119,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Always broadcast status update (even if status doesn't change, itemStatusByCounter might have changed)
           wsManager.broadcastOrderStatusUpdate(orderDataForUser.canteenId, orderDataForUser, oldOrder.status, orderDataForUser.status);
-          console.log(`ðŸ“¢ âœ… Broadcasted order_status_changed to canteen room ${orderDataForUser.canteenId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Ã¢Å“â€¦ Broadcasted order_status_changed to canteen room ${orderDataForUser.canteenId}`);
 
           // Also broadcast order_updated to ensure user side receives item-level status changes
           // This is important when items are marked ready from KOT counter (status might not change)
           wsManager.broadcastToCanteen(orderDataForUser.canteenId, 'order_updated', orderDataForUser);
-          console.log(`ðŸ“¢ âœ… Broadcasted order_updated to canteen room ${orderDataForUser.canteenId}:`, {
+          console.log(`Ã°Å¸â€œÂ¢ Ã¢Å“â€¦ Broadcasted order_updated to canteen room ${orderDataForUser.canteenId}:`, {
             orderNumber: orderDataForUser.orderNumber,
             hasItemStatusByCounter: !!orderDataForUser.itemStatusByCounter
           });
 
           // Also broadcast item_status_changed for user side to handle item-level updates
           wsManager.broadcastToCanteen(orderDataForUser.canteenId, 'item_status_changed', orderDataForUser);
-          console.log(`ðŸ“¢ âœ… Broadcasted item_status_changed to canteen room ${orderDataForUser.canteenId}:`, {
+          console.log(`Ã°Å¸â€œÂ¢ Ã¢Å“â€¦ Broadcasted item_status_changed to canteen room ${orderDataForUser.canteenId}:`, {
             orderNumber: orderDataForUser.orderNumber,
             hasItemStatusByCounter: !!orderDataForUser.itemStatusByCounter
           });
@@ -8885,17 +8139,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // If marked ready from KOT counter, broadcast to store counters
         if (isKotCounter && kotStoreCounters.length > 0) {
-          console.log(`ðŸ³ Items marked ready from KOT counter ${counterId}, broadcasting to store counters:`, kotStoreCounters);
+          console.log(`Ã°Å¸ÂÂ³ Items marked ready from KOT counter ${counterId}, broadcasting to store counters:`, kotStoreCounters);
 
           // Get the full order with all fields populated for broadcasting
           // Use the result from markOrderReady which already has the updated data
           // But fetch fresh from DB to ensure we have all fields including items
           const fullOrder = await storage.getOrder(orderId);
           if (!fullOrder) {
-            console.error(`âŒ Could not fetch full order ${orderId} for broadcasting`);
+            console.error(`Ã¢ÂÅ’ Could not fetch full order ${orderId} for broadcasting`);
             // Fallback: use result if available
             if (result) {
-              console.log(`âš ï¸ Using result data as fallback for broadcasting`);
+              console.log(`Ã¢Å¡Â Ã¯Â¸Â Using result data as fallback for broadcasting`);
               const fallbackOrder = {
                 ...result,
                 items: result.items || oldOrder.items, // Ensure items are included
@@ -8904,7 +8158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
               kotStoreCounters.forEach((storeCounterId: string) => {
                 wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', fallbackOrder);
-                console.log(`ðŸ“¢ âœ… Broadcasted item_status_changed (fallback) for order ${fallbackOrder.orderNumber} to store counter ${storeCounterId}`);
+                console.log(`Ã°Å¸â€œÂ¢ Ã¢Å“â€¦ Broadcasted item_status_changed (fallback) for order ${fallbackOrder.orderNumber} to store counter ${storeCounterId}`);
               });
             }
           } else {
@@ -8929,7 +8183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               _fromKotCounter: counterId // Flag to indicate this came from KOT counter
             };
 
-            console.log(`ðŸ“¢ Preparing to broadcast order ${orderDataForBroadcast.orderNumber} to store counters:`, {
+            console.log(`Ã°Å¸â€œÂ¢ Preparing to broadcast order ${orderDataForBroadcast.orderNumber} to store counters:`, {
               orderId: orderDataForBroadcast.id,
               orderNumber: orderDataForBroadcast.orderNumber,
               itemsCount: orderItems.length,
@@ -8941,7 +8195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             kotStoreCounters.forEach((storeCounterId: string) => {
               // Use item_status_changed instead of new_order to properly update existing orders
               wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
-              console.log(`ðŸ“¢ âœ… Broadcasted item_status_changed for order ${orderDataForBroadcast.orderNumber} to store counter ${storeCounterId} (from KOT counter ${counterId})`);
+              console.log(`Ã°Å¸â€œÂ¢ Ã¢Å“â€¦ Broadcasted item_status_changed for order ${orderDataForBroadcast.orderNumber} to store counter ${storeCounterId} (from KOT counter ${counterId})`);
             });
           }
         }
@@ -8951,7 +8205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           result.allStoreCounterIds.forEach((storeCounterId: string) => {
             // Skip if we already broadcasted from KOT counter
             if (!(isKotCounter && kotStoreCounters.includes(storeCounterId))) {
-              console.log(`ðŸ“¢ Broadcasting item-level status update to counter room: ${storeCounterId}`);
+              console.log(`Ã°Å¸â€œÂ¢ Broadcasting item-level status update to counter room: ${storeCounterId}`);
               wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', result);
             }
           });
@@ -8959,11 +8213,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting mark-ready update to specific counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting mark-ready update to specific counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for mark-ready broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for mark-ready broadcast');
       }
 
       res.json({ message: "Order marked as ready", order: result });
@@ -8993,7 +8247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`ðŸ“¢ Broadcasting update-status for order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting update-status for order ${result.orderNumber}:`, {
           orderId: result.id,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -9006,11 +8260,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting update-status to counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting update-status to counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for update-status broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for update-status broadcast');
       }
 
       res.json({ message: "Order status updated", order: result });
@@ -9040,7 +8294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast the status update to WebSocket rooms
       const wsManager = getWebSocketManager();
       if (wsManager) {
-        console.log(`ðŸ“¢ Broadcasting complete order for order ${result.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting complete order for order ${result.orderNumber}:`, {
           orderId: result.id,
           orderNumber: result.orderNumber,
           canteenId: result.canteenId,
@@ -9053,11 +8307,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting complete order to counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting complete order to counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', result);
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for complete order broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for complete order broadcast');
       }
 
       res.json({ message: "Order completed", order: result });
@@ -9075,20 +8329,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate orderId
       if (!orderId || orderId === 'undefined' || orderId === 'null') {
-        console.error(`âŒ Invalid order ID: ${orderId}`);
+        console.error(`Ã¢ÂÅ’ Invalid order ID: ${orderId}`);
         return res.status(400).json({ message: "Invalid order ID" });
       }
 
-      console.log(`ðŸšš Deliver order request:`, { orderId, counterId, deliveryPersonId });
+      console.log(`Ã°Å¸Å¡Å¡ Deliver order request:`, { orderId, counterId, deliveryPersonId });
 
       // Get the order before updating to capture old status
       const oldOrder = await storage.getOrder(orderId);
       if (!oldOrder) {
-        console.log(`âŒ Order not found: ${orderId}`);
+        console.log(`Ã¢ÂÅ’ Order not found: ${orderId}`);
         return res.status(404).json({ message: "Order not found" });
       }
 
-      console.log(`ðŸ“¦ Old order status: ${oldOrder.status}`);
+      console.log(`Ã°Å¸â€œÂ¦ Old order status: ${oldOrder.status}`);
 
       // Check if this is a delivery person delivery (either from body or order has deliveryPersonId)
       const isDeliveryPersonDelivery = !!deliveryPersonId || (!!oldOrder.deliveryPersonId && !counterId);
@@ -9099,14 +8353,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let result;
       if (isDeliveryPersonDelivery) {
         // Delivery person delivery - mark entire order as delivered immediately
-        console.log(`ðŸšš Delivery person marking order as delivered:`, {
+        console.log(`Ã°Å¸Å¡Å¡ Delivery person marking order as delivered:`, {
           orderId,
           deliveryPersonId: deliveryPersonId || oldOrder.deliveryPersonId
         });
         result = await storage.deliverOrderByDeliveryPerson(orderId, deliveryPersonId || oldOrder.deliveryPersonId);
       } else if (isDirectComplete) {
         // Direct complete - mark entire order as delivered (for POS orders without delivery person)
-        console.log(`ðŸ“¦ Directly completing order ${orderId} (POS order without delivery person)`);
+        console.log(`Ã°Å¸â€œÂ¦ Directly completing order ${orderId} (POS order without delivery person)`);
         const { Order } = await import('./models/mongodb-models');
         result = await Order.findByIdAndUpdate(
           orderId,
@@ -9123,13 +8377,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!result) {
-        console.log(`âŒ Failed to deliver order: ${orderId}`);
+        console.log(`Ã¢ÂÅ’ Failed to deliver order: ${orderId}`);
         return res.status(404).json({ message: "Order not found" });
       }
       // Cast result to any for safe access
       const resultAny = result as any;
 
-      console.log(`âœ… Order delivered successfully:`, {
+      console.log(`Ã¢Å“â€¦ Order delivered successfully:`, {
         orderId: resultAny.id,
         orderNumber: resultAny.orderNumber,
         oldStatus: oldOrder.status,
@@ -9144,7 +8398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (wsManager) {
         // Cast result to any to access properties safely
         const resultAny = result as any;
-        console.log(`ðŸ“¢ Broadcasting deliver order for order ${resultAny.orderNumber}:`, {
+        console.log(`Ã°Å¸â€œÂ¢ Broadcasting deliver order for order ${resultAny.orderNumber}:`, {
           orderId: resultAny.id,
           orderNumber: resultAny.orderNumber,
           canteenId: resultAny.canteenId,
@@ -9166,14 +8420,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Broadcast to all relevant counter rooms for item-level updates
         if (resultAny.allStoreCounterIds && resultAny.allStoreCounterIds.length > 0) {
           resultAny.allStoreCounterIds.forEach((storeCounterId: string) => {
-            console.log(`ðŸ“¢ Broadcasting item-level delivery update to counter room: ${storeCounterId}`);
+            console.log(`Ã°Å¸â€œÂ¢ Broadcasting item-level delivery update to counter room: ${storeCounterId}`);
             wsManager.broadcastToCounter(storeCounterId, 'item_status_changed', orderDataForBroadcast);
           });
         }
 
         // Also broadcast to specific counter room if counterId is provided
         if (counterId) {
-          console.log(`ðŸ“¢ Broadcasting deliver order to counter room: ${counterId}`);
+          console.log(`Ã°Å¸â€œÂ¢ Broadcasting deliver order to counter room: ${counterId}`);
           wsManager.broadcastToCounter(counterId, 'order_status_changed', orderDataForBroadcast);
         }
 
@@ -9187,7 +8441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             if (deliveryPerson && deliveryPerson.email) {
-              console.log(`ðŸ“¢ Broadcasting delivery completion to delivery person: ${deliveryPerson.email}`);
+              console.log(`Ã°Å¸â€œÂ¢ Broadcasting delivery completion to delivery person: ${deliveryPerson.email}`);
               wsManager.broadcastToDeliveryPerson(deliveryPerson.email, {
                 type: 'order_delivered',
                 data: orderDataForBroadcast,
@@ -9196,11 +8450,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }
           } catch (error) {
-            console.error('âŒ Error broadcasting to delivery person:', error);
+            console.error('Ã¢ÂÅ’ Error broadcasting to delivery person:', error);
           }
         }
       } else {
-        console.log('ðŸ“¡ WebSocket manager not available for deliver order broadcast');
+        console.log('Ã°Å¸â€œÂ¡ WebSocket manager not available for deliver order broadcast');
       }
 
       res.json({ message: "Order delivered", order: result });
@@ -9224,9 +8478,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all delivery persons for a canteen
   app.get("/api/canteens/:canteenId/delivery-persons", requireCanteenOwnerOrAdmin, async (req, res) => {
     try {
-      console.log("ðŸšš GET /api/canteens/:canteenId/delivery-persons - Request received");
+      console.log("Ã°Å¸Å¡Å¡ GET /api/canteens/:canteenId/delivery-persons - Request received");
       const { canteenId } = req.params;
-      console.log("ðŸšš Canteen ID:", canteenId);
+      console.log("Ã°Å¸Å¡Å¡ Canteen ID:", canteenId);
 
       if (!canteenId) {
         return res.status(400).json({ error: "Canteen ID is required" });
@@ -9237,7 +8491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if deliveryPerson model exists - Prisma uses camelCase for model names
       if (!database.deliveryPerson) {
-        console.error("âŒ DeliveryPerson model not found in Prisma client.");
+        console.error("Ã¢ÂÅ’ DeliveryPerson model not found in Prisma client.");
         console.error("Available models:", Object.keys(database).filter(k => !k.startsWith('_') && typeof (database as any)[k] === 'object'));
         return res.status(500).json({
           error: "DeliveryPerson model not available. Please restart the server after running 'npx prisma generate'"
@@ -9256,7 +8510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ]
       });
 
-      console.log(`ðŸšš Found ${deliveryPersons.length} delivery persons for canteen ${canteenId}:`,
+      console.log(`Ã°Å¸Å¡Å¡ Found ${deliveryPersons.length} delivery persons for canteen ${canteenId}:`,
         deliveryPersons.map((dp: (typeof deliveryPersons)[number]) => ({
           id: dp.id,
           deliveryPersonId: dp.deliveryPersonId,
@@ -9267,7 +8521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(deliveryPersons);
     } catch (error: any) {
-      console.error("âŒ Error fetching delivery persons:", error);
+      console.error("Ã¢ÂÅ’ Error fetching delivery persons:", error);
       if (error.message?.includes('deliveryPerson') || error.message?.includes('findMany')) {
         return res.status(500).json({
           error: "Database model not available. Please restart the server after running 'npx prisma generate'"
@@ -9306,7 +8560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { db } = await import('./db');
       const database = db();
 
-      console.log(`ðŸ” GET /api/delivery-persons/by-email/${email} - Fetching delivery person`);
+      console.log(`Ã°Å¸â€Â GET /api/delivery-persons/by-email/${email} - Fetching delivery person`);
 
       // Check for multiple records with same email
       const allWithEmail = await database.deliveryPerson.findMany({
@@ -9314,7 +8568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (allWithEmail.length > 1) {
-        console.warn(`âš ï¸ Found ${allWithEmail.length} delivery persons with email ${email}:`,
+        console.warn(`Ã¢Å¡Â Ã¯Â¸Â Found ${allWithEmail.length} delivery persons with email ${email}:`,
           allWithEmail.map((dp: typeof allWithEmail[number]) => ({ id: dp.id, deliveryPersonId: dp.deliveryPersonId, name: dp.name, isActive: dp.isActive }))
         );
       }
@@ -9329,11 +8583,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!deliveryPerson) {
-        console.error(`âŒ Delivery person not found for email: ${email}`);
+        console.error(`Ã¢ÂÅ’ Delivery person not found for email: ${email}`);
         return res.status(404).json({ error: "Delivery person not found" });
       }
 
-      console.log(`âœ… Found delivery person by email:`, {
+      console.log(`Ã¢Å“â€¦ Found delivery person by email:`, {
         id: deliveryPerson.id,
         deliveryPersonId: deliveryPerson.deliveryPersonId,
         name: deliveryPerson.name,
@@ -9438,7 +8692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               isProfileComplete: true
             });
             createdUser = await storage.getUser(existingUser.id);
-            console.log(`âœ… Updated existing user account for delivery person: ${email}`);
+            console.log(`Ã¢Å“â€¦ Updated existing user account for delivery person: ${email}`);
             console.log(`   User ID: ${createdUser?.id}, Email: ${createdUser?.email}`);
           } else {
             // Create new user account
@@ -9454,32 +8708,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const validatedUserData = insertUserSchema.parse(userData);
             createdUser = await storage.createUser(validatedUserData as any);
 
-            console.log(`âœ… Created user account for delivery person: ${email} with role: delivery_person`);
+            console.log(`Ã¢Å“â€¦ Created user account for delivery person: ${email} with role: delivery_person`);
             console.log(`   User ID: ${createdUser.id}, Email: ${createdUser.email}`);
           }
 
           // Note: Password is set by canteen owner, no need to log it
         } catch (userError: any) {
-          console.error("âŒ Error creating/updating user account for delivery person:", userError);
+          console.error("Ã¢ÂÅ’ Error creating/updating user account for delivery person:", userError);
 
           // Rollback: Delete the delivery person if user creation/update fails
           try {
             await database.deliveryPerson.delete({ where: { id: deliveryPerson.id } });
-            console.log(`ðŸ”„ Rolled back: Deleted delivery person ${deliveryPersonId} due to user creation failure`);
+            console.log(`Ã°Å¸â€â€ž Rolled back: Deleted delivery person ${deliveryPersonId} due to user creation failure`);
           } catch (deleteError) {
-            console.error("âŒ Failed to rollback delivery person deletion:", deleteError);
+            console.error("Ã¢ÂÅ’ Failed to rollback delivery person deletion:", deleteError);
           }
 
           // If user creation fails, we still have the delivery person record
           // Log the error but don't fail the entire request
           if (userError.code === 'P2002') {
-            console.warn(`âš ï¸ User with email ${email} already exists, skipping user creation`);
+            console.warn(`Ã¢Å¡Â Ã¯Â¸Â User with email ${email} already exists, skipping user creation`);
             return res.status(409).json({ error: "A user with this email already exists" });
           }
 
           // Return detailed error for other cases
           const errorMessage = userError.message || 'Unknown error';
-          console.error(`âŒ User creation/update failed: ${errorMessage}`);
+          console.error(`Ã¢ÂÅ’ User creation/update failed: ${errorMessage}`);
           return res.status(500).json({
             error: "Failed to create/update user account for delivery person",
             details: errorMessage
@@ -9487,7 +8741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      console.log(`âœ… Created delivery person: ${deliveryPersonId} for canteen ${canteenId}`);
+      console.log(`Ã¢Å“â€¦ Created delivery person: ${deliveryPersonId} for canteen ${canteenId}`);
       if (createdUser) {
         console.log(`   Associated user account created: ${createdUser.email} (ID: ${createdUser.id})`);
       }
@@ -9498,7 +8752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: createdUser?.id
       });
     } catch (error: any) {
-      console.error("âŒ Error creating delivery person:", error);
+      console.error("Ã¢ÂÅ’ Error creating delivery person:", error);
       if (error.name === 'ZodError') {
         return res.status(400).json({ error: "Validation error", details: error.errors });
       }
@@ -9646,11 +8900,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       if (!deliveryPerson) {
-        console.error(`âŒ Delivery person not found for email: ${email}`);
+        console.error(`Ã¢ÂÅ’ Delivery person not found for email: ${email}`);
         return res.status(404).json({ error: "Delivery person not found" });
       }
 
-      console.log(`ðŸ” Fetching orders for delivery person:`, {
+      console.log(`Ã°Å¸â€Â Fetching orders for delivery person:`, {
         email,
         deliveryPersonId: deliveryPerson.deliveryPersonId,
         deliveryPersonName: deliveryPerson.name,
@@ -9664,7 +8918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: { $nin: ['completed', 'delivered', 'cancelled'] }
       }).sort({ createdAt: -1 });
 
-      console.log(`ðŸ“¦ Found ${activeOrders.length} active orders for delivery person ${deliveryPerson.deliveryPersonId}:`,
+      console.log(`Ã°Å¸â€œÂ¦ Found ${activeOrders.length} active orders for delivery person ${deliveryPerson.deliveryPersonId}:`,
         activeOrders.map((o: any) => ({
           orderNumber: o.orderNumber,
           status: o.status,
@@ -10278,6 +9532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+
 
 
 

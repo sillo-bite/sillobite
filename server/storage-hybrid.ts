@@ -86,9 +86,11 @@ export type InsertPayment = {
   canteenId?: string; // Added canteenId field
   merchantTransactionId: string;
   phonePeTransactionId?: string; // Legacy field for backward compatibility
-  razorpayTransactionId?: string;
-  razorpayOrderId?: string; // Razorpay Order ID for webhook lookups
-  razorpayPaymentId?: string; // Razorpay Payment ID for webhook lookups
+  razorpayTransactionId?: string; // Legacy: kept for historical data
+  razorpayOrderId?: string; // Legacy: Razorpay Order ID for historical webhook lookups
+  razorpayPaymentId?: string; // Legacy: Razorpay Payment ID for historical webhook lookups
+  zohoPaymentSessionId?: string; // Zoho Payment Session ID for webhook lookups
+  zohoPaymentId?: string; // Zoho Payment ID for webhook lookups
   checkoutSessionId?: string; // Checkout session ID for session-based lookups
   amount: number;
   status?: string;
@@ -254,6 +256,7 @@ export interface IStorage {
   getPaymentByMerchantTxnId(merchantTransactionId: string): Promise<any | undefined>;
   getPaymentByMetadataField(field: string, value: string): Promise<any | undefined>;
   getPaymentByRazorpayOrderId(razorpayOrderId: string): Promise<any | undefined>;
+  getPaymentByZohoSessionId(zohoPaymentSessionId: string): Promise<any | undefined>;
   updatePaymentStatus(merchantTransactionId: string, status: string): Promise<any | undefined>;
   createPayment(payment: InsertPayment): Promise<any>;
   updatePayment(id: string, payment: Partial<InsertPayment>): Promise<any>;
@@ -1266,7 +1269,7 @@ export class HybridStorage implements IStorage {
   async getPaymentByMetadataField(field: string, value: string): Promise<any | undefined> {
     try {
       // First try direct field lookup if it's a top-level indexed field
-      if (field === 'razorpayOrderId' || field === 'razorpayPaymentId' || field === 'checkoutSessionId') {
+      if (field === 'razorpayOrderId' || field === 'razorpayPaymentId' || field === 'zohoPaymentSessionId' || field === 'zohoPaymentId' || field === 'checkoutSessionId') {
         const payment = await Payment.findOne({ [field]: value });
         if (payment) {
           console.log(`✅ Found payment by indexed field ${field}: ${value}`);
@@ -3049,6 +3052,24 @@ export class HybridStorage implements IStorage {
     } catch (error) {
       console.error(`❌ Error fetching payment by Razorpay Order ID:`, error);
       throw new Error(`Database error while fetching payment by Razorpay Order ID: ${error}`);
+    }
+  }
+
+  async getPaymentByZohoSessionId(zohoPaymentSessionId: string): Promise<any | undefined> {
+    try {
+      // Direct lookup using indexed field
+      const payment = await Payment.findOne({ zohoPaymentSessionId });
+
+      if (payment) {
+        console.log(`✅ Found payment by zohoPaymentSessionId: ${zohoPaymentSessionId}`);
+        return payment.toObject ? payment.toObject() : payment;
+      }
+
+      console.log(`⚠️ No payment found for Zoho Payment Session ID: ${zohoPaymentSessionId}`);
+      return null;
+    } catch (error) {
+      console.error(`❌ Error fetching payment by Zoho Payment Session ID:`, error);
+      throw new Error(`Database error while fetching payment by Zoho Payment Session ID: ${error}`);
     }
   }
 

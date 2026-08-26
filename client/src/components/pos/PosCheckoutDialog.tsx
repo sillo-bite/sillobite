@@ -295,8 +295,8 @@ export function PosCheckoutDialog({
         setPaymentData(response);
         setStage('payment_processing');
 
-        // Load Razorpay and open payment modal
-        loadRazorpayAndOpenModal(response);
+        // Load Zoho Payments and open payment modal
+        loadZohoAndOpenModal(response);
       } else {
         toast.error(response.message || 'Failed to initiate payment');
       }
@@ -312,50 +312,54 @@ export function PosCheckoutDialog({
     }
   };
 
-  const loadRazorpayAndOpenModal = (paymentResponse: any) => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => {
-      const options = {
-        key: paymentResponse.keyId,
-        amount: paymentResponse.amount,
-        currency: paymentResponse.currency,
-        order_id: paymentResponse.razorpayOrderId,
-        name: 'POS Payment',
-        description: `Order for ${customerName}`,
-        handler: async (response: any) => {
-          await handlePaymentSuccess(response);
-        },
-        modal: {
-          ondismiss: () => {
-            isPaymentInProgressRef.current = false;
-            // When Razorpay modal is closed, abandon the checkout session
-            if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_processing') {
-              abandonCheckoutSession(checkoutSessionId);
-              toast.info('Payment cancelled');
-            }
-          }
-        },
-        theme: {
-          color: '#6d47ff'
+  const loadZohoAndOpenModal = (paymentResponse: any) => {
+    const initZoho = () => {
+      const instance = new (window as any).ZPayments({
+        account_id: paymentResponse.accountId,
+        domain: 'IN',
+        otherOptions: {
+          api_key: paymentResponse.apiKey,
+          is_test_mode: paymentResponse.isTestMode
         }
-      };
+      });
 
-      razorpayRef.current = new (window as any).Razorpay(options);
+      instance.requestPaymentMethod({
+        amount: paymentResponse.amount.toString(),
+        currency_code: paymentResponse.currency || 'INR',
+        payments_session_id: paymentResponse.zohoPaymentSessionId,
+        description: `Order for ${customerName}`
+      }).then(async (response: any) => {
+        await handlePaymentSuccess(response, paymentResponse.zohoPaymentSessionId);
+      }).catch((error: any) => {
+        console.error('Payment error or closed:', error);
+        isPaymentInProgressRef.current = false;
+        // When modal is closed or failed, abandon the checkout session
+        if (checkoutSessionId && !hasAbandonedRef.current && stage === 'payment_processing') {
+          abandonCheckoutSession(checkoutSessionId);
+          toast.info('Payment cancelled or failed');
+        }
+      });
+
+      razorpayRef.current = instance;
       isPaymentInProgressRef.current = true;
-      razorpayRef.current.open();
-      // Keep dialog open to maintain state
-      // onOpenChange(false);
     };
-    script.onerror = () => {
-      toast.error('Failed to load payment gateway');
-      setStage('payment_selection');
-      isPaymentInProgressRef.current = false;
-    };
-    document.body.appendChild(script);
+
+    if ((window as any).ZPayments) {
+      initZoho();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://static.zohocdn.com/zpay/zpay-js/v1/zpayments.js';
+      script.onload = initZoho;
+      script.onerror = () => {
+        toast.error('Failed to load payment gateway');
+        setStage('payment_selection');
+        isPaymentInProgressRef.current = false;
+      };
+      document.body.appendChild(script);
+    }
   };
 
-  const handlePaymentSuccess = async (razorpayResponse: any) => {
+  const handlePaymentSuccess = async (paymentResponse: any, zohoPaymentSessionId: string) => {
     try {
       setIsLoading(true);
       isPaymentInProgressRef.current = false;
@@ -365,9 +369,8 @@ export function PosCheckoutDialog({
         method: 'POST',
         body: JSON.stringify({
           checkoutSessionId: checkoutSessionId,
-          paymentId: razorpayResponse.razorpay_payment_id,
-          razorpayOrderId: razorpayResponse.razorpay_order_id,
-          razorpaySignature: razorpayResponse.razorpay_signature
+          paymentId: paymentResponse.payment_id || paymentResponse.id,
+          zohoPaymentSessionId: zohoPaymentSessionId
         })
       });
 
@@ -394,18 +397,8 @@ export function PosCheckoutDialog({
   };
 
   const handleConfirmPayment = () => {
-    if (paymentMethod === 'upi') {
+    if (paymentMethod === 'upi' || paymentMethod === 'qr') {
       initiateUpiPayment();
-    } else if (paymentMethod === 'qr') {
-      // Cache cart and totals for QR payment (with canteen charges)
-      const qrTotals = calculateTotalsWithCharges(totals, canteenCharges, true);
-      cachedCartRef.current = cart;
-      cachedTotalsRef.current = qrTotals;
-
-      // Show QR payment screen
-      setShowQRPayment(true);
-      // Keep dialog open to maintain state
-      // onOpenChange(false);
     } else {
       // For offline payment, show confirmation dialog
       setShowOfflineConfirm(true);

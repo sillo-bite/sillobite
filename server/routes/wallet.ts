@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { walletService } from '../services/walletService';
-import { razorpayInstance, createRazorpayOrder, verifyPaymentSignature } from '@shared/razorpay';
+import { createPaymentSession, getPaymentDetails, verifyWebhookSignature, ZOHO_PAYMENTS_CONFIG, ZOHO_PAYMENT_EVENTS } from '@shared/zoho-payments';
 import { db } from '../db';
-import crypto from 'crypto';
 
 const router = Router();
 
@@ -107,7 +106,7 @@ router.get('/:userId/transactions', async (req, res) => {
 });
 
 /**
- * Create Razorpay order for wallet top-up
+ * Create Zoho Payments session for wallet top-up
  */
 router.post('/:userId/topup/create-order', async (req, res) => {
   try {
@@ -132,15 +131,17 @@ router.post('/:userId/topup/create-order', async (req, res) => {
       return res.status(400).json({ message: 'Maximum top-up amount is ₹10,000' });
     }
 
-    // Create Razorpay order
-    const razorpayOrder = await createRazorpayOrder(
-      amount * 100, // Convert to paise
+    // Create Zoho Payments session
+    const sessionData = await createPaymentSession(
+      amount,
       'INR',
-      `wallet_topup_${userId}_${Date.now()}`,
       {
-        userId: userId.toString(),
-        type: 'wallet_topup',
-        amount: amount.toString()
+        description: `Wallet top-up of ₹${amount}`,
+        notes: {
+          userId: userId.toString(),
+          type: 'wallet_topup',
+          amount: amount.toString()
+        }
       }
     );
 
@@ -150,62 +151,64 @@ router.post('/:userId/topup/create-order', async (req, res) => {
       amount,
       description: `Wallet top-up of ₹${amount}`,
       referenceType: 'topup',
-      orderId: razorpayOrder.id,
+      orderId: sessionData.payment_session_id,
       metadata: {
-        razorpayOrderId: razorpayOrder.id,
+        zohoPaymentSessionId: sessionData.payment_session_id,
         amount: amount
       }
     });
 
-    console.log(`💰 Created Razorpay order for wallet top-up: ${razorpayOrder.id}`);
+    console.log(`💰 Created Zoho Payments session for wallet top-up: ${sessionData.payment_session_id}`);
 
     res.json({
-      orderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
+      orderId: sessionData.payment_session_id, // Keeping orderId key for frontend compatibility
+      amount: sessionData.amount,
+      currency: sessionData.currency,
       transactionId: transaction.id,
-      key: process.env.RAZORPAY_KEY_ID
+      accountId: ZOHO_PAYMENTS_CONFIG.ACCOUNT_ID,
+      apiKey: ZOHO_PAYMENTS_CONFIG.API_KEY,
+      isTestMode: ZOHO_PAYMENTS_CONFIG.ENV === 'sandbox'
     });
   } catch (error) {
-    console.error('❌ Error creating wallet top-up order:', error);
-    res.status(500).json({ message: 'Failed to create top-up order' });
+    console.error('❌ Error creating wallet top-up session:', error);
+    res.status(500).json({ message: 'Failed to create top-up session' });
   }
 });
 
 /**
- * Verify Razorpay payment and complete wallet top-up
+ * Verify Zoho payment and complete wallet top-up
  */
 router.post('/:userId/topup/verify', async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, transactionId } = req.body;
+    const { zoho_payment_session_id, zoho_payment_id, transactionId } = req.body;
 
     if (isNaN(userId)) {
       return res.status(400).json({ message: 'Invalid user ID' });
     }
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !transactionId) {
+    if (!zoho_payment_session_id || !zoho_payment_id || !transactionId) {
       return res.status(400).json({ message: 'Missing payment verification details' });
     }
 
-    // Verify payment signature
-    const isValid = verifyPaymentSignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    );
-
-    if (!isValid) {
-      // Fail the transaction
-      await walletService.failPendingTransaction(transactionId, 'Invalid payment signature');
-      return res.status(400).json({ message: 'Invalid payment signature' });
+    // Verify payment details directly with Zoho API
+    try {
+      const paymentDetails = await getPaymentDetails(zoho_payment_id);
+      if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized' && paymentDetails.status !== 'success') {
+        await walletService.failPendingTransaction(transactionId, 'Payment is not in a successful state');
+        return res.status(400).json({ message: 'Payment is not in a successful state' });
+      }
+    } catch (error) {
+      console.error("Error verifying wallet top-up with Zoho:", error);
+      await walletService.failPendingTransaction(transactionId, 'Failed to verify payment details');
+      return res.status(400).json({ message: 'Failed to verify payment details' });
     }
 
     // Complete the transaction
     const transaction = await walletService.completePendingTransaction(
       transactionId,
-      razorpay_payment_id,
-      'razorpay'
+      zoho_payment_id,
+      'zoho'
     );
 
     const newBalance = await walletService.getBalance(userId);
@@ -253,79 +256,75 @@ router.get('/:userId/balance', async (req, res) => {
 });
 
 /**
- * Webhook handler for Razorpay payment events
+ * Webhook handler for Zoho Payments events (wallet top-ups)
  */
 router.post('/webhook', async (req, res) => {
   try {
-    const signature = req.headers['x-razorpay-signature'] as string;
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-zoho-webhook-signature'] as string;
+    const payload = req.body;
 
-    if (!webhookSecret) {
-      console.error('❌ Razorpay webhook secret not configured');
-      return res.status(500).json({ message: 'Webhook not configured' });
+    if (!signature) {
+      console.error('❌ Webhook missing signature');
+      return res.status(401).json({ message: 'Missing signature' });
     }
 
     // Verify webhook signature
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(JSON.stringify(req.body))
-      .digest('hex');
-
-    if (signature !== expectedSignature) {
+    const payloadString = JSON.stringify(payload);
+    if (!verifyWebhookSignature(payloadString, signature)) {
       console.error('❌ Invalid webhook signature');
       return res.status(400).json({ message: 'Invalid signature' });
     }
 
-    const event = req.body.event;
-    const payload = req.body.payload;
+    const event = payload.event || payload.event_type;
+    const entity = payload.data?.payment || payload.data || payload.payment;
 
-    console.log(`📨 Received Razorpay webhook: ${event}`);
+    if (!entity) {
+      return res.status(400).json({ message: 'Invalid payload structure' });
+    }
+
+    console.log(`📨 Received Zoho webhook for wallet: ${event}`);
+
+    const zohoPaymentSessionId = entity.payment_session_id;
+    const zohoPaymentId = entity.payment_id || entity.id;
 
     // Handle payment success
-    if (event === 'payment.captured') {
-      const payment = payload.payment.entity;
-      const orderId = payment.order_id;
-      const paymentId = payment.id;
-
+    if (entity.status === 'captured' || entity.status === 'authorized' || entity.status === 'success' || event === ZOHO_PAYMENT_EVENTS.PAYMENT_SUCCEEDED) {
       // Find pending transaction
       const prisma = db();
       
       const transaction = await (prisma as any).walletTransaction.findFirst({
         where: {
-          orderId,
+          orderId: zohoPaymentSessionId,
           status: 'PENDING'
         }
       });
 
       if (transaction) {
-        await walletService.completePendingTransaction(transaction.id, paymentId, 'razorpay');
-        console.log(`✅ Webhook: Completed transaction ${transaction.id}`);
+        await walletService.completePendingTransaction(transaction.id, zohoPaymentId, 'zoho');
+        console.log(`✅ Webhook: Completed wallet transaction ${transaction.id}`);
       }
     }
 
     // Handle payment failure
-    if (event === 'payment.failed') {
-      const payment = payload.payment.entity;
-      const orderId = payment.order_id;
-
+    if (entity.status === 'failed' || event === ZOHO_PAYMENT_EVENTS.PAYMENT_FAILED) {
       const prisma = db();
       
       const transaction = await (prisma as any).walletTransaction.findFirst({
         where: {
-          orderId,
+          orderId: zohoPaymentSessionId,
           status: 'PENDING'
         }
       });
 
       if (transaction) {
-        await walletService.failPendingTransaction(transaction.id, payment.error_description);
-        console.log(`❌ Webhook: Failed transaction ${transaction.id}`);
+        await walletService.failPendingTransaction(transaction.id, entity.error_message || entity.error_description || 'Payment Failed');
+        console.log(`❌ Webhook: Failed wallet transaction ${transaction.id}`);
       }
     }
 
     res.json({ status: 'ok' });
   } catch (error) {
-    console.error('❌ Error processing webhook:', error);
+    console.error('❌ Error processing wallet webhook:', error);
     res.status(500).json({ message: 'Webhook processing failed' });
   }
 });
