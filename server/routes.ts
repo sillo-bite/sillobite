@@ -4532,7 +4532,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               apiKey: ZOHO_PAYMENTS_CONFIG.API_KEY,
               amount: jobResult.amount,
               currency: jobResult.currency,
-              checkoutSessionId: checkoutSessionId
+              checkoutSessionId: checkoutSessionId,
+              isTestMode: ZOHO_PAYMENTS_CONFIG.ENV === 'sandbox'
             });
           } catch (timeoutError: any) {
             // Job is still processing, return job ID for polling
