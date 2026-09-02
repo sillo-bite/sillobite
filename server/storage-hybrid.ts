@@ -248,7 +248,7 @@ export interface IStorage {
   // Payments (MongoDB)
   getPayments(): Promise<any[]>;
   getPaymentsPaginated(page: number, limit: number, searchQuery?: string, statusFilter?: string): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
-  getPaymentsByCanteen(canteenId: string, page?: number, limit?: number): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
+  getPaymentsByCanteen(canteenId: string, page?: number, limit?: number, search?: string, status?: string): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getPaymentsByCustomerId(customerId: number, page?: number, limit?: number): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }>;
   getPayment(id: string): Promise<any | undefined>;
   getPaymentByMerchantTxnId(merchantTransactionId: string): Promise<any | undefined>;
@@ -1180,17 +1180,29 @@ export class HybridStorage implements IStorage {
     };
   }
 
-  async getPaymentsByCanteen(canteenId: string, page: number = 1, limit: number = 10): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }> {
+  async getPaymentsByCanteen(canteenId: string, page: number = 1, limit: number = 10, search?: string, status?: string): Promise<{ payments: any[], totalCount: number, totalPages: number, currentPage: number }> {
     const skip = (page - 1) * limit;
+
+    // Build query with optional filters
+    const query: any = { canteenId };
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    if (search) {
+      query.$or = [
+        { merchantTransactionId: { $regex: search, $options: 'i' } },
+        { razorpayTransactionId: { $regex: search, $options: 'i' } },
+      ];
+    }
 
     // Get payments directly by canteenId (new approach)
     const [payments, totalCount] = await Promise.all([
-      Payment.find({ canteenId })
+      Payment.find(query)
         .populate('orderId', 'orderNumber customerName amount status createdAt')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Payment.countDocuments({ canteenId })
+      Payment.countDocuments(query)
     ]);
 
     const totalPages = Math.ceil(totalCount / limit);

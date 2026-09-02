@@ -411,7 +411,8 @@ export default function ProfilePage() {
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </button>
 
-                <button
+                {/* Coding Challenges - hidden */}
+                {/* <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('appNavigateToChallenges', {}));
@@ -434,9 +435,10 @@ export default function ProfilePage() {
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground" />
                   </div>
-                </button>
+                </button> */}
 
-                <button
+                {/* Notifications - hidden */}
+                {/* <button
                   className="w-full flex items-center justify-between p-4 border-b border-border hover:bg-accent transition-colors"
                   onClick={handleNotifications}
                 >
@@ -446,7 +448,7 @@ export default function ProfilePage() {
                       }`}>Notifications</span>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </button>
+                </button> */}
 
                 {!isTemporary && (
                   <button
@@ -485,13 +487,13 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Wallet - only for authenticated users */}
-          {!isTemporary && userInfo?.id && (
+          {/* Wallet - hidden */}
+          {/* {!isTemporary && userInfo?.id && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-foreground">Wallet</h3>
               <WalletCard userId={userInfo.id} />
             </div>
-          )}
+          )} */}
 
           {/* Preferences */}
           <div className="space-y-4">

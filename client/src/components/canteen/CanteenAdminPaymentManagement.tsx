@@ -73,18 +73,28 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
   const totalCount = paymentsData?.totalCount || 0;
   const totalPages = paymentsData?.totalPages || 0;
 
+  // Additional client-side filter for customer name (server searches transaction IDs only)
+  const filteredPayments = debouncedSearchTerm
+    ? payments.filter(p =>
+        p.merchantTransactionId?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        p.razorpayTransactionId?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        p.orderId?.customerName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        p.orderId?.orderNumber?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+      )
+    : payments;
+
   // Calculate stats from payments data
   const today = new Date().toDateString();
-  const todayPayments = payments.filter(payment =>
+  const todayPayments = filteredPayments.filter(payment =>
     new Date(payment.createdAt).toDateString() === today && payment.status === 'success'
   );
-  const todayRevenue = todayPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const todayRevenue = todayPayments.reduce((sum, payment) => sum + (payment.amount / 100), 0);
 
-  const pendingPayments = payments.filter(payment => payment.status === 'pending');
-  const pendingAmount = pendingPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const pendingPayments = filteredPayments.filter(payment => payment.status === 'pending');
+  const pendingAmount = pendingPayments.reduce((sum, payment) => sum + (payment.amount / 100), 0);
 
-  const successfulPayments = payments.filter(payment => payment.status === 'success');
-  const totalRevenue = successfulPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const successfulPayments = filteredPayments.filter(payment => payment.status === 'success');
+  const totalRevenue = successfulPayments.reduce((sum, payment) => sum + (payment.amount / 100), 0);
 
   // Use utility functions for formatting
   const formatDateWithTime = (dateString: string) => {
@@ -146,7 +156,15 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
       {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle>Payment Transactions</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Payment Transactions</span>
+            {!isLoading && (
+              <span className="text-sm font-normal text-muted-foreground">
+                {totalCount} {statusFilter !== 'all' ? statusFilter : ''} transaction{totalCount !== 1 ? 's' : ''}
+                {debouncedSearchTerm ? ` matching "${debouncedSearchTerm}"` : ''}
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -183,7 +201,7 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
               <Loader2 className="h-8 w-8 animate-spin" />
               <span className="ml-2">Loading payments...</span>
             </div>
-          ) : payments.length === 0 ? (
+          ) : filteredPayments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <CreditCard className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">No payments found</p>
@@ -210,7 +228,7 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((payment: Payment) => (
+                    {filteredPayments.map((payment: Payment) => (
                       <TableRow key={payment.id}>
                         <TableCell className="font-mono text-sm">
                           {payment.merchantTransactionId}
@@ -222,7 +240,7 @@ export default function CanteenAdminPaymentManagement({ canteenId }: CanteenAdmi
                           {payment.orderId?.orderNumber || 'N/A'}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {formatCurrency(payment.amount)}
+                          {formatCurrency(payment.amount / 100)}
                         </TableCell>
                         <TableCell>
                           <PaymentStatusBadge status={payment.status} />

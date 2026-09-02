@@ -177,7 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       _inlineRoleCache.set(key, { role: liveRole, expiresAt: Date.now() + _ROLE_TTL });
       return liveRole;
     } catch {
-      return sessionRole; // fallback on DB error — never lock out due to transient failure
+      return sessionRole; // fallback on DB error ï¿½ never lock out due to transient failure
     }
   };
 
@@ -566,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ---------------------------------------------------------------------
       // SECURITY FIX 2: Strip all sensitive fields from the update payload.
       // A regular user must not be able to elevate their own role by sending
-      // { "role": "admin" } — that would be persisted directly via Prisma.
+      // { "role": "admin" } ï¿½ that would be persisted directly via Prisma.
       // Sensitive fields that must NEVER come from req.body:
       //   - role          ? only admin can change roles (checked below)
       //   - passwordHash  ? password changes use a dedicated endpoint
@@ -595,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isAdmin = sessionRole === "admin" || sessionRole === "super_admin";
 
         if (!isAdmin) {
-          console.warn(`?? User ${req.session?.user?.id} (role: ${sessionRole}) attempted role change on user ${userId} — blocked`);
+          console.warn(`?? User ${req.session?.user?.id} (role: ${sessionRole}) attempted role change on user ${userId} ï¿½ blocked`);
           return res.status(403).json({
             message: "Role changes require admin privileges.",
             errorCode: "ROLE_CHANGE_REQUIRES_ADMIN"
@@ -613,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        // Admin is allowed — include the role in the safe update
+        // Admin is allowed ï¿½ include the role in the safe update
         (safeUpdateData as any).role = requestedRole;
       }
 
@@ -3044,7 +3044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveIsOffline = !!validatedData.isOffline;
 
       if (clientIsCounterOrder && !isPrivilegedRole) {
-        console.warn(`?? User ${(req as any).session?.user?.id} (role: ${sessionRole}) attempted counter order — not allowed`);
+        console.warn(`?? User ${(req as any).session?.user?.id} (role: ${sessionRole}) attempted counter order ï¿½ not allowed`);
         return res.status(403).json({
           message: "Counter orders require canteen staff privileges.",
           errorCode: 'INSUFFICIENT_ROLE_FOR_COUNTER_ORDER'
@@ -3076,7 +3076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentStatus = paymentStatus || 'pending'; // Set paymentStatus to 'pending' for pay at counter orders
         }
       } else {
-        // For regular online orders — payment already verified above
+        // For regular online orders ï¿½ payment already verified above
         orderStatus = hasMarkableItem ? "pending" : "ready";
         paymentStatus = paymentStatus || 'paid'; // Payment verified at the top of this handler
       }
@@ -3301,7 +3301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        skipStockReduction = true; // Validated — stock was already reserved at checkout
+        skipStockReduction = true; // Validated ï¿½ stock was already reserved at checkout
         console.log(`?? Stock already reserved at checkout for session ${checkoutSessionId}, skipping stock reduction`);
       }
 
@@ -6893,8 +6893,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { canteenId } = req.params;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string | undefined;
+      const status = req.query.status as string | undefined;
 
-      const result = await storage.getPaymentsByCanteen(canteenId, page, limit);
+      const result = await storage.getPaymentsByCanteen(canteenId, page, limit, search, status);
       res.json(result);
     } catch (error) {
       console.error('Error fetching payments for canteen:', error);
