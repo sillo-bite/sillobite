@@ -97,7 +97,7 @@ export default function AdminPaymentManagementPage() {
           payment.id,
           payment.orderDetails?.orderNumber || 'N/A',
           payment.orderDetails?.customerName || 'Guest',
-          payment.formattedAmount,
+          `Rs.${(payment.amount || 0) / 100}`,
           payment.paymentMethod || 'N/A',
           payment.status,
           payment.createdAtFormatted,
@@ -285,7 +285,7 @@ export default function AdminPaymentManagementPage() {
                   </div>
                   
                   <div className="text-center">
-                    <p className="font-semibold text-lg">{payment.formattedAmount}</p>
+                    <p className="font-semibold text-lg">&#8377;{((payment.amount || 0) / 100).toLocaleString('en-IN')}</p>
                     <p className="text-xs text-muted-foreground">Razorpay</p>
                   </div>
                   
@@ -420,7 +420,7 @@ export default function AdminPaymentManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Amount</p>
-                  <p className="text-lg font-bold text-green-600">{selectedPayment.formattedAmount}</p>
+                  <p className="text-lg font-bold text-green-600">&#8377;{((selectedPayment.amount || 0) / 100).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
