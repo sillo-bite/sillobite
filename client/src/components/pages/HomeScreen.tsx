@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthSync } from "@/hooks/useDataSync";
@@ -17,6 +17,7 @@ import { useCanteenContext } from "@/contexts/CanteenContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import HomeMediaBanner from "@/components/pages/HomeMediaBanner";
 import MenuItemCard from "@/components/menu/MenuItemCard";
+import MenuListingCard from "@/components/menu/MenuListingCard";
 import CategoryCarousel from "@/components/menu/CategoryCarousel";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import HomeScreenSkeleton from "@/components/pages/HomeScreenSkeleton";
@@ -27,6 +28,9 @@ import { CanteenInfoCard } from "@/components/canteen/CanteenInfoCard";
 import { useLocation as useLocationContext } from "@/contexts/LocationContext";
 import { MapPin, ChevronRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
+import { useFavorites } from "@/contexts/FavoritesContext";
+import { useReducedMotion } from "@/utils/dropdownAnimations";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 // Constants for better maintainability
 const SCROLL_THRESHOLD = 100;
@@ -68,7 +72,9 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const { resolvedTheme } = useTheme();
   const { user, login } = useAuth();
   const { selectedLocationType, selectedLocationId, isLoading: isLocationLoading } = useLocationContext();
-  const { getTotalItems, getCartCanteenId } = useCart();
+  const { getTotalItems, getCartCanteenId, addToCart, getCartQuantity, decreaseQuantity } = useCart();
+  const { toggleFavorite, isFavorite } = useFavorites();
+  const prefersReducedMotion = useReducedMotion();
 
   // Smooth scroll-based transition state (0 to 1)
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -509,6 +515,14 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
     }, 300);
   }, [refetchHomeDataRaw]);
 
+  // Real-time home screen updates: menu changes, trending, quick picks, banners
+  useWebSocket({
+    canteenIds: selectedCanteen?.id ? [selectedCanteen.id] : [],
+    enabled: !!selectedCanteen?.id,
+    onBannerUpdate: () => refetchHomeData(),
+    onMenuUpdate: () => refetchHomeData(),
+  });
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -526,6 +540,68 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const trendingItems = useMemo(() => homeData?.trendingItems || [], [homeData?.trendingItems]);
   const quickPickItems = useMemo(() => homeData?.quickPicks || [], [homeData?.quickPicks]);
 
+  // All Menu — infinite scroll ref + query
+  const allMenuObserverTarget = useRef<HTMLDivElement>(null);
+
+  const {
+    data: allMenuData,
+    fetchNextPage: fetchNextAllMenuPage,
+    hasNextPage: hasNextAllMenuPage,
+    isFetchingNextPage: isFetchingNextAllMenuPage,
+    isLoading: allMenuLoading,
+  } = useInfiniteQuery<{
+    items: MenuItem[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  }>({
+    queryKey: ['/api/menu', 'allMenu', selectedCanteen?.id],
+    placeholderData: (prev) => prev,
+    queryFn: async ({ pageParam, signal }) => {
+      const params = new URLSearchParams({
+        page: (pageParam as number).toString(),
+        limit: '10',
+        availableOnly: 'true',
+        ...(selectedCanteen?.id && { canteenId: selectedCanteen.id }),
+      });
+      const response = await fetch(`/api/menu?${params.toString()}`, { signal });
+      if (!response.ok) throw new Error(`Failed to fetch all menu: ${response.status}`);
+      return response.json();
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.pagination.hasNextPage ? lastPage.pagination.currentPage + 1 : undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+    enabled: !!selectedCanteen,
+    retry: (count, err: any) => err?.name !== 'AbortError' && count < 2,
+  });
+
+  const allMenuItems = useMemo(
+    () => allMenuData?.pages.flatMap((p: any) => p.items) || [],
+    [allMenuData]
+  );
+
+  // IntersectionObserver for All Menu infinite scroll — must be after useInfiniteQuery
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextAllMenuPage && !isFetchingNextAllMenuPage) {
+          fetchNextAllMenuPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+    const el = allMenuObserverTarget.current;
+    if (el) observer.observe(el);
+    return () => { if (el) observer.unobserve(el); };
+  }, [hasNextAllMenuPage, isFetchingNextAllMenuPage, fetchNextAllMenuPage]);
+
 
 
 
@@ -534,6 +610,28 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
   const createCategoryUrl = useCallback((categoryName: string) => {
     return encodeURIComponent(categoryName.toLowerCase());
   }, []);
+
+  // All Menu — add to cart handler
+  const handleAllMenuAddToCart = useCallback((item: MenuItem) => {
+    if (!selectedCanteen?.id) return;
+    if (!item.storeCounterId || !item.paymentCounterId) {
+      console.error('❌ Menu item missing counter IDs:', { item });
+      alert(`Error: Counter IDs are missing for "${item.name}". Please refresh the page and try again.`);
+      return;
+    }
+    addToCart({
+      id: item.id || (item as any)._id || '',
+      name: item.name,
+      price: item.price,
+      isVegetarian: item.isVegetarian,
+      canteenId: selectedCanteen.id,
+      category: item.categoryId || (item as any).categoryName,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      storeCounterId: item.storeCounterId,
+      paymentCounterId: item.paymentCounterId,
+    });
+  }, [selectedCanteen?.id, addToCart]);
 
   // Determine if we should show content or loading
   // If we are redirecting, we can return null or a loader to prevent flash of content
@@ -921,8 +1019,78 @@ export default function HomeScreen({ activateSearch = false, onSearchDeactivated
                 </section>
               </ErrorBoundary>
 
+              {/* All Menu Section */}
+              <ErrorBoundary>
+                <section className="animate-slide-up-fade" style={{ animationDelay: '500ms' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className={`text-xl font-bold tracking-tight ${resolvedTheme === 'dark' ? 'text-gray-50' : 'text-gray-900'}`}>
+                        All Menu
+                      </h2>
+                      <p className={`text-xs ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Everything we offer
+                      </p>
+                    </div>
+                  </div>
+
+                  {allMenuItems.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
+                        {allMenuItems.map((item, index) => (
+                          <MenuListingCard
+                            key={item.id || (item as any)._id || `all-menu-${index}`}
+                            item={item}
+                            index={index}
+                            resolvedTheme={resolvedTheme}
+                            prefersReducedMotion={prefersReducedMotion}
+                            isFavorite={isFavorite}
+                            toggleFavorite={toggleFavorite}
+                            getCartQuantity={getCartQuantity}
+                            decreaseQuantity={decreaseQuantity}
+                            handleAddToCart={handleAllMenuAddToCart}
+                            selectedCanteenId={selectedCanteen?.id || ''}
+                            from="/app"
+                          />
+                        ))}
+                      </div>
+
+                      {hasNextAllMenuPage && (
+                        <div ref={allMenuObserverTarget} className="flex justify-center py-6">
+                          {isFetchingNextAllMenuPage ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                              <span className={`text-sm ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                Loading more...
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="h-4" />
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : allMenuLoading ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className={`rounded-2xl h-48 animate-pulse ${resolvedTheme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}`} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`flex items-center justify-center py-6 px-4 rounded-2xl border-2 border-dashed transition-all ${
+                      resolvedTheme === 'dark'
+                        ? 'border-gray-700/50 bg-gradient-to-br from-gray-800/30 to-gray-900/30'
+                        : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'
+                    }`}>
+                      <span className={`text-sm font-medium ${resolvedTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        No items available
+                      </span>
+                    </div>
+                  )}
+                </section>
+              </ErrorBoundary>
+
               {/* Empty State - Only show when everything is empty */}
-              {!homeDataLoading && trendingItems.length === 0 && quickPickItems.length === 0 && categories.length === 0 && (
+              {!homeDataLoading && !allMenuLoading && trendingItems.length === 0 && quickPickItems.length === 0 && categories.length === 0 && allMenuItems.length === 0 && (
                 <div className={`text-center py-8 px-6 rounded-3xl border-2 border-dashed transition-all animate-slide-up-fade ${resolvedTheme === 'dark'
                   ? 'bg-gradient-to-br from-gray-800/30 to-gray-900/30 border-gray-700/50'
                   : 'bg-gradient-to-br from-gray-50 to-white border-gray-200'

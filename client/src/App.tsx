@@ -20,7 +20,6 @@ import LoginScreen from "./components/auth/LoginScreen";
 import HomeScreen from "./components/pages/HomeScreen";
 import AppPage from "./components/pages/AppPage";
 import MenuListingPage from "./components/menu/MenuListingPage";
-import DishDetailPage from "./components/menu/DishDetailPage";
 import CheckoutPage from "./components/pages/CheckoutPage";
 import RetryPaymentPage from "./components/payment/RetryPaymentPage";
 import OrderStatusPage from "./components/orders/OrderStatusPage";
@@ -217,13 +216,6 @@ const App = () => {
                             <MaintenanceWrapper>
                               <ProtectedRoute requireAuth={true}>
                                 <AppPage />
-                              </ProtectedRoute>
-                            </MaintenanceWrapper>
-                          </Route>
-                          <Route path="/dish/:dishId">
-                            <MaintenanceWrapper>
-                              <ProtectedRoute requireAuth={true}>
-                                <DishDetailPage />
                               </ProtectedRoute>
                             </MaintenanceWrapper>
                           </Route>

@@ -88,6 +88,10 @@ export default function CartPage() {
       // Use debounced refetch
       handleRefetchStock();
     },
+    onMenuUpdate: () => {
+      // Menu changed (availability, stock, price) — revalidate cart items
+      handleRefetchStock();
+    },
     onConnected: () => {
       console.log("✅ Cart WebSocket connected for canteen:", cartCanteenId);
     },

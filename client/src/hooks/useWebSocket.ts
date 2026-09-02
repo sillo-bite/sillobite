@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { getWebSocketUrl } from '@/utils/apiConfig';
 
 export interface WebSocketMessage {
-  type: 'new_order' | 'new_offline_order' | 'order_updated' | 'order_status_changed' | 'item_status_changed' | 'banner_updated' | 'payment_success' | 'payment_confirmed' | 'order_rejected' | 'connected' | 'pong' | 'checkout_session_status_changed';
+  type: 'new_order' | 'new_offline_order' | 'order_updated' | 'order_status_changed' | 'item_status_changed' | 'banner_updated' | 'payment_success' | 'payment_confirmed' | 'order_rejected' | 'connected' | 'pong' | 'checkout_session_status_changed' | 'menu_updated';
   data?: any;
   oldStatus?: string;
   newStatus?: string;
@@ -29,6 +29,7 @@ export interface UseWebSocketOptions {
   onOrderStatusChange?: (order: any, oldStatus: string, newStatus: string) => void;
   onItemStatusChange?: (order: any) => void; // Handler for item-level status changes
   onBannerUpdate?: (data: any) => void;
+  onMenuUpdate?: (data: any) => void;
   onPaymentSuccess?: (data: any) => void;
   onPaymentConfirmed?: (order: any, confirmedByCounter: string) => void;
   onOrderRejected?: (order: any, rejectedByCounter: string) => void;
@@ -62,6 +63,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     onOrderStatusChange,
     onItemStatusChange,
     onBannerUpdate,
+    onMenuUpdate,
     onPaymentSuccess,
     onPaymentConfirmed,
     onOrderRejected,
@@ -312,6 +314,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
           case 'banner_updated':
             onBannerUpdate?.(message.data);
             break;
+          case 'menu_updated':
+            onMenuUpdate?.(message.data);
+            break;
           case 'payment_success':
             onPaymentSuccess?.(message.data);
             break;
@@ -343,7 +348,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       isConnectingRef.current = false;
       onError?.(err instanceof Error ? err : new Error('Failed to connect'));
     }
-  }, [enabled, getWebSocketURL, canteenIds, onConnected, onDisconnected, onError, onNewOrder, onOrderUpdate, onOrderStatusChange, onBannerUpdate, onPaymentSuccess, stopKeepAlive, maxReconnectAttempts]);
+  }, [enabled, getWebSocketURL, canteenIds, onConnected, onDisconnected, onError, onNewOrder, onOrderUpdate, onOrderStatusChange, onBannerUpdate, onMenuUpdate, onPaymentSuccess, stopKeepAlive, maxReconnectAttempts]);
 
   // Schedule reconnection with exponential backoff (more aggressive for PWA)
   // Uses connectRef to avoid circular dependency

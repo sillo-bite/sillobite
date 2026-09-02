@@ -200,6 +200,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   const [isDeliveryPersonModalOpen, setIsDeliveryPersonModalOpen] = useState(false);
   const [currentOrderForDelivery, setCurrentOrderForDelivery] = useState<any>(null);
   const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
+  const [showYetToDeliverModal, setShowYetToDeliverModal] = useState(false);
   // Removed isLiveMode state - now purely WebSocket-based
 
   console.log('🏪 StoreMode component mounted with:', { counterId, canteenId });
@@ -1119,6 +1120,40 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       .sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name));
   }, [filteredActiveOrders, counterId]);
 
+  // Consolidated yet-to-deliver items: marked ready but not yet dispatched/completed
+  const consolidatedYetToDeliverItems = useMemo(() => {
+    const map = new Map<string, { name: string; quantity: number; orderNumbers: Set<string> }>();
+
+    filteredActiveOrders.forEach((order: Order) => {
+      const items = typeof order.items === 'string' ? JSON.parse(order.items) : order.items;
+
+      items.forEach((item: any) => {
+        // Only count items that belong to this counter
+        if (!item.storeCounterId || item.storeCounterId !== counterId) return;
+
+        const itemStatus = getItemStatus(order, item.id, item);
+        // Items that are ready but not yet out for delivery or completed
+        const isYetToDeliver = itemStatus === 'ready';
+
+        if (!isYetToDeliver) return;
+
+        const key = item.id || item.name;
+        const existing = map.get(key) || { name: item.name, quantity: 0, orderNumbers: new Set<string>() };
+        existing.quantity += item.quantity || 1;
+        existing.orderNumbers.add(order.orderNumber || order.id);
+        map.set(key, existing);
+      });
+    });
+
+    return Array.from(map.values())
+      .map((entry) => ({
+        name: entry.name,
+        quantity: entry.quantity,
+        orders: entry.orderNumbers.size
+      }))
+      .sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name));
+  }, [filteredActiveOrders, counterId]);
+
   // Debug categorization results
   console.log('🔍 Final categorization results:', {
     totalOrders: orders.length,
@@ -1473,6 +1508,20 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
               )}
             </Button>
             <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowYetToDeliverModal(true)}
+              className="flex items-center space-x-2 flex-shrink-0"
+            >
+              <Truck className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                Yet to Deliver {consolidatedYetToDeliverItems.length > 0 ? `(${consolidatedYetToDeliverItems.length})` : ''}
+              </span>
+              {isMobile && consolidatedYetToDeliverItems.length > 0 && (
+                <span className="sm:hidden">({consolidatedYetToDeliverItems.length})</span>
+              )}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={() => {
@@ -1493,7 +1542,6 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                 aria-label="Toggle prep required section"
               >
                 <AlertTriangle className="h-4 w-4" />
-                <span>{showPrepSection ? "Hide Prep" : "Show Prep"}</span>
               </Button>
             )}
             <Button
@@ -2283,6 +2331,39 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
                 >
                   <div className="flex items-center gap-2">
                     <Package className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Badge variant="secondary">{item.quantity} pcs</Badge>
+                    <Badge variant="outline">{item.orders} order{item.orders !== 1 ? 's' : ''}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Yet to Deliver Modal */}
+      <Dialog open={showYetToDeliverModal} onOpenChange={setShowYetToDeliverModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Yet to Deliver</DialogTitle>
+            <DialogDescription>
+              Items already marked as ready but not yet dispatched for delivery.
+            </DialogDescription>
+          </DialogHeader>
+          {consolidatedYetToDeliverItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No items pending delivery for this counter.</p>
+          ) : (
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {consolidatedYetToDeliverItems.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between border border-border rounded-md px-3 py-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium text-foreground">{item.name}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
