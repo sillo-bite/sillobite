@@ -185,7 +185,7 @@ const MenuItemCard = React.memo(function MenuItemCard({
 
   // Default variant for trending and quick picks
   return (
-    <Card className={cardClassName} onClick={() => setLocation(`/dish/${item.id}`)}>
+    <Card className={cardClassName}>
       <CardContent className="p-0">
         {/* Top Section - Outer container with soft background */}
         <div className={`w-full p-2 relative overflow-hidden rounded-t-3xl`}>
