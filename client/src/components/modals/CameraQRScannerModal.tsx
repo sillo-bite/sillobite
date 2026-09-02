@@ -12,6 +12,7 @@ interface CameraQRScannerModalProps {
 }
 
 type CameraStatus = 'idle' | 'requesting' | 'active' | 'error';
+type ErrorKind = 'permission' | 'notfound' | 'other';
 
 const CameraQRScannerModal: React.FC<CameraQRScannerModalProps> = ({
   isOpen,
@@ -26,6 +27,7 @@ const CameraQRScannerModal: React.FC<CameraQRScannerModalProps> = ({
 
   const [status, setStatus] = useState<CameraStatus>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [errorKind, setErrorKind] = useState<ErrorKind>('other');
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [detected, setDetected] = useState(false);
 
@@ -72,10 +74,13 @@ const CameraQRScannerModal: React.FC<CameraQRScannerModalProps> = ({
       console.error('Camera error:', err);
       setStatus('error');
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setErrorMsg('Camera permission denied. Please allow camera access and try again.');
+        setErrorKind('permission');
+        setErrorMsg('Camera permission denied. Open your browser site settings to allow camera access, then retry.');
       } else if (err.name === 'NotFoundError') {
+        setErrorKind('notfound');
         setErrorMsg('No camera found on this device.');
       } else {
+        setErrorKind('other');
         setErrorMsg(`Camera error: ${err.message || err.name}`);
       }
     }
@@ -204,9 +209,14 @@ const CameraQRScannerModal: React.FC<CameraQRScannerModalProps> = ({
           )}
 
           {status === 'error' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white gap-3 px-6 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white gap-4 px-6 text-center">
               <CameraOff className="h-10 w-10 text-red-400" />
-              <p className="text-sm font-medium">{errorMsg}</p>
+              <p className="text-sm font-medium leading-snug">{errorMsg}</p>
+              {errorKind === 'permission' && (
+                <p className="text-xs text-white/60 leading-snug">
+                  Tap the 🔒 lock / camera icon in your browser's address bar and set Camera to <span className="font-semibold text-white/80">Allow</span>, then tap Retry below.
+                </p>
+              )}
               <Button
                 size="sm"
                 variant="secondary"

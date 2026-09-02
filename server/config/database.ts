@@ -50,14 +50,14 @@ export function getDatabaseConfig(): DatabaseConfig {
   // MongoDB 4.4+ compatible options with fallback for older versions
   // SCALABILITY FIX: Increased pool size to handle 1000+ concurrent users
   const mongoOptions: ConnectOptions = {
-    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '200'), // Increased from 10 to 200 for high concurrency
+    maxPoolSize: parseInt(process.env.MONGODB_MAX_POOL_SIZE || '10'), // Reduced from 200 - scales up on demand
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
     family: 4, // Use IPv4
     
     // MongoDB 4.4+ optimizations
     maxIdleTimeMS: 30000,
-    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '50'), // Increased from 2 to 50 for better connection management
+    minPoolSize: parseInt(process.env.MONGODB_MIN_POOL_SIZE || '2'), // Reduced from 50 - saves ~94% idle outbound bandwidth
     heartbeatFrequencyMS: 10000,
     
     // Connection management

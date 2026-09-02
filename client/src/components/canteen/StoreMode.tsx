@@ -192,6 +192,11 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   const [isDelivering, setIsDelivering] = useState(false);
   const [isCameraQRModalOpen, setIsCameraQRModalOpen] = useState(false);
   const [isQRFetching, setIsQRFetching] = useState(false);
+  const [isAlreadyDeliveredModalOpen, setIsAlreadyDeliveredModalOpen] = useState(false);
+  const [alreadyDeliveredOrder, setAlreadyDeliveredOrder] = useState<any>(null);
+  // Tracks whether the currently-open result modal was triggered by the camera QR scanner.
+  // When true, closing any result modal re-opens the scanner for the next scan.
+  const qrFlowActiveRef = React.useRef(false);
   const [isDeliveryPersonModalOpen, setIsDeliveryPersonModalOpen] = useState(false);
   const [currentOrderForDelivery, setCurrentOrderForDelivery] = useState<any>(null);
   const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
@@ -1176,6 +1181,10 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
+    if (qrFlowActiveRef.current) {
+      qrFlowActiveRef.current = false;
+      setIsCameraQRModalOpen(true);
+    }
   };
 
   const handleBarcodeScan = (order: any) => {
@@ -1250,11 +1259,19 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
   const handleCloseOrderFoundModal = () => {
     setIsOrderFoundModalOpen(false);
     setCurrentOrderForBarcode(null);
+    if (qrFlowActiveRef.current) {
+      qrFlowActiveRef.current = false;
+      setIsCameraQRModalOpen(true);
+    }
   };
 
   const handleCloseOrderNotFoundModal = () => {
     setIsOrderNotFoundModalOpen(false);
     setCurrentOrderForBarcode(null);
+    if (qrFlowActiveRef.current) {
+      qrFlowActiveRef.current = false;
+      setIsCameraQRModalOpen(true);
+    }
   };
 
   /**
@@ -1270,6 +1287,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
     const dashIndex = rawValue.indexOf('-');
     if (dashIndex === -1) {
       console.warn('⚠️ QR value does not match expected format "orderId-barcodeId":', rawValue);
+      qrFlowActiveRef.current = true;
       setScannedBarcode(rawValue);
       setCurrentOrderForBarcode(null);
       setIsOrderNotFoundModalOpen(true);
@@ -1288,6 +1306,7 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       console.log('📷 Fetched order:', fetchedOrder?.orderNumber, '| status:', fetchedOrder?.status);
 
       if (!fetchedOrder) {
+        qrFlowActiveRef.current = true;
         setScannedBarcode(scannedBarcodeId);
         setCurrentOrderForBarcode(null);
         setIsOrderNotFoundModalOpen(true);
@@ -1301,6 +1320,16 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
       setScannedBarcode(scannedBarcodeId);
 
       const status = fetchedOrder.status as string;
+
+      // Already delivered / completed — show special popup
+      if (status === 'delivered' || status === 'completed') {
+        console.log('📦 QR scan: order already delivered, showing delivered popup');
+        qrFlowActiveRef.current = true;
+        setAlreadyDeliveredOrder(fetchedOrder);
+        setIsAlreadyDeliveredModalOpen(true);
+        return;
+      }
+
       const isReady =
         status === 'ready' ||
         status === 'out_for_delivery' ||
@@ -1308,17 +1337,19 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
 
       if (isReady) {
         // Order is ready — open the OrderFoundModal (delivery confirmation dialog)
-        // using the parsed barcodeId as the verified barcode
         console.log('✅ QR scan: order is ready, opening delivery dialog');
+        qrFlowActiveRef.current = true;
         setIsOrderFoundModalOpen(true);
       } else {
         // Order is not yet ready — open the order details dialog so staff can see it
         console.log('⏳ QR scan: order not ready, opening details dialog');
+        qrFlowActiveRef.current = true;
         setSelectedOrder(filtered);
         setIsModalOpen(true);
       }
     } catch (err) {
       console.error('❌ Failed to fetch order from QR scan:', err);
+      qrFlowActiveRef.current = true;
       setScannedBarcode(scannedBarcodeId);
       setCurrentOrderForBarcode(null);
       setIsOrderNotFoundModalOpen(true);
@@ -2340,6 +2371,81 @@ export default function StoreMode({ counterId, canteenId }: StoreModeProps) {
         onClose={() => setIsCameraQRModalOpen(false)}
         onQRScanned={handleQRScanned}
       />
+
+      {/* Already Delivered Modal */}
+      <Dialog open={isAlreadyDeliveredModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsAlreadyDeliveredModalOpen(false);
+          setAlreadyDeliveredOrder(null);
+          if (qrFlowActiveRef.current) {
+            qrFlowActiveRef.current = false;
+            setIsCameraQRModalOpen(true);
+          }
+        }
+      }}>
+        <DialogContent className="w-[95vw] max-w-[420px] p-0 overflow-hidden rounded-2xl z-[80]">
+          <div className="bg-gradient-to-br from-emerald-50 to-green-100 dark:from-emerald-950/60 dark:to-green-900/40 p-6 flex flex-col items-center text-center gap-4">
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-full bg-green-500/20 dark:bg-green-500/30 flex items-center justify-center ring-4 ring-green-500/30">
+              <CheckCircle className="w-9 h-9 text-green-600 dark:text-green-400" />
+            </div>
+
+            {/* Title */}
+            <div>
+              <h2 className="text-xl font-bold text-green-800 dark:text-green-200">
+                Already Delivered
+              </h2>
+              <p className="text-sm text-green-700/80 dark:text-green-300/70 mt-1">
+                This order has already been picked up.
+              </p>
+            </div>
+
+            {/* Order info */}
+            {alreadyDeliveredOrder && (
+              <div className="w-full bg-white/70 dark:bg-black/20 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground font-medium">Order ID</span>
+                  <span className="font-mono font-bold text-foreground">
+                    #{formatOrderIdDisplay(alreadyDeliveredOrder.orderNumber || alreadyDeliveredOrder.id).full}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground font-medium">Customer</span>
+                  <span className="font-semibold text-foreground">{alreadyDeliveredOrder.customerName}</span>
+                </div>
+                {alreadyDeliveredOrder.deliveredAt && (
+                  <div className="flex justify-between items-center pt-1 border-t border-green-200 dark:border-green-800">
+                    <span className="text-muted-foreground font-medium flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      Delivered at
+                    </span>
+                    <span className="font-semibold text-green-700 dark:text-green-300">
+                      {new Date(alreadyDeliveredOrder.deliveredAt).toLocaleString([], {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setIsAlreadyDeliveredModalOpen(false);
+                setAlreadyDeliveredOrder(null);
+                if (qrFlowActiveRef.current) {
+                  qrFlowActiveRef.current = false;
+                  setIsCameraQRModalOpen(true);
+                }
+              }}
+              className="w-full py-2.5 rounded-xl bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-semibold text-sm transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
