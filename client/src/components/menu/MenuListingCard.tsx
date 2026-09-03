@@ -2,6 +2,7 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Plus, Minus, Star } from "lucide-react";
 import type { MenuItem } from "@shared/schema";
+import type { FavoriteItem } from "@/contexts/FavoritesContext";
 
 interface MenuListingCardProps {
   item: MenuItem;
@@ -9,15 +10,7 @@ interface MenuListingCardProps {
   resolvedTheme: string;
   prefersReducedMotion: boolean;
   isFavorite: (id: string) => boolean;
-  toggleFavorite: (item: {
-    id: string;
-    name: string;
-    price: number;
-    isVegetarian?: boolean;
-    imageUrl?: string;
-    canteenId: string;
-    description?: string;
-  }) => void;
+  toggleFavorite: (item: FavoriteItem) => void;
   getCartQuantity: (id: string) => number;
   decreaseQuantity: (id: string) => void;
   handleAddToCart: (item: MenuItem) => void;

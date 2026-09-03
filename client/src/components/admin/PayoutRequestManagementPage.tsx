@@ -68,6 +68,9 @@ export default function PayoutRequestManagementPage() {
     return (
       req.requestId.toLowerCase().includes(query) ||
       req.canteenId.toLowerCase().includes(query) ||
+      (req.canteenName || "").toLowerCase().includes(query) ||
+      (req.collegeName || "").toLowerCase().includes(query) ||
+      (req.organizationName || "").toLowerCase().includes(query) ||
       req.amountInRupees.toString().includes(query)
     );
   });
@@ -268,7 +271,7 @@ export default function PayoutRequestManagementPage() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by request ID, canteen ID, or amount..."
+                      placeholder="Search by request ID, canteen name, college, or amount..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
@@ -319,8 +322,13 @@ export default function PayoutRequestManagementPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-4 mb-3">
                           <div>
-                            <p className="text-sm text-muted-foreground">Canteen ID</p>
-                            <p className="font-medium">{request.canteenId}</p>
+                            <p className="text-sm text-muted-foreground">Canteen</p>
+                            <p className="font-medium">{request.canteenName || request.canteenId}</p>
+                            {(request.collegeName || request.organizationName) && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {request.collegeName || request.organizationName}
+                              </p>
+                            )}
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Amount</p>
@@ -440,8 +448,13 @@ export default function PayoutRequestManagementPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-4 mb-3">
                           <div>
-                            <p className="text-sm text-muted-foreground">Canteen ID</p>
-                            <p className="font-medium">{settlement.canteenId}</p>
+                            <p className="text-sm text-muted-foreground">Canteen</p>
+                            <p className="font-medium">{settlement.canteenName || settlement.canteenId}</p>
+                            {(settlement.collegeName || settlement.organizationName) && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {settlement.collegeName || settlement.organizationName}
+                              </p>
+                            )}
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">Amount</p>
@@ -514,8 +527,12 @@ export default function PayoutRequestManagementPage() {
                   <div>{getStatusBadge(selectedRequest.status)}</div>
                 </div>
                 <div>
-                  <Label>Canteen ID</Label>
-                  <p>{selectedRequest.canteenId}</p>
+                  <Label>Canteen</Label>
+                  <p className="font-medium">{selectedRequest.canteenName || selectedRequest.canteenId}</p>
+                  {(selectedRequest.collegeName || selectedRequest.organizationName) && (
+                    <p className="text-sm text-muted-foreground">{selectedRequest.collegeName || selectedRequest.organizationName}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground font-mono">{selectedRequest.canteenId}</p>
                 </div>
                 <div>
                   <Label>Amount</Label>

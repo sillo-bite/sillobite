@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-interface FavoriteItem {
+export interface FavoriteItem {
   id: string;
   name: string;
   price: number;
-  isVegetarian: boolean;
+  isVegetarian?: boolean;
   imageUrl?: string;
   canteenId: string;
   description?: string;
