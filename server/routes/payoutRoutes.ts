@@ -1,7 +1,63 @@
 import { Router } from "express";
-import { Settlement, PayoutRequest, Order, Payment } from "../models/mongodb-models";
+import { Settlement, PayoutRequest, Order, Payment, CanteenEntity } from "../models/mongodb-models";
 import mongoose from "mongoose";
 import { storage } from "../storage-hybrid";
+
+// Helper: resolve canteen name + college/org names for a set of canteen IDs
+async function enrichCanteenInfo(canteenIds: string[]): Promise<Map<string, { canteenName: string | null; collegeName: string | null; organizationName: string | null }>> {
+  const uniqueIds = [...new Set(canteenIds)];
+  const canteens = await CanteenEntity.find({ id: { $in: uniqueIds } })
+    .select("id name collegeIds organizationIds collegeId organizationId")
+    .lean();
+
+  // Collect all college/org IDs we need to resolve
+  const allCollegeIds = new Set<string>();
+  const allOrgIds = new Set<string>();
+  for (const c of canteens) {
+    const ids = (c as any).collegeIds?.length ? (c as any).collegeIds : ((c as any).collegeId ? [(c as any).collegeId] : []);
+    const orgIds = (c as any).organizationIds?.length ? (c as any).organizationIds : ((c as any).organizationId ? [(c as any).organizationId] : []);
+    ids.forEach((id: string) => allCollegeIds.add(id));
+    orgIds.forEach((id: string) => allOrgIds.add(id));
+  }
+
+  // Fetch SystemSettings to resolve names
+  const SystemSettingsModel = mongoose.models['SystemSettings'] as mongoose.Model<any>;
+  let collegeMap = new Map<string, string>();
+  let orgMap = new Map<string, string>();
+  if (SystemSettingsModel && (allCollegeIds.size > 0 || allOrgIds.size > 0)) {
+    try {
+      const settings = await SystemSettingsModel.findOne().sort({ createdAt: -1 }).lean() as any;
+      if (settings?.colleges?.list) {
+        for (const col of settings.colleges.list as any[]) {
+          if (col.id && col.name) collegeMap.set(col.id, col.name);
+        }
+      }
+      if (settings?.organizations?.list) {
+        for (const org of settings.organizations.list as any[]) {
+          if (org.id && org.name) orgMap.set(org.id, org.name);
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  const result = new Map<string, { canteenName: string | null; collegeName: string | null; organizationName: string | null }>();
+  for (const c of canteens) {
+    const collegeIds: string[] = (c as any).collegeIds?.length ? (c as any).collegeIds : ((c as any).collegeId ? [(c as any).collegeId] : []);
+    const orgIds: string[] = (c as any).organizationIds?.length ? (c as any).organizationIds : ((c as any).organizationId ? [(c as any).organizationId] : []);
+    const resolvedCollege = collegeIds.map((id: string) => collegeMap.get(id)).find(Boolean) || null;
+    const resolvedOrg = orgIds.map((id: string) => orgMap.get(id)).find(Boolean) || null;
+    result.set((c as any).id, {
+      canteenName: (c as any).name || null,
+      collegeName: resolvedCollege || null,
+      organizationName: resolvedOrg || null,
+    });
+  }
+  // Fill in nulls for any canteen IDs not found
+  for (const id of uniqueIds) {
+    if (!result.has(id)) result.set(id, { canteenName: null, collegeName: null, organizationName: null });
+  }
+  return result;
+}
 
 const router = Router();
 
@@ -492,28 +548,37 @@ router.get("/admin/payout/requests", requireAdmin, async (req, res) => {
 
     const total = await PayoutRequest.countDocuments(query);
 
+    const canteenIds = requests.map((r) => r.canteenId);
+    const canteenInfo = await enrichCanteenInfo(canteenIds);
+
     res.json({
-      requests: requests.map((r) => ({
-        id: (r as any)._id.toString(),
-        requestId: r.requestId,
-        canteenId: r.canteenId,
-        amount: r.amount,
-        amountInRupees: r.amount / 100,
-        status: r.status,
-        orderCount: r.orderCount,
-        requestedBy: r.requestedBy,
-        requestedAt: r.requestedAt,
-        periodStart: r.periodStart,
-        periodEnd: r.periodEnd,
-        approvedBy: r.approvedBy,
-        approvedAt: r.approvedAt,
-        rejectedBy: r.rejectedBy,
-        rejectedAt: r.rejectedAt,
-        rejectionReason: r.rejectionReason,
-        settlementId: r.settlementId,
-        notes: r.notes,
-        createdAt: r.createdAt,
-      })),
+      requests: requests.map((r) => {
+        const info = canteenInfo.get(r.canteenId) || { canteenName: null, collegeName: null, organizationName: null };
+        return {
+          id: (r as any)._id.toString(),
+          requestId: r.requestId,
+          canteenId: r.canteenId,
+          canteenName: info.canteenName,
+          collegeName: info.collegeName,
+          organizationName: info.organizationName,
+          amount: r.amount,
+          amountInRupees: r.amount / 100,
+          status: r.status,
+          orderCount: r.orderCount,
+          requestedBy: r.requestedBy,
+          requestedAt: r.requestedAt,
+          periodStart: r.periodStart,
+          periodEnd: r.periodEnd,
+          approvedBy: r.approvedBy,
+          approvedAt: r.approvedAt,
+          rejectedBy: r.rejectedBy,
+          rejectedAt: r.rejectedAt,
+          rejectionReason: r.rejectionReason,
+          settlementId: r.settlementId,
+          notes: r.notes,
+          createdAt: r.createdAt,
+        };
+      }),
       total,
     });
   } catch (error) {
@@ -541,11 +606,17 @@ router.get("/admin/payout/requests/:requestId", requireAdmin, async (req, res) =
       _id: { $in: validOrderIds.map((id) => new mongoose.Types.ObjectId(id)) },
     });
 
+    const canteenInfoMap = await enrichCanteenInfo([request.canteenId]);
+    const canteenInfo = canteenInfoMap.get(request.canteenId) || { canteenName: null, collegeName: null, organizationName: null };
+
     res.json({
       request: {
         id: (request as any)._id.toString(),
         requestId: request.requestId,
         canteenId: request.canteenId,
+        canteenName: canteenInfo.canteenName,
+        collegeName: canteenInfo.collegeName,
+        organizationName: canteenInfo.organizationName,
         amount: request.amount,
         amountInRupees: request.amount / 100,
         status: request.status,
@@ -842,23 +913,32 @@ router.get("/admin/payout/settlements", requireAdmin, async (req, res) => {
 
     const total = await Settlement.countDocuments(query);
 
+    const settlementCanteenIds = settlements.map((s) => s.canteenId);
+    const settlementCanteenInfo = await enrichCanteenInfo(settlementCanteenIds);
+
     res.json({
-      settlements: settlements.map((s) => ({
-        id: (s as any)._id.toString(),
-        settlementId: s.settlementId,
-        canteenId: s.canteenId,
-        amount: s.amount,
-        amountInRupees: s.amount / 100,
-        periodStart: s.periodStart,
-        periodEnd: s.periodEnd,
-        orderCount: s.orderCount,
-        status: s.status,
-        processedAt: s.processedAt,
-        processedBy: s.processedBy,
-        transactionId: s.transactionId,
-        notes: s.notes,
-        createdAt: s.createdAt,
-      })),
+      settlements: settlements.map((s) => {
+        const info = settlementCanteenInfo.get(s.canteenId) || { canteenName: null, collegeName: null, organizationName: null };
+        return {
+          id: (s as any)._id.toString(),
+          settlementId: s.settlementId,
+          canteenId: s.canteenId,
+          canteenName: info.canteenName,
+          collegeName: info.collegeName,
+          organizationName: info.organizationName,
+          amount: s.amount,
+          amountInRupees: s.amount / 100,
+          periodStart: s.periodStart,
+          periodEnd: s.periodEnd,
+          orderCount: s.orderCount,
+          status: s.status,
+          processedAt: s.processedAt,
+          processedBy: s.processedBy,
+          transactionId: s.transactionId,
+          notes: s.notes,
+          createdAt: s.createdAt,
+        };
+      }),
       total,
     });
   } catch (error) {
